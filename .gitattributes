@@ -1,0 +1,4 @@
+# Normalise to LF in the repository. CI runs Prettier on Linux, so a CRLF
+# working copy on Windows would otherwise fail `format:check` on every file.
+* text=auto eol=lf
+pnpm-lock.yaml -diff

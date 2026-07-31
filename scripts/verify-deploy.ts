@@ -25,6 +25,8 @@ const EXPECTED = process.env.GITHUB_SHA ?? '';
 
 const ATTEMPTS = Number(process.env.VERIFY_ATTEMPTS ?? 12);
 const DELAY_MS = Number(process.env.VERIFY_DELAY_MS ?? 10_000);
+const ASSET_ATTEMPTS = Number(process.env.VERIFY_ASSET_ATTEMPTS ?? 5);
+const ASSET_DELAY_MS = Number(process.env.VERIFY_ASSET_DELAY_MS ?? 3_000);
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -81,11 +83,25 @@ async function checkAssets(base: string): Promise<void> {
   ];
   if (assets.length === 0) throw new Error('index.html references no /assets/ bundles');
 
-  for (const path of assets) {
-    const res = await fetch(`${base}${path}`, { method: 'HEAD', cache: 'no-store' });
-    if (res.status !== 200) throw new Error(`GET ${path} -> ${res.status}`);
-  }
+  for (const path of assets) await headOk(base, path);
   console.log(`ok  index.html live and all ${assets.length} referenced bundles serve 200`);
+}
+
+/**
+ * Assets propagate independently of version.json — observed on the first deploy,
+ * where the version matched immediately but a preloaded chunk still 404'd for a
+ * few seconds. A single-shot check here reports a broken deploy that isn't one,
+ * so each asset gets its own short retry before it counts as missing.
+ */
+async function headOk(base: string, path: string): Promise<void> {
+  let last = 0;
+  for (let attempt = 1; attempt <= ASSET_ATTEMPTS; attempt++) {
+    const res = await fetch(`${base}${path}`, { method: 'HEAD', cache: 'no-store' });
+    if (res.status === 200) return;
+    last = res.status;
+    if (attempt < ASSET_ATTEMPTS) await sleep(ASSET_DELAY_MS);
+  }
+  throw new Error(`HEAD ${path} -> ${last} after ${ASSET_ATTEMPTS} attempts`);
 }
 
 async function verifyAgainst(base: string): Promise<void> {
