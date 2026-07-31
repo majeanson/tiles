@@ -31,15 +31,26 @@ Last checkpoint: **2026-07-31** — Session 0, foundation.
   engine never learns pixels exist. `layout.ts` fits any region shape to a
   portrait viewport by full drawn extent (not cell centres), so edge hexes
   cannot clip on a narrow screen.
-- **Deploy.** Assets-only Cloudflare Worker. The build stamps
-  `dist/version.json`; `scripts/verify-deploy.ts` proves the LIVE site serves
-  that exact commit, with a workers.dev fallback for when the zone WAF blocks
-  CI. Green CI is not treated as a deploy.
+- **Deploy.** Assets-only Cloudflare Worker, live at
+  **https://tiles.marcportal.com** (and `tiles.marc-jeanson.workers.dev`, kept
+  as the WAF-free fallback CI verifies against when the zone challenges runner
+  IPs). The build stamps `dist/version.json`; `scripts/verify-deploy.ts` proves
+  the LIVE site serves that exact commit, retrying per asset because assets
+  propagate independently of the version stamp. Green CI is not treated as a
+  deploy. Repo: `majeanson/tiles` (private); CI green on `main`.
 
 ## The gates
 
 All six open. See `LOG.md`. **Gate E blocks all UI/UX and art-direction work**
 until A–D pass.
+
+## Not armed yet
+
+The CI deploy job exists but is gated off. To arm it: set the
+`CLOUDFLARE_API_TOKEN` secret (Workers Scripts: Edit + Workers Routes: Edit on
+the `marcportal.com` zone) and the `DEPLOY_ENABLED` repository variable to
+`true`. `CLOUDFLARE_ACCOUNT_ID` is already set. Until then, deploys are manual:
+`pnpm build && pnpm exec wrangler deploy`.
 
 ## Not started
 

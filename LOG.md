@@ -59,4 +59,17 @@ deliberately makes no design claims.
 `PixiRenderer.ts` is labelled a placeholder and must not be built on.
 
 **Verified:** 55 tests green; typecheck clean; lint clean; the layering probe
-fails as designed; production build emits `version.json`.
+fails as designed; production build emits `version.json`; deployed and verified
+live at both https://tiles.marcportal.com and
+https://tiles.marc-jeanson.workers.dev; CI green on `main` in 36s.
+
+**What the first deploy taught us.** `verify-deploy` failed on its first real
+run, and was right to: `version.json` matched the pushed commit immediately
+while a modulepreloaded chunk still 404'd. Assets propagate independently of the
+version stamp, so the asset check now retries. This is the case for having a
+verifier at all — a green CI run and a working site are different claims, and
+only one of them was true for about ten seconds.
+
+**Still open:** the CI deploy job is written but not armed. It needs a
+`CLOUDFLARE_API_TOKEN` secret and `DEPLOY_ENABLED=true`; until then deploys are
+manual (`pnpm build && pnpm exec wrangler deploy`).
