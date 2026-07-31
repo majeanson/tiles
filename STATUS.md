@@ -44,13 +44,21 @@ Last checkpoint: **2026-07-31** — Session 0, foundation.
 All six open. See `LOG.md`. **Gate E blocks all UI/UX and art-direction work**
 until A–D pass.
 
-## Not armed yet
+## Push-to-deploy is armed
 
-The CI deploy job exists but is gated off. To arm it: set the
-`CLOUDFLARE_API_TOKEN` secret (Workers Scripts: Edit + Workers Routes: Edit on
-the `marcportal.com` zone) and the `DEPLOY_ENABLED` repository variable to
-`true`. `CLOUDFLARE_ACCOUNT_ID` is already set. Until then, deploys are manual:
-`pnpm build && pnpm exec wrangler deploy`.
+A push to `main` runs format/lint/typecheck/test/build, then deploys, then
+proves the live site serves that exact commit. Secrets and the `DEPLOY_ENABLED`
+variable are set on `majeanson/tiles`.
+
+The Cloudflare token is deliberately narrow — Workers Scripts: Edit, Workers
+Routes: Edit pinned to the `marcportal.com` zone, Account Settings: Read. No
+D1, KV or R2. Those permissions are **account-scoped, not resource-scoped** in
+Cloudflare, so granting D1 here would hand this game's deploy token full edit
+rights over jaffre's production database. A token's permissions can be widened
+in place later without changing its value, so there is no cost to waiting until
+a feature actually needs one.
+
+Manual deploy still works: `pnpm build && pnpm exec wrangler deploy`.
 
 ## Not started
 
