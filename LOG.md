@@ -70,6 +70,9 @@ version stamp, so the asset check now retries. This is the case for having a
 verifier at all — a green CI run and a working site are different claims, and
 only one of them was true for about ten seconds.
 
-**Still open:** the CI deploy job is written but not armed. It needs a
-`CLOUDFLARE_API_TOKEN` secret and `DEPLOY_ENABLED=true`; until then deploys are
-manual (`pnpm build && pnpm exec wrangler deploy`).
+**Push-to-deploy proven end to end** on `d0e318c`: CI 31s, deploy 44s, live site
+confirmed serving that commit. The workers.dev fallback earned its place on its
+first real run — the `marcportal.com` zone's bot protection 403'd the GitHub
+runner, the verifier recognised an edge challenge rather than an app failure,
+and re-checked the same worker via its WAF-free host. Without that distinction
+every deploy would have failed on a green deploy.
