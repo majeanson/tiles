@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      Portrait phone is the design target. `viewport-fit=cover` plus the
+      env(safe-area-inset-*) padding in style.css keeps the board clear of the
+      notch and the home indicator; user-scalable=no stops a double-tap on a hex
+      from zooming the page instead of placing a tile.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="theme-color" content="#14161c" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>tiles</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main id="app">
+      <div id="board"></div>
+      <!-- Testing happens on the deployed site, so which build you are looking
+           at has to be visible on the device itself. -->
+      <footer id="stamp"></footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

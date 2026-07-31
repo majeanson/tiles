@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Hearthfall — region prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Karla:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#191C21; --ink-2:#22262E; --ink-3:#2E333D; --ink-line:#3A404B;
+  --chalk:#F3EDE0; --chalk-dim:#A79E8C;
+  --r-common:#A79C86; --r-magic:#6BA8E8; --r-rare:#F0B429; --r-unique:#B98BE0;
+  --gold:#F0B429; --ebb:#C4553F;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--ink);color:var(--chalk);font-family:Karla,system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center}
+#frame{width:100%;max-width:440px;height:100%;max-height:940px;display:flex;
+  flex-direction:column;position:relative;overflow:hidden;background:var(--ink)}
+#head{padding:8px 14px 6px;display:flex;align-items:baseline;justify-content:space-between;
+  border-bottom:1px solid var(--ink-line);flex:0 0 auto}
+#head h1{font-family:Fraunces,serif;font-weight:600;font-size:15px;margin:0}
+#regionLbl{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--chalk-dim)}
+#stats{display:flex;gap:1px;background:var(--ink-line);border-bottom:1px solid var(--ink-line);flex:0 0 auto}
+.st{flex:1;background:var(--ink);padding:8px 4px 7px;text-align:center}
+.st .k{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--chalk-dim);margin-bottom:2px}
+.st .v{font-family:'Space Mono',monospace;font-size:17px;font-weight:700;line-height:1}
+.st.warn .v{color:var(--ebb)}
+#boardwrap{flex:1 1 auto;position:relative;min-height:0;
+  background:radial-gradient(circle at 50% 45%,#F4ECD9 0%,#EDE4CE 55%,#E2D6B9 100%);
+  transition:filter .6s}
+#boardwrap.ebb{filter:saturate(.45) brightness(.72)}
+#board{width:100%;height:100%;display:block;touch-action:none}
+#ebbTag{position:absolute;top:8px;left:0;right:0;text-align:center;font-size:10px;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--ebb);font-weight:700;
+  opacity:0;transition:opacity .5s;pointer-events:none}
+#ebbTag.on{opacity:1}
+#hint{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:11px;
+  color:#8A7C5E;pointer-events:none;padding:0 16px}
+#contracts{flex:0 0 auto;display:flex;gap:1px;background:var(--ink-line);border-top:1px solid var(--ink-line)}
+.ct{flex:1;background:var(--ink-2);padding:7px 9px}
+.ct .cn{font-size:11px;line-height:1.3}
+.ct .cp{font-family:'Space Mono',monospace;font-size:10px;color:var(--chalk-dim);margin-top:2px}
+.ct.done{background:var(--ink-3)}
+.ct.done .cn{color:#9FE0B8}
+#deck{flex:0 0 auto;border-top:1px solid var(--ink-line);padding:9px 10px 11px;background:var(--ink-2)}
+#draftRow{display:flex;gap:7px}
+.card{flex:1;background:var(--ink);border:1px solid var(--ink-line);border-radius:3px;
+  padding:6px 5px 7px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.card.sel{border-color:var(--gold);background:var(--ink-3)}
+.card .cname{font-family:Fraunces,serif;font-size:11px;font-weight:600;line-height:1.2;margin-top:3px}
+.card .caff{font-family:'Space Mono',monospace;font-size:8.5px;line-height:1.35;color:#9FE0B8;
+  margin-top:3px;min-height:22px;white-space:pre-line}
+#deckMsg{font-size:10.5px;color:var(--chalk-dim);margin-top:7px;text-align:center;min-height:13px}
+#discardBtn{display:none;margin:7px auto 0;font-family:Karla;font-weight:700;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;background:transparent;color:var(--ebb);
+  border:1px solid var(--ink-line);border-radius:2px;padding:6px 16px;cursor:pointer}
+.modal{position:absolute;inset:0;z-index:40;background:rgba(12,14,18,.86);display:none;
+  flex-direction:column;align-items:center;justify-content:center;padding:22px}
+.modal.on{display:flex}
+.modal h2{font-family:Fraunces,serif;font-weight:600;font-size:21px;margin:0 0 4px;text-align:center}
+.modal .kick{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--chalk-dim);margin-bottom:9px}
+.modal .sub{font-size:12px;color:var(--chalk-dim);margin-bottom:18px;text-align:center;line-height:1.5}
+.opt{width:100%;max-width:300px;background:var(--ink-2);border:1px solid var(--ink-line);
+  border-radius:4px;padding:11px 14px;margin-bottom:9px;cursor:pointer;text-align:left;
+  color:var(--chalk);font-family:Karla;transition:border-color .15s,background .15s}
+.opt:hover{border-color:var(--gold);background:var(--ink-3)}
+.opt .ot{font-family:Fraunces,serif;font-size:15px;font-weight:600}
+.opt .ov{font-family:'Space Mono',monospace;font-size:11px;color:var(--gold);margin-top:2px}
+.opt .od{font-size:10.5px;color:var(--chalk-dim);margin-top:3px}
+#end{padding:24px 22px;overflow:auto;justify-content:flex-start}
+#end .row{width:100%;display:flex;justify-content:space-between;align-items:baseline;
+  padding:8px 0;border-bottom:1px solid var(--ink-line);font-size:12.5px}
+#end .row b{font-family:'Space Mono',monospace;font-size:15px;font-weight:700}
+#end button{margin-top:20px;font-family:Karla;font-weight:700;font-size:12px;letter-spacing:.12em;
+  text-transform:uppercase;background:var(--gold);color:#2A1F05;border:0;border-radius:2px;
+  padding:13px;cursor:pointer;width:100%;max-width:300px}
+.float{font-family:'Space Mono',monospace;font-weight:700;pointer-events:none}
+.pop{animation:pop .26s cubic-bezier(.34,1.56,.64,1) both;transform-box:fill-box;transform-origin:center}
+@keyframes pop{from{transform:scale(.45);opacity:0}to{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}}
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="head"><h1>Hearthfall</h1><span id="regionLbl">region 1</span></div>
+  <div id="stats">
+    <div class="st"><div class="k">Score</div><div class="v" id="sScore">0</div></div>
+    <div class="st" id="tileBox"><div class="k">Tiles</div><div class="v" id="sTiles">20</div></div>
+    <div class="st"><div class="k">Cost</div><div class="v" id="sCost">1</div></div>
+    <div class="st"><div class="k">Space</div><div class="v" id="sSpace">0</div></div>
+  </div>
+  <div id="boardwrap">
+    <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="ebbTag">the ebb</div>
+    <div id="hint">Pick a tile below, then tap a highlighted hex.</div>
+  </div>
+  <div id="contracts"></div>
+  <div id="deck">
+    <div id="draftRow"></div>
+    <div id="deckMsg"></div>
+    <button id="discardBtn">Discard draft — costs 1 tile</button>
+  </div>
+
+  <div class="modal" id="divModal">
+    <div class="kick" id="divKick">Combo burst</div>
+    <h2 id="divTitle">Take your dividend</h2>
+    <div class="sub" id="divSub"></div>
+    <button class="opt" id="optQ"><div class="ot">Quarry</div><div class="ov" id="qv"></div><div class="od">tiles — buys the present</div></button>
+    <button class="opt" id="optH"><div class="ot">Harvest</div><div class="ov" id="hv"></div><div class="od">score — the run's total</div></button>
+    <button class="opt" id="optP"><div class="ot">Prospect</div><div class="ov" id="pv"></div><div class="od">loot — a tile into your draft</div></button>
+  </div>
+
+  <div class="modal" id="regModal">
+    <div class="kick">The way is sealed behind you</div>
+    <h2>Where next?</h2>
+    <div class="sub" id="regSub"></div>
+    <button class="opt" id="optA"><div class="ot" id="aName"></div><div class="ov" id="aDist"></div><div class="od" id="aHint"></div></button>
+    <button class="opt" id="optB"><div class="ot" id="bName"></div><div class="ov" id="bDist"></div><div class="od" id="bHint"></div></button>
+  </div>
+
+  <div class="modal" id="end">
+    <div class="kick">Run complete</div>
+    <h2 id="endTitle">The last light</h2>
+    <div class="sub" id="endSub"></div>
+    <div class="row"><span>Base score</span><b id="eBase">0</b></div>
+    <div class="row"><span>Region multiplier</span><b id="eMult">×1.00</b></div>
+    <div class="row"><span>Final score</span><b id="eFinal">0</b></div>
+    <div class="row"><span>Regions sealed</span><b id="eRegions">0</b></div>
+    <div class="row"><span>Bursts</span><b id="eBursts">0</b></div>
+    <div class="row"><span>Uniques found</span><b id="eUniq">0</b></div>
+    <div class="row"><span>Scars left</span><b id="eScars">0</b></div>
+    <div class="row"><span>Best run</span><b id="eBest">0</b></div>
+    <button id="againBtn">New run</button>
+  </div>
+</div>
+<script>
+const NS='http://www.w3.org/2000/svg', SQ3=Math.sqrt(3);
+const board=document.getElementById('board');
+const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+
+const TERR={
+  woodland:{n:'Woodland',f:'#7A9A5E',d:'#3F5432'},
+  meadow  :{n:'Meadow',  f:'#E4BA68',d:'#8A6420'},
+  hamlet  :{n:'Hamlet',  f:'#CE7255',d:'#7A3721'},
+  water   :{n:'Water',   f:'#7BA5BE',d:'#38596E'}
+};
+const RAR={
+  common:{n:'Common',c:'#A79C86',w:1.4,gate:0},
+  magic :{n:'Magic', c:'#6BA8E8',w:2.2,gate:1},
+  rare  :{n:'Rare',  c:'#F0B429',w:2.8,gate:2},
+  unique:{n:'Unique',c:'#B98BE0',w:3.2,gate:3}
+};
+const RORDER=['common','magic','rare','unique'];
+const AFF={
+  match:{t:v=>'+'+v+' per match',       roll:()=>[4,6,8][ri(3)]},
+  aura :{t:v=>'neighbours +'+v+'%',      roll:()=>[20,30,40][ri(3)]},
+  wild :{t:()=>'matches anything',       roll:()=>1},
+  draw :{t:v=>'+'+v+' tile on place',    roll:()=>1},
+  luck :{t:v=>'+'+v+'% loot here',       roll:()=>[25,40][ri(2)]},
+  burst:{t:v=>'bursts here x'+v,         roll:()=>[1.5,2][ri(2)]}
+};
+const AKEYS=Object.keys(AFF);
+const UNIQ=[
+  {name:'The Gilded Mill',t:'hamlet',a:{burst:2,draw:2}},
+  {name:'Heartwood',t:'woodland',a:{wild:1,aura:50}},
+  {name:'Ashfall Plains',t:'meadow',a:{match:12,luck:60}},
+  {name:'Mirrowmere',t:'water',a:{aura:35,luck:50}}
+];
+const BIOMES={
+  marshfen  :{n:'Marshfen',   w:{water:40,meadow:25,woodland:20,hamlet:15},blk:.08,hint:'open ground'},
+  bonefields:{n:'Bone-fields',w:{hamlet:30,meadow:30,woodland:20,water:20},blk:.20,hint:'cliff-riddled'},
+  highland  :{n:'Highland',   w:{woodland:45,meadow:25,hamlet:20,water:10},blk:.15,hint:'broken ground'},
+  sunkenvale:{n:'Sunken vale',w:{meadow:30,water:30,woodland:25,hamlet:15},blk:.10,hint:'open ground'}
+};
+const BKEYS=Object.keys(BIOMES);
+
+const ri=n=>Math.floor(Math.random()*n);
+const key=(q,r)=>q+','+r;
+const ax=k=>k.split(',').map(Number);
+const hdist=(q,r)=>(Math.abs(q)+Math.abs(r)+Math.abs(q+r))/2;
+
+let S={}, best=0;
+
+function wTerr(b){
+  const w=BIOMES[b].w; let t=0; for(const k in w)t+=w[k];
+  let x=Math.random()*t;
+  for(const k in w){x-=w[k];if(x<=0)return k;}
+  return 'meadow';
+}
+function rollTile(biome,minRar,luck){
+  let roll=Math.random()*100-(luck||0)*0.35;
+  let rar = roll>96 ? 'unique' : roll>84 ? 'rare' : roll>54 ? 'magic' : 'common';
+  if(minRar&&RORDER.indexOf(rar)<RORDER.indexOf(minRar))rar=minRar;
+  if(rar==='unique'){
+    const u=UNIQ[ri(UNIQ.length)];
+    return {terrain:u.t,rarity:'unique',name:u.name,affs:{...u.a}};
+  }
+  const n = rar==='common'?0 : rar==='magic'?1 : 2;
+  const affs={}; const pool=AKEYS.slice();
+  for(let i=0;i<n;i++){const k=pool.splice(ri(pool.length),1)[0];affs[k]=AFF[k].roll();}
+  return {terrain:wTerr(biome),rarity:rar,name:null,affs};
+}
+const has=(t,k)=>t&&t.affs&&t.affs[k]!==undefined?t.affs[k]:0;
+function affLines(t){
+  const out=[];
+  for(const k in t.affs)out.push(AFF[k].t(t.affs[k]));
+  return out.join('\n');
+}
+const tName=t=>t.name||RAR[t.rarity].n+' '+TERR[t.terrain].n;
+
+/* ---------- region generation ---------- */
+function genRegion(biome){
+  const cells=new Set(), R=4;
+  for(let q=-R;q<=R;q++)for(let r=-R;r<=R;r++){
+    if(hdist(q,r)>R)continue;
+    const d=hdist(q,r);
+    if(d===R&&Math.random()<.5)continue;
+    if(d===R-1&&Math.random()<.15)continue;
+    cells.add(key(q,r));
+  }
+  const seen=new Set(['0,0']),stack=['0,0'];
+  while(stack.length){const k=stack.pop();const[q,r]=ax(k);
+    for(const[dq,dr]of DIRS){const nk=key(q+dq,r+dr);
+      if(cells.has(nk)&&!seen.has(nk)){seen.add(nk);stack.push(nk);}}}
+  const list=[...seen];
+
+  let wp=null;
+  const cands=list.filter(k=>{const[q,r]=ax(k);const d=hdist(q,r);
+    return d>=1&&d<=2&&DIRS.every(([dq,dr])=>seen.has(key(q+dq,r+dr)));});
+  wp=cands.length?cands[ri(cands.length)]:list[0];
+  const wpRing=new Set(DIRS.map(([dq,dr])=>{const[q,r]=ax(wp);return key(q+dq,r+dr);}));
+
+  const edge=list.filter(k=>{const[q,r]=ax(k);
+    return DIRS.some(([dq,dr])=>!seen.has(key(q+dq,r+dr)));});
+  const[wq,wr]=ax(wp);
+  let entry=edge[0],bd=-1;
+  edge.forEach(k=>{const[q,r]=ax(k);const d=hdist(q-wq,r-wr);if(d>bd){bd=d;entry=k;}});
+
+  const blocked=new Set();
+  const dens=BIOMES[biome].blk;
+  list.forEach(k=>{
+    if(k===wp||k===entry||wpRing.has(k))return;
+    if(Math.random()<dens)blocked.add(k);
+  });
+  return {cells:seen,blocked,wp,wpRing,entry,biome,total:list.length-blocked.size};
+}
+
+/* ---------- geometry ---------- */
+const pos=(q,r)=>({x:S.hs*(SQ3*q+SQ3/2*r),y:S.hs*1.5*r});
+function hexD(cx,cy,s){let d='';
+  for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);
+    d+=(i?'L':'M')+(cx+s*Math.cos(a)).toFixed(2)+' '+(cy+s*Math.sin(a)).toFixed(2);}
+  return d+'Z';}
+const nb=(q,r)=>DIRS.map(([dq,dr])=>[q+dq,r+dr]);
+function el(tag,at,p){const e=document.createElementNS(NS,tag);
+  for(const k in at)e.setAttribute(k,at[k]);if(p)p.appendChild(e);return e;}
+
+const inReg=(q,r)=>S.reg.cells.has(key(q,r));
+const isBlk=(q,r)=>S.reg.blocked.has(key(q,r));
+const isScar=(q,r)=>S.scars.has(key(q,r));
+const tileAt=(q,r)=>S.tiles[key(q,r)];
+const solid=(q,r)=>!inReg(q,r)||isBlk(q,r)||isScar(q,r)||!!tileAt(q,r);
+const enclosed=(q,r)=>!!tileAt(q,r)&&nb(q,r).every(([a,b])=>solid(a,b));
+function built(q,r){return !!tileAt(q,r)||isScar(q,r);}
+function matchesAt(q,r,tile){
+  let m=0;
+  for(const[a,b]of nb(q,r)){const n=tileAt(a,b);if(!n)continue;
+    if(n.terrain===tile.terrain||has(tile,'wild')||has(n,'wild'))m++;}
+  return m;
+}
+function legal(q,r,tile){
+  if(!inReg(q,r)||isBlk(q,r)||tileAt(q,r)||isScar(q,r))return false;
+  if(key(q,r)===S.reg.wp&&!S.wayOpen)return false;
+  const adj=nb(q,r).some(([a,b])=>built(a,b));
+  if(!adj)return false;
+  let placed=0;
+  for(const[a,b]of nb(q,r))if(tileAt(a,b))placed++;
+  return placed>=RAR[tile.rarity].gate;
+}
+function anyLegal(){
+  for(const t of S.draft){
+    for(const k of S.reg.cells){const[q,r]=ax(k);if(legal(q,r,t))return true;}
+  }
+  return false;
+}
+
+/* ---------- art ---------- */
+function glyph(g,cx,cy,s,terrain,dark){
+  const o={fill:dark,opacity:.7};
+  if(terrain==='woodland'){
+    [[-.32,.12],[0,-.15],[.32,.12]].forEach(([dx,dy])=>{
+      const x=cx+dx*s,y=cy+dy*s,h=s*.38,w=s*.2;
+      el('path',{d:`M${x} ${y-h} L${x+w} ${y+h*.45} L${x-w} ${y+h*.45} Z`,...o},g);});
+  }else if(terrain==='meadow'){
+    [-.28,0,.28].forEach(dy=>el('path',{d:`M${cx-s*.4} ${cy+dy*s} q ${s*.2} ${-s*.13} ${s*.4} 0 q ${s*.2} ${s*.13} ${s*.4} 0`,
+      fill:'none',stroke:dark,'stroke-width':s*.07,'stroke-linecap':'round',opacity:.6},g));
+  }else if(terrain==='hamlet'){
+    [[-.25,.05],[.25,.05],[0,-.27]].forEach(([dx,dy])=>{
+      const x=cx+dx*s,y=cy+dy*s,w=s*.18;
+      el('rect',{x:x-w,y:y,width:w*2,height:w*1.5,...o},g);
+      el('path',{d:`M${x-w*1.3} ${y} L${x} ${y-w*1.1} L${x+w*1.3} ${y} Z`,...o},g);});
+  }else{
+    [-.25,.02,.29].forEach(dy=>el('path',{d:`M${cx-s*.38} ${cy+dy*s} q ${s*.19} ${-s*.15} ${s*.38} 0 q ${s*.19} ${s*.15} ${s*.38} 0`,
+      fill:'none',stroke:dark,'stroke-width':s*.08,'stroke-linecap':'round',opacity:.55},g));
+  }
+}
+function drawTile(p,cx,cy,t,scale,anim){
+  const s=(scale||S.hs)*.94;
+  const g=el('g',anim?{class:'pop'}:{},p);
+  el('path',{d:hexD(cx,cy,s),fill:TERR[t.terrain].f,stroke:RAR[t.rarity].c,
+    'stroke-width':RAR[t.rarity].w,'stroke-linejoin':'round'},g);
+  glyph(g,cx,cy,s,t.terrain,TERR[t.terrain].d);
+  if(t.rarity==='rare'||t.rarity==='unique')
+    el('path',{d:hexD(cx,cy,s*1.15),fill:'none',stroke:RAR[t.rarity].c,'stroke-width':.8,opacity:.4},g);
+  if(t.rarity==='unique')
+    el('circle',{cx:cx,cy:cy-s*.76,r:s*.14,fill:RAR.unique.c,stroke:'#2B1D3D','stroke-width':.7},g);
+  return g;
+}
+
+/* ---------- effects ---------- */
+function floatUp(x,y,txt,col){
+  const t=el('text',{x,y,'text-anchor':'middle','font-size':S.hs*.45,fill:col,class:'float'},board);
+  t.textContent=txt;let d=0;
+  const iv=setInterval(()=>{d++;t.setAttribute('y',y-d*1.3);t.setAttribute('opacity',1-d/26);
+    if(d>26){clearInterval(iv);t.remove();}},28);
+}
+function burstFX(x,y){
+  const ring=el('path',{d:hexD(x,y,S.hs),fill:'none',stroke:'#F0B429','stroke-width':3},board);
+  let d=0;
+  const iv=setInterval(()=>{d++;ring.setAttribute('d',hexD(x,y,S.hs*(1+d*.09)));
+    ring.setAttribute('opacity',1-d/16);if(d>16){clearInterval(iv);ring.remove();}},26);
+  for(let i=0;i<10;i++){
+    const a=Math.random()*Math.PI*2,sp=(1.3+Math.random()*2.2)*(S.hs/28);
+    const c=el('circle',{cx:x,cy:y,r:S.hs*.09,fill:['#F0B429','#B98BE0','#6BA8E8'][i%3]},board);
+    let k=0;
+    const iv2=setInterval(()=>{k++;c.setAttribute('cx',x+Math.cos(a)*sp*k);
+      c.setAttribute('cy',y+Math.sin(a)*sp*k+k*k*.04);c.setAttribute('opacity',1-k/22);
+      if(k>22){clearInterval(iv2);c.remove();}},26);
+  }
+}
+
+/* ---------- contracts ---------- */
+const CPOOL=[
+  (b)=>{const t=TKEY(b);return{id:'t'+t,txt:'Place 5 '+TERR[t].n.toLowerCase(),need:5,p:0,test:(ev)=>ev.type==='place'&&ev.tile.terrain===t?1:0};},
+  ()=>({id:'burst',txt:'Trigger 2 bursts',need:2,p:0,test:ev=>ev.type==='burst'?ev.count:0}),
+  ()=>({id:'fill',txt:'Fill 12 hexes',need:12,p:0,test:ev=>ev.type==='place'?1:0}),
+  ()=>({id:'m4',txt:'Three 4+ match placements',need:3,p:0,test:ev=>ev.type==='place'&&ev.m>=4?1:0})
+];
+function TKEY(b){
+  const w=BIOMES[b].w;
+  const top=Object.keys(w).sort((x,y)=>w[y]-w[x]).slice(0,2);
+  return top[ri(2)];
+}
+function newContracts(biome){
+  const idx=[0,1,2,3];const out=[];
+  while(out.length<2){const i=idx.splice(ri(idx.length),1)[0];out.push(CPOOL[i](biome));}
+  return out;
+}
+function fireEvent(ev){
+  let opened=false;
+  S.contracts.forEach(c=>{
+    if(c.p>=c.need)return;
+    c.p=Math.min(c.need,c.p+(c.test(ev)||0));
+    if(c.p>=c.need)S.done++;
+  });
+  if(!S.wayOpen&&S.done>=2){S.wayOpen=true;opened=true;}
+  return opened;
+}
+
+/* ---------- placement ---------- */
+function place(q,r){
+  if(S.busy)return;
+  const tile=S.draft[S.sel];
+  if(!legal(q,r,tile))return;
+  const cost=S.lastLight?0:S.cost;
+  S.tiles[key(q,r)]=tile;
+  S.budget-=cost; S.placed++;
+  const p=pos(q,r);
+
+  const m=matchesAt(q,r,tile);
+  if(m===0){
+    delete S.tiles[key(q,r)];
+    S.scars.add(key(q,r));
+    floatUp(p.x,p.y-S.hs*.5,'scarred','#9A4B36');
+  }else{
+    let gain=m*(10+has(tile,'match'));
+    let aura=0;
+    for(const[a,b]of nb(q,r)){const n=tileAt(a,b);if(n)aura+=has(n,'aura');}
+    gain=Math.round(gain*(1+aura/100));
+    S.score+=gain;
+    floatUp(p.x,p.y-S.hs*.5,'+'+gain,'#2F6B45');
+    if(m>=3){S.budget++;floatUp(p.x,p.y-S.hs*1.15,'+1 tile','#8A5A12');}
+    const dw=has(tile,'draw');
+    if(dw){S.budget+=dw;floatUp(p.x+S.hs*.8,p.y-S.hs*1.5,'+'+dw+' tile','#8A5A12');}
+    fireEvent({type:'place',tile,m});
+  }
+
+  S.draft.splice(S.sel,1);
+  S.draft.push(rollTile(S.reg.biome));
+  S.sel=0;
+  checkEbb();
+
+  const chain=findChain(q,r);
+  render();
+  if(chain.length)setTimeout(()=>runChain(chain),280);
+  else afterTurn();
+}
+
+function findChain(q,r){
+  const seeds=[[q,r],...nb(q,r)].filter(([a,b])=>enclosed(a,b)&&!S.burst.has(key(a,b)));
+  if(!seeds.length)return [];
+  const out=[],seen=new Set(),queue=seeds.slice();
+  while(queue.length&&out.length<6){
+    const[a,b]=queue.shift();const k=key(a,b);
+    if(seen.has(k)||S.burst.has(k)||!enclosed(a,b))continue;
+    seen.add(k);out.push([a,b]);
+    for(const[c,d]of nb(a,b))if(enclosed(c,d)&&!seen.has(key(c,d))&&!S.burst.has(key(c,d)))queue.push([c,d]);
+  }
+  return out;
+}
+
+function runChain(list){
+  S.busy=true;
+  let pot=0,bestM=0,tiles=0,luck=0,isWp=false;
+  list.forEach(([q,r],i)=>{
+    const k=key(q,r);S.burst.add(k);S.bursts++;
+    const t=tileAt(q,r);
+    const m=matchesAt(q,r,t);
+    if(m>bestM)bestM=m;
+    const mult=has(t,'burst')||1;
+    pot+=Math.round(60*(1+m)*mult);
+    tiles+=2+(m>=5?1:0);
+    luck+=has(t,'luck');
+    for(const[a,b]of nb(q,r)){const n=tileAt(a,b);if(n)luck+=has(n,'luck');}
+    if(k===S.reg.wp)isWp=true;
+    setTimeout(()=>{const p=pos(q,r);burstFX(p.x,p.y);},i*130);
+  });
+  if(isWp){pot=Math.round(pot*2.5);tiles=Math.round(tiles*2);bestM=Math.max(bestM,4);}
+  fireEvent({type:'burst',count:list.length});
+  S.pending={pot,bestM,tiles,luck,isWp};
+  setTimeout(()=>showDividend(),list.length*130+380);
+}
+
+function showDividend(){
+  const d=S.pending;
+  const floor = d.bestM>=6?'unique' : d.bestM>=4?'rare' : 'magic';
+  d.floor=floor;
+  document.getElementById('divKick').textContent=d.isWp?'The waypoint resolves':'Combo burst';
+  document.getElementById('divTitle').textContent=d.isWp?'Seal this region':'Take your dividend';
+  document.getElementById('divSub').textContent=
+    (d.isWp?'The whole region answers at once. ':'')+
+    'Best enclosure was '+d.bestM+'/6 matching — loot floor is '+RAR[floor].n.toLowerCase()+'.';
+  document.getElementById('qv').textContent='+'+d.tiles+' tiles';
+  document.getElementById('hv').textContent='+'+d.pot+' score';
+  document.getElementById('pv').textContent=RAR[floor].n+' tile or better';
+  document.getElementById('divModal').classList.add('on');
+}
+function takeDividend(kind){
+  const d=S.pending;
+  document.getElementById('divModal').classList.remove('on');
+  if(kind==='q'){S.budget+=d.tiles;}
+  else if(kind==='h'){S.score+=d.pot;}
+  else{
+    const t=rollTile(S.reg.biome,d.floor,d.luck);
+    if(t.rarity==='unique')S.uniques++;
+    S.draft[S.draft.length-1]=t;
+    document.getElementById('deckMsg').textContent='Prospected: '+tName(t);
+  }
+  S.pending=null;S.busy=false;
+  checkEbb();
+  if(d.isWp){sealRegion();return;}
+  render();afterTurn();
+}
+document.getElementById('optQ').onclick=()=>takeDividend('q');
+document.getElementById('optH').onclick=()=>takeDividend('h');
+document.getElementById('optP').onclick=()=>takeDividend('p');
+
+/* ---------- turn end / ebb / last light ---------- */
+function checkEbb(){
+  if(!S.ebb&&S.budget<5){S.ebb=true;}
+  else if(S.ebb&&S.budget>12){S.ebb=false;S.ebbsSurvived++;}
+  document.getElementById('boardwrap').classList.toggle('ebb',S.ebb);
+  document.getElementById('ebbTag').classList.toggle('on',S.ebb);
+  document.getElementById('tileBox').classList.toggle('warn',S.ebb);
+}
+function afterTurn(){
+  if(S.lastLight){finishLastLight();return;}
+  if(S.budget<=0){beginLastLight();return;}
+  if(!anyLegal()){document.getElementById('discardBtn').style.display='block';
+    document.getElementById('deckMsg').textContent='Nothing here can be placed.';}
+  else document.getElementById('discardBtn').style.display='none';
+  render();
+}
+function discardDraft(){
+  if(S.lastLight){finishLastLight();return;}
+  S.budget--; S.draft=[rollTile(S.reg.biome),rollTile(S.reg.biome),rollTile(S.reg.biome)];
+  S.sel=0; document.getElementById('discardBtn').style.display='none';
+  document.getElementById('deckMsg').textContent='Draft discarded.';
+  checkEbb();
+  if(S.budget<=0){beginLastLight();return;}
+  render();
+}
+document.getElementById('discardBtn').onclick=discardDraft;
+
+function beginLastLight(){
+  S.lastLight=true;
+  document.getElementById('hint').textContent='The last light — one final placement.';
+  document.getElementById('deckMsg').textContent='Everything you loaded will fire at once.';
+  render();
+}
+function finishLastLight(){
+  const all=[];
+  for(const k in S.tiles){const[q,r]=ax(k);
+    if(enclosed(q,r)&&!S.burst.has(k))all.push([q,r]);}
+  let pot=0;
+  all.forEach(([q,r],i)=>{
+    S.burst.add(key(q,r));S.bursts++;
+    const t=tileAt(q,r),m=matchesAt(q,r,t);
+    pot+=Math.round(60*(1+m)*(has(t,'burst')||1));
+    setTimeout(()=>{const p=pos(q,r);burstFX(p.x,p.y);},i*110);
+  });
+  S.score+=pot;
+  render();
+  setTimeout(()=>endRun(pot,all.length),all.length*110+600);
+}
+
+/* ---------- region flow ---------- */
+function regionQuality(){
+  let filled=0,matched=0;
+  for(const k in S.tiles){const[q,r]=ax(k);filled++;
+    if(matchesAt(q,r,S.tiles[k])>0)matched++;}
+  const fill=Math.min(1,filled/S.reg.total);
+  const qual=filled?matched/filled:0;
+  return {fill,qual,mult:1+fill*0.4+qual*0.2};
+}
+function sealRegion(){
+  const q=regionQuality();
+  S.sealed.push({name:BIOMES[S.reg.biome].n,...q});
+  const opts=BKEYS.filter(b=>b!==S.reg.biome).sort(()=>Math.random()-.5).slice(0,2);
+  S.nextOpts=opts;
+  const nextCost=1+S.regionNum+S.ebbsSurvived;
+  document.getElementById('regSub').textContent=
+    BIOMES[S.reg.biome].n+' sealed at '+Math.round(q.fill*100)+'% filled — multiplier x'+q.mult.toFixed(2)+
+    '. The next region costs '+nextCost+' per tile.';
+  ['a','b'].forEach((L,i)=>{
+    const b=BIOMES[opts[i]];
+    document.getElementById(L+'Name').textContent=b.n;
+    document.getElementById(L+'Dist').textContent=(10+ri(14))+' hexes';
+    document.getElementById(L+'Hint').textContent=b.hint;
+  });
+  document.getElementById('regModal').classList.add('on');
+}
+function enterRegion(biome){
+  document.getElementById('regModal').classList.remove('on');
+  S.regionNum++;
+  S.cost=1+(S.regionNum-1)+S.ebbsSurvived;
+  S.reg=genRegion(biome);
+  S.tiles={};S.scars=new Set();S.burst=new Set();
+  S.contracts=newContracts(biome);S.done=0;S.wayOpen=false;
+  S.tiles[S.reg.entry]={terrain:wTerr(biome),rarity:'common',name:null,affs:{}};
+  S.draft=[rollTile(biome),rollTile(biome),rollTile(biome)];S.sel=0;
+  S.busy=false;
+  document.getElementById('deckMsg').textContent='Entered '+BIOMES[biome].n+'.';
+  document.getElementById('hint').textContent='Complete two contracts to open the waypoint.';
+  sizeBoard();render();
+}
+document.getElementById('optA').onclick=()=>enterRegion(S.nextOpts[0]);
+document.getElementById('optB').onclick=()=>enterRegion(S.nextOpts[1]);
+
+/* ---------- render ---------- */
+function fitView(){
+  const w=board.clientWidth||360,h=board.clientHeight||420;
+  let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;
+  S.reg.cells.forEach(k=>{const[q,r]=ax(k);const p=pos(q,r);
+    mnx=Math.min(mnx,p.x);mxx=Math.max(mxx,p.x);mny=Math.min(mny,p.y);mxy=Math.max(mxy,p.y);});
+  const pad=S.hs*1.4;mnx-=pad;mxx+=pad;mny-=pad;mxy+=pad;
+  const bw=mxx-mnx,bh=mxy-mny,ar=w/h;
+  let vw=bw,vh=bh;
+  if(bw/bh>ar)vh=bw/ar;else vw=bh*ar;
+  board.setAttribute('viewBox',`${(mnx+mxx)/2-vw/2} ${(mny+mxy)/2-vh/2} ${vw} ${vh}`);
+}
+function render(){
+  board.innerHTML='';
+  fitView();
+  const tile=S.draft[S.sel];
+  S.reg.cells.forEach(k=>{
+    const[q,r]=ax(k);const p=pos(q,r);
+    if(isBlk(q,r)){
+      el('path',{d:hexD(p.x,p.y,S.hs*.94),fill:'#9C9384',stroke:'#6E6658','stroke-width':1},board);
+      el('path',{d:`M${p.x-S.hs*.3} ${p.y+S.hs*.12} L${p.x-S.hs*.06} ${p.y-S.hs*.22} L${p.x+S.hs*.18} ${p.y+S.hs*.12} Z`,
+        fill:'#6E6658',opacity:.6},board);
+      return;
+    }
+    if(isScar(q,r)){
+      el('path',{d:hexD(p.x,p.y,S.hs*.94),fill:'#B9AE98',stroke:'#8A7F6C','stroke-width':1,
+        'stroke-dasharray':'3 3'},board);
+      return;
+    }
+    const t=tileAt(q,r);
+    if(t){
+      drawTile(board,p.x,p.y,t,null,k===S.last);
+      if(S.burst.has(k))el('path',{d:hexD(p.x,p.y,S.hs*1.02),fill:'none',stroke:'#BA7517',
+        'stroke-width':1,'stroke-dasharray':'3 4',opacity:.8},board);
+      return;
+    }
+    const isWp=(k===S.reg.wp);
+    const ok=tile&&legal(q,r,tile);
+    el('path',{d:hexD(p.x,p.y,S.hs*.9),
+      fill:ok?'rgba(255,255,255,.5)':'rgba(255,255,255,.14)',
+      stroke:isWp?(S.wayOpen?'#BA7517':'#9A9080'):'#B7A98C',
+      'stroke-width':isWp?2:.9,'stroke-dasharray':ok?'':'4 4'},board);
+    if(isWp){
+      el('circle',{cx:p.x,cy:p.y,r:S.hs*.3,fill:'none',
+        stroke:S.wayOpen?'#BA7517':'#9A9080','stroke-width':2},board);
+      el('circle',{cx:p.x,cy:p.y,r:S.hs*.11,fill:S.wayOpen?'#BA7517':'#9A9080'},board);
+    }
+    if(ok){
+      const hit=el('path',{d:hexD(p.x,p.y,S.hs*.94),fill:'transparent',style:'cursor:pointer'},board);
+      hit.addEventListener('click',()=>{S.last=k;place(q,r);});
+    }
+  });
+  drawDeck();drawContracts();updateStats();
+}
+function drawDeck(){
+  const row=document.getElementById('draftRow');row.innerHTML='';
+  S.draft.forEach((t,i)=>{
+    const d=document.createElement('div');
+    d.className='card'+(i===S.sel?' sel':'');
+    const sv=el('svg',{width:36,height:36,viewBox:'-20 -20 40 40'},d);
+    drawTile(sv,0,0,t,18,false);
+    const n=document.createElement('div');n.className='cname';n.textContent=tName(t);
+    n.style.color=RAR[t.rarity].c;d.appendChild(n);
+    const a=document.createElement('div');a.className='caff';a.textContent=affLines(t);d.appendChild(a);
+    d.onclick=()=>{S.sel=i;render();};
+    row.appendChild(d);
+  });
+}
+function drawContracts(){
+  const c=document.getElementById('contracts');c.innerHTML='';
+  S.contracts.forEach(x=>{
+    const d=document.createElement('div');
+    d.className='ct'+(x.p>=x.need?' done':'');
+    d.innerHTML='<div class="cn">'+x.txt+'</div><div class="cp">'+x.p+' / '+x.need+'</div>';
+    c.appendChild(d);
+  });
+  const d=document.createElement('div');
+  d.className='ct'+(S.wayOpen?' done':'');
+  d.innerHTML='<div class="cn">Waypoint</div><div class="cp">'+(S.wayOpen?'open':'sealed')+'</div>';
+  c.appendChild(d);
+}
+function updateStats(){
+  let filled=0;for(const k in S.tiles)filled++;
+  document.getElementById('sScore').textContent=S.score;
+  document.getElementById('sTiles').textContent=Math.max(0,S.budget);
+  document.getElementById('sCost').textContent=S.cost;
+  document.getElementById('sSpace').textContent=Math.max(0,S.reg.total-filled-S.scars.size);
+  document.getElementById('regionLbl').textContent='region '+S.regionNum+' · '+BIOMES[S.reg.biome].n;
+}
+
+/* ---------- end ---------- */
+function endRun(finalPot,n){
+  let mult=1;S.sealed.forEach(s=>mult*=s.mult);
+  const final=Math.round(S.score*mult);
+  best=Math.max(best,final);
+  document.getElementById('endSub').textContent=
+    n?('Your final placement set off '+n+' bursts for '+finalPot+'.'):'Nothing was left loaded.';
+  document.getElementById('eBase').textContent=S.score;
+  document.getElementById('eMult').textContent='x'+mult.toFixed(2);
+  document.getElementById('eFinal').textContent=final;
+  document.getElementById('eRegions').textContent=S.sealed.length;
+  document.getElementById('eBursts').textContent=S.bursts;
+  document.getElementById('eUniq').textContent=S.uniques;
+  document.getElementById('eScars').textContent=S.scars.size;
+  document.getElementById('eBest').textContent=best;
+  document.getElementById('end').classList.add('on');
+}
+document.getElementById('againBtn').onclick=()=>{document.getElementById('end').classList.remove('on');newRun();};
+
+/* ---------- boot ---------- */
+function sizeBoard(){
+  const w=board.clientWidth||360,h=board.clientHeight||400;
+  S.hs=Math.max(14,Math.min(26,Math.min(w/13,h/13)));
+}
+function newRun(){
+  S={score:0,budget:20,cost:1,regionNum:1,placed:0,bursts:0,uniques:0,
+     ebb:false,ebbsSurvived:0,lastLight:false,busy:false,sealed:[],
+     scars:new Set(),burst:new Set(),tiles:{},hs:24,last:null,sel:0,pending:null};
+  S.reg=genRegion('marshfen');
+  S.contracts=newContracts('marshfen');S.done=0;S.wayOpen=false;
+  S.tiles[S.reg.entry]={terrain:wTerr('marshfen'),rarity:'common',name:null,affs:{}};
+  S.draft=[rollTile('marshfen'),rollTile('marshfen'),rollTile('marshfen')];
+  document.getElementById('boardwrap').classList.remove('ebb');
+  document.getElementById('ebbTag').classList.remove('on');
+  document.getElementById('tileBox').classList.remove('warn');
+  document.getElementById('discardBtn').style.display='none';
+  document.getElementById('deckMsg').textContent='';
+  document.getElementById('hint').textContent='Complete two contracts to open the waypoint.';
+  sizeBoard();render();
+}
+window.addEventListener('resize',()=>{if(S.reg){sizeBoard();render();}});
+newRun();
+</script>
+</body>
+</html>

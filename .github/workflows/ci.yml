@@ -1,0 +1,62 @@
+name: CI & Deploy
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  # No PR gate: land on main, and CI gates the prod deploy. There is no staging
+  # environment because testing happens against the deployed site — which is
+  # exactly why the deploy has to prove itself rather than assume success.
+  #
+  # Set the DEPLOY_ENABLED repository variable to 'true' to arm this job, and
+  # the CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets to authorise it.
+  deploy:
+    needs: [ci]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      # Tee the deploy log to capture the workers.dev URL: the custom domain's
+      # bot protection 403s plain fetches from runner IPs, so verify-deploy.ts
+      # falls back to the same worker's WAF-free workers.dev host when blocked.
+      - name: Deploy
+        run: |
+          set -o pipefail
+          pnpm exec wrangler deploy 2>&1 | tee deploy.log
+          url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "DEPLOY_FALLBACK_URL=$url" >> "$GITHUB_ENV"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # Green CI is not a deploy. Prove the LIVE site serves this exact commit.
+      - run: pnpm verify:deploy

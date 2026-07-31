@@ -1,0 +1,61 @@
+/*
+ * Structure only. No art direction until the design gates pass (see LOG.md) —
+ * these values exist so the board is legible on a phone, not to say anything.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: #14161c;
+  color: #8a91a0;
+  font:
+    400 13px/1.4 ui-monospace,
+    'SF Mono',
+    Menlo,
+    Consolas,
+    monospace;
+  /* The board is a touch surface: browser panning and pinch-zoom would fight
+     tile placement, and double-tap-to-zoom adds 300ms to every tap. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* min-height:0 lets this flex child actually shrink, which is what allows the
+   canvas to size itself to the space left over rather than overflowing. */
+#board {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+#board canvas {
+  display: block;
+}
+
+#stamp {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #4d5462;
+  text-align: center;
+}

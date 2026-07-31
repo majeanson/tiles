@@ -1,0 +1,24 @@
+# tiles — Cloudflare Worker (static assets only)
+#
+# There is no `main`. The game is a client-side bundle with no server logic, so
+# this Worker exists purely to serve `dist/` from Cloudflare's edge. When the
+# game grows a backend, add `main` and the observability block here — until then
+# an assets-only Worker has nothing to log and no cold start to pay for.
+#
+# Account is selected at deploy time via CLOUDFLARE_ACCOUNT_ID /
+# CLOUDFLARE_API_TOKEN, so nothing account-specific is committed.
+name = "tiles"
+compatibility_date = "2026-07-31"
+
+# Keep the workers.dev URL alive alongside the custom domain: the zone's bot
+# protection 403s plain fetches from CI runner IPs, and scripts/verify-deploy.ts
+# falls back to this WAF-free host when that happens.
+workers_dev = true
+
+routes = [{ pattern = "tiles.marcportal.com", custom_domain = true }]
+
+[assets]
+directory = "./dist"
+# The game is one page today. SPA fallback means a deep link or a stale
+# bookmark still loads it instead of showing a Cloudflare 404.
+not_found_handling = "single-page-application"
