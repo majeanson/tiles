@@ -1,4 +1,5 @@
-import { toPixel, type Hex } from '@engine/hex';
+import type { Hex } from '@engine/hex';
+import type { Orientation } from '@theme/tokens';
 
 /**
  * Fitting a board to a viewport.
@@ -7,19 +8,49 @@ import { toPixel, type Hex } from '@engine/hex';
  * likely to be wrong on a phone, and it is the only part that can be tested
  * without a canvas. Regions are generated at varying sizes and shapes, so the
  * board is scaled to fit rather than drawn at a fixed hex size.
+ *
+ * **Orientation lives here, not in the engine.** Axial coordinates mean the same
+ * thing either way up and `DIRECTIONS` still names the same six neighbours — only
+ * the projection to pixels differs. So which way up the hexes sit is a rendering
+ * decision a theme can hold, and swapping it cannot change the game. Every art
+ * direction handed down so far asks for flat-top; the placeholder is pointy-top
+ * because that is what shipped. Both are exact, and both are tested.
  */
 
 export type Layout = {
-  /** Hex "size" — centre to corner. Pointy-top width is √3·size, height 2·size. */
+  /**
+   * Hex "size" — centre to corner, i.e. the circumradius.
+   * Pointy-top is √3·size wide and 2·size tall; flat-top is the transpose.
+   */
   readonly size: number;
   readonly originX: number;
   readonly originY: number;
+  readonly orientation: Orientation;
 };
+
+const SQRT3 = Math.sqrt(3);
+
+/** Half-extent of a single hex at size 1, as [x, y]. */
+const halfExtent = (o: Orientation): readonly [number, number] =>
+  o === 'pointy' ? [SQRT3 / 2, 1] : [1, SQRT3 / 2];
+
+/**
+ * Axial to pixel, at size 1.
+ *
+ * The pointy-top case is the same mapping as `engine/hex.ts`'s `toPixel`, which
+ * that file keeps for its own tests; it is restated rather than imported so the
+ * two orientations sit side by side and can be read against each other.
+ */
+function project(q: number, r: number, o: Orientation): { x: number; y: number } {
+  return o === 'pointy'
+    ? { x: SQRT3 * q + (SQRT3 / 2) * r, y: 1.5 * r }
+    : { x: 1.5 * q, y: SQRT3 * (r + q / 2) };
+}
 
 /** Where a cell's centre lands on screen. */
 export const place = (h: Hex, l: Layout): { x: number; y: number } => {
-  const p = toPixel(h.q, h.r, l.size);
-  return { x: p.x + l.originX, y: p.y + l.originY };
+  const p = project(h.q, h.r, l.orientation);
+  return { x: p.x * l.size + l.originX, y: p.y * l.size + l.originY };
 };
 
 /**
@@ -37,8 +68,8 @@ export function hexAt(x: number, y: number, l: Layout): Hex {
   const px = (x - l.originX) / l.size;
   const py = (y - l.originY) / l.size;
 
-  const q = (Math.sqrt(3) / 3) * px - py / 3;
-  const r = (2 / 3) * py;
+  const q = l.orientation === 'pointy' ? (SQRT3 / 3) * px - py / 3 : (2 / 3) * px;
+  const r = l.orientation === 'pointy' ? (2 / 3) * py : -px / 3 + (SQRT3 / 3) * py;
   const s = -q - r;
 
   let rq = Math.round(q);
@@ -59,11 +90,18 @@ export function hexAt(x: number, y: number, l: Layout): Hex {
   return { q: rq === 0 ? 0 : rq, r: rr === 0 ? 0 : rr };
 }
 
-/** The six corners of a pointy-top hex, clockwise from the top. */
-export function corners(cx: number, cy: number, size: number): number[] {
+/**
+ * The six corners of a hex, as a flat [x, y, …] list.
+ *
+ * Pointy-top puts a corner at the top; flat-top puts a corner at the right. Both
+ * wind clockwise in screen space, which matters only because Pixi's `poly` is
+ * happier with a consistent winding.
+ */
+export function corners(cx: number, cy: number, size: number, o: Orientation = 'pointy'): number[] {
+  const offset = o === 'pointy' ? -90 : 0;
   const pts: number[] = [];
   for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 180) * (60 * i - 90);
+    const angle = (Math.PI / 180) * (60 * i + offset);
     pts.push(cx + size * Math.cos(angle), cy + size * Math.sin(angle));
   }
   return pts;
@@ -82,23 +120,25 @@ export function fitLayout(
   width: number,
   height: number,
   padding = 0,
+  orientation: Orientation = 'pointy',
 ): Layout {
-  if (cells.length === 0) return { size: 0, originX: width / 2, originY: height / 2 };
+  if (cells.length === 0) {
+    return { size: 0, originX: width / 2, originY: height / 2, orientation };
+  }
 
   // Measure at size 1, then scale — the mapping is linear in size.
-  const HALF_W = Math.sqrt(3) / 2;
-  const HALF_H = 1;
+  const [halfW, halfH] = halfExtent(orientation);
 
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
   for (const c of cells) {
-    const p = toPixel(c.q, c.r, 1);
-    if (p.x - HALF_W < minX) minX = p.x - HALF_W;
-    if (p.x + HALF_W > maxX) maxX = p.x + HALF_W;
-    if (p.y - HALF_H < minY) minY = p.y - HALF_H;
-    if (p.y + HALF_H > maxY) maxY = p.y + HALF_H;
+    const p = project(c.q, c.r, orientation);
+    if (p.x - halfW < minX) minX = p.x - halfW;
+    if (p.x + halfW > maxX) maxX = p.x + halfW;
+    if (p.y - halfH < minY) minY = p.y - halfH;
+    if (p.y + halfH > maxY) maxY = p.y + halfH;
   }
 
   const availW = Math.max(0, width - padding * 2);
@@ -110,5 +150,6 @@ export function fitLayout(
     size,
     originX: padding + availW / 2 - ((minX + maxX) / 2) * size,
     originY: padding + availH / 2 - ((minY + maxY) / 2) * size,
+    orientation,
   };
 }

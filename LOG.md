@@ -152,3 +152,100 @@ fill a map, harvest, leave, and die — against a stub renderer.
 **Not done, deliberately:** no art direction (Gate E is shut and Gate A is not
 signed off), no unlocks, no specials, no perks. The palette in `PixiRenderer.ts`
 and `style.css` is still labelled a placeholder and still must not be built on.
+
+---
+
+### Session 2 — The machine that holds an art direction
+
+**Question:** can the game hold an art direction as data — swappable, testable,
+and thrown away without touching a rule — before anyone decides which one?
+
+**Gate E, stated plainly.** The gate says no art direction until A–D pass, and it
+is still shut. This session did not choose one. What it built is the SLOT an art
+direction goes in, plus the three candidate directions loaded as data behind it,
+with **the placeholder still the default** — asserted by a test, not by habit.
+The distinction is the whole session: choosing is gated, being ABLE to choose is
+the thing that makes the gate cheap to open. Deciding between three directions
+requires seeing them on a phone in daylight, and until this existed there was no
+way to see any of them at all.
+
+The rule the session did break, knowingly: the placeholder palette is no longer
+untouched. See "what the greyscale test found" below — it had a real defect.
+
+**Done**
+
+- **`src/theme/` — a new layer, machine-enforced.** `content <- theme <- render`.
+  A theme is plain serialisable data describing how ROLES are painted (ripe,
+  legal, stone, one of four colours), never what anything means. ESLint forbids
+  `engine/` and `content/` from importing it: a rule that can read the palette is
+  a rule you can change by repainting.
+- **Four directions.** `placeholder` (the shipped look, promoted from a constant),
+  and `cold-survey`, `rot-bloom`, `torchlit` transcribed from the handed-down
+  design document. Switch with `?theme=torchlit`, or a picker under the stamp at
+  `?ff=ui.themePicker`. Same reasoning as `?ff=` and `?seed=` — the address bar is
+  the only console a phone has.
+- **Procedural surfaces, and slots for real art.** `render/bake.ts` turns a
+  described pattern — hatch, dots, bands, none — into a hex on a canvas. Four
+  kinds, because that is exactly what the three directions between them ask for.
+  Every surface can also name a bitmap slot: drop a PNG in `public/assets/<theme>/`,
+  and a build-time scan writes the manifest the client reads. **Missing is the
+  normal case**; the game never waits on a picture and never 404s looking for one.
+- **Orientation became a theme decision.** All three directions specify flat-top
+  hexes; the placeholder is pointy-top. Axial coordinates and `DIRECTIONS` mean
+  the same thing either way, so only the projection moved — into `render/layout.ts`,
+  parameterised, with the whole geometry suite now run against both. The engine
+  was not touched.
+- **The chrome is painted from the same source as the board.** `style.css` decides
+  no colour and no typeface; it reads custom properties written from the active
+  theme. The duplicated tile palette it used to carry an apology for is gone.
+- **One thing that moves.** A harvest flashes the popped hexes, staggered so a big
+  harvest reads as a cascade, derived by diffing consecutive board views — the
+  engine still has no events and no clock. Off under `prefers-reduced-motion`.
+- **`/gallery.html`** — every direction's surfaces, ink, type and slot states on
+  one page, drawn by the same baker the board uses. It ships with the game because
+  a design tool that only opens on a laptop is pointed at the wrong screen.
+
+**What the greyscale test found: all four directions failed, including ours.**
+
+Every one of these directions insists the four terrains must be tellable apart in
+greyscale — "value spacing does most of the work" — because a hue-only board dies
+in sunlight and for colour-blind players. That is a checkable sentence, so it
+became `theme.test.ts` rather than a line to admire. On its first run it failed
+all four. Two findings, and the first was mine:
+
+1. **The metric was wrong.** Relative luminance is linear in light, so on a board
+   this dark it crowds every terrain into the bottom tenth of its range and
+   reports two plainly different greys as identical. It failed the shipped
+   placeholder, which is legible. Switched to CIE L*, which applies the cube root
+   the eye applies — so one threshold means the same thing at both ends.
+2. _*Under L*, three real defects survived._* The shipped placeholder's red and
+   blue were **0.006 apart** — the same tone, in the palette whose entire stated
+   job is "tellable apart". Torchlit's crypt and catacomb were **0.001 apart**,
+   straight from the document. Cold Survey's were 0.048, under the bar. All three
+   fixed by darkening, which is what both documents prescribe: "if it fails the
+   sunlight test, the fix is value spacing, not more hue."
+
+Stone got the same treatment and it mattered more than expected — it has no art
+in the reference sheet at all, and it is the most common cell in the back half of
+a run.
+
+**Where the document describes a different game.** The directions assume an
+endless scrolling map, two-tier fog of war, a six-hex chain cascade, and a
+`+6 tiles / ×2 points` pop choice. This game has a bounded island, no fog, a
+whole-board harvest, and `take N tiles / take N points`. Nothing was bent to fit:
+the fog and title-screen slots are declared and marked `NO MECHANIC`, and the
+gallery says so on screen. Recorded in `prompt.md` as the first thing to decide.
+
+**Verified:** 188 tests green (was 124); typecheck, lint and format clean;
+production build emits `version.json` and `assets/manifest.json`. The layering
+rule caught a cross-layer import in a test file I wrote, which is the rule
+working. **Not verified: a single pixel.** happy-dom has no 2D canvas, so no test
+in this repository has ever seen the board. Everything visual in this session is
+unjudged until it is opened on a phone, in portrait, against prod — which is
+where Gate A has been waiting all along.
+
+**Not done, deliberately:** no direction chosen, no default moved, no fog, no
+scrolling map, no title screen, no cascade, and no PNG imported from the design
+project. Real art was left out on purpose — the reference tiles are drawn flat-top
+against a game whose default is pointy-top, and empty slots are a truer starting
+state than art that half fits.

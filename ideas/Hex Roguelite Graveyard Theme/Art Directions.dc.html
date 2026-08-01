@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@400;700&family=Anton&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&family=Chakra+Petch:wght@600;700&family=Cinzel:wght@600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Spectral:ital,wght@0,300;0,500;0,700;1,400&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #17181A; }
+  a { color: #B8FF2E; text-decoration: none; border-bottom: 1px solid rgba(184,255,46,.35); }
+  a:hover { color: #ffffff; border-bottom-color: #ffffff; }
+</style>
+</helmet>
+
+<section style="padding:56px 56px 90px;background:#141518;font-family:Archivo,sans-serif;border-bottom:1px solid #26282C">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:920px;margin-bottom:40px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#7C8085">Turn 2 · endless map, fog edges, no arcade</div>
+    <h1 style="margin:0;font-size:40px;line-height:1.05;font-weight:800;color:#F2F0EC;letter-spacing:-.02em">Three map-first directions</h1>
+    <p style="margin:0;font-size:16px;line-height:1.5;color:#A2A6AB;text-wrap:pretty;max-width:760px">Arcade is out. These read as maps of somewhere real: the map runs off the edges into fog rather than stopping at a border, blocked ground is part of the terrain vocabulary, and beauty carries the mood instead of contrast. <a href="#2b">2b</a> is the nightmarish one. Boards are 390&nbsp;×&nbsp;844 at 46px per hex.</p>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+
+    <!-- 2a -->
+    <div id="2a" style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#17181A;background:#F2F0EC;padding:3px 7px">2a</span>
+        <span style="font-size:23px;font-weight:800;color:#F2F0EC">Cold Survey</span>
+        <span style="font-size:13px;color:#8B8F94">a real map, drawn at dawn</span>
+      </div>
+
+      <div style="width:390px;height:844px;background:#0D1214;position:relative;overflow:hidden;font-family:Spectral,serif;box-shadow:0 30px 60px rgba(0,0,0,.5)">
+        <div style="position:relative;z-index:3;display:flex;justify-content:space-between;padding:16px 18px 12px">
+          <div style="display:flex;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.2em;color:#6E7C7E">TILES</span><span style="font-family:Spectral,serif;font-size:26px;line-height:1;color:#C9765A">14</span></div>
+            <div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.2em;color:#6E7C7E">POINTS</span><span style="font-family:Spectral,serif;font-size:26px;line-height:1;color:#DCE3E1">2340</span></div>
+          </div>
+          <div style="display:flex;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end"><span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.2em;color:#6E7C7E">MAP</span><span style="font-family:Spectral,serif;font-size:26px;line-height:1;color:#DCE3E1">3</span></div>
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end"><span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.2em;color:#6E7C7E">COST</span><span style="font-family:Spectral,serif;font-size:26px;line-height:1;color:#DCE3E1">2</span></div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:row;justify-content:center;align-items:center">
+          <sc-for list="{{ mist }}" as="row" hint-placeholder-count="15">
+            <div style="display:flex;flex-direction:column;flex:none;gap:2px;margin-left:{{ lift }}px;margin-top:{{ row.shift }}px">
+              <sc-for list="{{ row.cells }}" as="h" hint-placeholder-count="13">
+                <i style="width:{{ hexW }}px;height:{{ hexH }}px;flex:none;clip-path:{{ clip }};background:{{ h }}"></i>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="position:absolute;inset:0;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);mask-image:radial-gradient(115% 62% at 50% 46%,transparent 42%,#000 82%);-webkit-mask-image:radial-gradient(115% 62% at 50% 46%,transparent 42%,#000 82%)"></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(112% 60% at 50% 46%,rgba(13,18,20,0) 40%,rgba(13,18,20,.55) 66%,rgba(6,9,10,.97) 88%,#05080A 100%)"></div>
+          <div style="position:absolute;left:14px;bottom:16px;display:flex;gap:6px;align-items:center">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.14em;color:#8B999B;border:1px solid rgba(220,227,225,.22);padding:5px 9px">RECENTRE</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.14em;color:#8B999B">DRAG · PINCH</span>
+          </div>
+          <div style="position:absolute;right:14px;bottom:16px;display:flex;gap:10px;align-items:center">
+            <span style="display:flex;gap:5px;align-items:center"><i style="width:12px;height:12px;background:#AEC0C4;opacity:.45"></i><span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:.12em;color:#8B999B">SOFT</span></span>
+            <span style="display:flex;gap:5px;align-items:center"><i style="width:12px;height:12px;background:#000"></i><span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:.12em;color:#8B999B">HARD</span></span>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:3;padding:0 12px 28px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;padding-left:2px">
+            <i style="width:22px;height:19.05px;clip-path:{{ clip }};background:{{ sw2.mist.x }}"></i>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.16em;color:#7C8A8C">BLOCKED GROUND — CANNOT BE BUILT ON</span>
+          </div>
+          <div style="display:flex;gap:9px">
+            <div style="flex:1;background:rgba(220,227,225,.06);border:1px solid #C9765A;padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.mist.w }}"></i>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:.1em;color:#EDF1F0">CRYPT</span>
+              <span style="font-family:Spectral,serif;font-size:13px;color:#9EABAC">−2</span>
+            </div>
+            <div style="flex:1;background:rgba(220,227,225,.06);border:1px solid rgba(220,227,225,.16);padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.mist.m }}"></i>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:.1em;color:#EDF1F0">CEMETERY</span>
+              <span style="font-family:Spectral,serif;font-size:13px;color:#9EABAC">−2</span>
+            </div>
+            <div style="flex:1;background:rgba(220,227,225,.06);border:1px solid rgba(220,227,225,.16);padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.mist.a }}"></i>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:.1em;color:#EDF1F0">CATACOMB</span>
+              <span style="font-family:Spectral,serif;font-size:13px;color:#9EABAC">−2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:15px;background:#1E2023;padding:22px;color:#E7E4DC">
+        <p style="margin:0;font-size:15px;line-height:1.5;color:#C9CCD0;text-wrap:pretty"><strong style="color:#F2F0EC">Mood.</strong> A burial landscape surveyed in cold morning light. Muted, beautiful, slightly forensic — the pleasure is looking at ground you're reading rather than a game board. Nothing bright, nothing cute; the only warm colour on screen is your dwindling tile count.</p>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">PALETTE</span>
+          <div style="display:flex;gap:5px"><div style="flex:1;height:42px;background:#0D1214"></div><div style="flex:1;height:42px;background:#2C3E36"></div><div style="flex:1;height:42px;background:#B3A98E"></div><div style="flex:1;height:42px;background:#7A5C3C"></div><div style="flex:1;height:42px;background:#20344A"></div><div style="flex:1;height:42px;background:#AEC0C4"></div><div style="flex:1;height:42px;background:#C9765A"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7378">0D1214 · 2C3E36 · B3A98E · 7A5C3C · 20344A · AEC0C4 · C9765A</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">TYPE</span>
+          <span style="font-family:Spectral,serif;font-size:21px;font-weight:500">Spectral</span><span style="font-size:12px;color:#9BA0A5">numbers and headings — a working serif, not a decorative one</span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:600;letter-spacing:.06em;margin-top:6px">BARLOW CONDENSED</span><span style="font-size:12px;color:#9BA0A5">map labels, terrain names, legend</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">BOARD SURFACE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Damp ground seen from above at a slight height — sedge, turned earth, wet stone, standing water. Painted, not illustrated: soft edges within each hex, hard silhouettes between them. Tiles sit flush, 2px seam, no bevel and no drop shadow, so the map reads as continuous ground rather than counters on a table.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">FOG AND THE ENDLESS EDGE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Two tiers, both dark. <strong>Hard fog</strong> is everything you have never been adjacent to: flat near-black, no terrain information at all, the map simply unresolved. <strong>Soft fog</strong> is ground you have revealed but are not currently looking at: real terrain, dimmed to ~40%, desaturated and blurred 5px, so you can plan against it but not read fine detail. Placed ground under the camera is fully sharp. Revealed ground never reverts to hard fog: once seen it stays in soft fog permanently, so the map you have uncovered is a growing, permanent record and hard fog only ever shrinks. Blocked ground is remembered the same way, which turns it into a navigation landmark. The map scrolls: one-finger drag, pinch to zoom out to about 0.6× for planning, and a recentre control that snaps back to your active frontier. The camera moves over an endless field; the fog travels with the camera, not with the map.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">LEGIBLE AT 46PX WITHOUT HUE</span>
+          <div style="display:flex;gap:6px;filter:grayscale(1) contrast(1.08)">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.mist.w }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.mist.m }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.mist.v }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.mist.a }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.mist.x }}"></i>
+          </div>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Four separated values plus one texture direction each: crypt diagonal hatch, cemetery smooth, burial ground dotted, catacomb horizontal rule. Because the palette is muted, value spacing does most of the work — cemetery is the light one, catacomb the dark one, and the two mid-tones differ by texture axis. Blocked is the only cross-hatch on the board and the only pure neutral.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">SIX-HEX CHAIN</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">The ground gives way. First hex sinks and bleaches to bone white, then collapses inward with a puff of pale dust that briefly thickens the fog above it. 90ms per link, easing to 60ms, and each collapse pushes the fog line outward — so the cascade's real reward is that you can suddenly see further. Points rise as thin serif numerals and fade. Sound is soft and awful: earth falling, a wooden crack, breath.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2b -->
+    <div id="2b" style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#0A0B0D;background:#C8F0A8;padding:3px 7px">2b</span>
+        <span style="font-size:23px;font-weight:800;color:#F2F0EC">Rot Bloom</span>
+        <span style="font-size:13px;color:#C8F0A8">nightmarish</span>
+      </div>
+
+      <div style="width:390px;height:844px;background:#080A09;position:relative;overflow:hidden;font-family:Spectral,serif;box-shadow:0 30px 60px rgba(0,0,0,.6)">
+        <div style="position:relative;z-index:3;display:flex;justify-content:space-between;padding:16px 18px 12px">
+          <div style="display:flex;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.2em;color:#5D6B5B">TILES</span><span style="font-family:Spectral,serif;font-style:italic;font-size:26px;line-height:1;color:#B4485C">14</span></div>
+            <div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.2em;color:#5D6B5B">POINTS</span><span style="font-family:Spectral,serif;font-size:26px;line-height:1;color:#D9E2CE">2340</span></div>
+          </div>
+          <div style="display:flex;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end"><span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.2em;color:#5D6B5B">MAP</span><span style="font-family:Spectral,serif;font-size:26px;line-height:1;color:#D9E2CE">3</span></div>
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end"><span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.2em;color:#5D6B5B">COST</span><span style="font-family:Spectral,serif;font-size:26px;line-height:1;color:#D9E2CE">2</span></div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:row;justify-content:center;align-items:center">
+          <sc-for list="{{ rot }}" as="row" hint-placeholder-count="15">
+            <div style="display:flex;flex-direction:column;flex:none;gap:2px;margin-left:{{ lift }}px;margin-top:{{ row.shift }}px">
+              <sc-for list="{{ row.cells }}" as="h" hint-placeholder-count="13">
+                <i style="width:{{ hexW }}px;height:{{ hexH }}px;flex:none;clip-path:{{ clip }};background:{{ h }}"></i>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="position:absolute;inset:0;backdrop-filter:blur(6px) saturate(.6);-webkit-backdrop-filter:blur(6px) saturate(.6);mask-image:radial-gradient(110% 58% at 50% 46%,transparent 38%,#000 78%);-webkit-mask-image:radial-gradient(110% 58% at 50% 46%,transparent 38%,#000 78%)"></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(108% 58% at 50% 46%,rgba(8,10,9,0) 40%,rgba(30,48,40,.55) 72%,rgba(4,6,5,.98) 100%)"></div>
+          <div style="position:absolute;left:14px;bottom:16px;display:flex;gap:6px;align-items:center">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.14em;color:#79876F;border:1px solid rgba(200,240,168,.2);padding:5px 9px">RECENTRE</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.14em;color:#79876F">DRAG · PINCH</span>
+          </div>
+          <div style="position:absolute;right:14px;bottom:16px;display:flex;gap:10px;align-items:center">
+            <span style="display:flex;gap:5px;align-items:center"><i style="width:12px;height:12px;background:#7E9B62;opacity:.45"></i><span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:.12em;color:#79876F">SOFT</span></span>
+            <span style="display:flex;gap:5px;align-items:center"><i style="width:12px;height:12px;background:#000"></i><span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:.12em;color:#79876F">HARD</span></span>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:3;padding:0 12px 28px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px;padding-left:2px">
+            <i style="width:22px;height:19.05px;clip-path:{{ clip }};background:{{ sw2.rot.x }}"></i>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.16em;color:#6E7C6C">BLOCKED GROUND — CANNOT BE BUILT ON</span>
+          </div>
+          <div style="display:flex;gap:9px">
+            <div style="flex:1;background:rgba(200,240,168,.05);border:1px solid #7E9B62;padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.rot.w }}"></i>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:.1em;color:#E4EBDA">CRYPT</span>
+              <span style="font-family:Spectral,serif;font-size:13px;color:#8E9C88">−2</span>
+            </div>
+            <div style="flex:1;background:rgba(200,240,168,.05);border:1px solid rgba(217,226,206,.14);padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.rot.m }}"></i>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:.1em;color:#E4EBDA">CEMETERY</span>
+              <span style="font-family:Spectral,serif;font-size:13px;color:#8E9C88">−2</span>
+            </div>
+            <div style="flex:1;background:rgba(200,240,168,.05);border:1px solid rgba(217,226,206,.14);padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.rot.v }}"></i>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:.1em;color:#E4EBDA">BURIAL GROUND</span>
+              <span style="font-family:Spectral,serif;font-size:13px;color:#8E9C88">−2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:15px;background:#1E2023;padding:22px;color:#E7E4DC">
+        <p style="margin:0;font-size:15px;line-height:1.5;color:#C9CCD0;text-wrap:pretty"><strong style="color:#F2F0EC">Mood.</strong> Beautiful and wrong. Same landscape logic as <a href="#2a">2a</a>, but the ground is diseased: sickly greens, bruised violet earth, standing black water, bone-pale grass. The fog isn't weather, it's something breathing at the edge of the map. Creeping dread rather than shock — nothing jumps out, it just gets worse the further you go.</p>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">PALETTE</span>
+          <div style="display:flex;gap:5px"><div style="flex:1;height:42px;background:#080A09"></div><div style="flex:1;height:42px;background:#2A3220"></div><div style="flex:1;height:42px;background:#8C8A72"></div><div style="flex:1;height:42px;background:#472A3B"></div><div style="flex:1;height:42px;background:#132424"></div><div style="flex:1;height:42px;background:#C8F0A8"></div><div style="flex:1;height:42px;background:#B4485C"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7378">080A09 · 2A3220 · 8C8A72 · 472A3B · 132424 · C8F0A8 · B4485C</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">TYPE</span>
+          <span style="font-family:Spectral,serif;font-size:21px;font-weight:300">Spectral Light &amp; <em>Italic</em></span><span style="font-size:12px;color:#9BA0A5">numbers and payout copy — thin, a little frail</span>
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:500;letter-spacing:.08em;margin-top:6px">BARLOW CONDENSED</span><span style="font-size:12px;color:#9BA0A5">labels only, wide-tracked, almost whispered</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">BOARD SURFACE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Wet organic matter. Hexes look grown rather than placed — soft mottled surfaces with a faint bloom of pale spore-green where two matching neighbours meet, so scoring adjacency is visible as infection spreading. Blocked ground is scorched, cracked and dead flat: the only place the bloom won't touch.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">FOG AND THE ENDLESS EDGE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Two tiers, and the fog moves. Hard fog is black and breathing — a 20-second drift loop, low amplitude, so the unresolved edge of the world is never still. Soft fog keeps your remembered terrain at ~35% and blurred, permanently — nothing you have seen ever falls back into hard fog — and it occasionally resolves wrongly, so what you remember is not always what is there. The map scrolls: one-finger drag, pinch to zoom out to about 0.6× for planning, and a recentre control that snaps back to your active frontier. The camera moves over an endless field; the fog travels with the camera, not with the map. Blocked hexes are visible through the fog before anything else, which makes them read as landmarks and gives spatial planning something to aim at.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">LEGIBLE AT 46PX WITHOUT HUE — THE RISK</span>
+          <div style="display:flex;gap:6px;filter:grayscale(1) contrast(1.08)">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.rot.w }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.rot.m }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.rot.v }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.rot.a }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.rot.x }}"></i>
+          </div>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">This is the one to test at real size first. It runs dark and desaturated by design, so crypt and catacomb sit close in greyscale. Fixes: force cemetery to bone (highest value on the board, no exceptions), pull burial ground lighter than catacomb, and give each type a distinct silhouette element inside the hex — crypt a raised slab edge, cemetery upright markers, burial ground mounded rows, catacomb a sunken opening. If it fails the sunlight test, the fix is value spacing, not more hue.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">SIX-HEX CHAIN</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">Something comes up through the map. The first hex swells, splits, and vents spore-green light from underneath; the light travels along the shared edges to the next like something moving under the ground, 100ms then 85, 70, 60, 50 — accelerating, so it feels chased. The fog recoils outward on every pop and rushes back in when it stops. On the sixth the whole board goes pale green for two frames and every empty cell briefly shows what terrain it wants to be. Sound is wet: a low subsonic swell, six organic ruptures pitching upward, insects, then abrupt silence with a faint high ring left behind.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2c -->
+    <div id="2c" style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#17181A;background:#C79A4B;padding:3px 7px">2c</span>
+        <span style="font-size:23px;font-weight:800;color:#F2F0EC">Torchlit Map</span>
+        <span style="font-size:13px;color:#C79A4B">1d, rebuilt as a map</span>
+      </div>
+
+      <div style="width:390px;height:844px;background:#0A0806;position:relative;overflow:hidden;font-family:'EB Garamond',serif;box-shadow:0 30px 60px rgba(0,0,0,.6)">
+        <div style="position:relative;z-index:3;display:flex;justify-content:space-between;padding:16px 18px 12px">
+          <div style="display:flex;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.18em;color:#8A7452">TILES</span><span style="font-family:Cinzel,serif;font-size:24px;font-weight:700;line-height:1.05;color:#C1362B">14</span></div>
+            <div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.18em;color:#8A7452">POINTS</span><span style="font-family:Cinzel,serif;font-size:24px;font-weight:700;line-height:1.05;color:#E8D6AE">2340</span></div>
+          </div>
+          <div style="display:flex;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end"><span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.18em;color:#8A7452">MAP</span><span style="font-family:Cinzel,serif;font-size:24px;font-weight:700;line-height:1.05;color:#E8D6AE">3</span></div>
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end"><span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.18em;color:#8A7452">COST</span><span style="font-family:Cinzel,serif;font-size:24px;font-weight:700;line-height:1.05;color:#E8D6AE">2</span></div>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:row;justify-content:center;align-items:center">
+          <sc-for list="{{ torch2 }}" as="row" hint-placeholder-count="15">
+            <div style="display:flex;flex-direction:column;flex:none;gap:2px;margin-left:{{ lift }}px;margin-top:{{ row.shift }}px">
+              <sc-for list="{{ row.cells }}" as="h" hint-placeholder-count="13">
+                <i style="width:{{ hexW }}px;height:{{ hexH }}px;flex:none;clip-path:{{ clip }};background:{{ h }}"></i>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="position:absolute;inset:0;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);mask-image:radial-gradient(105% 55% at 50% 46%,transparent 36%,#000 74%);-webkit-mask-image:radial-gradient(105% 55% at 50% 46%,transparent 36%,#000 74%)"></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(100% 54% at 50% 46%,rgba(199,154,75,.10) 0%,rgba(10,8,6,0) 42%,rgba(10,8,6,.86) 82%,#070503 100%)"></div>
+          <div style="position:absolute;left:14px;bottom:16px;display:flex;gap:6px;align-items:center">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.14em;color:#8A7452;border:1px solid rgba(199,154,75,.28);padding:5px 9px">RECENTRE</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.14em;color:#8A7452">DRAG · PINCH</span>
+          </div>
+          <div style="position:absolute;right:14px;bottom:16px;display:flex;gap:10px;align-items:center">
+            <span style="display:flex;gap:5px;align-items:center"><i style="width:12px;height:12px;background:#C79A4B;opacity:.45"></i><span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:.12em;color:#8A7452">SOFT</span></span>
+            <span style="display:flex;gap:5px;align-items:center"><i style="width:12px;height:12px;background:#000"></i><span style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:.12em;color:#8A7452">HARD</span></span>
+          </div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:3;padding:0 12px 28px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(rgba(10,8,6,0),#0A0806 26%)">
+          <div style="display:flex;align-items:center;gap:8px;padding-left:2px;padding-top:14px">
+            <i style="width:22px;height:19.05px;clip-path:{{ clip }};background:{{ sw2.torch2.x }}"></i>
+            <span style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.14em;color:#8A7452">BLOCKED GROUND</span>
+          </div>
+          <div style="display:flex;gap:9px">
+            <div style="flex:1;background:linear-gradient(#1C1611,#120E0B);border:1px solid #C79A4B;box-shadow:inset 0 0 18px rgba(199,154,75,.14);padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.torch2.w }}"></i>
+              <span style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.1em;color:#E8D6AE">CRYPT</span>
+              <span style="font-family:Cinzel,serif;font-size:12px;font-weight:700;color:#C1362B">−2</span>
+            </div>
+            <div style="flex:1;background:linear-gradient(#1C1611,#120E0B);border:1px solid #433624;padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.torch2.m }}"></i>
+              <span style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.1em;color:#B9A480">CEMETERY</span>
+              <span style="font-family:Cinzel,serif;font-size:12px;font-weight:700;color:#C1362B">−2</span>
+            </div>
+            <div style="flex:1;background:linear-gradient(#1C1611,#120E0B);border:1px solid #433624;padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+              <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.torch2.a }}"></i>
+              <span style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.1em;color:#B9A480">CATACOMB</span>
+              <span style="font-family:Cinzel,serif;font-size:12px;font-weight:700;color:#C1362B">−2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:15px;background:#1E2023;padding:22px;color:#E7E4DC">
+        <p style="margin:0;font-size:15px;line-height:1.5;color:#C9CCD0;text-wrap:pretty"><strong style="color:#F2F0EC">Mood.</strong> The Diablo 2 feel, but the light source is doing the fog-of-war job. One warm torch above the middle of the map, deep falloff, and everything past the pool is dark and blurred. Grim, heavy, gold-and-blood chrome; the map is endless because the darkness is.</p>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">PALETTE</span>
+          <div style="display:flex;gap:5px"><div style="flex:1;height:42px;background:#0A0806"></div><div style="flex:1;height:42px;background:#242C1C"></div><div style="flex:1;height:42px;background:#98865F"></div><div style="flex:1;height:42px;background:#6B3A1E"></div><div style="flex:1;height:42px;background:#1A2C35"></div><div style="flex:1;height:42px;background:#C79A4B"></div><div style="flex:1;height:42px;background:#C1362B"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7378">0A0806 · 242C1C · 98865F · 6B3A1E · 1A2C35 · C79A4B · C1362B</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">TYPE</span>
+          <span style="font-family:Cinzel,serif;font-size:20px;font-weight:700;letter-spacing:.04em">CINZEL</span><span style="font-size:12px;color:#9BA0A5">numerals and labels, small caps, gold, rationed</span>
+          <span style="font-family:'EB Garamond',serif;font-size:19px;margin-top:6px">EB Garamond</span><span style="font-size:12px;color:#9BA0A5">rules and payout copy — plain language in an old face</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">BOARD SURFACE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Wet flagstone and turned earth under a low flame. Slabs have a 1px lit top bevel and a black cast shadow into the seam, so the map is relief rather than paint, and the light flickers slightly — the board is never a static image. Blocked ground is rubble and iron: raised, cracked, catching the torch on its broken faces.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">FOG AND THE ENDLESS EDGE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Fog is unlit distance, in two tiers. Soft fog is remembered ground sitting outside the torch pool — dim, warm-grey, blurred, still readable in silhouette. Hard fog is simply black: no light has ever reached it. Once lit, ground stays in soft fog for the rest of the run — the torch pool moves on, the memory of the ground does not. Falloff and fog are one effect rather than two. The map scrolls: one-finger drag, pinch to zoom out to about 0.6× for planning, and a recentre control that snaps back to your active frontier. The camera moves over an endless field; the fog travels with the camera, not with the map. Each placement carries a small amount of light with it, so the pool grows as you build — the map expanding and the light expanding are the same thing, which makes running out of tiles read as the light going out.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">LEGIBLE AT 46PX WITHOUT HUE</span>
+          <div style="display:flex;gap:6px;filter:grayscale(1) contrast(1.08)">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.torch2.w }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.torch2.m }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.torch2.v }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.torch2.a }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw2.torch2.x }}"></i>
+          </div>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Identity lives in surface height and finish, because light is already the variable: crypt rough matte, cemetery low and dry, burial ground mounded, catacomb recessed and specular. Hard rule — no in-play tile ever drops below 28% luminance no matter how far into the falloff it sits. Darkness hides the space, never the ground you've built.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:13px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">SIX-HEX CHAIN</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">Light is the payoff. First hex sinks 3px, cracks gold from the centre, then erupts in a white-gold flash that relights the entire map for one frame — including the fog, so you see the far ground you haven't earned yet. 80ms per link easing to 60, each flash pushing the pool wider, until the sixth lights everything like noon and falls back to gloom over 700ms with embers drifting up. Sound is stone and bell: grinding cracks, a struck bell on the last, and a long reverb tail in a room you can suddenly hear the size of.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:56px 56px 110px;background:#17181A;font-family:Archivo,sans-serif">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:920px;margin-bottom:40px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#7C8085">Turn 1 · superseded by turn 2 — kept for reference</div>
+    <h1 style="margin:0;font-size:40px;line-height:1.05;font-weight:800;color:#F2F0EC;letter-spacing:-.02em">Four surfaces to put a hex map on</h1>
+    <p style="margin:0;font-size:16px;line-height:1.5;color:#A2A6AB;text-wrap:pretty;max-width:760px">Every board below is drawn at the real device size — 390&nbsp;×&nbsp;844, hexes at 46px, ~58 on screen. Each direction states its mood, palette, type pairing, board material, how the four terrains survive at 46px without hue, and what a six-hex chain looks and sounds like. <a href="#1c">1c</a> deliberately violates the brief. <a href="#1d">1d</a> is the Diablo-2-flavoured one.</p>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start">
+
+    <!-- ============ 1a SURVEY ============ -->
+    <div id="1a" style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#17181A;background:#F2F0EC;padding:3px 7px">1a</span>
+        <span style="font-size:23px;font-weight:800;color:#F2F0EC">Survey</span>
+        <span style="font-size:13px;color:#8B8F94">cold paper, hot numbers</span>
+      </div>
+
+      <div style="width:390px;height:844px;background:#D7D9D2;position:relative;overflow:hidden;font-family:Archivo,sans-serif;box-shadow:0 30px 60px rgba(0,0,0,.45)">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(22,24,26,.05) 0 1px,transparent 1px 46px),repeating-linear-gradient(90deg,rgba(22,24,26,.05) 0 1px,transparent 1px 46px)"></div>
+        <div style="position:relative;display:flex;justify-content:space-between;padding:16px 16px 13px;background:#121416;color:#E7E4DC">
+          <div style="display:flex;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:#8A8F93">TILES</span><span style="font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:700;line-height:1;color:#FF4D1F">14</span></div>
+            <div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:#8A8F93">POINTS</span><span style="font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:700;line-height:1">2340</span></div>
+          </div>
+          <div style="display:flex;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:#8A8F93">MAP</span><span style="font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:700;line-height:1">3</span></div>
+            <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;color:#8A8F93">COST</span><span style="font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:700;line-height:1">2</span></div>
+          </div>
+        </div>
+
+        <div style="position:relative;height:604px;display:flex;flex-direction:row;justify-content:center;align-items:center">
+          <sc-for list="{{ survey }}" as="row" hint-placeholder-count="9">
+            <div style="display:flex;flex-direction:column;flex:none;gap:2px;margin-left:{{ lift }}px;margin-top:{{ row.shift }}px">
+              <sc-for list="{{ row.cells }}" as="h" hint-placeholder-count="6">
+                <i style="width:{{ hexW }}px;height:{{ hexH }}px;flex:none;clip-path:{{ clip }};background:{{ h }}"></i>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="position:absolute;left:16px;bottom:10px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;color:rgba(22,24,26,.42)">SHEET 03 · 46PX · N↑</div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 12px 28px;background:#121416;display:flex;gap:10px">
+          <div style="flex:1;background:#1D2124;border-top:2px solid #FF4D1F;padding:12px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.survey.w }}"></i>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;color:#E7E4DC">CRYPT</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A8F93">−2</span>
+          </div>
+          <div style="flex:1;background:#1D2124;border-top:2px solid rgba(231,228,220,.18);padding:12px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.survey.m }}"></i>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;color:#E7E4DC">CEMETERY</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A8F93">−2</span>
+          </div>
+          <div style="flex:1;background:#1D2124;border-top:2px solid rgba(231,228,220,.18);padding:12px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.survey.a }}"></i>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;color:#E7E4DC">CATACOMB</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8A8F93">−2</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;background:#1E2023;padding:22px;color:#E7E4DC">
+        <p style="margin:0;font-size:15px;line-height:1.5;color:#C9CCD0;text-wrap:pretty"><strong style="color:#F2F0EC">Mood.</strong> A land survey under deadline. The board is measured, gridded and indifferent; the HUD is instrumentation bolted over it. Pressure shows up as orange telemetry, never as decoration. Cold, clerical, faintly hostile.</p>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">PALETTE</span>
+          <div style="display:flex;gap:5px"><div style="flex:1;height:42px;background:#D7D9D2"></div><div style="flex:1;height:42px;background:#33564A"></div><div style="flex:1;height:42px;background:#D8C27A"></div><div style="flex:1;height:42px;background:#B24A2F"></div><div style="flex:1;height:42px;background:#5E7C8C"></div><div style="flex:1;height:42px;background:#121416"></div><div style="flex:1;height:42px;background:#FF4D1F"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7378">D7D9D2 · 33564A · D8C27A · B24A2F · 5E7C8C · 121416 · FF4D1F</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">TYPE</span>
+          <span style="font-size:21px;font-weight:800">Archivo</span><span style="font-size:12px;color:#9BA0A5">titles and payout screens</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;margin-top:6px">JetBrains Mono</span><span style="font-size:12px;color:#9BA0A5">every number and label — tabular, so counters tick without reflow</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">BOARD SURFACE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Matte drafting paper with a printed 46px grid. Tiles are flat ink plates — no bevel, no gloss — seated 2px apart so paper reads between them. Empty cells are the paper, tinted 7% black.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">LEGIBLE AT 46PX WITHOUT HUE</span>
+          <div style="display:flex;gap:6px;filter:grayscale(1) contrast(1.08)">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.survey.w }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.survey.m }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.survey.v }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.survey.a }}"></i>
+          </div>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Four separated ink values (crypt darkest → cemetery lightest) plus one printed pattern each: crypt 45° hatch, catacomb horizontal rule lines, burial ground dot grid, cemetery bare. Pattern pitch is 6–7px, so it survives at 46px and still reads on a 1.5× thumbnail. Desaturated, the four are still four.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">SIX-HEX CHAIN</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">The first hex inverts to solid orange for 60ms, then the plate is <em>stamped out</em> — the ink lifts and the paper shows through white-hot. Each subsequent pop fires 90ms after the last, accelerating to 55ms by the sixth; the grid lines under the cascade flare orange in a widening ring. Points don't fly: the counter in the black bar rolls with a mechanical stagger, one digit per pop. Sound is a press — solid metal impact, six times, tightening; the paper hiss underneath, then dead silence for 400ms before the payout card slides up.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 1b ENAMEL ============ -->
+    <div id="1b" style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#17181A;background:#F2F0EC;padding:3px 7px">1b</span>
+        <span style="font-size:23px;font-weight:800;color:#F2F0EC">Enamel</span>
+        <span style="font-size:13px;color:#8B8F94">vitreous, loud, unbreakable</span>
+      </div>
+
+      <div style="width:390px;height:844px;background:#0E1B24;position:relative;overflow:hidden;font-family:'DM Sans',sans-serif;box-shadow:0 30px 60px rgba(0,0,0,.45)">
+        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;margin:16px 12px 0;padding:11px 14px;background:#F4F1EA;border:3px solid #0B1116">
+          <div style="display:flex;gap:18px">
+            <div style="display:flex;flex-direction:column"><span style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#5A6169">TILES</span><span style="font-family:Anton,sans-serif;font-size:29px;line-height:1;color:#E24A2B">14</span></div>
+            <div style="display:flex;flex-direction:column"><span style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#5A6169">POINTS</span><span style="font-family:Anton,sans-serif;font-size:29px;line-height:1;color:#0B1116">2,340</span></div>
+          </div>
+          <div style="display:flex;gap:16px">
+            <div style="display:flex;flex-direction:column;align-items:flex-end"><span style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#5A6169">MAP</span><span style="font-family:Anton,sans-serif;font-size:29px;line-height:1;color:#0B1116">3</span></div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end"><span style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#5A6169">COST</span><span style="font-family:Anton,sans-serif;font-size:29px;line-height:1;color:#0B1116">2</span></div>
+          </div>
+        </div>
+
+        <div style="position:relative;height:592px;display:flex;flex-direction:row;justify-content:center;align-items:center">
+          <sc-for list="{{ enamel }}" as="row" hint-placeholder-count="9">
+            <div style="display:flex;flex-direction:column;flex:none;gap:2px;margin-left:{{ lift }}px;margin-top:{{ row.shift }}px">
+              <sc-for list="{{ row.cells }}" as="h" hint-placeholder-count="6">
+                <i style="width:{{ hexW }}px;height:{{ hexH }}px;flex:none;clip-path:{{ clip }};background:{{ h }}"></i>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="position:absolute;left:0;right:0;bottom:6px;text-align:center;font-family:Anton,sans-serif;font-size:13px;letter-spacing:.22em;color:rgba(244,241,234,.3)">CHAIN ×3</div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 12px 28px;display:flex;gap:10px">
+          <div style="flex:1;background:#F4F1EA;border:3px solid #0B1116;box-shadow:0 5px 0 #0B1116;padding:10px 8px;display:flex;flex-direction:column;gap:8px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.enamel.w }}"></i>
+            <span style="font-size:11px;font-weight:700;color:#0B1116">CRYPT</span>
+            <span style="font-family:Anton,sans-serif;font-size:15px;color:#E24A2B">−2</span>
+          </div>
+          <div style="flex:1;background:#F4F1EA;border:3px solid #0B1116;box-shadow:0 5px 0 #0B1116;padding:10px 8px;display:flex;flex-direction:column;gap:8px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.enamel.m }}"></i>
+            <span style="font-size:11px;font-weight:700;color:#0B1116">CEMETERY</span>
+            <span style="font-family:Anton,sans-serif;font-size:15px;color:#E24A2B">−2</span>
+          </div>
+          <div style="flex:1;background:#F4F1EA;border:3px solid #0B1116;box-shadow:0 5px 0 #0B1116;padding:10px 8px;display:flex;flex-direction:column;gap:8px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.enamel.a }}"></i>
+            <span style="font-size:11px;font-weight:700;color:#0B1116">CATACOMB</span>
+            <span style="font-family:Anton,sans-serif;font-size:15px;color:#E24A2B">−2</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;background:#1E2023;padding:22px;color:#E7E4DC">
+        <p style="margin:0;font-size:15px;line-height:1.5;color:#C9CCD0;text-wrap:pretty"><strong style="color:#F2F0EC">Mood.</strong> Enamel badges on a dark steel plate. Colours you could name from across a room, thick near-black keylines, cards that sit on hard offset shadows and thud when pressed. The crunch is weight and snap, not grit. Toy-tough, arcade, zero preciousness.</p>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">PALETTE</span>
+          <div style="display:flex;gap:5px"><div style="flex:1;height:42px;background:#0E1B24"></div><div style="flex:1;height:42px;background:#0F8A5F"></div><div style="flex:1;height:42px;background:#F2C230"></div><div style="flex:1;height:42px;background:#E24A2B"></div><div style="flex:1;height:42px;background:#2D6BE0"></div><div style="flex:1;height:42px;background:#F4F1EA"></div><div style="flex:1;height:42px;background:#0B1116"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7378">0E1B24 · 0F8A5F · F2C230 · E24A2B · 2D6BE0 · F4F1EA · 0B1116</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">TYPE</span>
+          <span style="font-family:Anton,sans-serif;font-size:25px;letter-spacing:.02em">ANTON</span><span style="font-size:12px;color:#9BA0A5">numerals and payout screens only — it shouts, so ration it</span>
+          <span style="font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;margin-top:6px">DM Sans</span><span style="font-size:12px;color:#9BA0A5">labels and the five-line rules</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">BOARD SURFACE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Powder-coated dark steel. Each hex is a glossy enamel chip with one top-edge specular and a 2px near-black outline. Empty cells are recessed steel sockets, so the board is always visibly a machine with holes in it.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">LEGIBLE AT 46PX WITHOUT HUE</span>
+          <div style="display:flex;gap:6px;filter:grayscale(1) contrast(1.08)">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.enamel.w }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.enamel.m }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.enamel.v }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.enamel.a }}"></i>
+          </div>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Shape does the work, not colour: each chip carries one 18px centred glyph in the keyline black — crypt a triangle, cemetery a bar, burial ground a square, catacomb a wave rule. Values are spread (cemetery 78% → catacomb 38% luminance) and the glyph is always the same black, so a colourblind player reads silhouette first. This is the direction that survives worst-case lighting best.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">SIX-HEX CHAIN</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">The glaze shatters. Pop one: white flash, the chip breaks into 8–10 enamel shards that arc off with real gravity and clatter into the steel socket below. 70ms later the next, then 65, 60, 55, 50 — six impacts landing just ahead of your expectation, so the last two feel like one. Screen shake stays under 4px but the whole plate flashes 6% white on every hit. Sound is ceramic: glass-on-metal crack, pitched up a semitone per link, ending on a bass thump as the sockets ring.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 1c OVERCLOCK ============ -->
+    <div id="1c" style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#07070A;background:#B8FF2E;padding:3px 7px">1c</span>
+        <span style="font-size:23px;font-weight:800;color:#F2F0EC">Overclock</span>
+        <span style="font-size:13px;color:#B8FF2E">violates the brief on purpose</span>
+      </div>
+
+      <div style="width:390px;height:844px;background:#07070A;position:relative;overflow:hidden;font-family:'Chakra Petch',sans-serif;box-shadow:0 30px 60px rgba(0,0,0,.6)">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)"></div>
+        <div style="position:relative;display:flex;justify-content:space-between;padding:18px 16px 10px;border-bottom:1px solid rgba(184,255,46,.22)">
+          <div style="display:flex;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:#5C6357">TILES</span><span style="font-family:'IBM Plex Mono',monospace;font-size:27px;font-weight:600;line-height:1;color:#FF2E88">14</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:#5C6357">POINTS</span><span style="font-family:'IBM Plex Mono',monospace;font-size:27px;font-weight:600;line-height:1;color:#B8FF2E">2340</span></div>
+          </div>
+          <div style="display:flex;gap:16px">
+            <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:#5C6357">MAP</span><span style="font-family:'IBM Plex Mono',monospace;font-size:27px;font-weight:600;line-height:1;color:#DCE4D6">3</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:#5C6357">COST</span><span style="font-family:'IBM Plex Mono',monospace;font-size:27px;font-weight:600;line-height:1;color:#DCE4D6">2</span></div>
+          </div>
+        </div>
+
+        <div style="position:relative;height:600px;display:flex;flex-direction:row;justify-content:center;align-items:center">
+          <sc-for list="{{ overclock }}" as="row" hint-placeholder-count="9">
+            <div style="display:flex;flex-direction:column;flex:none;gap:2px;margin-left:{{ lift }}px;margin-top:{{ row.shift }}px">
+              <sc-for list="{{ row.cells }}" as="h" hint-placeholder-count="6">
+                <i style="width:{{ hexW }}px;height:{{ hexH }}px;flex:none;clip-path:{{ clip }};background:{{ h }}"></i>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="position:absolute;left:16px;bottom:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.2em;color:#4A5145">HEAT 0.72 ▁▂▃▅▇</div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 12px 28px;display:flex;gap:8px;background:linear-gradient(rgba(7,7,10,0),#07070A 40%)">
+          <div style="flex:1;background:#101319;border:1px solid #B8FF2E;padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.overclock.w }}"></i>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#B8FF2E">CRYPT</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#FF2E88">−2</span>
+          </div>
+          <div style="flex:1;background:#101319;border:1px solid rgba(220,228,214,.2);padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.overclock.m }}"></i>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#8E9887">CEMETERY</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#FF2E88">−2</span>
+          </div>
+          <div style="flex:1;background:#101319;border:1px solid rgba(220,228,214,.2);padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.overclock.a }}"></i>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#8E9887">CATACOMB</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#FF2E88">−2</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;background:#1E2023;padding:22px;color:#E7E4DC">
+        <p style="margin:0;font-size:15px;line-height:1.5;color:#C9CCD0;text-wrap:pretty"><strong style="color:#F2F0EC">Mood.</strong> The landscape as instrumentation. Terrain is rendered as thermal load on a black substrate — it stops pretending to be countryside and admits it's a spatial economy under strain. Uncomfortable on purpose: the board is dim, the UI is acid, and the prettiest thing on screen is a number going up. If it feels like reading a stress test rather than tending a valley, that's the point.</p>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">PALETTE</span>
+          <div style="display:flex;gap:5px"><div style="flex:1;height:42px;background:#07070A"></div><div style="flex:1;height:42px;background:#123240"></div><div style="flex:1;height:42px;background:#1E3A1B"></div><div style="flex:1;height:42px;background:#5A5324"></div><div style="flex:1;height:42px;background:#8A2450"></div><div style="flex:1;height:42px;background:#B8FF2E"></div><div style="flex:1;height:42px;background:#FF2E88"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7378">07070A · 123240 · 1E3A1B · 5A5324 · 8A2450 · B8FF2E · FF2E88</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">TYPE</span>
+          <span style="font-family:'Chakra Petch',sans-serif;font-size:21px;font-weight:700">Chakra Petch</span><span style="font-size:12px;color:#9BA0A5">headings — clipped, technical, slightly unpleasant</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;margin-top:6px">IBM Plex Mono</span><span style="font-size:12px;color:#9BA0A5">all readouts, all labels, uppercase, wide tracking</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">BOARD SURFACE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Black anodised substrate under a 3px scanline. Hexes are emissive plates lit from within — dim when isolated, brightening as their neighbour count rises, so a hex about to pop is literally glowing hotter than the rest of the board. Empty cells are unlit sockets at 6% white.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">LEGIBLE AT 46PX WITHOUT HUE — THE RISK</span>
+          <div style="display:flex;gap:6px;filter:grayscale(1) contrast(1.08)">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.overclock.w }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.overclock.m }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.overclock.v }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.overclock.a }}"></i>
+          </div>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Honest answer: this is the direction most likely to die on a phone in daylight. All four terrains sit in a narrow dark band, and greyscale nearly collapses them. It only works if the differentiator moves to the <em>edge</em>: each terrain gets a distinct emissive rim — full outline, two-side, dotted, none — plus a 20px inner glyph at 70% white. The fill becomes atmosphere and the rim carries identity. If you like this one, that rim system is the first thing to prototype at 46px, in sunlight, before anything else.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">SIX-HEX CHAIN</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">Overload, not celebration. The doomed hex whites out and the five links pre-flash 40ms early, so you see the path before it fires. Then it discharges: acid-green light runs cell-to-cell along the shared edges like current, 50ms per link, constant rhythm — no acceleration, just relentless. Every popped socket keeps a magenta afterglow that decays over two seconds, leaving a scar trail of where the chain went. Sound is electrical: a rising sine under six hard clicks, then a breaker trip and the room tone drops out entirely.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 1d TORCHLIT ============ -->
+    <div id="1d" style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#17181A;background:#C79A4B;padding:3px 7px">1d</span>
+        <span style="font-size:23px;font-weight:800;color:#F2F0EC">Torchlit</span>
+        <span style="font-size:13px;color:#C79A4B">the Diablo 2 one</span>
+      </div>
+
+      <div style="width:390px;height:844px;background:#0C0A08;position:relative;overflow:hidden;font-family:'EB Garamond',serif;box-shadow:0 30px 60px rgba(0,0,0,.6)">
+        <div style="position:absolute;inset:0;background:radial-gradient(120% 60% at 50% 42%,rgba(199,154,75,.16),rgba(12,10,8,0) 70%)"></div>
+        <div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:15px 16px 12px;background:linear-gradient(#1A1512,#100D0B);border-bottom:1px solid #3A2E20">
+          <div style="display:flex;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.18em;color:#8A7452">TILES</span><span style="font-family:Cinzel,serif;font-size:25px;font-weight:700;line-height:1.05;color:#C1362B">14</span></div>
+            <div style="display:flex;flex-direction:column;gap:1px"><span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.18em;color:#8A7452">POINTS</span><span style="font-family:Cinzel,serif;font-size:25px;font-weight:700;line-height:1.05;color:#E8D6AE">2340</span></div>
+          </div>
+          <div style="display:flex;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end"><span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.18em;color:#8A7452">MAP</span><span style="font-family:Cinzel,serif;font-size:25px;font-weight:700;line-height:1.05;color:#E8D6AE">3</span></div>
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end"><span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:.18em;color:#8A7452">COST</span><span style="font-family:Cinzel,serif;font-size:25px;font-weight:700;line-height:1.05;color:#E8D6AE">2</span></div>
+          </div>
+        </div>
+
+        <div style="position:relative;height:596px;display:flex;flex-direction:row;justify-content:center;align-items:center">
+          <sc-for list="{{ torchlit }}" as="row" hint-placeholder-count="9">
+            <div style="display:flex;flex-direction:column;flex:none;gap:2px;margin-left:{{ lift }}px;margin-top:{{ row.shift }}px">
+              <sc-for list="{{ row.cells }}" as="h" hint-placeholder-count="6">
+                <i style="width:{{ hexW }}px;height:{{ hexH }}px;flex:none;clip-path:{{ clip }};background:{{ h }}"></i>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(75% 45% at 50% 45%,rgba(0,0,0,0) 40%,rgba(6,5,4,.72) 100%)"></div>
+          <div style="position:absolute;left:0;right:0;bottom:6px;text-align:center;font-family:Cinzel,serif;font-size:11px;letter-spacing:.3em;color:#6E5B3C">CHAIN OF THREE</div>
+        </div>
+
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 10px 28px;background:linear-gradient(rgba(12,10,8,0),#0C0A08 30%);display:flex;gap:8px">
+          <div style="flex:1;background:linear-gradient(#1C1611,#120E0B);border:1px solid #C79A4B;box-shadow:inset 0 0 18px rgba(199,154,75,.14);padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.torchlit.w }}"></i>
+            <span style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.1em;color:#E8D6AE">CRYPT</span>
+            <span style="font-family:Cinzel,serif;font-size:12px;font-weight:700;color:#C1362B">−2</span>
+          </div>
+          <div style="flex:1;background:linear-gradient(#1C1611,#120E0B);border:1px solid #433624;padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.torchlit.m }}"></i>
+            <span style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.1em;color:#B9A480">CEMETERY</span>
+            <span style="font-family:Cinzel,serif;font-size:12px;font-weight:700;color:#C1362B">−2</span>
+          </div>
+          <div style="flex:1;background:linear-gradient(#1C1611,#120E0B);border:1px solid #433624;padding:11px 8px;display:flex;flex-direction:column;gap:9px;align-items:center">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.torchlit.a }}"></i>
+            <span style="font-family:Cinzel,serif;font-size:10px;letter-spacing:.1em;color:#B9A480">CATACOMB</span>
+            <span style="font-family:Cinzel,serif;font-size:12px;font-weight:700;color:#C1362B">−2</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;background:#1E2023;padding:22px;color:#E7E4DC">
+        <p style="margin:0;font-size:15px;line-height:1.5;color:#C9CCD0;text-wrap:pretty"><strong style="color:#F2F0EC">Mood.</strong> Torchlight in a dark room. Everything is lit rather than coloured: a warm pool of light in the middle of the screen, deep falloff to near-black at the edges, dull gold chrome and one blood red that only ever means loss. Grim and heavy, with the specific pleasure of numbers climbing in a gloomy interface. Original chrome and type — the borrowed part is the lighting model and the mood, not anyone's UI.</p>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">PALETTE</span>
+          <div style="display:flex;gap:5px"><div style="flex:1;height:42px;background:#0C0A08"></div><div style="flex:1;height:42px;background:#2E3A24"></div><div style="flex:1;height:42px;background:#7A6636"></div><div style="flex:1;height:42px;background:#8C3A1E"></div><div style="flex:1;height:42px;background:#26424E"></div><div style="flex:1;height:42px;background:#C79A4B"></div><div style="flex:1;height:42px;background:#C1362B"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6E7378">0C0A08 · 2E3A24 · 7A6636 · 8C3A1E · 26424E · C79A4B · C1362B</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">TYPE</span>
+          <span style="font-family:Cinzel,serif;font-size:21px;font-weight:700;letter-spacing:.04em">CINZEL</span><span style="font-size:12px;color:#9BA0A5">numerals, labels, payout headings — small caps, gold, tightly rationed</span>
+          <span style="font-family:'EB Garamond',serif;font-size:19px;margin-top:6px">EB Garamond</span><span style="font-size:12px;color:#9BA0A5">rules and body — plain language, no fantasy vocabulary, just an old typeface</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">BOARD SURFACE</span>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">Wet flagstone under a low torch. Tiles are thick stone slabs with a 1px lit top bevel and a black cast shadow into the seam, so the board reads as relief rather than paint. A single warm light source sits above centre; hexes darken toward the map edge, which does the bounded-map job for free — the frontier is literally where the light runs out. Empty cells are unlit floor.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">LEGIBLE AT 46PX WITHOUT HUE</span>
+          <div style="display:flex;gap:6px;filter:grayscale(1) contrast(1.08)">
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.torchlit.w }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.torchlit.m }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.torchlit.v }}"></i>
+            <i style="width:46px;height:39.84px;clip-path:{{ clip }};background:{{ sw.torchlit.a }}"></i>
+          </div>
+          <span style="font-size:14px;line-height:1.5;color:#C9CCD0">The hard case, because vignetting eats contrast at the edges. Rules that make it work: (1) terrain identity lives in <em>surface height and finish</em> — crypt is rough and matte, cemetery is low and dry-brushed, burial ground is raised with a flat cut top plane, catacomb is recessed and specular, so each catches the light differently; (2) a 2px inner gold rule on burial ground only, the one type players must count; (3) every terrain keeps a minimum 28% luminance floor regardless of vignette, so no tile is ever unreadably dark. Ambient darkness is allowed to hide the <em>space</em>, never the tiles.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">SIX-HEX CHAIN</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">Light is the payoff. The first hex sinks 3px, cracks gold from the centre out, then erupts — a hard white-gold flash that briefly relights the whole board, vignette and all, so you see the far corners of the map for one frame. 80ms later the next, then 75, 70, 65, 60; each flash pushes the torch pool wider until on the sixth the entire screen is lit like noon, then falls back to gloom over 700ms with embers drifting up through the light. Points arrive as gold Cinzel numerals rising off each hex and being absorbed into the top readout. Sound is stone and bell: a deep grinding crack per pop, a struck bell on the sixth, and a long tail of reverb in a room you can suddenly hear the size of.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ LAYOUT + THUMB ============ -->
+    <div id="1e" style="display:flex;flex-direction:column;gap:16px;width:430px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#17181A;background:#F2F0EC;padding:3px 7px">1e</span>
+        <span style="font-size:23px;font-weight:800;color:#F2F0EC">Portrait layout</span>
+        <span style="font-size:13px;color:#8B8F94">shared across all four</span>
+      </div>
+
+      <div style="width:390px;height:844px;background:#101214;position:relative;overflow:hidden;font-family:'JetBrains Mono',monospace;box-shadow:0 30px 60px rgba(0,0,0,.45)">
+        <div style="position:absolute;left:0;right:0;top:0;height:76px;background:#1B1F22;border-bottom:1px dashed #4A5157;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px">
+          <span style="font-size:11px;letter-spacing:.14em;color:#E7E4DC">READOUTS · 76px</span>
+          <span style="font-size:10px;color:#8A9098">tiles · points · map · cost — never tappable</span>
+        </div>
+        <div style="position:absolute;left:0;right:0;top:76px;bottom:236px;border-bottom:1px dashed #4A5157;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px">
+          <span style="font-size:11px;letter-spacing:.14em;color:#E7E4DC">BOARD · 532px · CANVAS</span>
+          <span style="font-size:10px;color:#8A9098;text-align:center;line-height:1.6">~58 hexes at 46px<br>pan/pinch, auto-recentres on the frontier<br>active edge biased to lower two-thirds</span>
+          <div style="position:absolute;left:0;right:0;top:0;height:120px;background:repeating-linear-gradient(135deg,rgba(255,77,31,.09) 0 6px,transparent 6px 12px);display:flex;align-items:flex-start;justify-content:center;padding-top:8px"><span style="font-size:9px;letter-spacing:.12em;color:#FF8A66">HARD TO REACH — DISPLAY ONLY</span></div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;height:236px">
+          <div style="position:absolute;left:-70px;right:-70px;bottom:-160px;height:430px;border-radius:50%;border:1px dashed #6E7A5E;background:rgba(184,255,46,.05)"></div>
+          <div style="position:absolute;left:12px;right:12px;bottom:104px;height:108px;border:1px dashed #4A5157;display:flex;align-items:center;justify-content:center;gap:8px">
+            <div style="flex:1;height:88px;border:1px solid #6E7A5E;display:flex;align-items:center;justify-content:center;font-size:10px;color:#C9CCD0">CARD 1</div>
+            <div style="flex:1;height:88px;border:1px solid #6E7A5E;display:flex;align-items:center;justify-content:center;font-size:10px;color:#C9CCD0">CARD 2</div>
+            <div style="flex:1;height:88px;border:1px solid #6E7A5E;display:flex;align-items:center;justify-content:center;font-size:10px;color:#C9CCD0">CARD 3</div>
+          </div>
+          <div style="position:absolute;left:12px;right:12px;bottom:34px;height:56px;border:1px dashed #4A5157;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+            <span style="font-size:10px;letter-spacing:.12em;color:#B8FF2E">THUMB ARC · everything here</span>
+            <span style="font-size:9px;color:#8A9098">tap card → ghost hex on board → tap to confirm</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;background:#1E2023;padding:22px;color:#E7E4DC">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">WHAT THE THUMB REACHES</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">Comfortable arc on a 390×844 device is roughly the bottom 300px, centre-weighted. So: cards live at 104–212px from the bottom, 88px tall (well over the 44px floor), and placement is <strong>two taps, never drag</strong> — pick a card, the board shows a ghost hex at the best legal cell, tap the board to move it or the card again to confirm. Dragging to the top third with one thumb is the thing that breaks; the top 120px of the board is display-only and the camera keeps the live frontier in the lower two-thirds.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">THE POP CHOICE</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">Full-screen, but it enters from the bottom and the two options occupy the bottom 45% — the cascade stays visible above, frozen at its final frame, because the choice should feel like spending what you just earned. Two panels, equal weight, plain words: <em>more tiles</em> / <em>more points</em>, each with one number under it. No timer, no third option, no confirm step.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #2C2F33;padding-top:14px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:#83878C">HUD RULE</span>
+          <span style="font-size:14px;line-height:1.55;color:#C9CCD0">The HTML chrome never animates except when a number changes. All motion belongs to the canvas. Four readouts, one row, no icons, no bars — and only <strong>tiles</strong> is allowed a colour, because it's the life total.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;hexSize&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:46,&quot;min&quot;:32,&quot;max&quot;:64,&quot;step&quot;:2,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Legibility test&quot;}}">
+const PAT = [
+  ".aawm.",
+  "aawwvm.",
+  "awwvvmm",
+  "ww*vvwm",
+  "wvvwwmm",
+  "vvwwma.",
+  ".vwmaa.",
+  "..mma..",
+  "...m..."
+];
+
+const THEMES = {
+  survey: {
+    w: "repeating-linear-gradient(45deg,rgba(0,0,0,.20) 0 2px,transparent 2px 7px),#33564A",
+    m: "#D8C27A",
+    v: "radial-gradient(rgba(0,0,0,.28) 1.4px,transparent 1.6px) 0 0/8px 8px,#B24A2F",
+    a: "repeating-linear-gradient(0deg,rgba(255,255,255,.28) 0 1px,transparent 1px 6px),#5E7C8C",
+    e: "rgba(22,24,26,.07)",
+    p: "radial-gradient(circle at 50% 45%,#FFFFFF,#FF4D1F 60%,#B24A2F)"
+  },
+  enamel: {
+    w: "linear-gradient(#2FAE7E,#0F8A5F)",
+    m: "linear-gradient(#FFD75E,#F2C230)",
+    v: "linear-gradient(#F4674A,#E24A2B)",
+    a: "linear-gradient(#4E8BF5,#2D6BE0)",
+    e: "#152632",
+    p: "radial-gradient(circle at 50% 40%,#FFFFFF,#FFF0A8 55%,#F2C230)"
+  },
+  overclock: {
+    w: "linear-gradient(#24461F,#152E13)",
+    m: "linear-gradient(#6B6229,#463F1B)",
+    v: "linear-gradient(#8A2450,#4A1A38)",
+    a: "linear-gradient(#164055,#0E2833)",
+    e: "#131417",
+    p: "radial-gradient(circle at 50% 45%,#FFFFFF,#B8FF2E 45%,#3F6B0E)"
+  },
+  torchlit: {
+    w: "repeating-linear-gradient(60deg,rgba(0,0,0,.22) 0 2px,transparent 2px 6px),linear-gradient(#3B4A2C,#232C1B)",
+    m: "linear-gradient(#8B7440,#5F4F2A)",
+    v: "linear-gradient(#A0492A,#6E2F17)",
+    a: "linear-gradient(#39606F,#1D3440)",
+    e: "#14100D",
+    p: "radial-gradient(circle at 50% 45%,#FFFFFF,#F2C46B 50%,#8C6A2A)"
+  }
+};
+
+const PAT2 = [
+  "..........aam",
+  "........awwmma",
+  ".......xawwmmaa",
+  "......awwvvmmaax",
+  ".....awwvvxmmaaw",
+  "....aawv*vvmmawwx",
+  "....aawvvxmmawwm",
+  "...xaawvvmmmawwmm",
+  "....aawvvmmawwmmx",
+  "....aawvxmmawwmm",
+  ".....awvvmmawwm",
+  "......awvmmaww",
+  ".......xammaw",
+  "........amma",
+  ".........am"
+];
+
+const THEMES2 = {
+  mist: {
+    w: "repeating-linear-gradient(48deg,rgba(0,0,0,.16) 0 2px,transparent 2px 7px),linear-gradient(#3C5348,#2C3E36)",
+    m: "linear-gradient(#CFC7AE,#B3A98E)",
+    v: "radial-gradient(rgba(0,0,0,.20) 1.4px,transparent 1.6px) 0 0/8px 8px,linear-gradient(#9C7A52,#7A5C3C)",
+    a: "repeating-linear-gradient(0deg,rgba(255,255,255,.16) 0 1px,transparent 1px 6px),linear-gradient(#2E4560,#20304480)",
+    x: "repeating-linear-gradient(135deg,#191C1F 0 4px,#0F1113 4px 8px)",
+    e: "#111819",
+    p: "radial-gradient(circle at 50% 45%,#FFFFFF,#E8EEEA 55%,#8FA79C)"
+  },
+  rot: {
+    w: "repeating-linear-gradient(70deg,rgba(0,0,0,.24) 0 2px,transparent 2px 6px),linear-gradient(#44502C,#2A3220)",
+    m: "linear-gradient(#B9B79A,#8C8A72)",
+    v: "radial-gradient(rgba(0,0,0,.26) 1.5px,transparent 1.7px) 0 0/9px 9px,linear-gradient(#6B4258,#472A3B)",
+    a: "repeating-linear-gradient(0deg,rgba(190,220,210,.14) 0 1px,transparent 1px 6px),linear-gradient(#1F3A3A,#132424)",
+    x: "repeating-linear-gradient(135deg,#15161A 0 4px,#0A0B0D 4px 8px)",
+    e: "rgba(120,140,130,.07)",
+    p: "radial-gradient(circle at 50% 45%,#FFFFFF,#C8F0A8 45%,#4E6B2E)"
+  },
+  torch2: {
+    w: "repeating-linear-gradient(60deg,rgba(0,0,0,.22) 0 2px,transparent 2px 6px),linear-gradient(#3E4A2E,#242C1C)",
+    m: "linear-gradient(#C6B187,#98865F)",
+    v: "radial-gradient(rgba(0,0,0,.24) 1.5px,transparent 1.7px) 0 0/9px 9px,linear-gradient(#9A5A32,#6B3A1E)",
+    a: "repeating-linear-gradient(0deg,rgba(255,236,200,.14) 0 1px,transparent 1px 6px),linear-gradient(#2F4A55,#1A2C35)",
+    x: "repeating-linear-gradient(135deg,#1B1512 0 4px,#0E0A08 4px 8px)",
+    e: "rgba(199,154,75,.07)",
+    p: "radial-gradient(circle at 50% 45%,#FFFFFF,#F7DBA0 50%,#9C7331)"
+  }
+};
+
+class Component extends DCLogic {
+  rows(pattern, t, shift) {
+    const wide = Math.max(...pattern.map(r => r.length));
+    return pattern.map((row, i) => ({
+      shift: i % 2 ? shift : 0,
+      cells: row.padEnd(wide, ".").split("").map(ch =>
+        ch === "." ? t.e : ch === "*" ? t.p : t[ch]
+      )
+    }));
+  }
+  board2(theme) { return this.rows(PAT2, THEMES2[theme], this.shift); }
+  board(theme) { return this.rows(PAT, THEMES[theme], this.shift); }
+  renderVals() {
+    const size = this.props.hexSize ?? 46;
+    const seam = 2;
+    const h = +(size * 0.8660254).toFixed(2);       // flat-top hex height
+    const colStep = +(size * 0.75 + seam).toFixed(2); // horizontal centre spacing
+    this.shift = +((h + seam) / 2).toFixed(2);        // alternate columns drop half a row
+    return {
+      clip: "polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)",
+      hexW: size,
+      hexH: h,
+      lift: +(colStep - size).toFixed(2),
+      sw: THEMES,
+      sw2: THEMES2,
+      mist: this.board2("mist"),
+      rot: this.board2("rot"),
+      torch2: this.board2("torch2"),
+      survey: this.board("survey"),
+      enamel: this.board("enamel"),
+      overclock: this.board("overclock"),
+      torchlit: this.board("torchlit")
+    };
+  }
+}
+
+</script>
+</body>
+</html>

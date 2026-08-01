@@ -1,3 +1,4 @@
+import type { Colour } from '@content/tuning';
 import { parse } from '@engine/hex';
 import { canLeave } from '@engine/reduce';
 import {
@@ -65,9 +66,14 @@ export type HudView = {
   readonly cost: number;
   readonly placements: number;
 
+  /**
+   * `colour` is the engine's `Colour`, not a string: the chrome looks up the
+   * direction's name for it (`CRYPT`) and its CSS variable, and both of those are
+   * exhaustive maps that a stray string would silently miss.
+   */
   readonly draft: readonly {
     readonly id: string;
-    readonly colour: string;
+    readonly colour: Colour;
     readonly selected: boolean;
   }[];
 

@@ -1,5 +1,7 @@
 /// <reference types="vitest/config" />
 import { execSync } from 'node:child_process';
+import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -41,10 +43,76 @@ function versionStamp(sha: string): Plugin {
   };
 }
 
+/**
+ * Scan `public/assets/<themeId>/<slotId>.png` and write the manifest.
+ *
+ * The whole art workflow is meant to be "drop a PNG in the folder". A hand-kept
+ * list would be a second place to forget, and probing thirteen slots per theme
+ * from the client would mean a wall of 404s on a phone connection every load. So
+ * the build looks, once, and the client fetches one small file.
+ *
+ * `public/assets/` not existing is the state this repository ships in — there is
+ * no art yet — and that produces an empty manifest, not a failed build.
+ *
+ * Served in dev as well as emitted at build, and rescanned per request. Without
+ * the dev half, dropping a PNG in and running `pnpm dev` would show nothing and
+ * give no reason why — the file would be served fine and simply never asked for.
+ */
+function assetManifest(): Plugin {
+  const scan = (root: string): Record<string, string[]> => {
+    const out: Record<string, string[]> = {};
+    let themes: string[];
+    try {
+      themes = readdirSync(root);
+    } catch {
+      return out;
+    }
+
+    for (const themeId of themes) {
+      const dir = join(root, themeId);
+      try {
+        if (!statSync(dir).isDirectory()) continue;
+        const ids = readdirSync(dir)
+          .filter((f) => f.endsWith('.png'))
+          .map((f) => f.slice(0, -'.png'.length));
+        if (ids.length > 0) out[themeId] = ids.sort();
+      } catch {
+        // A directory that vanished between the listing and the stat. Skip it.
+      }
+    }
+    return out;
+  };
+
+  const root = (): string => fileURLToPath(new URL('./public/assets', import.meta.url));
+
+  return {
+    name: 'tiles:asset-manifest',
+
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'assets/manifest.json',
+        source: JSON.stringify(scan(root()), null, 2),
+      });
+    },
+
+    configureServer(server) {
+      server.middlewares.use('/assets/manifest.json', (_req, res) => {
+        // Rescanned every request rather than cached: the point of dev is that
+        // you drop a file in and reload, and a cached manifest would make the
+        // one workflow this exists for require a server restart.
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(JSON.stringify(scan(root())));
+      });
+    },
+  };
+}
+
 const sha = buildSha();
 
 export default defineConfig({
-  plugins: [versionStamp(sha)],
+  plugins: [versionStamp(sha), assetManifest()],
   define: {
     __BUILD_SHA__: JSON.stringify(sha),
   },
@@ -53,9 +121,22 @@ export default defineConfig({
       '@engine': alias('./src/engine'),
       '@content': alias('./src/content'),
       '@render': alias('./src/render'),
+      '@theme': alias('./src/theme'),
       '@meta': alias('./src/meta'),
       '@ui': alias('./src/ui'),
       '@sim': alias('./src/sim'),
+    },
+  },
+  build: {
+    // Two pages. `gallery.html` is the art-direction workbench — every theme's
+    // tokens, surfaces and greyscale check on one scrollable page — and it ships
+    // with the game on purpose: the only device that matters is a phone, and a
+    // workbench you cannot open on the phone is a workbench for the wrong screen.
+    rollupOptions: {
+      input: {
+        main: alias('./index.html'),
+        gallery: alias('./gallery.html'),
+      },
     },
   },
   server: {
@@ -65,5 +146,14 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // Applying a theme appends its webfont <link>, and happy-dom will honestly
+    // go and fetch it — which makes the suite need the network, and fail on a
+    // train. The test cares that exactly one link exists with the right href,
+    // never that Google served it.
+    environmentOptions: {
+      happyDOM: {
+        settings: { disableCSSFileLoading: true, disableJavaScriptFileLoading: true },
+      },
+    },
   },
 });

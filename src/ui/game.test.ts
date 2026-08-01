@@ -80,11 +80,26 @@ describe('the game loop', () => {
     ctx.game.start();
   });
 
+  const stat = (id: string): string =>
+    ctx.el.stats.querySelector(`[data-stat="${id}"] .stat-value`)?.textContent ?? '';
+
   it('draws and fills the hud on start', () => {
     expect(ctx.renderer.views.length).toBeGreaterThan(0);
-    expect(ctx.el.stats.textContent).toContain('tiles');
-    expect(ctx.el.stats.textContent).toContain('map 1');
+    expect(stat('tiles')).toBe(String(ctx.game.state.tiles));
+    expect(stat('points')).toBe('0');
+    expect(stat('map')).toBe('1');
+    expect(stat('cost')).toBe('−1');
     expect(ctx.el.draft.children).toHaveLength(ctx.game.state.draft.length);
+  });
+
+  // The draft cards carry the theme's word for a colour, not the colour id. The
+  // default theme has no fiction, so it says GREEN — but the lookup is the thing
+  // being checked, because a direction that renames all four must not produce
+  // four blank buttons.
+  it('names each draft card in the vocabulary of the active theme', () => {
+    const labels = [...ctx.el.draft.children].map((c) => c.textContent);
+    expect(labels.every((l) => typeof l === 'string' && l.length > 0)).toBe(true);
+    expect(labels.map((l) => l?.toLowerCase())).toEqual(ctx.game.state.draft.map((t) => t.colour));
   });
 
   it('places a tile where the tap landed', () => {

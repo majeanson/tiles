@@ -27,6 +27,7 @@
       "@engine/*": ["./src/engine/*"],
       "@content/*": ["./src/content/*"],
       "@render/*": ["./src/render/*"],
+      "@theme/*": ["./src/theme/*"],
       "@meta/*": ["./src/meta/*"],
       "@ui/*": ["./src/ui/*"],
       "@sim/*": ["./src/sim/*"]

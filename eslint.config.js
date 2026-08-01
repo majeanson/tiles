@@ -8,12 +8,15 @@ import tseslint from 'typescript-eslint';
  * The layering rule:
  *
  *     content  <-  engine  <-  ui
- *                         <-  render
- *                         <-  sim
+ *              <-  theme   <-  render
+ *                          <-  sim
  *
  * `content` is data and may import nothing. `engine` is pure and may import only
- * `content`. Nothing at all imports `ui`. This file is the only thing that makes
- * that a fact rather than an intention, which is why it earns its length.
+ * `content`. `theme` is the visual contract — data about how roles are painted —
+ * and may import only `content`'s types; the engine may not see it, because a
+ * rule that can read the palette is a rule that can be changed by repainting.
+ * Nothing at all imports `ui`. This file is the only thing that makes that a fact
+ * rather than an intention, which is why it earns its length.
  */
 const deny = (groups, message) => ({
   'no-restricted-imports': ['error', { patterns: [{ group: groups, message }] }],
@@ -93,8 +96,15 @@ export default tseslint.config(
     rules: {
       ...pure,
       ...deny(
-        [...layer('ui'), ...layer('render'), ...layer('meta'), ...layer('sim'), 'pixi.js'],
-        'The engine may import only from engine/ and content/.',
+        [
+          ...layer('ui'),
+          ...layer('render'),
+          ...layer('theme'),
+          ...layer('meta'),
+          ...layer('sim'),
+          'pixi.js',
+        ],
+        'The engine may import only from engine/ and content/. A rule that can read the palette is a rule you can change by repainting.',
       ),
     },
   },
@@ -107,6 +117,7 @@ export default tseslint.config(
         [
           ...layer('ui'),
           ...layer('render'),
+          ...layer('theme'),
           ...layer('meta'),
           ...layer('sim'),
           ...layer('engine'),
@@ -115,6 +126,25 @@ export default tseslint.config(
         'content/ is data. It imports nothing but its own types.',
       ),
     },
+  },
+
+  // theme/ is the visual contract. It describes how roles are painted and knows
+  // nothing about what they mean, so it may read content's types and no more.
+  // `apply.ts` is the single exception that touches the document, and it is
+  // allowed the DOM the way render/ is — but never a rule, a number or a state.
+  {
+    files: ['src/theme/**/*.ts'],
+    rules: deny(
+      [
+        ...layer('ui'),
+        ...layer('render'),
+        ...layer('meta'),
+        ...layer('sim'),
+        ...layer('engine'),
+        'pixi.js',
+      ],
+      'theme/ describes how things look. It may import content/ types and nothing else.',
+    ),
   },
 
   {

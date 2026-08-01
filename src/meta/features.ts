@@ -39,6 +39,15 @@ export const FEATURES = [
     note: 'Coordinates, seed, and state readouts drawn over the board.',
     defaultOn: false,
   },
+  {
+    id: 'ui.themePicker',
+    label: 'Theme picker',
+    note:
+      'A row of art directions under the build stamp, switching the whole look on tap. ' +
+      'Off by default because Gate E is shut and the placeholder is the shipped look; ' +
+      'on when you are standing outside with a phone deciding which direction survives daylight.',
+    defaultOn: false,
+  },
 ] as const satisfies readonly FeatureDef[];
 
 export type FeatureId = (typeof FEATURES)[number]['id'];

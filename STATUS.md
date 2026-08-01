@@ -4,7 +4,7 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-07-31** — Session 1, the run loop and the harness.
+Last checkpoint: **2026-07-31** — Session 2, the theme layer and the art slots.
 
 ## Shipped and settled
 
@@ -51,12 +51,45 @@ Last checkpoint: **2026-07-31** — Session 1, the run loop and the harness.
   Added during implementation because leaving was otherwise free and unlimited,
   which made the map multiplier free with it. See `DESIGN.md`.
 
+- **`src/theme/` holds the whole visual surface as data.** A new enforced layer:
+  `content <- theme <- render`, with `engine/` and `content/` forbidden from
+  importing it. A theme describes how ROLES are painted, never what they mean, so
+  repainting the game cannot change it. Four are loaded — `placeholder` plus the
+  three handed-down directions — switchable with `?theme=`, and **the placeholder
+  is still the default, asserted by a test**. Gate E is shut; this is the slot a
+  direction goes in, not a direction chosen.
+- **Art is optional everywhere.** Every bitmap is a slot. Drop a PNG at
+  `public/assets/<themeId>/<slotId>.png`, and a build-time scan writes the
+  manifest the client reads; missing files are the normal case and cost neither a
+  request nor a failure. Procedural surfaces — four pattern kinds, exactly what
+  the three directions ask for — are the floor underneath. No art has been
+  imported yet: every slot is empty on purpose.
+- **Hex orientation is a rendering decision, not an engine one.** Moved into
+  `render/layout.ts` and parameterised; the geometry suite runs against both.
+  The engine was not touched, because axial coordinates mean the same thing
+  either way up.
+- **The greyscale rule is a test, not a sentence.** `theme.test.ts` measures the
+  four terrains in CIE L* and fails a direction whose values collapse. It found
+  three real defects on its first run, one of them in the palette that had
+  already shipped — the placeholder's red and blue were the same tone. Do not
+  relax the threshold to make a direction pass; darken something.
+- **`/gallery.html`** — the art-direction workbench, drawn by the same baker the
+  board uses, shipped with the game so it opens on the phone.
+
 ## The gates
 
 **C is passed** (Session 1, with evidence in `LOG.md`). A is playable but
 unjudged — it needs a phone, in portrait, against prod. B has its mechanism
 confirmed by the harness but still needs 20 logged pops from a human. D, E and F
-are open. **Gate E still blocks all art-direction work** until A–D pass.
+are open. **Gate E still blocks CHOOSING an art direction** until A–D pass, and
+nothing has been chosen: the default is still the placeholder. Session 2 built
+the mechanism that makes the choice cheap when the gate opens, and loaded the
+candidates behind it so the decision can be made from a phone rather than from a
+document.
+
+**Nothing visual has been seen by anything.** happy-dom has no 2D canvas, so no
+test in this repository has ever rendered the board. Everything Session 2 added
+is verified as wiring and unverified as a picture.
 
 ## The open design problem
 
@@ -89,7 +122,12 @@ Manual deploy still works: `pnpm build && pnpm exec wrangler deploy`.
 ## Not started
 
 Unlocks (the ledger in `DESIGN.md` is a plan, not code), special tiles, perks,
-map routing, biome colour weights, save/resume, and any art direction at all.
-No design claim has been proven by a HUMAN playing yet — everything in
-`DESIGN.md` marked proven was proven by the harness, which cannot tell you
-whether a minute of it is fun.
+map routing, biome colour weights, and save/resume. No design claim has been
+proven by a HUMAN playing yet — everything in `DESIGN.md` marked proven was
+proven by the harness, which cannot tell you whether a minute of it is fun.
+
+The handed-down art directions assume four mechanics this game does not have: an
+endless scrolling map, two-tier fog of war, a chained cascade, and a pop choice
+that pays `+6 tiles / ×2 points` rather than a whole-board harvest. None were
+built and none were faked. Their asset slots are declared and marked
+`NO MECHANIC`, in the code and on the gallery page. `prompt.md` opens with this.

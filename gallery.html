@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>tiles · art directions</title>
+    <!--
+      The workbench. Every art direction the game can load, drawn by the SAME
+      code that draws the board — so a surface that looks right here looks right
+      in play, and there is no second implementation to drift.
+
+      It ships with the game deliberately. Testing happens on the deployed site,
+      on a phone, in portrait; a design tool that only opens on a laptop is a tool
+      pointed at the wrong screen.
+    -->
+    <link rel="stylesheet" href="/src/gallery/gallery.css" />
+  </head>
+  <body>
+    <main id="gallery"></main>
+    <script type="module" src="/src/gallery/main.ts"></script>
+  </body>
+</html>
