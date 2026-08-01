@@ -201,7 +201,7 @@ untouched. See "what the greyscale test found" below — it had a real defect.
 - **One thing that moves.** A harvest flashes the popped hexes, staggered so a big
   harvest reads as a cascade, derived by diffing consecutive board views — the
   engine still has no events and no clock. Off under `prefers-reduced-motion`.
-- **`/gallery.html`** — every direction's surfaces, ink, type and slot states on
+- **`/gallery`** — every direction's surfaces, ink, type and slot states on
   one page, drawn by the same baker the board uses. It ships with the game because
   a design tool that only opens on a laptop is pointed at the wrong screen.
 

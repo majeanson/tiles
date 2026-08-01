@@ -73,7 +73,7 @@ Last checkpoint: **2026-07-31** — Session 2, the theme layer and the art slots
   three real defects on its first run, one of them in the palette that had
   already shipped — the placeholder's red and blue were the same tone. Do not
   relax the threshold to make a direction pass; darken something.
-- **`/gallery.html`** — the art-direction workbench, drawn by the same baker the
+- **`/gallery`** — the art-direction workbench, drawn by the same baker the
   board uses, shipped with the game so it opens on the phone.
 
 ## The gates

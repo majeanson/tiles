@@ -11,7 +11,7 @@ questions.
 
 - `https://tiles.marcportal.com/?ff=ui.themePicker` — the game, with a row of
   direction buttons under the build stamp. Tap through all four.
-- `https://tiles.marcportal.com/gallery.html` — every direction's surfaces, ink,
+- `https://tiles.marcportal.com/gallery` — every direction's surfaces, ink,
   type and asset slots on one page.
 
 Nothing visual in this repository has ever been rendered by anything. happy-dom
@@ -175,7 +175,7 @@ just how it looks.
 `MAP COST` right, tiles in the direction's one warm colour because tiles is the
 number that kills you. Structure copied from all three directions.
 
-**2.5 — The gallery ships to production.** `/gallery.html`, ~4KB, no Pixi. It is
+**2.5 — The gallery ships to production.** `/gallery`, ~4KB, no Pixi. It is
 reachable by anyone with the URL. Say if you would rather it were dev-only.
 
 **2.6 — `harvestSizeBonus` and the rest of `tuning.ts` were not touched.** The
@@ -195,7 +195,7 @@ waiting since Session 1.
    apart **without thinking**? Can you find the ripe tiles instantly?
 3. Fill a map and harvest. Watch the flash. Reward, or disturbance? (Q3)
 4. Note which direction you keep wanting to switch back to.
-5. Open `/gallery.html` and look at the greyscale strip for the one you liked.
+5. Open `/gallery` and look at the greyscale strip for the one you liked.
 
 If the answer to (1) is no, everything else in this file is premature and the
 next session is a design session, not an art one.

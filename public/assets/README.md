@@ -44,7 +44,7 @@ Two things the reference art sheet does not cover:
    furniture.
 2. **The bottom five slots are not read by anything.** They describe fog, a title
    screen and a card frame, none of which exist. A beautiful PNG in one of those
-   changes nothing on screen. `/gallery.html` marks them `NO MECHANIC` so this
+   changes nothing on screen. `/gallery` marks them `NO MECHANIC` so this
    stays visible rather than becoming a surprise.
 
 ## Orientation
@@ -56,5 +56,5 @@ will be visibly squashed rather than subtly wrong.
 
 ## Checking it landed
 
-Open `/gallery.html`. Every slot lists as `LOADED`, `EMPTY` or `NO MECHANIC`, per
+Open `/gallery`. Every slot lists as `LOADED`, `EMPTY` or `NO MECHANIC`, per
 direction, from the same manifest the game reads.
