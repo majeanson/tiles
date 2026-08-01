@@ -1,7 +1,8 @@
 # DESIGN.md
 
-The working design, as of the 2026-07-31 design pass. **Not yet proven by play** —
-see "What is fragile" at the bottom, and `LOG.md` for the gates.
+The working design, as of the 2026-07-31 design pass. Parts of it are now
+**proven by the harness** and none of it is proven by a human playing — see
+"What the harness proved" at the bottom, and `LOG.md` for the gates.
 
 `ideas/v1-archive/` is the earlier "Hearthfall" design. Reference, not spec: it
 had two scoring channels that could not be priced against each other, and its
@@ -38,9 +39,17 @@ this run. It never resets.
    and becomes stone. Take either tiles or points.
 6. Placing costs tiles. The cost rises the more you have
    placed, all run. At zero: one last tile, one last harvest.
+7. LEAVE for a deeper map once you have harvested on this one.
 ```
 
-Six rules, zero invented words.
+Seven rules, zero invented words.
+
+Rule 7 was added during implementation, not designed up front. Leaving had no
+cost, so it had no limit: skip to map 40 touching nothing and then farm at a 40×
+multiplier. Requiring a harvest first prices depth in the only currency the game
+has — you must build something to ripeness and cash it in before you may move on
+— and it does so as one sentence rather than as another number to tune. The
+alternative, charging tiles to leave, is still open if play dislikes this.
 
 ---
 
@@ -93,17 +102,29 @@ Small harvest favours tiles; large favours points. Harvest size changes every
 time and proximity to death changes constantly, so **the crossover moves all
 run**. Structural, not hopeful.
 
+**The harness confirms this one.** Three policies that differ only in this
+choice: always-tiles scores 0 at depth 7, always-points dies on map 1, and only
+the mixture reaches map 5 with a real score. If the choice were fake, one of the
+two pure strategies would have won. This is the design's strongest joint — and
+note that it is the payout choice that works, not the timing choice below.
+
 ---
 
 ## Numbers
 
-| Constant              | Value                                |
-| --------------------- | ------------------------------------ |
-| Starting tiles        | 40                                   |
-| Cost per placement    | `1 + floor(placements / 100)`        |
-| Tiles per popped tile | `1 + floor(worth / 2)` → 1 to 4      |
-| Points per harvest    | `sum(worth) × count × mapNumber`     |
-| Map size              | ~50 usable cells, growing with depth |
+All of these live in `src/content/tuning.ts`, and a run carries its tuning in
+its state rather than importing it — so `pnpm sim --set costRisesEvery=60`
+reruns the whole economy from one command, and a replay still knows which
+economy it was recorded under.
+
+| Constant              | Value                                             |
+| --------------------- | ------------------------------------------------- |
+| Starting tiles        | 40                                                |
+| Cost per placement    | `1 + floor(placements / 100)`                     |
+| Tiles per popped tile | `1 + floor(worth / 2)` → 1 to 4                   |
+| Points per harvest    | `sum(worth) × (1 + bonus × (count − 1)) × mapNo`  |
+| Harvest size bonus    | 1 — at 1 the above is the original quadratic      |
+| Map size              | radius 4 (61 cells), +1 every 3 maps, capped at 6 |
 
 **These cannot be settled on paper.** Income per placement is
 `(pops per placement) × (tiles per pop)`, and pops-per-placement swings between
@@ -131,7 +152,7 @@ different routes is the tuning signal.
 
 ## How complexity arrives
 
-Run one is the six rules. No stats screen, no tutorial, no glossary.
+Run one is the seven rules. No stats screen, no tutorial, no glossary.
 
 | Unlock | Adds                                                     |
 | ------ | -------------------------------------------------------- |
@@ -143,17 +164,62 @@ Run one is the six rules. No stats screen, no tutorial, no glossary.
 
 ---
 
-## What is fragile
+## What the harness proved
 
-**Is there ever a reason to harvest early?** Points scale quadratically with
-harvest size, so banking everything until the map is finished looks strictly
-better. The counter-argument is real but may not be strong enough: harvesting
-early turns tiles into stone, stone accelerates ripening nearby, so an early
-harvest can yield more total pops.
+Run it yourself with `pnpm sim`. Numbers below are medians over 40 seeds at the
+default tuning.
 
-If that does not hold, rule 5 collapses into "harvest when the map is done" and
-the timing decision is fake. **First thing the harness must test.** Likely fix:
-ripe tiles stop counting as matching neighbours, so banking costs you worth.
+**Rule 5's timing decision is fake, and the reason is worse than we thought.**
+`farm` and `trickle` differ in nothing but _when_ they cash in — both pack every
+map to exhaustion. Farm banks everything to the end and scores **28031**;
+trickle harvests at three ripe and scores **643**. Forty-three times.
+
+The suspected cause was the quadratic term. It is not, or not only: with
+`harvestSizeBonus=0`, making points strictly linear in harvest size, farm still
+beats trickle 716 to 186. The real cause is the rule we were relying on to
+_create_ the tension:
+
+> Popped tiles become stone. Stone surrounds but never matches.
+
+An early harvest does accelerate ripening nearby — but what it accelerates is
+the ripening of _low-worth_ tiles, because everything placed against that new
+stone can never match it. Harvesting early does not trade value for speed. It
+destroys the board's capacity to be worth anything, permanently, and no setting
+of `harvestSizeBonus` compensates.
+
+Two dials exist to attack this and neither is right yet:
+
+- `harvestSizeBonus` (0 → 1) moves points from linear to quadratic in harvest
+  size. At every value, banking wins.
+- `ripeTilesMatch: false` makes a tile that is sitting ripe stop feeding its
+  neighbours. It over-corrects violently: a full-map harvest is then worth
+  _exactly zero_, farm scores 0, and the decision inverts rather than balancing.
+
+**This is the open design problem.** It is pinned as a failing design in
+`src/sim/sim.test.ts`, so a real fix has something to flip.
+
+## What the harness confirmed
+
+**The tiles-or-points choice is real, and it is the run's spine.** Three
+policies differing only in that choice:
+
+| Policy     | Choice        | Depth | Points |
+| ---------- | ------------- | ----- | ------ |
+| `survivor` | always tiles  | 7     | 0      |
+| `hoard`    | always points | 1     | 3921   |
+| `farm`     | mixed         | 5     | 28031  |
+
+Always-tiles lives longest and scores nothing; always-points dies on the first
+map. Only the mixture gets anywhere. Gate B's "no option taken more than ~70% of
+the time" now has a mechanism behind it rather than a hope.
+
+**Packing well is worth 28×.** `blind` places in the first legal hex and scores
+986; `farm` reads colour and scores 28031. The skill the board asks for is real.
+
+**Depth is reachable by opposite routes.** `rush` gets to map 5 in 40
+placements, `farm` to map 5 in 327. Gate C's third clause holds — though rush
+arrives with almost no score, so "comparable scores by different routes" does
+not yet.
 
 ---
 

@@ -4,7 +4,7 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-07-31** — Session 0, foundation.
+Last checkpoint: **2026-07-31** — Session 1, the run loop and the harness.
 
 ## Shipped and settled
 
@@ -39,10 +39,36 @@ Last checkpoint: **2026-07-31** — Session 0, foundation.
   propagate independently of the version stamp. Green CI is not treated as a
   deploy. Repo: `majeanson/tiles` (private); CI green on `main`.
 
+- **The game is playable end to end.** `src/engine/` is the whole run — place,
+  ripen, harvest, leave, die — with tuning carried as data rather than imported,
+  so the harness can sweep an economy and a replay knows which one it ran under.
+  `src/ui/view.ts` derives everything on screen from the same rules the reducer
+  uses, so a preview cannot promise a number the placement will not pay.
+- **`src/sim/` is the balance harness.** `pnpm sim` plays seven policies over
+  N seeds; `--set costRisesEvery=60` reruns the whole economy from one command.
+  Stalls are reported, never hung on. Gate C's clauses are pinned as tests.
+- **Rule 7 exists**: you may leave a map only once you have harvested on it.
+  Added during implementation because leaving was otherwise free and unlimited,
+  which made the map multiplier free with it. See `DESIGN.md`.
+
 ## The gates
 
-All six open. See `LOG.md`. **Gate E blocks all UI/UX and art-direction work**
-until A–D pass.
+**C is passed** (Session 1, with evidence in `LOG.md`). A is playable but
+unjudged — it needs a phone, in portrait, against prod. B has its mechanism
+confirmed by the harness but still needs 20 logged pops from a human. D, E and F
+are open. **Gate E still blocks all art-direction work** until A–D pass.
+
+## The open design problem
+
+Rule 5's harvest TIMING is currently a fake decision: banking every pop until
+the map is finished beats harvesting as you go by 43×, and still wins with the
+quadratic term flattened to zero. The cause is that stone never matches, so an
+early harvest permanently poisons the worth of everything placed beside it.
+Neither `harvestSizeBonus` nor `ripeTilesMatch` fixes it — the latter
+over-corrects to the point that a full-map harvest is worth exactly zero. This
+is written down as a failing design in `src/sim/sim.test.ts` and is the first
+thing the next design pass should attack. Do not author content around rule 5
+until it is settled.
 
 ## Push-to-deploy is armed
 
@@ -62,7 +88,8 @@ Manual deploy still works: `pnpm build && pnpm exec wrangler deploy`.
 
 ## Not started
 
-Game state, the reducer, placement, scoring, pops, regions, escalation, the
-balance harness, the unlock ledger. No design claim has been proven by play yet
-— `DESIGN.md` is deliberately almost empty and should stay that way until it
-isn't.
+Unlocks (the ledger in `DESIGN.md` is a plan, not code), special tiles, perks,
+map routing, biome colour weights, save/resume, and any art direction at all.
+No design claim has been proven by a HUMAN playing yet — everything in
+`DESIGN.md` marked proven was proven by the harness, which cannot tell you
+whether a minute of it is fun.

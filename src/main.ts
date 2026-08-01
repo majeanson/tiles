@@ -1,7 +1,6 @@
-import { disc, keyOf } from '@engine/hex';
 import { decodeFeatures, parseOverrides, withOverrides, type FeatureSet } from '@meta/features';
 import { PixiRenderer } from '@render/PixiRenderer';
-import type { BoardView } from '@render/Renderer';
+import { Game, type Elements } from '@ui/game';
 
 const FEATURE_STORAGE_KEY = 'tiles.features.v1';
 
@@ -21,30 +20,54 @@ function resolveFeatures(): FeatureSet {
   return withOverrides(decodeFeatures(stored), parseOverrides(location.search));
 }
 
-/** Session 0 has no engine state yet: draw the empty grid a region is cut from. */
-function placeholderBoard(): BoardView {
-  return {
-    cells: disc(4).map((h) => ({ key: keyOf(h), q: h.q, r: h.r, kind: 'empty' as const })),
-  };
+/**
+ * `?seed=123` replays an exact run.
+ *
+ * The engine is deterministic precisely so that "it did something odd on my
+ * phone" can become "run this seed", and that is worth nothing unless the seed
+ * can be set from the address bar and read back off the screen.
+ */
+function resolveSeed(): number {
+  const asked = new URLSearchParams(location.search).get('seed');
+  if (asked !== null) {
+    const parsed = Number(asked);
+    if (Number.isFinite(parsed)) return Math.trunc(parsed);
+  }
+  return Date.now() & 0x7fffffff;
+}
+
+function required<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (el === null) throw new Error(`#${id} missing from index.html`);
+  return el as T;
 }
 
 async function main(): Promise<void> {
   const features = resolveFeatures();
+  const seed = resolveSeed();
 
   const stamp = document.getElementById('stamp');
   if (stamp !== null) {
     const on = Object.entries(features)
       .filter(([, enabled]) => enabled)
       .map(([id]) => id);
-    stamp.textContent = `${__BUILD_SHA__.slice(0, 7)}${on.length > 0 ? ` · ${on.join(' ')}` : ''}`;
+    stamp.textContent = [`${__BUILD_SHA__.slice(0, 7)}`, `seed ${seed}`, ...on].join(' · ');
   }
 
-  const host = document.getElementById('board');
-  if (host === null) throw new Error('#board missing from index.html');
+  const elements: Elements = {
+    board: required('board'),
+    stats: required('stats'),
+    draft: required('draft'),
+    harvestTiles: required<HTMLButtonElement>('harvest-tiles'),
+    harvestPoints: required<HTMLButtonElement>('harvest-points'),
+    leave: required<HTMLButtonElement>('leave'),
+    end: required('end'),
+  };
 
   const renderer = new PixiRenderer();
-  await renderer.mount(host);
-  renderer.draw(placeholderBoard());
+  await renderer.mount(elements.board);
+
+  new Game(renderer, elements, seed).start();
 }
 
 void main();

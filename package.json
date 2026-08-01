@@ -27,6 +27,7 @@
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.8.0",
+    "happy-dom": "^20.11.1",
     "prettier": "^3.9.6",
     "tsx": "^4.23.1",
     "typescript": "^5.9.3",

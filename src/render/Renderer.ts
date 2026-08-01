@@ -1,3 +1,4 @@
+import type { Colour } from '@content/tuning';
 import type { HexKey } from '@engine/hex';
 
 /**
@@ -9,17 +10,37 @@ import type { HexKey } from '@engine/hex';
  * headless in the balance harness at full speed.
  *
  * `BoardView` is deliberately a description of WHAT is on the board, not HOW to
- * paint it. Colour, easing and texture belong to the renderer, so art direction
- * can change without the game changing.
+ * paint it. Colour NAMES appear here because four tiles that cannot be told
+ * apart is a broken game rather than a style; which four hues they become is
+ * the renderer's business, and Gate E's.
  */
 
-export type CellKind = 'empty' | 'blocked' | 'barren' | 'tile';
+export type CellKind = 'empty' | 'wall' | 'stone' | 'tile';
 
 export type CellView = {
   readonly key: HexKey;
   readonly q: number;
   readonly r: number;
   readonly kind: CellKind;
+
+  /** Set only on tiles. */
+  readonly colour: Colour | null;
+
+  /** A live tile touched on all six sides, waiting to be harvested. */
+  readonly ripe: boolean;
+  /** Matching neighbours. Meaningful on tiles; zero everywhere else. */
+  readonly worth: number;
+
+  /** Empty ground the player may build on right now. */
+  readonly legal: boolean;
+  /**
+   * What the selected tile would be worth here, on legal cells only.
+   *
+   * The moment-to-moment feedback the whole design rests on: placing raises the
+   * worth of up to six neighbours at once, and this is the player seeing it
+   * before committing. Null where the question does not apply.
+   */
+  readonly preview: number | null;
 };
 
 export type BoardView = {
@@ -31,6 +52,13 @@ export interface Renderer {
   mount(host: HTMLElement): Promise<void>;
   /** Draw a view. Idempotent — calling it twice with the same view is a no-op visually. */
   draw(view: BoardView): void;
+  /**
+   * Which cell is under a point, in CSS pixels relative to the host element.
+   * The renderer owns the board's placement on screen, so it is the only thing
+   * that can answer this; the alternative is the UI duplicating the layout maths
+   * and drifting out of step with what is actually drawn.
+   */
+  hitTest(x: number, y: number): HexKey | null;
   /** Release GPU resources and detach. */
   destroy(): void;
 }

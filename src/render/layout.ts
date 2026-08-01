@@ -22,6 +22,43 @@ export const place = (h: Hex, l: Layout): { x: number; y: number } => {
   return { x: p.x + l.originX, y: p.y + l.originY };
 };
 
+/**
+ * Which hex contains a screen point — the inverse of `place`.
+ *
+ * Rounding in CUBE space rather than axial is the part that is easy to get
+ * wrong: rounding q and r independently picks the wrong hex in the triangular
+ * slivers near each corner, which on a phone reads as taps landing on the tile
+ * next to the one you touched. Rounding all three cube coordinates and
+ * repairing whichever moved furthest is exact everywhere.
+ */
+export function hexAt(x: number, y: number, l: Layout): Hex {
+  if (l.size <= 0) return { q: 0, r: 0 };
+
+  const px = (x - l.originX) / l.size;
+  const py = (y - l.originY) / l.size;
+
+  const q = (Math.sqrt(3) / 3) * px - py / 3;
+  const r = (2 / 3) * py;
+  const s = -q - r;
+
+  let rq = Math.round(q);
+  let rr = Math.round(r);
+  const rs = Math.round(s);
+
+  const dq = Math.abs(rq - q);
+  const dr = Math.abs(rr - r);
+  const ds = Math.abs(rs - s);
+
+  if (dq > dr && dq > ds) rq = -rr - rs;
+  else if (dr > ds) rr = -rq - rs;
+
+  // `Math.round(-0.2)` is -0, and -0 is not 0 to anything that compares by
+  // Object.is. Harmless in a hex key, which stringifies both to "0", and not
+  // harmless at all in a Set or a === against a coordinate computed the other
+  // way — so it is normalised once, here, rather than guarded against later.
+  return { q: rq === 0 ? 0 : rq, r: rr === 0 ? 0 : rr };
+}
+
 /** The six corners of a pointy-top hex, clockwise from the top. */
 export function corners(cx: number, cy: number, size: number): number[] {
   const pts: number[] = [];

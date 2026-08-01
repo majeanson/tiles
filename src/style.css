@@ -51,6 +51,82 @@ body {
   display: block;
 }
 
+#stats {
+  flex: 0 0 auto;
+  padding: 10px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  color: #c3c9d6;
+  white-space: pre;
+}
+
+#controls {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+#draft,
+#actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* 44px is the smallest target a thumb hits reliably; everything here is sized
+   from that up rather than down. */
+button {
+  min-height: 44px;
+  flex: 1 1 0;
+  padding: 0 10px;
+  border: 1px solid #3a4150;
+  border-radius: 6px;
+  background: #1e222b;
+  color: #c3c9d6;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* The draft tiles carry the same four placeholder hues as the board. They are
+   duplicated here rather than shared because the board is drawn to a canvas and
+   these are DOM — see the palette note in PixiRenderer.ts. Replace both. */
+.tile {
+  max-width: 88px;
+  border-width: 2px;
+}
+
+.tile[data-colour='green'] {
+  background: #3f7d55;
+}
+.tile[data-colour='yellow'] {
+  background: #a8912f;
+}
+.tile[data-colour='red'] {
+  background: #9c4340;
+}
+.tile[data-colour='blue'] {
+  background: #3f6291;
+}
+
+.tile[aria-pressed='true'] {
+  border-color: #e8ecf4;
+}
+
+#end {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px;
+  text-align: center;
+  color: #e8ecf4;
+}
+
 #stamp {
   flex: 0 0 auto;
   padding: 6px 10px;

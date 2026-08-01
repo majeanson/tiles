@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { disc, type Hex } from '@engine/hex';
-import { corners, fitLayout, place } from './layout';
+import { corners, fitLayout, hexAt, place } from './layout';
 
 /** Bounding box of every drawn hex, corners included. */
 function drawnBounds(cells: readonly Hex[], l: ReturnType<typeof fitLayout>) {
@@ -108,5 +108,41 @@ describe('corners', () => {
     const a = place({ q: 0, r: 0 }, l);
     const b = place({ q: 1, r: 0 }, l);
     expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeCloseTo(Math.sqrt(3) * 20, 10);
+  });
+});
+
+/**
+ * Placing a tile is the only verb the game has, so a tap that lands one hex off
+ * is not a rough edge — it is the game not working. These check the inverse of
+ * `place` exactly, including the corners where naive rounding goes wrong.
+ */
+describe('hexAt', () => {
+  const l = fitLayout(disc(4), 390, 600, 10);
+
+  it('inverts place for every cell on a full board', () => {
+    for (const cell of disc(4)) {
+      const { x, y } = place(cell, l);
+      expect(hexAt(x, y, l)).toEqual(cell);
+    }
+  });
+
+  // The case axial rounding gets wrong: near a corner, three hexes meet and the
+  // nearest centre is not the hex you are standing in.
+  it('stays correct near the corners, where axial rounding fails', () => {
+    for (const cell of disc(3)) {
+      const { x, y } = place(cell, l);
+      // 80% of the way to each corner is inside the hex but past the midpoint
+      // of the edge, which is where independent q/r rounding breaks down.
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 180) * (60 * i - 90);
+        const px = x + Math.cos(angle) * l.size * 0.8;
+        const py = y + Math.sin(angle) * l.size * 0.8;
+        expect(hexAt(px, py, l)).toEqual(cell);
+      }
+    }
+  });
+
+  it('survives a degenerate layout rather than dividing by zero', () => {
+    expect(hexAt(10, 10, { size: 0, originX: 0, originY: 0 })).toEqual({ q: 0, r: 0 });
   });
 });

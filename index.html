@@ -20,7 +20,26 @@
   </head>
   <body>
     <main id="app">
+      <!-- The run's whole state in one line: what you have, what you have
+           scored, how deep you are, and what the next tile costs. The cost is
+           here because it is the thing that eventually kills you. -->
+      <header id="stats"></header>
+
       <div id="board"></div>
+
+      <!-- Both payouts sit on screen with their real numbers at all times. The
+           harvest is only a decision if you can see what you are giving up. -->
+      <div id="controls">
+        <div id="draft"></div>
+        <div id="actions">
+          <button id="harvest-tiles" type="button"></button>
+          <button id="harvest-points" type="button"></button>
+          <button id="leave" type="button"></button>
+        </div>
+      </div>
+
+      <p id="end" hidden></p>
+
       <!-- Testing happens on the deployed site, so which build you are looking
            at has to be visible on the device itself. -->
       <footer id="stamp"></footer>
