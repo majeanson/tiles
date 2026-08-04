@@ -1,16 +1,8 @@
 import { COLOUR_WEIGHTS, TUNING, type Tuning } from '@content/tuning';
-import { key, type HexKey } from './hex';
+import { key, neighbourKeys, parse, type HexKey } from './hex';
 import { generateMap } from './map';
 import { rngWeighted, streamsFrom, type RngStream, type RngStreams } from './rng';
-import {
-  canAfford,
-  canPlaceAt,
-  costOf,
-  harvestValue,
-  payPlacement,
-  ripeKeys,
-  type Cells,
-} from './rules';
+import { canAfford, canPlaceAt, costOf, harvestValue, payPlacement, ripeKeys } from './rules';
 import type { Action, Cell, GameState, HarvestChoice, Tile } from './state';
 
 /**
@@ -64,8 +56,30 @@ function openMap(
   return { cells, draft, rng: { ...rng, region, tiles } };
 }
 
+/**
+ * The endless world is GROWN, not generated: the seed tile and its six empty
+ * neighbours are the entire starting board, and every placement materialises
+ * the empty ground around itself (see `place`). The invariant that buys is
+ * that no tile ever borders an absent cell — so "absent counts as solid",
+ * which the bounded game leans on for its rims, simply never comes up, and
+ * every rule function works on both worlds unchanged.
+ */
+function openWorld(
+  rng: RngStreams,
+  t: Tuning,
+): { cells: Record<HexKey, Cell>; draft: Tile[]; rng: RngStreams } {
+  const [seed, afterSeed] = rollTile(rng.tiles);
+  const cells: Record<HexKey, Cell> = { [key(0, 0)]: { kind: 'tile', colour: seed.colour } };
+  for (const n of neighbourKeys(0, 0)) cells[n] = { kind: 'empty' };
+
+  const [draft, tiles] = rollDraft(afterSeed, t.draftWidth);
+  return { cells, draft, rng: { ...rng, tiles } };
+}
+
 export function newRun(rootSeed: number, tuning: Tuning = TUNING): GameState {
-  const opened = openMap(streamsFrom(rootSeed), 1, tuning);
+  const streams = streamsFrom(rootSeed);
+  const opened =
+    tuning.world === 'endless' ? openWorld(streams, tuning) : openMap(streams, 1, tuning);
 
   return {
     version: 1,
@@ -92,7 +106,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'PLACE':
       return place(state, action.hex);
     case 'HARVEST':
-      return harvest(state, action.choice);
+      return harvest(state, action.choice, action.at);
     case 'LEAVE':
       return leave(state);
   }
@@ -116,7 +130,20 @@ function place(state: GameState, hex: HexKey): GameState {
   if (!canPlaceAt(state.cells, hex)) return state;
   if (!canAfford(state.tiles)) return state;
 
-  const cells: Cells = { ...state.cells, [hex]: { kind: 'tile', colour: tile.colour } };
+  const cells: Record<HexKey, Cell> = {
+    ...state.cells,
+    [hex]: { kind: 'tile', colour: tile.colour },
+  };
+
+  // The endless plane grows under your feet: placing a tile materialises the
+  // empty ground around it, which keeps the invariant that no tile ever
+  // borders an absent cell. The frontier this creates is also why the endless
+  // world can never be exhausted — only unaffordable.
+  if (state.tuning.world === 'endless') {
+    const { q, r } = parse(hex);
+    for (const n of neighbourKeys(q, r)) cells[n] ??= { kind: 'empty' };
+  }
+
   const [draft, tilesStream] = rollDraft(state.rng.tiles, state.tuning.draftWidth);
 
   return endIfStuck({
@@ -130,19 +157,17 @@ function place(state: GameState, hex: HexKey): GameState {
   });
 }
 
-function harvest(state: GameState, choice: HarvestChoice): GameState {
+function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameState {
   if (state.phase !== 'placing') return state;
 
-  const ripe = ripeKeys(state.cells);
-  if (ripe.length === 0) return state;
+  const { keys, count, tiles, points } = harvestValue(state, at);
+  if (keys.length === 0) return state;
 
-  const { count, tiles, points } = harvestValue(state);
-
-  // Popped tiles become stone: still surrounding, no longer matching. This is
-  // what makes the next harvest on this map faster and cheaper, and therefore
-  // the only reason to ever leave.
+  // Popped tiles become stone: still surrounding, no longer matching. On a
+  // bounded map that is the reason to leave; on the endless plane it is the
+  // reason to keep moving outward — the wake behind you is spent ground.
   const cells: Record<HexKey, Cell> = { ...state.cells };
-  for (const k of ripe) cells[k] = { kind: 'stone' };
+  for (const k of keys) cells[k] = { kind: 'stone' };
 
   return endIfStuck({
     ...state,
@@ -170,7 +195,9 @@ function harvest(state: GameState, choice: HarvestChoice): GameState {
  * and it does so as one sentence rather than as another number to tune.
  */
 export const canLeave = (state: GameState): boolean =>
-  state.phase === 'placing' && state.log.harvests.some((h) => h.mapNumber === state.mapNumber);
+  state.tuning.world !== 'endless' &&
+  state.phase === 'placing' &&
+  state.log.harvests.some((h) => h.mapNumber === state.mapNumber);
 
 function leave(state: GameState): GameState {
   if (!canLeave(state)) return state;

@@ -1,6 +1,14 @@
+import { distance, parse, type HexKey } from '@engine/hex';
 import { canLeave } from '@engine/reduce';
 import { rngInt, rngPick, type RngStream } from '@engine/rng';
-import { canPlaceNow, isExhausted, legalPlacements, previewWorth, ripeKeys } from '@engine/rules';
+import {
+  canPlaceNow,
+  isExhausted,
+  legalPlacements,
+  previewWorth,
+  ripeClusters,
+  ripeKeys,
+} from '@engine/rules';
 import type { Action, GameState } from '@engine/state';
 
 /**
@@ -64,6 +72,75 @@ function bestPlacement(state: GameState): Move | null {
 }
 
 /**
+ * The harvests on offer, one move per pocket.
+ *
+ * On a bounded board a harvest is the whole board, so there is at most one. On
+ * the endless plane every connected ripe cluster is its own harvest with its
+ * own price, and WHICH pocket is part of the decision — so each gets a move.
+ */
+function harvestMoves(state: GameState, choice: 'tiles' | 'points'): Move[] {
+  if (state.tuning.world !== 'endless') {
+    return ripeKeys(state.cells).length > 0 ? [[{ type: 'HARVEST', choice }]] : [];
+  }
+  return ripeClusters(state.cells).map((pocket) => [{ type: 'HARVEST', choice, at: pocket[0]! }]);
+}
+
+/** How big the biggest single harvest available is. Zero when nothing is ripe. */
+function biggestHarvestSize(state: GameState): number {
+  if (state.tuning.world !== 'endless') return ripeKeys(state.cells).length;
+  return ripeClusters(state.cells).reduce((n, pocket) => Math.max(n, pocket.length), 0);
+}
+
+/** The biggest harvest available: the whole board, or the largest pocket. */
+function biggestHarvest(state: GameState, choice: 'tiles' | 'points'): Move | null {
+  if (state.tuning.world !== 'endless') {
+    return ripeKeys(state.cells).length > 0 ? [{ type: 'HARVEST', choice }] : null;
+  }
+  let best: HexKey[] | null = null;
+  for (const pocket of ripeClusters(state.cells)) {
+    if (best === null || pocket.length > best.length) best = pocket;
+  }
+  return best?.[0] === undefined ? null : [{ type: 'HARVEST', choice, at: best[0] }];
+}
+
+/** The smallest harvest available — what you cash when protecting a big one. */
+function smallestHarvest(state: GameState, choice: 'tiles' | 'points'): Move | null {
+  if (state.tuning.world !== 'endless') {
+    return ripeKeys(state.cells).length > 0 ? [{ type: 'HARVEST', choice }] : null;
+  }
+  let least: HexKey[] | null = null;
+  for (const pocket of ripeClusters(state.cells)) {
+    if (least === null || pocket.length < least.length) least = pocket;
+  }
+  return least?.[0] === undefined ? null : [{ type: 'HARVEST', choice, at: least[0] }];
+}
+
+/** How far from home the run has built, in hexes. The endless world's depth. */
+function reachOf(state: GameState): number {
+  let reach = 0;
+  for (const [k, cell] of Object.entries(state.cells)) {
+    if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
+    reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+  }
+  return reach;
+}
+
+/**
+ * The legal spot farthest from home, carrying whichever draft tile does the
+ * most work there. How a policy walks outward on purpose.
+ */
+function farthestPlacement(state: GameState): Move | null {
+  let best: { index: number; hex: string; dist: number; worth: number } | null = null;
+  for (const o of options(state)) {
+    const dist = distance(parse(o.hex), { q: 0, r: 0 });
+    if (best === null || dist > best.dist || (dist === best.dist && o.worth > best.worth)) {
+      best = { ...o, dist };
+    }
+  }
+  return best === null ? null : placeMove(best.index, best.hex);
+}
+
+/**
  * Take tiles when the run is in danger, points when it is not.
  *
  * The threshold is expressed in PLACEMENTS of runway rather than in tiles,
@@ -87,9 +164,7 @@ export const randomLegal: Policy = {
   note: 'Picks uniformly among every legal move. Must die early or the game is not asking anything.',
   decide(state, stream) {
     const moves: Move[] = options(state).map((o) => placeMove(o.index, o.hex));
-    if (ripeKeys(state.cells).length > 0) {
-      moves.push([{ type: 'HARVEST', choice: 'tiles' }], [{ type: 'HARVEST', choice: 'points' }]);
-    }
+    moves.push(...harvestMoves(state, 'tiles'), ...harvestMoves(state, 'points'));
     if (canLeave(state)) moves.push([{ type: 'LEAVE' }]);
     if (moves.length === 0) return [[], stream];
     return rngPick(stream, moves);
@@ -105,13 +180,12 @@ export const randomLegal: Policy = {
  */
 export const farm: Policy = {
   name: 'farm',
-  note: 'Packs every map full before harvesting. Long runs, expensive placements, shallow depth.',
+  note: 'Packs until it cannot place, then cashes everything it can. Long runs, expensive placements.',
   decide(state, stream) {
     const place = bestPlacement(state);
     if (place !== null) return [place, stream];
-    if (ripeKeys(state.cells).length > 0) {
-      return [[{ type: 'HARVEST', choice: cashChoice(state, 8) }], stream];
-    }
+    const cash = biggestHarvest(state, cashChoice(state, 8));
+    if (cash !== null) return [cash, stream];
     return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
   },
 };
@@ -125,8 +199,21 @@ export const farm: Policy = {
  */
 export const rush: Policy = {
   name: 'rush',
-  note: 'Harvests the moment anything ripens and leaves at once. Poor value per map, high multipliers.',
+  note: 'Chases the multiplier first: leaves at once on bounded maps, sprints outward then farms on the plane.',
   decide(state, stream) {
+    if (state.tuning.world === 'endless') {
+      // The beeline probe from ideas/endless-world.md: walk three multiplier
+      // steps out, THEN build. A pure beeline can never ripen anything — an arm
+      // encloses nothing — so the sprint has to stop somewhere to pay at all.
+      if (biggestHarvestSize(state) >= 3) {
+        return [biggestHarvest(state, cashChoice(state, 4)) ?? [], stream];
+      }
+      const sprinting = reachOf(state) < state.tuning.distanceStep * 3;
+      const place = sprinting ? farthestPlacement(state) : bestPlacement(state);
+      if (place !== null) return [place, stream];
+      return [biggestHarvest(state, cashChoice(state, 4)) ?? [], stream];
+    }
+
     if (canLeave(state)) return [[{ type: 'LEAVE' }], stream];
     if (ripeKeys(state.cells).length > 0) {
       return [[{ type: 'HARVEST', choice: cashChoice(state, 4) }], stream];
@@ -150,7 +237,8 @@ export const hoard: Policy = {
   decide(state, stream) {
     const place = bestPlacement(state);
     if (place !== null) return [place, stream];
-    if (ripeKeys(state.cells).length > 0) return [[{ type: 'HARVEST', choice: 'points' }], stream];
+    const cash = biggestHarvest(state, 'points');
+    if (cash !== null) return [cash, stream];
     return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
   },
 };
@@ -163,19 +251,48 @@ export const hoard: Policy = {
  */
 export const trickle: Policy = {
   name: 'trickle',
-  note: 'Harvests as soon as three tiles are ripe, but works the map to exhaustion like a farmer.',
+  note: 'Cashes any harvest of three or more the moment it exists, but packs like a farmer otherwise.',
   decide(state, stream) {
-    if (ripeKeys(state.cells).length >= 3) {
-      return [[{ type: 'HARVEST', choice: cashChoice(state, 8) }], stream];
+    if (biggestHarvestSize(state) >= 3) {
+      return [biggestHarvest(state, cashChoice(state, 8)) ?? [], stream];
     }
     const place = bestPlacement(state);
     if (place !== null) return [place, stream];
-    if (ripeKeys(state.cells).length > 0) {
-      return [[{ type: 'HARVEST', choice: cashChoice(state, 8) }], stream];
-    }
+    const cash = biggestHarvest(state, cashChoice(state, 8));
+    if (cash !== null) return [cash, stream];
     return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
   },
 };
+
+/**
+ * The giant-cluster probe from `ideas/endless-world.md`: if banking survives on
+ * the endless plane, it survives HERE — sustain on small pockets taken as
+ * tiles, protect the biggest one, and cash it as points once it reaches the
+ * threshold. The threshold IS the timing decision, so it comes in sizes: if
+ * bigger is simply always better, local harvest did not fix rule 5's fake
+ * timing, it only moved it. An interior optimum is the signature of a real
+ * decision.
+ */
+const bankAt = (threshold: number): Policy => ({
+  name: `bank${threshold}`,
+  note: `Feeds on small harvests as tiles, and cashes the biggest as points once it reaches ${threshold}.`,
+  decide(state, stream) {
+    if (biggestHarvestSize(state) >= threshold) {
+      return [biggestHarvest(state, 'points') ?? [], stream];
+    }
+    const place = bestPlacement(state);
+    if (place !== null) return [place, stream];
+    const cash = smallestHarvest(state, 'tiles');
+    if (cash !== null) return [cash, stream];
+    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+  },
+});
+
+export const bank3 = bankAt(3);
+export const bank15 = bankAt(15);
+export const bank40 = bankAt(40);
+/** The overshoot: a pocket this size is never built before the money runs out. */
+export const bank80 = bankAt(80);
 
 /**
  * A farmer who never scores. Survival is worth nothing on its own, so this
@@ -188,7 +305,8 @@ export const survivor: Policy = {
   decide(state, stream) {
     const place = bestPlacement(state);
     if (place !== null) return [place, stream];
-    if (ripeKeys(state.cells).length > 0) return [[{ type: 'HARVEST', choice: 'tiles' }], stream];
+    const cash = biggestHarvest(state, 'tiles');
+    if (cash !== null) return [cash, stream];
     return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
   },
 };
@@ -209,9 +327,8 @@ export const blind: Policy = {
       const [index, next] = rngInt(stream, state.draft.length);
       return [placeMove(index, first), next];
     }
-    if (ripeKeys(state.cells).length > 0) {
-      return [[{ type: 'HARVEST', choice: cashChoice(state, 8) }], stream];
-    }
+    const cash = biggestHarvest(state, cashChoice(state, 8));
+    if (cash !== null) return [cash, stream];
     return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
   },
 };
@@ -223,6 +340,10 @@ export const POLICIES: readonly Policy[] = [
   farm,
   hoard,
   trickle,
+  bank3,
+  bank15,
+  bank40,
+  bank80,
   survivor,
 ];
 

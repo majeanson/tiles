@@ -16,6 +16,28 @@
  */
 
 export type Tuning = {
+  /**
+   * Which world the run is played on.
+   *
+   * `bounded` — the shipped game: discs that grow with depth, LEAVE to go
+   * deeper, harvest pops every ripe tile at once, points multiply by map number.
+   *
+   * `endless` — the P1 prototype (`ideas/endless-world.md`): one unbounded
+   * plane grown outward from a seed tile at the origin. No LEAVE. Harvest pops
+   * one connected ripe cluster, and points multiply with the cluster's distance
+   * from home. Exists to answer one question — does local harvest make TIMING a
+   * real decision? — and the harness answers it via `--set world=endless`.
+   */
+  readonly world: 'bounded' | 'endless';
+
+  /**
+   * Endless only: the points multiplier rises by 1 for every `distanceStep`
+   * hexes a harvest happens from the origin. The continuous replacement for the
+   * bounded game's map number — depth becomes distance, priced in placements,
+   * because every hex of the journey out is a placement at ever-rising cost.
+   */
+  readonly distanceStep: number;
+
   readonly startingTiles: number;
 
   /** cost = baseCost + floor(placements / costRisesEvery), all run, never reset. */
@@ -88,6 +110,9 @@ export type Tuning = {
 };
 
 export const TUNING: Tuning = {
+  world: 'bounded',
+  distanceStep: 4,
+
   startingTiles: 40,
 
   baseCost: 1,

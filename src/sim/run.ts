@@ -1,4 +1,5 @@
 import { TUNING, type Tuning } from '@content/tuning';
+import { distance, parse } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { stream, type RngStream } from '@engine/rng';
 import type { DeathCause, GameState } from '@engine/state';
@@ -30,6 +31,11 @@ export type RunResult = {
   readonly points: number;
   /** How deep the run got. Depth is the axis Gate C compares policies on. */
   readonly mapNumber: number;
+  /**
+   * How far from home the run built, in hexes — the endless world's depth. On a
+   * bounded map it is just the last map's used radius, and mostly noise.
+   */
+  readonly reach: number;
   readonly placements: number;
   readonly harvests: number;
   readonly popped: number;
@@ -75,6 +81,12 @@ function summarise(
     }
   }
 
+  let reach = 0;
+  for (const [k, cell] of Object.entries(state.cells)) {
+    if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
+    reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+  }
+
   return {
     policy,
     seed,
@@ -82,6 +94,7 @@ function summarise(
     death: state.death,
     points: state.points,
     mapNumber: state.mapNumber,
+    reach,
     placements: state.placements,
     harvests: state.log.harvests.length,
     popped: state.log.popped,

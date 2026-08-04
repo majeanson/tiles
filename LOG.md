@@ -249,3 +249,75 @@ scrolling map, no title screen, no cascade, and no PNG imported from the design
 project. Real art was left out on purpose — the reference tiles are drawn flat-top
 against a game whose default is pointy-top, and empty slots are a truer starting
 state than art that half fits.
+
+---
+
+### Session 3 — The endless world, P1
+
+**Question:** does local cluster harvest on an unbounded plane, with a distance
+multiplier, make harvest TIMING a real decision? This is P1 of
+`ideas/endless-world.md` — Marc's push, and `prompt.md` Q0 resolved as option
+(b) — aimed squarely at the open design problem Session 1 left: on the bounded
+map, banking every pop to the end beats harvesting as you go by 43× and neither
+existing dial fixes it.
+
+**Answer: yes, with structure the bounded game never had.** The timing dial was
+isolated with a family of policies — `bank<N>` grows its best pocket to N tiles
+before cashing it as points, feeding on small pockets as tiles meanwhile — so N
+is WHEN, holding everything else fixed. Medians over 40 seeds:
+
+- Endless: bank3 336 · bank15 3,873 · bank40 **7,380** · bank80 **0**. An
+  interior optimum with a cliff past it: an 80-pocket is never finished before
+  the cost curve wins, and the run dies with its fortune unpopped. Cash small
+  and you leave a multiple on the table; wait too long and you lose everything.
+- Bounded, same policies: bank3 293 · bank15 3,961 · bank40 33,155 · bank80
+  **111,132** — monotone, no cliff, and FOUR TIMES the old champion `farm`. The
+  bounded timing problem is worse than Session 1 measured: the map-full moment
+  hands you the cash-in risk-free, so banking bigger is simply always better.
+
+Both shapes are pinned in `src/sim/sim.test.ts` — the bounded one still as a
+failing design, the endless one as the candidate fix.
+
+**Two exploits died structurally, no tuning involved.**
+
+- **Bank-until-forced stops existing.** `farm`'s exact line — place until
+  something forces a harvest — scores ZERO on the plane: the only forced stop
+  left is bankruptcy, and at bankruptcy survival always wins the payout choice.
+  (`farm` and `survivor` produce identical runs there, which is the tell.)
+- **The beeline fails.** A pure walk outward can never ripen anything — an arm
+  encloses nothing — so the map-40 exploit's continuous cousin cannot exist.
+  `rush` was rebuilt as the honest probe (sprint three multiplier steps out,
+  then farm there) and lands mid-pack at 1,108.
+
+**How the engine holds it.** One dial in `content/tuning.ts` (`world`, default
+`bounded`), carried in state like every other tuning value, so
+`pnpm sim --set world=endless` replays the whole policy table under the other
+economy. The plane is GROWN, not generated: the seed tile plus its six empty
+neighbours are the entire starting board, and each placement materialises the
+empty ground around itself — so no tile ever borders an absent cell, "absent is
+solid" never fires, and every rule function works on both worlds untouched.
+HARVEST gained an optional target (`at`) that only the endless world reads:
+there a harvest pops one connected ripe cluster, priced by
+`1 + floor(mean distance / distanceStep)` in place of the map number. LEAVE is
+a no-op on the plane; old rule 7's job — pricing depth — moved into the
+distance multiplier, where every hex of the journey out is a placement at
+rising cost.
+
+**Also this session: the draft cards now show the tile.** Marc's first
+hands-on feedback (Gate A's first human signal, and it was negative): the hand
+was three flat swatch buttons and placing read as "just click there". Each card
+now carries the same baked hex surface the board draws — same baker, same
+theme — with the flat swatch kept as the no-canvas fallback. Structure, not art
+direction; Gate E stays shut.
+
+**Verified:** 201 tests green (was 188); typecheck, lint and format clean; both
+40-seed tables reproduced twice; 0 stalled, 0 capped across all eleven policies
+on both worlds.
+
+**Not done, deliberately:** no endless UI — the mode is engine and harness
+only, unreachable from the phone; no fog, no camera, no terrain, no landmarks
+(P2 and P3 in `ideas/endless-world.md`); no tuning of `distanceStep` beyond its
+first value; and the bounded game remains the shipped default everywhere. The
+caveat written into the ideas file stands: trickling small pockets is still
+dominated ~10× by banking to the optimum. The decision now EXISTS; whether its
+gradient is fun needs a human and a screen, and that is P3.

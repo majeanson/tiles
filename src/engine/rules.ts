@@ -1,5 +1,5 @@
 import type { Colour, Tuning } from '@content/tuning';
-import { key, neighbourKeys, parse, type HexKey } from './hex';
+import { distance, key, neighbourKeys, parse, type HexKey } from './hex';
 import type { Cell, GameState } from './state';
 
 /**
@@ -81,6 +81,48 @@ export const ripeKeys = (cells: Cells): HexKey[] =>
   Object.keys(cells).filter((k) => isRipe(cells, k));
 
 /**
+ * The connected ripe cluster containing `at` — ripe tiles reachable from it
+ * through other ripe tiles. Empty when `at` is not ripe.
+ *
+ * This is what a harvest POPS in the endless world: one pocket, not the board.
+ * Connectivity runs through ripe tiles only, so two pockets separated by a
+ * still-growing tile are two separate harvests with two separate prices — which
+ * is exactly the timing decision rule 5 was always supposed to be.
+ */
+export function ripeClusterAt(cells: Cells, at: HexKey): HexKey[] {
+  if (!isRipe(cells, at)) return [];
+  const seen = new Set<HexKey>([at]);
+  const queue: HexKey[] = [at];
+  for (let i = 0; i < queue.length; i++) {
+    const k = queue[i]!;
+    const { q, r } = parse(k);
+    for (const n of neighbourKeys(q, r)) {
+      if (!seen.has(n) && isRipe(cells, n)) {
+        seen.add(n);
+        queue.push(n);
+      }
+    }
+  }
+  return [...seen];
+}
+
+/**
+ * Every ripe cluster on the board, each once, in board order. What a policy —
+ * or eventually a renderer — needs to enumerate the harvests on offer.
+ */
+export function ripeClusters(cells: Cells): HexKey[][] {
+  const seen = new Set<HexKey>();
+  const out: HexKey[][] = [];
+  for (const k of ripeKeys(cells)) {
+    if (seen.has(k)) continue;
+    const cluster = ripeClusterAt(cells, k);
+    for (const member of cluster) seen.add(member);
+    out.push(cluster);
+  }
+  return out;
+}
+
+/**
  * Worth: how many of the six neighbours are LIVE TILES of the same colour.
  * Stone and walls surround but never match — the asymmetry the whole design
  * turns on.
@@ -103,6 +145,24 @@ export function worthOf(cells: Cells, k: HexKey, t: Tuning): number {
   }).length;
 }
 
+const ORIGIN: { q: number; r: number } = { q: 0, r: 0 };
+
+/**
+ * The points multiplier a harvest of exactly these tiles earns.
+ *
+ * Bounded world: the map number, stepped by LEAVE — depth is paid for by rule 7.
+ * Endless world: how far from home the pocket sits, `1 + floor(mean distance /
+ * distanceStep)` — depth is paid for by every placement of the journey out. The
+ * mean rather than the farthest tile, so a long cluster cannot borrow its tip's
+ * multiplier for its whole body.
+ */
+export function harvestMultiplier(state: GameState, pops: readonly HexKey[]): number {
+  if (state.tuning.world !== 'endless') return state.mapNumber;
+  if (pops.length === 0) return 1;
+  const sum = pops.reduce((n, k) => n + distance(parse(k), ORIGIN), 0);
+  return 1 + Math.floor(sum / pops.length / state.tuning.distanceStep);
+}
+
 /**
  * What a harvest would pay, right now.
  *
@@ -111,27 +171,41 @@ export function worthOf(cells: Cells, k: HexKey, t: Tuning): number {
  * `sumWorth * count` the design started from, at 0 they are linear too. That
  * difference is the whole reason the choice stays live: a small harvest favours
  * tiles, a large one favours points, and harvest size changes every time.
+ *
+ * `at` picks the cluster being priced, and only the endless world reads it —
+ * see the HARVEST action. `keys` is the exact set that would pop, so the
+ * reducer stones precisely what was priced and can never disagree with it.
  */
-export function harvestValue(state: GameState): {
+export function harvestValue(
+  state: GameState,
+  at?: HexKey,
+): {
+  keys: HexKey[];
   count: number;
   tiles: number;
   points: number;
 } {
   const t = state.tuning;
-  const ripe = ripeKeys(state.cells);
+  const pops =
+    t.world === 'endless'
+      ? at === undefined
+        ? []
+        : ripeClusterAt(state.cells, at)
+      : ripeKeys(state.cells);
   let tiles = 0;
   let sumWorth = 0;
-  for (const k of ripe) {
+  for (const k of pops) {
     const worth = worthOf(state.cells, k, t);
     sumWorth += worth;
     tiles += t.tilesPerPop + Math.floor(worth / t.worthPerExtraTile);
   }
 
-  const sizeBonus = 1 + t.harvestSizeBonus * Math.max(0, ripe.length - 1);
+  const sizeBonus = 1 + t.harvestSizeBonus * Math.max(0, pops.length - 1);
   return {
-    count: ripe.length,
+    keys: pops,
+    count: pops.length,
     tiles,
-    points: Math.floor(sumWorth * sizeBonus * state.mapNumber),
+    points: Math.floor(sumWorth * sizeBonus * harvestMultiplier(state, pops)),
   };
 }
 

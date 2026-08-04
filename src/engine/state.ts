@@ -99,5 +99,12 @@ export type GameState = {
 export type Action =
   | { readonly type: 'SELECT'; readonly index: number }
   | { readonly type: 'PLACE'; readonly hex: HexKey }
-  | { readonly type: 'HARVEST'; readonly choice: HarvestChoice }
+  /**
+   * `at` targets one connected ripe cluster, and only the endless world reads
+   * it: there a harvest is local, and which pocket you cash is part of the
+   * decision. The bounded game pops every ripe tile regardless — an omitted
+   * `at` on a bounded board is the whole harvest, an omitted `at` on an endless
+   * board is a no-op, and both are the rules rather than special cases.
+   */
+  | { readonly type: 'HARVEST'; readonly choice: HarvestChoice; readonly at?: HexKey }
   | { readonly type: 'LEAVE' };

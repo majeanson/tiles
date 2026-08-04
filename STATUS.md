@@ -4,7 +4,8 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-07-31** — Session 2, the theme layer and the art slots.
+Last checkpoint: **2026-08-04** — Session 3, the endless world's engine and the
+harness's answer to it.
 
 ## Shipped and settled
 
@@ -76,6 +77,23 @@ Last checkpoint: **2026-07-31** — Session 2, the theme layer and the art slots
 - **`/gallery`** — the art-direction workbench, drawn by the same baker the
   board uses, shipped with the game so it opens on the phone.
 
+- **The endless world exists in the engine, behind tuning.** `world: 'endless'`
+  in `content/tuning.ts` (default `bounded`) turns the run into one unbounded
+  plane grown from a seed tile: no LEAVE, harvest pops one connected ripe
+  cluster targeted by `HARVEST`'s optional `at`, points multiply with distance
+  from home in place of the map number. The plane is grown, not generated —
+  every placement materialises the empty ground around itself, so no tile ever
+  borders an absent cell and every rule function serves both worlds unchanged.
+  **No UI reaches it**; it is engine and harness only, per
+  `ideas/endless-world.md` (P1 of three prototypes).
+- **All eleven sim policies play both worlds** — `pnpm sim --set world=endless`
+  reruns the identical table under the other economy. The `bank<N>` family
+  isolates harvest timing as a dial; 0 stalled, 0 capped everywhere.
+- **The draft cards show the tile.** Each card carries the baked hex surface
+  the board draws — same baker, same theme — with the flat swatch as the
+  no-canvas fallback. Prompted by the first human feedback on the prototype:
+  the hand read as "just click there".
+
 ## The gates
 
 **C is passed** (Session 1, with evidence in `LOG.md`). A is playable but
@@ -91,17 +109,23 @@ document.
 test in this repository has ever rendered the board. Everything Session 2 added
 is verified as wiring and unverified as a picture.
 
-## The open design problem
+## The open design problem — now with a candidate answer
 
-Rule 5's harvest TIMING is currently a fake decision: banking every pop until
-the map is finished beats harvesting as you go by 43×, and still wins with the
-quadratic term flattened to zero. The cause is that stone never matches, so an
-early harvest permanently poisons the worth of everything placed beside it.
-Neither `harvestSizeBonus` nor `ripeTilesMatch` fixes it — the latter
-over-corrects to the point that a full-map harvest is worth exactly zero. This
-is written down as a failing design in `src/sim/sim.test.ts` and is the first
-thing the next design pass should attack. Do not author content around rule 5
-until it is settled.
+Rule 5's harvest TIMING is a fake decision **on the bounded map**, and Session
+3 measured it as worse than first thought: the `bank<N>` line (protect one big
+harvest, feed on the rest as tiles) scores monotonically more the longer it
+banks, topping out at 4× the old champion with zero risk, because a full map
+hands you the cash-in moment for free. Still pinned as a failing design in
+`src/sim/sim.test.ts`. Do not author content around rule 5 in the bounded
+world.
+
+**The endless world is the candidate fix, and P1 says it works structurally:**
+on the plane the same dial has an interior optimum (bank40 ≈ 7,400) with a
+cliff past it (bank80 dies with its fortune unpopped, scoring 0), banking-
+until-forced ceases to exist as a scoring line, and the beeline exploit cannot
+ripen anything. Pinned in the same file. What the harness cannot say: whether
+the gradient is FEELABLE by a human — that is P3 (camera, fog, landmarks), and
+it has not been built. See `ideas/endless-world.md` for the full ledger.
 
 ## Push-to-deploy is armed
 
@@ -126,8 +150,9 @@ map routing, biome colour weights, and save/resume. No design claim has been
 proven by a HUMAN playing yet — everything in `DESIGN.md` marked proven was
 proven by the harness, which cannot tell you whether a minute of it is fun.
 
-The handed-down art directions assume four mechanics this game does not have: an
-endless scrolling map, two-tier fog of war, a chained cascade, and a pop choice
-that pays `+6 tiles / ×2 points` rather than a whole-board harvest. None were
-built and none were faked. Their asset slots are declared and marked
-`NO MECHANIC`, in the code and on the gallery page. `prompt.md` opens with this.
+The handed-down art directions assume four mechanics: an endless scrolling map,
+two-tier fog of war, a chained cascade, and a pop choice that pays
+`+6 tiles / ×2 points`. As of Session 3 the first has an ENGINE (the endless
+world, above) but no UI — no scrolling, no camera — and the fog, cascade and
+that pop choice remain unbuilt and unfaked. Their asset slots stay declared and
+marked `NO MECHANIC` until the screen catches up with the reducer.

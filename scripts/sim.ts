@@ -42,6 +42,13 @@ function withSetting(tuning: Tuning, setting: string): Tuning {
     return { ...tuning, [name]: raw === 'true' };
   }
 
+  // The one string-valued dial. A typo here would silently run the WRONG
+  // ECONOMY for a whole sweep, which is worse than a crash, so it validates.
+  if (name === 'world') {
+    if (raw !== 'bounded' && raw !== 'endless') throw new Error(`world wants bounded or endless`);
+    return { ...tuning, world: raw };
+  }
+
   const value = Number(raw);
   if (!Number.isFinite(value)) throw new Error(`${name} wants a number, got "${raw}"`);
   return { ...tuning, [name]: value };

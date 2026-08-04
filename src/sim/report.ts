@@ -21,6 +21,8 @@ export type Summary = {
   readonly bestPoints: number;
   readonly medianDepth: number;
   readonly deepest: number;
+  /** Hexes from home — the endless world's depth axis. See `RunResult.reach`. */
+  readonly medianReach: number;
   readonly medianPlacements: number;
   readonly medianHarvests: number;
 
@@ -50,6 +52,7 @@ export function summarise(policy: string, runs: readonly RunResult[]): Summary {
     bestPoints: runs.reduce((n, r) => Math.max(n, r.points), 0),
     medianDepth: median(runs.map((r) => r.mapNumber)),
     deepest: runs.reduce((n, r) => Math.max(n, r.mapNumber), 0),
+    medianReach: median(runs.map((r) => r.reach)),
     medianPlacements: median(runs.map((r) => r.placements)),
     medianHarvests: median(runs.map((r) => r.harvests)),
     popsPerPlacement: placements === 0 ? 0 : popped / placements,
@@ -64,6 +67,7 @@ const COLUMNS: readonly (readonly [string, (s: Summary) => string])[] = [
   ['best', (s) => String(Math.round(s.bestPoints))],
   ['depth', (s) => s.medianDepth.toFixed(1)],
   ['max', (s) => String(s.deepest)],
+  ['reach', (s) => String(Math.round(s.medianReach))],
   ['places', (s) => String(Math.round(s.medianPlacements))],
   ['harvests', (s) => String(Math.round(s.medianHarvests))],
   ['pops/place', (s) => s.popsPerPlacement.toFixed(2)],

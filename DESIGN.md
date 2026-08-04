@@ -198,6 +198,18 @@ Two dials exist to attack this and neither is right yet:
 **This is the open design problem.** It is pinned as a failing design in
 `src/sim/sim.test.ts`, so a real fix has something to flip.
 
+**2026-08-04 addendum — the fix has a shape, and it is structural.** Session 3
+built the endless world (`ideas/endless-world.md`, behind
+`world: 'endless'` in tuning): one unbounded plane, harvest pops one connected
+ripe cluster, points multiply with distance from home. There the timing dial
+has an interior optimum with a cliff past it — bank a pocket to ~40 and cash
+it, 7,380; try for 80 and die with it unpopped, 0 — while on the bounded map
+the same dial is monotone all the way up to 4× farm's score with no risk.
+Banking works on the bounded map because "map full" hands you the cash-in
+moment for free; take away the wall and WHEN becomes yours to misjudge. Pinned
+in the same test file, harness-proven only — no human has played it, and it
+has no UI to be played on yet.
+
 ## What the harness confirmed
 
 **The tiles-or-points choice is real, and it is the run's spine.** Three
