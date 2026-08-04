@@ -1,5 +1,7 @@
+import { COLOURS, type Colour } from '@content/tuning';
 import { newRun, reduce } from '@engine/reduce';
 import type { Action, GameState } from '@engine/state';
+import { bakeSurface } from '@render/bake';
 import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import type { Theme } from '@theme/tokens';
@@ -32,17 +34,37 @@ export type Elements = {
 /** Label, value, and whether this is the number counting down to the end. */
 type Stat = { readonly id: string; readonly label: string; readonly value: string };
 
+/** Circumradius of the hex drawn on a draft card, in CSS pixels. */
+const HAND_HEX_SIZE = 24;
+
 export class Game {
   #state: GameState;
   readonly #renderer: Renderer;
   readonly #el: Elements;
   readonly #theme: Theme;
+  /**
+   * The four terrain surfaces, baked once to data URLs so a draft card shows the
+   * tile EXACTLY as the board will draw it — same baker, same theme, same
+   * texture. A card that shows a flat swatch while the board shows a hatched hex
+   * is promising one thing and placing another. Empty where no 2D canvas exists
+   * (happy-dom, a broken context); the flat swatch is the fallback, not an error.
+   */
+  readonly #art: Partial<Record<Colour, string>> = {};
 
   constructor(renderer: Renderer, elements: Elements, seed: number, theme: Theme = PLACEHOLDER) {
     this.#renderer = renderer;
     this.#el = elements;
     this.#theme = theme;
     this.#state = newRun(seed);
+
+    for (const colour of COLOURS) {
+      try {
+        const baked = bakeSurface(theme.terrain[colour], HAND_HEX_SIZE, theme.orientation);
+        if (baked !== null) this.#art[colour] = baked.toDataURL();
+      } catch {
+        // No canvas here. The card keeps its coloured background and its word.
+      }
+    }
   }
 
   get state(): GameState {
@@ -159,8 +181,23 @@ export class Game {
         // hue alone: four blocks of colour with no words is a memory test, and
         // it is also unplayable for anyone who cannot separate two of them.
         const name = this.#theme.terrainNames[tile.colour];
-        button.textContent = name;
         button.setAttribute('aria-label', `${name} tile`);
+
+        const art = this.#art[tile.colour];
+        if (art !== undefined) {
+          const img = document.createElement('img');
+          img.className = 'tile-art';
+          img.src = art;
+          img.alt = '';
+          img.draggable = false;
+          button.classList.add('has-art');
+          button.append(img);
+        }
+
+        const label = document.createElement('span');
+        label.className = 'tile-name';
+        label.textContent = name;
+        button.append(label);
 
         button.addEventListener('click', () => {
           this.#dispatch({ type: 'SELECT', index });
