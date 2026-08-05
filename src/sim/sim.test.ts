@@ -3,7 +3,6 @@ import { TUNING, type Tuning } from '@content/tuning';
 import {
   bank15,
   bank3,
-  bank40,
   bank80,
   blind,
   farm,
@@ -162,10 +161,15 @@ describe('the endless world — P1', () => {
    * multiple on the table; wait too long and you lose everything. The bounded
    * game had neither slope nor cliff: banking everything was free, and the full
    * map handed you the cash-in moment. Here WHEN is yours to misjudge.
+   *
+   * And the optimum MOVES with the economy: under the launch tuning (40 tiles,
+   * curve at 100) it sat near a 40-pocket; the 2026-08-04 re-target (30/70)
+   * pulled it to ~15, with 40 already past the cliff on half the seeds. A dial
+   * that answers to tuning is a live decision, not a solved one.
    */
   it('gives harvest timing an interior optimum — with a cliff past it', () => {
     expect(endless(bank15).medianPoints).toBeGreaterThan(endless(bank3).medianPoints * 3);
-    expect(endless(bank40).medianPoints).toBeGreaterThan(endless(bank15).medianPoints);
+    expect(endless(bank15).medianPoints).toBeGreaterThan(endless(bank80).medianPoints);
     expect(endless(bank80).medianPoints).toBe(0);
   });
 
@@ -181,7 +185,7 @@ describe('the endless world — P1', () => {
 
   it('keeps the payout choice load-bearing on the plane', () => {
     expect(endless(survivor).medianPoints).toBe(0);
-    expect(endless(bank40).medianPoints).toBeGreaterThan(endless(hoard).medianPoints);
+    expect(endless(bank15).medianPoints).toBeGreaterThan(endless(hoard).medianPoints);
   });
 
   /**
@@ -192,8 +196,8 @@ describe('the endless world — P1', () => {
    */
   it('pays more on textured ground than on the bare plane', () => {
     const bare: Tuning = { ...ENDLESS, worldWalls: 0, fieldChance: 0 };
-    const textured = endless(bank40).medianPoints;
-    const flat = summarise('bank40', playMany(bank40, SEEDS, { tuning: bare })).medianPoints;
+    const textured = endless(bank15).medianPoints;
+    const flat = summarise('bank15', playMany(bank15, SEEDS, { tuning: bare })).medianPoints;
     expect(textured).toBeGreaterThan(flat);
   });
 });

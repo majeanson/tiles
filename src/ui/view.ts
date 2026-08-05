@@ -62,6 +62,7 @@ export function toBoardView(state: GameState, harvestAt: HexKey | null = null): 
       r,
       kind: cell.kind satisfies CellKind,
       colour: cell.kind === 'tile' ? cell.colour : null,
+      native: cell.kind === 'empty' ? (cell.native ?? null) : null,
       ripe: isRipe(state.cells, k),
       targeted: targeted.has(k),
       worth: worthOf(state.cells, k, state.tuning),

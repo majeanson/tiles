@@ -211,6 +211,49 @@ Persistence-across-runs is not a prototype yet; it waits on P1–P3. Marc has
 confirmed it as the intent (2026-08-04): one world seed per player, revealed
 ground remembered between runs, unlocks as places found. It is P4.
 
+---
+
+## P3b — somewhere to go, and something to find
+
+Marc's direction after first playing (2026-08-04, verbatim intent): *"the
+player needs somewhere to go, a quest, bonus points, etc. Same with tiles we
+get when taking tiles — based on the number, we should get a chance of
+common, unique, magic, etc."* Two systems, one spec, neither built:
+
+**Destinations.** Landmarks seeded by the terrain function, glowing through
+the fog from a distance — the "hint on where to go next" from the original
+push. Reaching one (building your chain out to touch it) pays something
+concrete. First cut: a tile cache (bonus tiles) and a bonus-points site, so
+the reward vocabulary stays inside currencies the game already has. Quests
+("pop a pocket of 12+ within reach of this shrine") come only if plain
+destinations prove out.
+
+**Rarity on the tiles you take.** Today a tiles-harvest pays a NUMBER. The
+direction: it should pay tiles with QUALITY, and quality should roll on
+harvest size — a big pocket cashed as tiles has a chance of better-than-
+common tiles (common / magic / unique, in the Diablo register the torchlit
+direction already speaks). What a better tile DOES is the design work:
+candidates, smallest first — a wild tile (matches any colour); a heavy tile
+(counts double when matched); a seed tile (reveals ground in a ring when
+placed). This makes the TILES side of the payout choice exciting for the
+first time — survival stops being the boring choice — and it couples reward
+quality to the same timing decision the points side already has.
+
+**The questions, one each, before building:**
+
+- Destinations: does a visible destination actually change where a human
+  builds? (P3's original question, now with a concrete reward attached.)
+- Rarity: does rolling quality on harvest size make anyone choose a TILES
+  harvest they would previously have taken as points? (Gate-B-shaped: it
+  must move the choice, or it is decoration.)
+
+**Constraints carried from CLAUDE.md:** special tiles are unlock-gated
+depth, not run-one content (the unlock ledger already reserves this slot);
+every rarity number lives in `content/`; plain words — common, magic, unique
+are words players already own. The harness needs a policy that values
+special tiles before the human question gets asked, or Gate C reopens
+unmeasured.
+
 ## Risks, written down before building
 
 - **Banking may survive as "grow one giant cluster forever".** Ringing a

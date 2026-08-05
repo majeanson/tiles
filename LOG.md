@@ -379,3 +379,43 @@ hidden.
 defaults, and no gate signed — Gate A still waits for twenty placements on a
 phone, now with prompt.md's script plus `?ff=world.endless` as the second
 thing to try.
+
+---
+
+### Session 5 — First contact, and what it moved
+
+**Question:** none of the pinned ones — this session metabolises the first
+human play session. Marc played, banked **134 tiles**, and reported that
+pressing "Move on" felt like nothing ("okk?"). Two findings and a direction.
+
+**The economy never threatened him — re-targeted.** 40 starting tiles and a
+curve at 100 meant the first ~100 placements were effectively free money.
+Swept and moved to **30 / 70** (`content/tuning.ts` carries the reasoning):
+random-legal now dies on map 1, survivor caps ~325 placements, every bounded
+pin holds unchanged — and the endless timing optimum MOVED, from a 40-pocket
+to a 15-pocket, with 40 past the cliff on half the seeds. The dial answering
+to tuning is the decision staying live; re-pinned in `sim.test.ts` with the
+history in the comment. Still unmet and recorded as open: "competent play
+reaches map 6–8" (farm reaches 4).
+
+**"Move on" being flat goes to the endless world, not to polish.** Decision:
+don't dress a moment the new structure deletes. The energy goes to P3b, whose
+spec now exists in `ideas/endless-world.md`: **destinations** (landmarks
+glowing through fog, paying tile caches and bonus points — the original
+"hints on where to go") and **rarity on tiles-harvests** (big pockets cashed
+as tiles roll common/magic/unique — Marc's addition, and the first thing that
+makes the survival choice exciting). Each carries its question; neither is
+built.
+
+**Native fields became visible.** They were only detectable as a +1 in the
+preview numbers. Empty ground native to a colour now shows a faint dot
+pattern in that colour, derived entirely from tokens the theme already has —
+repaint the direction and the fields repaint with it. Values marked
+provisional; Gate E stays shut.
+
+**Verified:** 212 tests green; typecheck, lint, format clean; both worlds
+re-swept at the new economy; production build clean.
+
+**Not done, deliberately:** P3b itself (spec only), the depth-target tuning,
+and nothing signed on any gate — the manual phone script (prompt.md Part 3,
+plus `?ff=world.endless`) is still the next thing only Marc can do.

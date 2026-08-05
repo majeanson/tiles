@@ -135,10 +135,16 @@ export const TUNING: Tuning = {
   fieldSize: 4,
   fieldChance: 0.55,
 
-  startingTiles: 40,
+  // 40/100 let the first human session bank 134 tiles without ever feeling
+  // the curve (2026-08-04). Swept to 30/70: random-legal dies on map 1,
+  // survivor caps ~325 placements, and the endless timing optimum moves from
+  // a 40-pocket to a 15-pocket — closer, which is more pressure sooner. The
+  // "map 6-8 for competent play" depth target is still unmet (farm reaches 4)
+  // and stays an open tuning job; these numbers fix the FELT problem first.
+  startingTiles: 30,
 
   baseCost: 1,
-  costRisesEvery: 100,
+  costRisesEvery: 70,
 
   tilesPerPop: 1,
   worthPerExtraTile: 2,

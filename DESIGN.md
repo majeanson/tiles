@@ -119,12 +119,19 @@ economy it was recorded under.
 
 | Constant              | Value                                             |
 | --------------------- | ------------------------------------------------- |
-| Starting tiles        | 40                                                |
-| Cost per placement    | `1 + floor(placements / 100)`                     |
+| Starting tiles        | 30 — was 40; see the note under this table        |
+| Cost per placement    | `1 + floor(placements / 70)` — was `/ 100`        |
 | Tiles per popped tile | `1 + floor(worth / 2)` → 1 to 4                   |
 | Points per harvest    | `sum(worth) × (1 + bonus × (count − 1)) × mapNo`  |
 | Harvest size bonus    | 1 — at 1 the above is the original quadratic      |
 | Map size              | radius 4 (61 cells), +1 every 3 maps, capped at 6 |
+
+**2026-08-04 re-target.** The first human session banked 134 tiles without
+ever feeling the curve, so the cushion and the curve moved (40→30, 100→70).
+At the new numbers random-legal dies on map 1, survivor caps ~325 placements,
+and the endless timing optimum shifts from a 40-pocket to a 15-pocket — the
+dial answering to tuning, which is what a live decision does. Still unmet:
+"competent play reaches map 6–8" (farm reaches 4). Open tuning job.
 
 **These cannot be settled on paper.** Income per placement is
 `(pops per placement) × (tiles per pop)`, and pops-per-placement swings between

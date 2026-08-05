@@ -4,9 +4,11 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-04** — Session 4: every open decision answered
-(`prompt.md` → ANSWERED), terrain on the plane (P2, answered), and the endless
-world playable behind `?ff=world.endless` (P3a).
+Last checkpoint: **2026-08-04** — Session 5: first human play metabolised.
+Economy re-targeted to 30 tiles / curve at 70 (134 banked tiles was the
+signal), native fields visible as faint patterns, and P3b specced in
+`ideas/endless-world.md` — destinations plus rarity on tiles-harvests
+(common/magic/unique by harvest size). P3b is the next build.
 
 ## Shipped and settled
 

@@ -26,6 +26,13 @@ export type CellView = {
   /** Set only on tiles. */
   readonly colour: Colour | null;
 
+  /**
+   * The colour this EMPTY ground is native to, if any — the endless world's
+   * fields, where placing the matching colour earns one extra worth. Null on
+   * every other kind and on plain ground.
+   */
+  readonly native: Colour | null;
+
   /** A live tile touched on all six sides, waiting to be harvested. */
   readonly ripe: boolean;
   /**

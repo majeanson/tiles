@@ -196,14 +196,34 @@ export class PixiRenderer implements Renderer {
         return theme.wall;
       case 'stone':
         return theme.stone;
-      case 'empty':
+      case 'empty': {
         // Ghosted where the tile you are holding would actually be WORTH
         // something — not on every legal cell, which is most of the board and
         // would read as noise. "Matching pays nothing directly; it sets the
         // worth of the eventual pop" is the design's central claim, and this is
         // that claim painted: the cells that light up are the ones where the
         // thing in your hand does work. The number beside it says how much.
-        return cell.legal && cell.preview !== null && cell.preview > 0 ? theme.ghost : theme.empty;
+        if (cell.legal && cell.preview !== null && cell.preview > 0) return theme.ghost;
+
+        // Native ground shows as a whisper of its colour — dots faint enough to
+        // read as terrain, not as a tile. Derived entirely from tokens the theme
+        // already has, so repainting the direction repaints the fields with it;
+        // the pattern numbers are PROVISIONAL placeholder values (Gate E), and a
+        // direction that wants its own field texture overrides `empty` per se.
+        if (cell.native !== null) {
+          return {
+            ...theme.empty,
+            pattern: {
+              kind: 'dots',
+              ink: theme.terrain[cell.native].fill,
+              alpha: 0.22,
+              radius: 1.1,
+              pitch: 7,
+            },
+          };
+        }
+        return theme.empty;
+      }
       case 'tile':
         // A `tile` with no colour cannot happen — `view.ts` sets colour on every
         // tile — but the view type permits it, and a board that silently vanishes
