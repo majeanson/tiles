@@ -84,6 +84,21 @@ export class PixiRenderer implements Renderer {
     app.stage.addChild(this.#cells, this.#fx, this.#vignette);
     this.#app = app;
 
+    // `resizeTo` only watches WINDOW resizes, but the host is a flex child: it
+    // changes size with no window event at all when the chrome around it does —
+    // the draft cards filling in on the first render, the end screen appearing,
+    // the theme picker mounting. Without observing the element itself, the
+    // canvas keeps its stale first measurement and sits oversized across the
+    // controls until something happens to nudge the window (opening devtools
+    // was how it was caught). The observer closes that gap.
+    const observer =
+      typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+            app.resize();
+          })
+        : null;
+    observer?.observe(host);
+
     // `resizeTo` resizes the canvas but knows nothing about board layout, so the
     // fit has to be recomputed and the board redrawn on every resize. On a phone
     // this fires for rotation and for the URL bar collapsing on scroll.
@@ -102,6 +117,7 @@ export class PixiRenderer implements Renderer {
     app.renderer.on('resize', onResize);
     app.ticker.add(onTick);
     this.#detach = () => {
+      observer?.disconnect();
       app.renderer.off('resize', onResize);
       app.ticker.remove(onTick);
     };
