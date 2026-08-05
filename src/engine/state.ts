@@ -14,10 +14,23 @@ import type { RngStreams } from './rng';
  * and is therefore the entire reason to move on.
  */
 export type Cell =
-  | { readonly kind: 'empty' }
+  | {
+      readonly kind: 'empty';
+      /**
+       * The colour this ground is native to, baked in when the endless world
+       * revealed the cell. A tile of that colour placed here counts the ground
+       * as one extra match. Absent on bounded maps and on plain ground.
+       */
+      readonly native?: Colour;
+    }
   | { readonly kind: 'wall' }
   | { readonly kind: 'stone' }
-  | { readonly kind: 'tile'; readonly colour: Colour };
+  | {
+      readonly kind: 'tile';
+      readonly colour: Colour;
+      /** True when this tile stands on its own native ground. Worth reads it. */
+      readonly onNative?: boolean;
+    };
 
 export type Tile = {
   /** Unique per instance — for renderer keys and for reading action logs. */
@@ -35,14 +48,18 @@ export type HarvestChoice = 'tiles' | 'points';
  * Gate D asks the end screen to name the cause of death in one sentence, so the
  * engine decides it rather than leaving the UI to guess from the numbers.
  *
- * There is exactly one cause, and that is the design working: the cost curve
- * climbs forever while income is capped by geometry at one pop per placement, so
- * every run ends by running out of tiles. Being out of ROOM is never fatal —
- * you can always harvest what is ripe, and always leave a map you have already
- * harvested. A union of one is deliberate: if a later system invents a second
- * way to die, it gets named here rather than inferred from the numbers.
+ * `broke` is the design working: the cost curve climbs forever while income is
+ * capped by geometry, so a run ends out of tiles. On a bounded map it is the
+ * ONLY cause — out of room is never fatal there, because a full map is all
+ * ripe and a harvested map can be left.
+ *
+ * `walled` is the endless world's second death, invented by P2's terrain
+ * exactly as this union predicted a later system would: on the plane there is
+ * no map to leave, so a run whose entire frontier is wall, with nothing ripe
+ * left to cash, has no move at any price. Rare by construction, named rather
+ * than inferred.
  */
-export type DeathCause = 'broke';
+export type DeathCause = 'broke' | 'walled';
 
 /**
  * What one harvest did. Kept as a list because Gate D's real question — did the

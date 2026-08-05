@@ -70,6 +70,7 @@ export const TORCHLIT: Theme = {
     popStaggerMs: 80,
     popColour: 0xf7e6be,
     popAlpha: 0.95,
+    popLift: 0.8,
   },
 
   terrain: {

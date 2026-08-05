@@ -4,6 +4,35 @@ Written at the end of Session 2, for a session where you are available to answer
 Everything below is either **a decision only you can make** or **a thing I did
 that you should look at and confirm or reverse**.
 
+---
+
+## ANSWERED — 2026-08-04, Session 3/4
+
+Marc answered everything below in session. The record, so this file stops
+being a list of open questions:
+
+- **Q0 → (b), and it worked.** The game becomes the map-game the art assumes.
+  P1 (endless engine) is built and the harness says harvest timing is real
+  there — see `ideas/endless-world.md`. **P2 (terrain) and P3 (endless on the
+  phone) are the next builds, both before the next play session.** Whether
+  endless REPLACES bounded is decided by playing P3, not by argument.
+- **The persistent world is the intent.** One world seed per player, revealed
+  ground remembered between runs, unlocks as places found. Planned as P4;
+  nothing built until P2/P3 prove the run.
+- **Q1 — no direction killed.** All four stay until Gate E.
+- **Q2 — decided by looking, with easy access:** `?hex=flat|pointy` overrides
+  any theme's facing, and the picker carries the toggle.
+- **Q3 — both at once: the pop is a JUMP.** Tiles leap and fall away when
+  popped — reward in energy, disturbance in meaning. Built as motion data.
+- **Q5 — names stay as built.** Plain colours on the placeholder, each
+  direction's own words under its theme.
+- **Q6 — no import** until facing and a direction are settled. Q7 waits with it.
+- **Part 2 (2.1–2.6) — all confirmed.** The palette fix, the worth-only ghost
+  tint, and the public gallery all stand.
+
+The phone script in Part 3 is still the thing to do next time the phone is in
+hand, and Gate A still waits on it.
+
 Read `LOG.md` Session 2 for what was built and why. This file is only the
 questions.
 

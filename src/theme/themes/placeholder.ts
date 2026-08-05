@@ -58,6 +58,7 @@ export const PLACEHOLDER: Theme = {
     popStaggerMs: 45,
     popColour: 0xe8ecf4,
     popAlpha: 0.85,
+    popLift: 0.9,
   },
 
   terrain: {

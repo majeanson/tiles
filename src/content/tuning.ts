@@ -38,6 +38,24 @@ export type Tuning = {
    */
   readonly distanceStep: number;
 
+  /**
+   * Endless terrain (P2 of `ideas/endless-world.md`). All of it is a pure
+   * function of the world seed, computed as ground is revealed — never stored,
+   * never rolled. The bounded game reads none of these.
+   *
+   * `worldWalls` — fraction of revealed ground that is wall. Walls surround
+   * (ripen things faster) but never match (pay less), and cannot be built on:
+   * the same economic trade `wallDensity` describes, on the plane.
+   *
+   * Native fields: the plane is tiled into blocks of `fieldSize` hexes;
+   * `fieldChance` of them are native to one colour. A tile placed on its own
+   * native ground counts the ground as one extra match — placement context you
+   * can read before you commit, and the first thing fog will be hiding.
+   */
+  readonly worldWalls: number;
+  readonly fieldSize: number;
+  readonly fieldChance: number;
+
   readonly startingTiles: number;
 
   /** cost = baseCost + floor(placements / costRisesEvery), all run, never reset. */
@@ -113,6 +131,10 @@ export const TUNING: Tuning = {
   world: 'bounded',
   distanceStep: 4,
 
+  worldWalls: 0.06,
+  fieldSize: 4,
+  fieldChance: 0.55,
+
   startingTiles: 40,
 
   baseCost: 1,
@@ -133,6 +155,14 @@ export const TUNING: Tuning = {
 
   ripeTilesMatch: true,
 };
+
+/**
+ * The endless world's economy: the shipped tuning with the world swapped. One
+ * object so the UI flag, the harness and the tests all mean the same thing by
+ * "endless". Balance numbers stay identical on purpose — the worlds differ by
+ * structure, and any number that must differ earns its own entry here.
+ */
+export const ENDLESS_TUNING: Tuning = { ...TUNING, world: 'endless' };
 
 /** The four tile colours. Named for what they are — art direction is undecided. */
 export const COLOURS = ['green', 'yellow', 'red', 'blue'] as const;

@@ -28,6 +28,11 @@ export type CellView = {
 
   /** A live tile touched on all six sides, waiting to be harvested. */
   readonly ripe: boolean;
+  /**
+   * Part of the pocket the harvest buttons are currently pricing. Endless world
+   * only — the bounded harvest is the whole board, so nothing is singled out.
+   */
+  readonly targeted: boolean;
   /** Matching neighbours. Meaningful on tiles; zero everywhere else. */
   readonly worth: number;
 

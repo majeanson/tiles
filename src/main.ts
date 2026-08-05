@@ -1,5 +1,7 @@
+import { ENDLESS_TUNING, TUNING } from '@content/tuning';
 import {
   decodeFeatures,
+  encodeFeatures,
   isEnabled,
   parseOverrides,
   withOverrides,
@@ -9,17 +11,22 @@ import { AssetBook } from '@render/assets';
 import { PixiRenderer } from '@render/PixiRenderer';
 import { applyTheme } from '@theme/apply';
 import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
-import type { Theme } from '@theme/tokens';
+import type { Orientation, Theme } from '@theme/tokens';
 import { Game, type Elements } from '@ui/game';
 
 const FEATURE_STORAGE_KEY = 'tiles.features.v1';
 const THEME_STORAGE_KEY = 'tiles.theme.v1';
+const HEX_STORAGE_KEY = 'tiles.hex.v1';
 
 /**
  * Flags are resolved once, here at the edge, and passed downward as data. The
  * URL override wins over storage so a system can be flipped from the address
  * bar on a phone — which is the only debugging surface that exists when testing
  * against the deployed site.
+ *
+ * The resolved set is written BACK to storage, so an override sticks: visit
+ * `?ff=ui.themePicker` once and the picker is simply there from then on, until
+ * `?ff=-ui.themePicker` takes it away. One link makes a phone a test device.
  */
 function resolveFeatures(): FeatureSet {
   let stored: string | null = null;
@@ -28,7 +35,37 @@ function resolveFeatures(): FeatureSet {
   } catch {
     // Private mode, or storage disabled. Defaults are a fine game.
   }
-  return withOverrides(decodeFeatures(stored), parseOverrides(location.search));
+  const resolved = withOverrides(decodeFeatures(stored), parseOverrides(location.search));
+  try {
+    localStorage.setItem(FEATURE_STORAGE_KEY, encodeFeatures(resolved));
+  } catch {
+    // Same deal: nothing to do, nothing worth saying.
+  }
+  return resolved;
+}
+
+/**
+ * `?hex=flat` / `?hex=pointy` overrides the active theme's facing; `?hex=auto`
+ * hands the decision back to the theme. Sticky, like the theme choice, and for
+ * the same reason: prompt.md Q2 is decided by LOOKING, on a phone, and both
+ * facings have to be one tap away from any theme for that comparison to happen.
+ */
+function resolveFacing(): Orientation | null {
+  const asked = new URLSearchParams(location.search).get('hex');
+  try {
+    if (asked === 'flat' || asked === 'pointy') {
+      localStorage.setItem(HEX_STORAGE_KEY, asked);
+      return asked;
+    }
+    if (asked === 'auto') {
+      localStorage.removeItem(HEX_STORAGE_KEY);
+      return null;
+    }
+    const stored = localStorage.getItem(HEX_STORAGE_KEY);
+    return stored === 'flat' || stored === 'pointy' ? stored : null;
+  } catch {
+    return asked === 'flat' || asked === 'pointy' ? asked : null;
+  }
 }
 
 /**
@@ -97,31 +134,60 @@ function required<T extends HTMLElement>(id: string): T {
  * second, whereas a live swap is a pile of invalidation code guarding a
  * decision that will be made once and then deleted.
  */
-function mountThemePicker(host: HTMLElement, current: Theme): void {
+function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation | null): void {
   host.hidden = false;
-  host.replaceChildren(
-    ...THEMES.map((theme) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'swatch';
-      button.textContent = theme.name;
-      button.title = theme.note;
-      button.setAttribute('aria-pressed', String(theme.id === current.id));
-      button.addEventListener('click', () => {
-        rememberTheme(theme.id);
-        const url = new URL(location.href);
-        url.searchParams.set('theme', theme.id);
-        location.href = url.toString();
-      });
-      return button;
-    }),
-  );
+
+  const reloadWith = (mutate: (url: URL) => void): void => {
+    const url = new URL(location.href);
+    mutate(url);
+    location.href = url.toString();
+  };
+
+  const themeButtons = THEMES.map((theme) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'swatch';
+    button.textContent = theme.name;
+    button.title = theme.note;
+    button.setAttribute('aria-pressed', String(theme.id === current.id));
+    button.addEventListener('click', () => {
+      rememberTheme(theme.id);
+      reloadWith((url) => url.searchParams.set('theme', theme.id));
+    });
+    return button;
+  });
+
+  // The facing row: prompt.md Q2 is answered by flipping between these on a
+  // phone, so they sit right next to the directions being judged.
+  const facingButtons = (
+    [
+      ['auto', 'theme facing'],
+      ['pointy', 'pointy-top'],
+      ['flat', 'flat-top'],
+    ] as const
+  ).map(([value, label]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'swatch';
+    button.textContent = label;
+    button.setAttribute('aria-pressed', String(value === (facing ?? 'auto')));
+    button.addEventListener('click', () => {
+      reloadWith((url) => url.searchParams.set('hex', value));
+    });
+    return button;
+  });
+
+  host.replaceChildren(...themeButtons, ...facingButtons);
 }
 
 async function main(): Promise<void> {
   const features = resolveFeatures();
   const seed = resolveSeed();
-  const theme = resolveTheme(resolveThemeId());
+  const facing = resolveFacing();
+  const picked = resolveTheme(resolveThemeId());
+  // The facing override rides on top of the theme as data, so every consumer —
+  // renderer, baked draft cards, layout — sees one consistent orientation.
+  const theme: Theme = facing === null ? picked : { ...picked, orientation: facing };
 
   // Before anything is drawn: the chrome takes its colours from the same theme
   // the board will, so there is never a frame of placeholder around themed art.
@@ -132,9 +198,13 @@ async function main(): Promise<void> {
     const on = Object.entries(features)
       .filter(([, enabled]) => enabled)
       .map(([id]) => id);
-    stamp.textContent = [`${__BUILD_SHA__.slice(0, 7)}`, `seed ${seed}`, theme.id, ...on].join(
-      ' · ',
-    );
+    stamp.textContent = [
+      `${__BUILD_SHA__.slice(0, 7)}`,
+      `seed ${seed}`,
+      theme.id,
+      ...(facing === null ? [] : [`hex:${facing}`]),
+      ...on,
+    ].join(' · ');
   }
 
   const elements: Elements = {
@@ -148,13 +218,16 @@ async function main(): Promise<void> {
   };
 
   if (isEnabled(features, 'ui.themePicker')) {
-    mountThemePicker(required('themes'), theme);
+    mountThemePicker(required('themes'), theme, facing);
   }
 
   const renderer = new PixiRenderer(theme, AssetBook.empty(), prefersReducedMotion());
   await renderer.mount(elements.board);
 
-  new Game(renderer, elements, seed, theme).start();
+  // The world is a flag until playing P3 decides its fate — `?ff=world.endless`
+  // and the same link's phone is on the plane; without it, the shipped game.
+  const tuning = isEnabled(features, 'world.endless') ? ENDLESS_TUNING : TUNING;
+  new Game(renderer, elements, seed, theme, tuning).start();
 
   // Art loads AFTER the first playable frame, never before it. Every slot is
   // empty today and the procedural surfaces are a complete board; a bitmap that

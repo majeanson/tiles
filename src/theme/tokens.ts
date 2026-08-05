@@ -245,6 +245,13 @@ export type Motion = {
   readonly popColour: Rgb;
   /** Peak alpha of the flash. */
   readonly popAlpha: number;
+  /**
+   * How high a popped tile JUMPS, as a fraction of the hex size; 0 turns the
+   * jump off. Marc's answer to prompt.md Q3 was both at once — reward in the
+   * energy, disturbance in the meaning — so the tile itself leaps and falls
+   * away while the flash burns underneath it.
+   */
+  readonly popLift: number;
 };
 
 export type ThemeId = string;

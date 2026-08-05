@@ -1,5 +1,7 @@
-import { COLOURS, type Colour } from '@content/tuning';
+import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
+import type { HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
+import { isRipe } from '@engine/rules';
 import type { Action, GameState } from '@engine/state';
 import { bakeSurface } from '@render/bake';
 import type { Renderer } from '@render/Renderer';
@@ -51,11 +53,25 @@ export class Game {
    */
   readonly #art: Partial<Record<Colour, string>> = {};
 
-  constructor(renderer: Renderer, elements: Elements, seed: number, theme: Theme = PLACEHOLDER) {
+  /**
+   * The pocket the player last tapped, on the plane. UI state, not game state:
+   * the engine only learns about it when a harvest button carries it as `at`.
+   * The selector re-resolves it every render, so a stale tap (the pocket got
+   * popped) degrades to the biggest pocket rather than to a dead button.
+   */
+  #harvestAt: HexKey | null = null;
+
+  constructor(
+    renderer: Renderer,
+    elements: Elements,
+    seed: number,
+    theme: Theme = PLACEHOLDER,
+    tuning: Tuning = TUNING,
+  ) {
     this.#renderer = renderer;
     this.#el = elements;
     this.#theme = theme;
-    this.#state = newRun(seed);
+    this.#state = newRun(seed, tuning);
 
     for (const colour of COLOURS) {
       try {
@@ -78,20 +94,39 @@ export class Game {
     this.#el.board.addEventListener('pointerup', (event) => {
       const rect = this.#el.board.getBoundingClientRect();
       const hex = this.#renderer.hitTest(event.clientX - rect.left, event.clientY - rect.top);
-      if (hex !== null) this.#dispatch({ type: 'PLACE', hex });
+      if (hex === null) return;
+
+      // On the plane a tap on a ripe tile is a QUESTION — "what is this pocket
+      // worth?" — not a placement. The harvest buttons re-price to that pocket
+      // and the board outlines it. Everywhere else a tap stays a placement.
+      if (this.#state.tuning.world === 'endless' && isRipe(this.#state.cells, hex)) {
+        this.#harvestAt = hex;
+        this.render();
+        return;
+      }
+      this.#dispatch({ type: 'PLACE', hex });
     });
 
     this.#el.harvestTiles.addEventListener('click', () => {
-      this.#dispatch({ type: 'HARVEST', choice: 'tiles' });
+      this.#harvest('tiles');
     });
     this.#el.harvestPoints.addEventListener('click', () => {
-      this.#dispatch({ type: 'HARVEST', choice: 'points' });
+      this.#harvest('points');
     });
     this.#el.leave.addEventListener('click', () => {
       this.#dispatch({ type: 'LEAVE' });
     });
 
     this.render();
+  }
+
+  /**
+   * Harvest what the buttons are pricing. The selector owns which pocket that
+   * is (`hud.harvestAt`), so the dispatch and the price cannot disagree.
+   */
+  #harvest(choice: 'tiles' | 'points'): void {
+    const at = toHudView(this.#state, this.#harvestAt).harvestAt;
+    this.#dispatch(at === null ? { type: 'HARVEST', choice } : { type: 'HARVEST', choice, at });
   }
 
   #dispatch(action: Action): void {
@@ -104,8 +139,8 @@ export class Game {
   }
 
   render(): void {
-    this.#renderer.draw(toBoardView(this.#state));
-    this.#renderHud(toHudView(this.#state));
+    this.#renderer.draw(toBoardView(this.#state, this.#harvestAt));
+    this.#renderHud(toHudView(this.#state, this.#harvestAt));
   }
 
   #renderHud(hud: HudView): void {
@@ -119,6 +154,7 @@ export class Game {
     this.#el.harvestTiles.disabled = !hud.canHarvest;
     this.#el.harvestPoints.disabled = !hud.canHarvest;
 
+    this.#el.leave.hidden = !hud.showLeave;
     this.#el.leave.textContent = hud.leaveHint;
     this.#el.leave.disabled = !hud.canLeave;
 
@@ -142,7 +178,7 @@ export class Game {
     const stats: readonly Stat[] = [
       { id: 'tiles', label: 'TILES', value: String(hud.tiles) },
       { id: 'points', label: 'POINTS', value: String(hud.points) },
-      { id: 'map', label: 'MAP', value: String(hud.mapNumber) },
+      { id: 'map', label: hud.depthLabel, value: String(hud.depthValue) },
       { id: 'cost', label: 'COST', value: `−${hud.cost}` },
     ];
 

@@ -183,4 +183,17 @@ describe('the endless world — P1', () => {
     expect(endless(survivor).medianPoints).toBe(0);
     expect(endless(bank40).medianPoints).toBeGreaterThan(endless(hoard).medianPoints);
   });
+
+  /**
+   * P2's answer: terrain enriches without breaking. Native ground raises the
+   * worth ceiling and walls cheapen ripening, so the same strategy on the same
+   * seeds scores MORE on textured ground than on the bare plane — while the
+   * timing structure above (optimum, cliff, dead exploits) holds either way.
+   */
+  it('pays more on textured ground than on the bare plane', () => {
+    const bare: Tuning = { ...ENDLESS, worldWalls: 0, fieldChance: 0 };
+    const textured = endless(bank40).medianPoints;
+    const flat = summarise('bank40', playMany(bank40, SEEDS, { tuning: bare })).medianPoints;
+    expect(textured).toBeGreaterThan(flat);
+  });
 });

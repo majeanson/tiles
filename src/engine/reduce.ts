@@ -2,8 +2,17 @@ import { COLOUR_WEIGHTS, TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, parse, type HexKey } from './hex';
 import { generateMap } from './map';
 import { rngWeighted, streamsFrom, type RngStream, type RngStreams } from './rng';
-import { canAfford, canPlaceAt, costOf, harvestValue, payPlacement, ripeKeys } from './rules';
+import {
+  canAfford,
+  canPlaceAt,
+  costOf,
+  harvestValue,
+  isExhausted,
+  payPlacement,
+  ripeKeys,
+} from './rules';
 import type { Action, Cell, GameState, HarvestChoice, Tile } from './state';
+import { terrainAt } from './world';
 
 /**
  * The engine. `reduce(state, action) -> state`, and nothing else.
@@ -57,20 +66,33 @@ function openMap(
 }
 
 /**
+ * Growth reveals ground: the cell the terrain function says has always been
+ * there, consulted exactly once and baked into the board. Walls arrive as
+ * walls; open ground remembers which colour it is native to.
+ */
+function revealCell(rootSeed: number, k: HexKey, t: Tuning): Cell {
+  const { q, r } = parse(k);
+  const ground = terrainAt(rootSeed, q, r, t);
+  if (ground.wall) return { kind: 'wall' };
+  return ground.native === null ? { kind: 'empty' } : { kind: 'empty', native: ground.native };
+}
+
+/**
  * The endless world is GROWN, not generated: the seed tile and its six empty
  * neighbours are the entire starting board, and every placement materialises
- * the empty ground around itself (see `place`). The invariant that buys is
- * that no tile ever borders an absent cell — so "absent counts as solid",
- * which the bounded game leans on for its rims, simply never comes up, and
- * every rule function works on both worlds unchanged.
+ * the ground around itself (see `place`). The invariant that buys is that no
+ * tile ever borders an absent cell — so "absent counts as solid", which the
+ * bounded game leans on for its rims, simply never comes up, and every rule
+ * function works on both worlds unchanged.
  */
 function openWorld(
+  rootSeed: number,
   rng: RngStreams,
   t: Tuning,
 ): { cells: Record<HexKey, Cell>; draft: Tile[]; rng: RngStreams } {
   const [seed, afterSeed] = rollTile(rng.tiles);
   const cells: Record<HexKey, Cell> = { [key(0, 0)]: { kind: 'tile', colour: seed.colour } };
-  for (const n of neighbourKeys(0, 0)) cells[n] = { kind: 'empty' };
+  for (const n of neighbourKeys(0, 0)) cells[n] = revealCell(rootSeed, n, t);
 
   const [draft, tiles] = rollDraft(afterSeed, t.draftWidth);
   return { cells, draft, rng: { ...rng, tiles } };
@@ -79,7 +101,7 @@ function openWorld(
 export function newRun(rootSeed: number, tuning: Tuning = TUNING): GameState {
   const streams = streamsFrom(rootSeed);
   const opened =
-    tuning.world === 'endless' ? openWorld(streams, tuning) : openMap(streams, 1, tuning);
+    tuning.world === 'endless' ? openWorld(rootSeed, streams, tuning) : openMap(streams, 1, tuning);
 
   return {
     version: 1,
@@ -130,18 +152,24 @@ function place(state: GameState, hex: HexKey): GameState {
   if (!canPlaceAt(state.cells, hex)) return state;
   if (!canAfford(state.tiles)) return state;
 
+  // A tile on its own native ground carries that fact from the cell it covers.
+  const ground = state.cells[hex];
+  const onNative = ground?.kind === 'empty' && ground.native === tile.colour;
+
   const cells: Record<HexKey, Cell> = {
     ...state.cells,
-    [hex]: { kind: 'tile', colour: tile.colour },
+    [hex]: onNative
+      ? { kind: 'tile', colour: tile.colour, onNative }
+      : { kind: 'tile', colour: tile.colour },
   };
 
-  // The endless plane grows under your feet: placing a tile materialises the
-  // empty ground around it, which keeps the invariant that no tile ever
-  // borders an absent cell. The frontier this creates is also why the endless
-  // world can never be exhausted — only unaffordable.
+  // The endless plane grows under your feet: placing a tile reveals the ground
+  // around it, which keeps the invariant that no tile ever borders an absent
+  // cell. What it reveals is the terrain function's answer — walls included,
+  // which is how the plane gets to say no.
   if (state.tuning.world === 'endless') {
     const { q, r } = parse(hex);
-    for (const n of neighbourKeys(q, r)) cells[n] ??= { kind: 'empty' };
+    for (const n of neighbourKeys(q, r)) cells[n] ??= revealCell(state.rootSeed, n, state.tuning);
   }
 
   const [draft, tilesStream] = rollDraft(state.rng.tiles, state.tuning.draftWidth);
@@ -221,10 +249,18 @@ function leave(state: GameState): GameState {
  *
  * Ripe tiles waiting to be harvested are NOT an end — you can always cash out,
  * which keeps a stuck board from being a silent loss. Neither is a full map, so
- * long as you may still leave it. What kills you is the cost curve, every time.
+ * long as you may still leave it. On a bounded map what kills you is the cost
+ * curve, every time; the endless world's terrain added a second, rarer death —
+ * a frontier that is all wall, with nothing ripe left to cash, has no move at
+ * any price no matter how rich you are.
  */
 function endIfStuck(state: GameState): GameState {
-  if (canAfford(state.tiles)) return state;
+  const solvent = canAfford(state.tiles);
+  // The bounded game can only die broke, so money alone settles it there.
+  if (solvent && state.tuning.world !== 'endless') return state;
+
   if (ripeKeys(state.cells).length > 0) return state;
-  return { ...state, phase: 'ended', death: 'broke' };
+  if (!solvent) return { ...state, phase: 'ended', death: 'broke' };
+  if (isExhausted(state.cells)) return { ...state, phase: 'ended', death: 'walled' };
+  return state;
 }

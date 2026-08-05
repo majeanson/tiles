@@ -177,13 +177,39 @@ richer without breaking the economy?* Walls ripen clusters faster but pay
 less (prompt.md Q4's economy question, now answerable). Native fields are a
 placement magnet the policies can read.
 
+**P2's answer — enriches, doesn't break.** Terrain is `engine/world.ts`, a
+pure hash of `(worldSeed, hex)`: `worldWalls` fraction of ground is wall,
+`fieldChance` of `fieldSize`-hex blocks are native to a colour, and a tile on
+its own native ground counts the ground as one match. Same 40 seeds: every
+scoring line improves (bank40 7,380 → **16,040**, rush 1,108 → 1,284, trickle
+767 → 894), reach extends (12 → 16), and the structure holds — interior
+optimum, cliff at bank80, blind still 0, nothing stalls. Walls also invented
+the run's second death, exactly as the `DeathCause` union predicted a later
+system would: `walled`, a frontier that is all wall with nothing left to pop.
+Pinned in `sim.test.ts` ("pays more on textured ground").
+
 **P3 — the UI: camera, fog, one landmark type.**
 *Question: does a hint through the fog actually change where a human plays?*
 This is a Gate-B-shaped question — if players ignore landmarks, they are
 decoration and come out. Pan-vs-tap on a phone gets solved here or the whole
 thing dies on touch.
 
-Persistence-across-runs is not a prototype yet; it waits on P1–P3.
+**P3a is built — the plane under a thumb, question still open.**
+`?ff=world.endless` plays the endless world on the phone: the board auto-fits
+the grown world (every placement zooms the camera out a step — no pan, no
+pinch, and therefore no gesture war with tap-to-place), a tap on a ripe tile
+is a QUESTION rather than a placement — the harvest buttons re-price to that
+pocket and the board outlines it in the theme's accent — LEAVE is gone, and
+the third stat reads REACH. Deliberately not built: fog (undiscovered ground
+is simply not drawn, which is half of fog for free), landmarks and their
+hints, and any pan gesture. Those are **P3b**, and P3's actual question —
+does a hint change where a human plays — stays unanswered until they exist.
+What P3a answers first, on a phone: is the plane playable AT ALL at
+auto-fit scale, and does the pocket-tap harvest read.
+
+Persistence-across-runs is not a prototype yet; it waits on P1–P3. Marc has
+confirmed it as the intent (2026-08-04): one world seed per player, revealed
+ground remembered between runs, unlocks as places found. It is P4.
 
 ## Risks, written down before building
 

@@ -22,14 +22,22 @@ import { SurfaceTextures } from './surfaces';
  * sits over both and only changes when the canvas resizes.
  */
 
-/** One popped hex, burning. */
+/**
+ * One popped hex, animating. `glow` is the warm flash; `jump` is the tile
+ * itself leaping and falling away — Marc's Q3 answer, reward and disturbance
+ * at once. Both run on the same stagger so a big harvest reads as a cascade.
+ */
 type Flash = {
+  readonly kind: 'glow' | 'jump';
   readonly sprite: Sprite;
   /** Milliseconds until it starts. A harvest staggers so it reads as a cascade. */
   delayMs: number;
   elapsedMs: number;
   readonly lifeMs: number;
   readonly peak: number;
+  /** Jump only: rest height and leap height, in pixels. */
+  readonly baseY: number;
+  readonly liftPx: number;
 };
 
 export class PixiRenderer implements Renderer {
@@ -245,6 +253,13 @@ export class PixiRenderer implements Renderer {
 
   #strokeFor(cell: CellView, size: number): { width: number; colour: number } | null {
     const board = this.#theme.board;
+    // The pocket being priced outranks even ripe: on the plane the harvest
+    // buttons answer for exactly these cells, and the outline is that promise.
+    if (cell.targeted)
+      return {
+        width: Math.max(2, size * board.ripeEdgeWidth * 1.4),
+        colour: this.#theme.ink.accent,
+      };
     // Ripe is the one thing the player must never miss — it is the entire
     // harvest decision — so it gets the loudest outline on the board.
     if (cell.ripe)
@@ -282,9 +297,10 @@ export class PixiRenderer implements Renderer {
   #spawnFlashes(previous: BoardView, next: BoardView, layout: Layout): void {
     if (this.#reducedMotion || previous.cells.length === 0) return;
 
-    const wasRipe = new Set<HexKey>();
+    // Key to colour, so the jump can wear the popped tile's own surface.
+    const wasRipe = new Map<HexKey, CellView>();
     for (const cell of previous.cells) {
-      if (cell.kind === 'tile' && cell.ripe) wasRipe.add(cell.key);
+      if (cell.kind === 'tile' && cell.ripe) wasRipe.set(cell.key, cell);
     }
     if (wasRipe.size === 0) return;
 
@@ -297,20 +313,59 @@ export class PixiRenderer implements Renderer {
       if (cell.kind !== 'stone' || !wasRipe.has(cell.key)) continue;
 
       const { x, y } = place(cell, layout);
-      const sprite = new Sprite(texture);
-      sprite.anchor.set(0.5);
-      sprite.position.set(x, y);
-      sprite.setSize(layout.size * 3.2, layout.size * 3.2);
-      sprite.alpha = 0;
-      this.#fx.addChild(sprite);
+      const delayMs = index * motion.popStaggerMs;
+
+      const glow = new Sprite(texture);
+      glow.anchor.set(0.5);
+      glow.position.set(x, y);
+      glow.setSize(layout.size * 3.2, layout.size * 3.2);
+      glow.alpha = 0;
+      this.#fx.addChild(glow);
 
       this.#flashes.push({
-        sprite,
-        delayMs: index * motion.popStaggerMs,
+        kind: 'glow',
+        sprite: glow,
+        delayMs,
         elapsedMs: 0,
         lifeMs: motion.popMs,
         peak: motion.popAlpha,
+        baseY: y,
+        liftPx: 0,
       });
+
+      // The tile itself leaps off its spot and falls away, leaving the stone
+      // that is already drawn underneath. Same cached surface texture the board
+      // uses, so the thing that jumps is exactly the thing that was there.
+      const popped = wasRipe.get(cell.key);
+      if (motion.popLift > 0 && popped !== undefined && popped.colour !== null) {
+        const surface = this.#theme.terrain[popped.colour];
+        const tileTexture =
+          this.#assets.get(surface.asset) ??
+          this.#surfaces.get(surface, layout.size, layout.orientation);
+        if (tileTexture !== null) {
+          const jumper = new Sprite(tileTexture);
+          jumper.anchor.set(0.5);
+          jumper.position.set(x, y);
+          const wide = layout.orientation === 'pointy' ? Math.sqrt(3) : 2;
+          const tall = layout.orientation === 'pointy' ? 2 : Math.sqrt(3);
+          jumper.setSize(layout.size * wide, layout.size * tall);
+          jumper.alpha = 0;
+          this.#fx.addChild(jumper);
+
+          this.#flashes.push({
+            kind: 'jump',
+            sprite: jumper,
+            delayMs,
+            elapsedMs: 0,
+            // A touch longer than the glow so the tile lands after the light.
+            lifeMs: motion.popMs * 1.25,
+            peak: 1,
+            baseY: y,
+            liftPx: layout.size * motion.popLift,
+          });
+        }
+      }
+
       index++;
     }
   }
@@ -338,11 +393,20 @@ export class PixiRenderer implements Renderer {
         continue;
       }
 
-      // Fast up, slow down. A symmetric fade reads as a pulsing light; the
-      // asymmetry is what makes it read as something having happened.
-      const curve = t < 0.15 ? t / 0.15 : Math.pow(1 - (t - 0.15) / 0.85, 2);
-      flash.sprite.alpha = flash.peak * curve;
-      flash.sprite.scale.set(1 + t * 0.35);
+      if (flash.kind === 'glow') {
+        // Fast up, slow down. A symmetric fade reads as a pulsing light; the
+        // asymmetry is what makes it read as something having happened.
+        const curve = t < 0.15 ? t / 0.15 : Math.pow(1 - (t - 0.15) / 0.85, 2);
+        flash.sprite.alpha = flash.peak * curve;
+        flash.sprite.scale.set(1 + t * 0.35);
+      } else {
+        // The leap: a parabola peaking mid-life, visible at once, fading only
+        // on the way down — so it reads as the tile jumping off the board and
+        // falling away, not as a ghost drifting up.
+        flash.sprite.alpha = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
+        flash.sprite.position.y = flash.baseY - flash.liftPx * 4 * t * (1 - t);
+        flash.sprite.scale.set(1 + 0.12 * Math.sin(Math.PI * t));
+      }
       alive.push(flash);
     }
     this.#flashes = alive;

@@ -68,6 +68,7 @@ export const ROT_BLOOM: Theme = {
     popStaggerMs: 62,
     popColour: 0xc8f0a8,
     popAlpha: 0.9,
+    popLift: 1,
   },
 
   terrain: {

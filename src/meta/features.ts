@@ -40,6 +40,15 @@ export const FEATURES = [
     defaultOn: false,
   },
   {
+    id: 'world.endless',
+    label: 'The endless world',
+    note:
+      'P3 of ideas/endless-world.md: one unbounded plane instead of bounded maps. ' +
+      'Local cluster harvests, distance pays, no LEAVE. Off because the bounded game ' +
+      'is the shipped default until playing this decides otherwise.',
+    defaultOn: false,
+  },
+  {
     id: 'ui.themePicker',
     label: 'Theme picker',
     note:

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { key, type HexKey } from '@engine/hex';
+import { ENDLESS_TUNING, type Tuning } from '@content/tuning';
+import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { ripeKeys } from '@engine/rules';
 import type { BoardView, Renderer } from '@render/Renderer';
 import { Game, type Elements } from './game';
@@ -38,7 +39,7 @@ class StubRenderer implements Renderer {
   }
 }
 
-function build(seed = 4): { game: Game; renderer: StubRenderer; el: Elements } {
+function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer; el: Elements } {
   document.body.innerHTML = `
     <header id="stats"></header>
     <div id="board"></div>
@@ -65,7 +66,7 @@ function build(seed = 4): { game: Game; renderer: StubRenderer; el: Elements } {
   };
 
   const renderer = new StubRenderer();
-  return { game: new Game(renderer, el, seed), renderer, el };
+  return { game: new Game(renderer, el, seed, undefined, tuning), renderer, el };
 }
 
 const tap = (el: HTMLElement): void => {
@@ -207,5 +208,48 @@ describe('the game loop', () => {
     ctx.renderer.nextHit = key(1, 0);
     tap(ctx.el.board);
     expect(ctx.game.state.placements).toBe(placements);
+  });
+});
+
+describe('the endless world, under a thumb', () => {
+  let ctx: ReturnType<typeof build>;
+
+  beforeEach(() => {
+    ctx = build(7, ENDLESS_TUNING);
+    ctx.game.start();
+  });
+
+  /** Ring the seed tile so it ripens: the smallest pocket the plane can make. */
+  const ripenTheSeed = (): void => {
+    for (const n of neighbourKeys(0, 0)) {
+      ctx.renderer.nextHit = n;
+      tap(ctx.el.board);
+    }
+    expect(ripeKeys(ctx.game.state.cells)).toContain(key(0, 0));
+  };
+
+  it('hides LEAVE and reports REACH instead of MAP', () => {
+    expect(ctx.el.leave.hidden).toBe(true);
+    const label = ctx.el.stats.querySelector('[data-stat="map"] .stat-label')?.textContent;
+    expect(label).toBe('REACH');
+  });
+
+  it('prices the pocket, outlines it, and a tap on ripe asks rather than places', () => {
+    ripenTheSeed();
+
+    // The buttons price the pocket without any tap — biggest is the default.
+    expect(ctx.el.harvestPoints.disabled).toBe(false);
+    const targeted = ctx.renderer.last.cells.filter((c) => c.targeted).map((c) => c.key);
+    expect(targeted).toContain(key(0, 0));
+
+    // Tapping the ripe tile is a question, not a placement.
+    const placements = ctx.game.state.placements;
+    ctx.renderer.nextHit = key(0, 0);
+    tap(ctx.el.board);
+    expect(ctx.game.state.placements).toBe(placements);
+
+    // And the answer pops exactly that pocket.
+    ctx.el.harvestTiles.click();
+    expect(ctx.game.state.cells[key(0, 0)]?.kind).toBe('stone');
   });
 });

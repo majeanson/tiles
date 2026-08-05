@@ -138,11 +138,14 @@ export function worthOf(cells: Cells, k: HexKey, t: Tuning): number {
   const cell = cells[k];
   if (cell?.kind !== 'tile') return 0;
   const { q, r } = parse(k);
-  return neighbourKeys(q, r).filter((n) => {
+  const matches = neighbourKeys(q, r).filter((n) => {
     const other = cells[n];
     if (other?.kind !== 'tile' || other.colour !== cell.colour) return false;
     return t.ripeTilesMatch || !isRipe(cells, n);
   }).length;
+  // Native ground counts as one match — the endless world's rule 4 addendum.
+  // Baked into the tile at placement, so worth never has to ask the terrain.
+  return matches + (cell.onNative === true ? 1 : 0);
 }
 
 const ORIGIN: { q: number; r: number } = { q: 0, r: 0 };
@@ -221,18 +224,23 @@ export function harvestValue(
  * no preview.
  */
 export function previewWorth(cells: Cells, k: HexKey, colour: Colour, t: Tuning): number {
+  const ground = cells[k];
+  const onNative = ground?.kind === 'empty' && ground.native === colour;
+
   // Fast path: with ripe neighbours still paying, worth does not depend on
   // ripeness at all, so there is nothing the hypothetical board would change.
   // Worth taking — the harness asks this a few hundred times per placement, and
   // the slow path copies the whole board to answer it.
   if (t.ripeTilesMatch) {
     const { q, r } = parse(k);
-    return neighbourKeys(q, r).filter((n) => {
-      const other = cells[n];
-      return other?.kind === 'tile' && other.colour === colour;
-    }).length;
+    return (
+      neighbourKeys(q, r).filter((n) => {
+        const other = cells[n];
+        return other?.kind === 'tile' && other.colour === colour;
+      }).length + (onNative ? 1 : 0)
+    );
   }
-  return worthOf({ ...cells, [k]: { kind: 'tile', colour } }, k, t);
+  return worthOf({ ...cells, [k]: { kind: 'tile', colour, onNative } }, k, t);
 }
 
 /** Build a `cells` record from a list of coordinates, all empty. */

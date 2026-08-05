@@ -321,3 +321,61 @@ first value; and the bounded game remains the shipped default everywhere. The
 caveat written into the ideas file stands: trickling small pockets is still
 dominated ~10× by banking to the optimum. The decision now EXISTS; whether its
 gradient is fun needs a human and a screen, and that is P3.
+
+---
+
+### Session 4 — The decisions, the ground, and the plane under a thumb
+
+**Question:** P2's, from `ideas/endless-world.md` — does background terrain
+make placement richer without breaking the endless economy? Plus the session
+`prompt.md` was written for: Marc answered every open decision in it, and the
+answers are recorded there under "ANSWERED".
+
+**The decisions, in brief.** P2 then P3, both before the next play session.
+Endless-replaces-bounded is decided by playing, not arguing. The persistent
+world (one seed per player, fog memory across runs, unlocks as places found)
+is confirmed as the intent — P4. No art direction killed; facing decided by
+looking, so `?hex=flat|pointy` now overrides any theme and the picker carries
+the toggle, sticky like the theme choice. Feature overrides now persist too —
+visit `?ff=ui.themePicker` once and it stays. Q3's answer was both at once:
+**the pop is a jump** — the tile leaps and falls away over the flash, `popLift`
+in every theme's motion, off under reduced motion. Session 2's three flagged
+calls all confirmed.
+
+**P2 — answered: terrain enriches and breaks nothing.** `engine/world.ts` is a
+pure hash of `(worldSeed, hex)` — no streams, no storage; growth reveals it
+cell by cell and bakes the answer into the board. Walls (6% of ground)
+surround-but-never-match and cannot be built on; native fields (55% of 4-hex
+blocks) count as one extra match for their own colour, promised by the same
+`previewWorth` the placement pays. Same 40 seeds as Session 3: bank40 7,380 →
+**16,040**, rush 1,108 → 1,284, trickle 767 → 894, reach 12 → 16, and the
+timing structure — interior optimum, cliff at 80, dead exploits — holds
+untouched. Walls also invented the run's second death, exactly as the
+`DeathCause` union said a later system would: **walled**, a frontier that is
+all wall with nothing ripe left, named by the engine and spoken by the
+epitaph. Pinned in `sim.test.ts`.
+
+**P3a — built, its question waiting on a phone.** `?ff=world.endless` plays
+the plane: the board auto-fits the grown world (no pan, no pinch, so no
+gesture war with tap-to-place), a tap on a ripe tile is a question — the
+harvest buttons re-price to that pocket, the board outlines it in accent —
+LEAVE is gone and the third stat reads REACH. Fog, landmarks and hints are
+P3b, deliberately: undrawn ground is already half of fog, and P3's real
+question (does a hint change where a human plays) needs landmarks to exist.
+
+**Also fixed: the board now watches its own element.** Pixi's `resizeTo` only
+hears window resizes, but `#board` is a flex child that changes size with no
+window event — the draft cards filling in on first render being the case that
+surfaced it (canvas oversized across the controls until devtools opened the
+window). A `ResizeObserver` on the host closes the whole class.
+
+**Verified:** 212 tests green (was 201); typecheck, lint and format clean; the
+40-seed endless table run with terrain on and off; the endless UI loop covered
+headlessly against the stub renderer — ripen, target, pop, REACH label, LEAVE
+hidden.
+
+**Not done, deliberately:** P3b (fog tiers, landmarks, hints), P4
+(persistence), any pan gesture, any `distanceStep`/terrain tuning sweep beyond
+defaults, and no gate signed — Gate A still waits for twenty placements on a
+phone, now with prompt.md's script plus `?ff=world.endless` as the second
+thing to try.

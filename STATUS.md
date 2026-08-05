@@ -4,8 +4,9 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-04** — Session 3, the endless world's engine and the
-harness's answer to it.
+Last checkpoint: **2026-08-04** — Session 4: every open decision answered
+(`prompt.md` → ANSWERED), terrain on the plane (P2, answered), and the endless
+world playable behind `?ff=world.endless` (P3a).
 
 ## Shipped and settled
 
@@ -84,8 +85,24 @@ harness's answer to it.
   from home in place of the map number. The plane is grown, not generated —
   every placement materialises the empty ground around itself, so no tile ever
   borders an absent cell and every rule function serves both worlds unchanged.
-  **No UI reaches it**; it is engine and harness only, per
-  `ideas/endless-world.md` (P1 of three prototypes).
+  Playable behind `?ff=world.endless` (see the P3a bullet below), per
+  `ideas/endless-world.md`.
+- **The plane has ground under it (P2, answered).** `engine/world.ts` is a pure
+  hash of `(worldSeed, hex)`: 6% walls that surround-but-never-match and cannot
+  be built on, native fields where a tile of the right colour counts the ground
+  as one extra match. The harness says terrain enriches without breaking —
+  every scoring policy improves, reach extends, the timing structure holds.
+  Walls added the run's second named death, `walled`. Pinned in `sim.test.ts`.
+- **P3a: the plane is playable on a phone**, behind `?ff=world.endless`. The
+  board auto-fits the grown world (no pan/pinch, so no gesture conflict with
+  tap-to-place); tapping a ripe tile targets its pocket — the harvest buttons
+  re-price to it and the board outlines it in accent; LEAVE is hidden; the
+  third stat reads REACH. Fog, landmarks and hints are P3b, not built.
+- **Every decision in prompt.md is answered** — see its ANSWERED section.
+  Highlights: P4 (persistent world, fog memory across runs) confirmed as the
+  intent; the pop is a JUMP (tile leaps and falls, `popLift` per theme);
+  `?hex=flat|pointy` overrides any theme's facing and the picker carries the
+  toggle; feature and facing overrides persist across visits.
 - **All eleven sim policies play both worlds** — `pnpm sim --set world=endless`
   reruns the identical table under the other economy. The `bank<N>` family
   isolates harvest timing as a dial; 0 stalled, 0 capped everywhere.

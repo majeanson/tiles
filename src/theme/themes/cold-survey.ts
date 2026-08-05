@@ -68,6 +68,7 @@ export const COLD_SURVEY: Theme = {
     popStaggerMs: 90,
     popColour: 0xe8eeea,
     popAlpha: 0.8,
+    popLift: 0.7,
   },
 
   terrain: {
