@@ -45,15 +45,65 @@ body {
 }
 
 /* min-height:0 lets this flex child actually shrink, which is what allows the
-   canvas to size itself to the space left over rather than overflowing. */
+   canvas to size itself to the space left over rather than overflowing.
+   touch-action:none hands EVERY gesture on the board to the game — tap, drag
+   and pinch are all interpreted by game.ts, and the browser must not answer
+   any of them with a scroll or a page zoom. */
 #board {
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
+  touch-action: none;
 }
 
 #board canvas {
   display: block;
+}
+
+/* ------------------------------------------------------------------ camera */
+
+/* The camera stack and the manual, floating over the canvas top-right. Small
+   on purpose — chrome over the board must never read as part of the board. */
+#camera {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 1;
+}
+
+#camera button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  width: 40px;
+  padding: 0;
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+#camera #zoom-fit {
+  font-size: 9px;
+}
+
+/* One screen of sentences, over the board, gone on tap. */
+#help-panel {
+  position: absolute;
+  inset: 8px;
+  z-index: 2;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 6px;
+  background: var(--panel, #1e222b);
+  color: var(--ink, #e8ecf4);
+  font-family: var(--font-body, inherit);
+}
+
+#help-panel p {
+  margin: 0 0 10px;
+  line-height: 1.5;
 }
 
 /* ------------------------------------------------------------------ stats */
@@ -232,6 +282,20 @@ button:disabled {
   font-size: 8px;
   letter-spacing: 0.12em;
   color: var(--accent, #d7b45a);
+}
+
+/* The card whose best placement pays the most right now. A word, not a
+   glow — it is advice, and advice should never outshine the choice. */
+.tile-best {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim, #8a91a0);
+}
+
+/* Keep the action row's height stable while the harvest buttons come and go,
+   so the board above never resizes because a pocket ripened. */
+#actions {
+  min-height: 44px;
 }
 
 @media (prefers-reduced-motion: no-preference) {

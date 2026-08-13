@@ -7,6 +7,7 @@ import {
   costOf,
   harvestValue,
   isRipe,
+  legalPlacements,
   previewWorth,
   ripeClusterAt,
   ripeClusters,
@@ -150,6 +151,12 @@ export type HudView = {
     readonly colour: Colour;
     readonly rarity: Rarity;
     readonly selected: boolean;
+    /**
+     * The card whose best placement pays the most right now. The UI taking a
+     * decision off the player's plate: you still choose, but you never have
+     * to audit three cards to find out which one is worth looking at.
+     */
+    readonly best: boolean;
   }[];
 
   readonly ripeCount: number;
@@ -163,6 +170,12 @@ export type HudView = {
   readonly canLeave: boolean;
   readonly leaveHint: string;
 
+  /**
+   * What to do right now, in one clause — the reorientation line. Always
+   * present while the run lives, so a player coming back mid-run reads one
+   * sentence instead of re-deriving the state of the board.
+   */
+  readonly guide: string | null;
   /**
    * The nearest unclaimed destination, as one short sentence — the endless
    * world's answer to "where do I go?". Null when there is nothing to say,
@@ -185,6 +198,7 @@ export function toHudView(state: GameState, harvestAt: HexKey | null = null): Hu
   const target = resolveHarvestTarget(state, harvestAt);
   const value = endless ? harvestValue(state, target ?? undefined) : harvestValue(state);
   const leaving = canLeave(state);
+  const best = bestDraftIndex(state);
 
   return {
     tiles: state.tiles,
@@ -202,6 +216,7 @@ export function toHudView(state: GameState, harvestAt: HexKey | null = null): Hu
       colour: tile.colour,
       rarity: tile.rarity,
       selected: i === state.selected,
+      best: i === best,
     })),
 
     ripeCount: ripeKeys(state.cells).length,
@@ -213,12 +228,36 @@ export function toHudView(state: GameState, harvestAt: HexKey | null = null): Hu
     canLeave: leaving,
     leaveHint: leaving ? 'Move on' : 'Harvest here first',
 
+    guide: guideFor(state),
     hint: hintFor(state),
     odds: oddsFor(state),
 
     ended: state.phase === 'ended',
     epitaph: state.phase === 'ended' ? epitaphFor(state) : null,
   };
+}
+
+/**
+ * The one-clause "what now". Danger first, then the harvest moment, then the
+ * default loop. Deliberately never more than a sentence: this is the line a
+ * player reads to reorient, not a tutorial.
+ */
+function guideFor(state: GameState): string | null {
+  if (state.phase !== 'placing') return null;
+
+  const ripe = ripeKeys(state.cells).length > 0;
+  const cost = costOf(state.placements, state.tuning);
+  if (state.tiles <= cost * 3) {
+    return ripe
+      ? 'Low on tiles — cash a pocket as tiles'
+      : 'Low on tiles — ripen something to cash in';
+  }
+  if (ripe) {
+    return state.tuning.world === 'endless'
+      ? 'Pocket ready — tap it, then take tiles or pts'
+      : 'Ripe — harvest, or keep building it bigger';
+  }
+  return 'Place tiles — surround one on all six sides to ripen it';
 }
 
 /**
@@ -254,6 +293,28 @@ function hintFor(state: GameState): string | null {
         ? 'a scoring site'
         : 'a territory to claim';
   return `${named[0]!.toUpperCase()}${named.slice(1)} glows ${dist} out`;
+}
+
+/**
+ * Which draft card's best placement pays the most, or null when nothing pays
+ * anything — a marker on every draw would be noise, and a tie at zero is not
+ * a recommendation. Derived from the same previews the board shows, so the
+ * marked card and the lit-up hexes can never disagree.
+ */
+function bestDraftIndex(state: GameState): number | null {
+  if (!canPlaceNow(state)) return null;
+  const spots = legalPlacements(state.cells);
+
+  let best: { index: number; worth: number } | null = null;
+  state.draft.forEach((tile, index) => {
+    for (const k of spots) {
+      const worth = previewWorth(state.cells, k, tile, state.tuning);
+      if (best === null || worth > best.worth) best = { index, worth };
+    }
+  });
+  return best !== null && (best as { worth: number }).worth > 0
+    ? (best as { index: number }).index
+    : null;
 }
 
 /** "magic 6% · unique 1.2%", or null while the rarity system is off. */

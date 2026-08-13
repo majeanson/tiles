@@ -32,7 +32,18 @@ export type Elements = {
   readonly harvestPoints: HTMLButtonElement;
   readonly leave: HTMLButtonElement;
   readonly end: HTMLElement;
+  readonly zoomIn: HTMLButtonElement;
+  readonly zoomOut: HTMLButtonElement;
+  readonly zoomFit: HTMLButtonElement;
+  readonly help: HTMLButtonElement;
+  readonly helpPanel: HTMLElement;
 };
+
+/** One zoom-button step. Three taps from fit to full close-up. */
+const ZOOM_STEP = 1.6;
+
+/** Movement under this many pixels is still a tap; past it, a drag. */
+const TAP_SLOP = 8;
 
 /** Label, value, and whether this is the number counting down to the end. */
 type Stat = { readonly id: string; readonly label: string; readonly value: string };
@@ -89,23 +100,36 @@ export class Game {
   }
 
   start(): void {
-    // `pointerup` rather than `click`: a click is synthesised ~300ms after a
-    // touch on some mobile browsers, and placing a tile a third of a second
-    // after the thumb lifts is the difference between crisp and mushy.
-    this.#el.board.addEventListener('pointerup', (event) => {
-      const rect = this.#el.board.getBoundingClientRect();
-      const hex = this.#renderer.hitTest(event.clientX - rect.left, event.clientY - rect.top);
-      if (hex === null) return;
+    this.#mountGestures();
 
-      // On the plane a tap on a ripe tile is a QUESTION — "what is this pocket
-      // worth?" — not a placement. The harvest buttons re-price to that pocket
-      // and the board outlines it. Everywhere else a tap stays a placement.
-      if (this.#state.tuning.world === 'endless' && isRipe(this.#state.cells, hex)) {
-        this.#harvestAt = hex;
-        this.render();
-        return;
-      }
-      this.#dispatch({ type: 'PLACE', hex });
+    this.#el.zoomIn.addEventListener('click', () => {
+      this.#renderer.zoomBy(ZOOM_STEP);
+      this.#syncCamera();
+    });
+    this.#el.zoomOut.addEventListener('click', () => {
+      this.#renderer.zoomBy(1 / ZOOM_STEP);
+      this.#syncCamera();
+    });
+    this.#el.zoomFit.addEventListener('click', () => {
+      this.#renderer.resetCamera();
+      this.#syncCamera();
+    });
+
+    // The help panel is static text, written once: how to play, in the order
+    // a run asks the questions. It closes on any tap because the only thing
+    // to do with it is stop reading it.
+    this.#el.helpPanel.replaceChildren(
+      ...this.#helpLines().map((line) => {
+        const p = document.createElement('p');
+        p.textContent = line;
+        return p;
+      }),
+    );
+    this.#el.help.addEventListener('click', () => {
+      this.#el.helpPanel.hidden = !this.#el.helpPanel.hidden;
+    });
+    this.#el.helpPanel.addEventListener('click', () => {
+      this.#el.helpPanel.hidden = true;
     });
 
     this.#el.harvestTiles.addEventListener('click', () => {
@@ -118,7 +142,129 @@ export class Game {
       this.#dispatch({ type: 'LEAVE' });
     });
 
+    this.#syncCamera();
     this.render();
+  }
+
+  /**
+   * One finger taps or, past a small slop, pans. Two fingers pinch. Placement
+   * only ever happens on a lift that never crossed the slop — so the board
+   * can be dragged and zoomed freely without a stray tile appearing, which is
+   * the gesture war P3a sidestepped by having no camera at all.
+   *
+   * `pointerup` rather than `click` for the tap: a click is synthesised
+   * ~300ms after a touch on some mobile browsers, and placing a tile a third
+   * of a second after the thumb lifts is the difference between crisp and
+   * mushy.
+   */
+  #mountGestures(): void {
+    const board = this.#el.board;
+    const down = new Map<number, { x: number; y: number }>();
+    let moved = false;
+    let pinch = 0;
+
+    const spread = (): number => {
+      const [a, b] = [...down.values()];
+      return a !== undefined && b !== undefined ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+    };
+
+    board.addEventListener('pointerdown', (event) => {
+      down.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (down.size === 2) pinch = spread();
+      try {
+        board.setPointerCapture(event.pointerId);
+      } catch {
+        // No capture support (old browser, test DOM). Gestures still work;
+        // a drag that leaves the element just ends early.
+      }
+    });
+
+    board.addEventListener('pointermove', (event) => {
+      const from = down.get(event.pointerId);
+      if (from === undefined) return;
+
+      if (down.size >= 2) {
+        down.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        const d = spread();
+        if (pinch > 0 && d > 0) {
+          this.#renderer.zoomBy(d / pinch);
+          this.#syncCamera();
+        }
+        pinch = d;
+        moved = true;
+        return;
+      }
+
+      const dx = event.clientX - from.x;
+      const dy = event.clientY - from.y;
+      if (!moved && Math.hypot(dx, dy) < TAP_SLOP) return;
+      moved = true;
+      this.#renderer.panBy(dx, dy);
+      down.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    });
+
+    const lift = (event: PointerEvent): void => {
+      const had = down.delete(event.pointerId);
+      if (down.size > 0) {
+        // One finger of a pinch lifted; the other continues as a pan.
+        pinch = 0;
+        return;
+      }
+      const tapped = had && !moved && event.type === 'pointerup';
+      moved = false;
+      pinch = 0;
+      if (tapped) this.#tap(event);
+    };
+    board.addEventListener('pointerup', lift);
+    board.addEventListener('pointercancel', lift);
+  }
+
+  #tap(event: PointerEvent): void {
+    const rect = this.#el.board.getBoundingClientRect();
+    const hex = this.#renderer.hitTest(event.clientX - rect.left, event.clientY - rect.top);
+    if (hex === null) return;
+
+    // On the plane a tap on a ripe tile is a QUESTION — "what is this pocket
+    // worth?" — not a placement. The harvest buttons re-price to that pocket
+    // and the board outlines it. Everywhere else a tap stays a placement.
+    if (this.#state.tuning.world === 'endless' && isRipe(this.#state.cells, hex)) {
+      this.#harvestAt = hex;
+      this.render();
+      return;
+    }
+    this.#dispatch({ type: 'PLACE', hex });
+  }
+
+  /** Zooming out below fit is meaningless, so those two buttons say so. */
+  #syncCamera(): void {
+    const atFit = this.#renderer.zoomLevel() <= 1.001;
+    this.#el.zoomOut.disabled = atFit;
+    this.#el.zoomFit.disabled = atFit;
+  }
+
+  /**
+   * How to play, in plain words, in the order a run asks the questions.
+   * Static per world; rules are quoted, never re-derived, so this text can
+   * not drift from the engine without someone editing a sentence on purpose.
+   */
+  #helpLines(): string[] {
+    const endless = this.#state.tuning.world === 'endless';
+    return [
+      'Tap a card, then a glowing hex. Placing costs tiles, and the cost rises all run.',
+      'Surround a tile on all six sides to ripen it. Its worth = matching neighbours.',
+      endless
+        ? 'Tap a ripe pocket, then take tiles (live longer) or pts (score — farther from home pays more).'
+        : 'Harvest pops every ripe tile: take tiles (live longer) or pts (score — deeper maps pay more).',
+      'Popped tiles turn to stone. Stone surrounds but never matches — keep moving.',
+      ...(endless
+        ? [
+            'Glows in the dark are destinations: + pays tiles, ★ pays pts, ◆ claims the land around it. Build out and touch them.',
+            'MAGIC tiles match any colour; UNIQUE ones count double. Taking tiles from big pockets raises the odds.',
+          ]
+        : ['Once you have harvested here, you may move on — deeper maps pay more.']),
+      'Zoom with + and −, drag to pan, FIT to see everything.',
+      'Out of tiles ends the run. Tap to close this.',
+    ];
   }
 
   /**
@@ -148,16 +294,21 @@ export class Game {
     this.#renderStats(hud);
     this.#renderDraft(hud);
 
-    // The compass line: nearest destination, then the draft's rarity odds.
-    // One string, so the element collapses to nothing when both are silent.
-    const hint = [hud.hint, hud.odds].filter((s) => s !== null).join(' · ');
+    // The reorientation line: what to do now, then the nearest destination,
+    // then the odds. One string, collapsing to nothing when all are silent.
+    const hint = [hud.guide, hud.hint, hud.odds].filter((s) => s !== null).join(' · ');
     this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
 
-    // Both payouts are always on screen with their real numbers. The choice is
-    // only a choice if you can see what you are giving up.
+    // The harvest buttons exist only while the choice does. A pair of dead
+    // buttons pricing an impossible harvest at 0 was two decisions on screen
+    // that were not decisions; their appearing IS the "pocket ready" signal,
+    // and when they appear both payouts show their real numbers — the choice
+    // is only a choice if you can see what you are giving up.
     this.#el.harvestTiles.textContent = `Take ${hud.harvestTiles} tiles`;
     this.#el.harvestPoints.textContent = `Take ${hud.harvestPoints} pts`;
+    this.#el.harvestTiles.hidden = !hud.canHarvest;
+    this.#el.harvestPoints.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;
     this.#el.harvestPoints.disabled = !hud.canHarvest;
 
@@ -230,16 +381,6 @@ export class Game {
           tile.rarity === 'common' ? `${name} tile` : `${tile.rarity} ${name} tile`,
         );
 
-        // Rarity is written on the card, not just hinted: MAGIC matches every
-        // colour and UNIQUE counts double, and a power you might not notice is
-        // a power that might as well not exist.
-        if (tile.rarity !== 'common') {
-          const badge = document.createElement('span');
-          badge.className = 'tile-rarity';
-          badge.textContent = tile.rarity.toUpperCase();
-          button.append(badge);
-        }
-
         const art = this.#art[tile.colour];
         if (art !== undefined) {
           const img = document.createElement('img');
@@ -255,6 +396,26 @@ export class Game {
         label.className = 'tile-name';
         label.textContent = name;
         button.append(label);
+
+        // Rarity is written on the card, not just hinted: MAGIC matches every
+        // colour and UNIQUE counts double, and a power you might not notice is
+        // a power that might as well not exist.
+        if (tile.rarity !== 'common') {
+          const badge = document.createElement('span');
+          badge.className = 'tile-rarity';
+          badge.textContent = tile.rarity.toUpperCase();
+          button.append(badge);
+        }
+
+        // The card whose best placement pays the most, marked so choosing a
+        // card starts from an answer instead of an audit. The selector decides
+        // which one from the same previews the board draws.
+        if (tile.best) {
+          const badge = document.createElement('span');
+          badge.className = 'tile-best';
+          badge.textContent = 'BEST';
+          button.append(badge);
+        }
 
         button.addEventListener('click', () => {
           this.#dispatch({ type: 'SELECT', index });

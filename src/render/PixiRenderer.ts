@@ -2,9 +2,18 @@ import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } 
 import { key, type HexKey } from '@engine/hex';
 import { hex, rgba, type Surface, type Theme } from '@theme/tokens';
 import { AssetBook } from './assets';
-import { corners, fitLayout, hexAt, place, type Layout } from './layout';
+import { corners, fitLayout, hexAt, place, zoomLayout, type Layout } from './layout';
 import type { BoardView, CellView, Renderer } from './Renderer';
 import { SurfaceTextures } from './surfaces';
+
+/**
+ * The camera's range. 1 is the auto-fit that shows the whole grown world plus
+ * its beacons — you can always get everything back on screen — and 4 is close
+ * enough that a single hex is unmistakable under a thumb. Interaction bounds,
+ * not balance and not art: they live with the renderer that enforces them.
+ */
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 4;
 
 /**
  * The board, drawn from a theme.
@@ -49,6 +58,17 @@ export class PixiRenderer implements Renderer {
   #view: BoardView = { cells: [] };
   #layout: Layout | null = null;
   #detach: (() => void) | null = null;
+
+  /**
+   * The camera: zoom baked into the layout (cell size changes, so zooming
+   * redraws and the worth numbers appear as you lean in), pan applied as a
+   * plain translation on the containers (nothing about a cell changes, so
+   * panning never rebuilds anything — it has to survive a thumb dragging at
+   * 60Hz on a phone).
+   */
+  #zoom = 1;
+  #panX = 0;
+  #panY = 0;
 
   readonly #theme: Theme;
   #assets: AssetBook;
@@ -145,20 +165,77 @@ export class PixiRenderer implements Renderer {
     });
     if (view.cells.length === 0) return;
 
-    const layout = fitLayout(
+    const fit = fitLayout(
       view.cells,
       app.screen.width,
       app.screen.height,
       10,
       this.#theme.orientation,
     );
+    const layout = zoomLayout(fit, this.#zoom, app.screen.width / 2, app.screen.height / 2);
     this.#layout = layout;
     if (layout.size <= 0) return;
 
     for (const cell of view.cells) this.#cells.addChild(this.#drawCell(cell, layout));
 
+    this.#applyPan();
     this.#spawnFlashes(previous, view, layout);
     this.#drawVignette(app.screen.width, app.screen.height);
+  }
+
+  // ---------------------------------------------------------------- camera
+
+  zoomBy(factor: number): void {
+    const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, this.#zoom * factor));
+    if (next === this.#zoom) return;
+
+    // Anchoring at the screen centre means the pan scales with the zoom —
+    // the hex under the middle of the screen stays under the middle.
+    const applied = next / this.#zoom;
+    this.#zoom = next;
+    this.#panX *= applied;
+    this.#panY *= applied;
+
+    // Flashes were positioned in the old layout; a third of a second of glow
+    // is not worth drawing in the wrong place. Same reasoning as resize.
+    this.#clearFlashes();
+    this.draw(this.#view);
+  }
+
+  panBy(dx: number, dy: number): void {
+    this.#panX += dx;
+    this.#panY += dy;
+    this.#applyPan();
+  }
+
+  resetCamera(): void {
+    this.#zoom = 1;
+    this.#panX = 0;
+    this.#panY = 0;
+    this.#clearFlashes();
+    this.draw(this.#view);
+  }
+
+  zoomLevel(): number {
+    return this.#zoom;
+  }
+
+  /**
+   * Clamp the pan so at least half the viewport always shows board, then move
+   * both world containers. A translation changes nothing about any cell, so
+   * this is the whole cost of a drag — no rebuild, no re-measure.
+   */
+  #applyPan(): void {
+    const app = this.#app;
+    if (app === null) return;
+
+    const maxX = (app.screen.width / 2) * this.#zoom;
+    const maxY = (app.screen.height / 2) * this.#zoom;
+    this.#panX = Math.min(maxX, Math.max(-maxX, this.#panX));
+    this.#panY = Math.min(maxY, Math.max(-maxY, this.#panY));
+
+    this.#cells.position.set(this.#panX, this.#panY);
+    this.#fx.position.set(this.#panX, this.#panY);
   }
 
   /**
@@ -170,7 +247,9 @@ export class PixiRenderer implements Renderer {
     const layout = this.#layout;
     if (layout === null) return null;
 
-    const h = hexAt(x, y, layout);
+    // The pan is a container translation the layout knows nothing about, so
+    // the tap is translated back before the layout answers.
+    const h = hexAt(x - this.#panX, y - this.#panY, layout);
     const k = key(h.q, h.r);
     return this.#view.cells.some((c) => c.key === k) ? k : null;
   }

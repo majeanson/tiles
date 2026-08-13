@@ -495,3 +495,51 @@ nonzero).
 "nothing breaks"; fog memory (P4); and nothing signed on any gate. The two
 written questions above are the play session this build exists for:
 **`?ff=world.endless`, on the phone, against prod.**
+
+---
+
+### Session 7 — A camera, a manual, and fewer decisions on screen
+
+**Question:** none pinned — this session answers Marc's direct asks
+(2026-08-13): a way to zoom, hints and how-to-play "so I can keep up and
+reorient", and a UI that takes decisions so the screen presents fewer. All
+interaction and layout; Gate E stays shut and every colour still comes from
+theme tokens.
+
+**The camera.** Buttons first (`+` / `−` / `FIT` floating on the board),
+pinch also works, one-finger drag pans past an 8px slop — placement only ever
+happens on a lift that never crossed it, so the gesture war P3a dodged by
+having no camera stays dodged with one. Zoom is clamped 1–4× where 1 is the
+auto-fit that shows everything; the maths is `zoomLayout` in
+`render/layout.ts`, pure and pinned (the hex under the anchor must not move —
+that is what makes zooming feel like leaning in). Zoom bakes into the layout
+so the worth numbers appear as you lean in (the label threshold already
+existed); pan is a container translation and rebuilds nothing at 60Hz.
+
+**Reorientation.** A `?` button opens one screen of plain sentences — the
+rules in play order, the destination glyphs, the rarity words, the camera —
+closed by any tap; the text is per-world. The hint line now leads with a
+one-clause "what now" guide (place / pocket ready / low on tiles) derived in
+the selector, so coming back mid-run costs one sentence, not a re-derivation.
+
+**Decisions taken off the screen.** The harvest buttons now EXIST only while
+something is ripe — two dead buttons pricing an impossible harvest at 0 were
+two fake decisions; their appearing is the signal (the actions row keeps its
+height so the board never jumps). The draft marks BEST on the card whose best
+placement pays the most, from the same previews the board draws — you still
+choose, you just do not audit three cards first. The pocket-tap default
+(biggest) already existed. What remains in the player's face is exactly the
+game: where to build, and tiles or points.
+
+**Verified:** 244 tests green (was 234) — camera maths pinned in
+`layout.test.ts`, gestures (tap / slop / drag / pinch / swallowed lifts),
+help panel, guide line, harvest-hiding and BEST marker all covered against
+the stub renderer; typecheck, lint, format, production build clean. Not
+verified: any of it under a real thumb — same standing caveat as everything
+visual in this repository.
+
+**Not done, deliberately:** no double-tap zoom (fights fast placement), no
+momentum/inertia on pan, no first-visit auto-open of the help panel (a `?`
+in the corner is discoverable; auto-opening it every run is a toll). The
+phone session the last two sessions have been waiting for is still the next
+thing only Marc can do.

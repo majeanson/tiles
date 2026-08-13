@@ -16,7 +16,16 @@ Harness: nothing stalls; the timing optimum moved 15 → ~40 because caches are
 lifelines (bank40: 0 bare → 19,356 shipped; cliff at 80 holds); `seeker`
 claims 2 destinations a run and keeps bank15's pace. The two written
 questions — does a glow change where a human builds, do the odds ever flip a
-harvest to tiles — wait on the phone. Next: Marc plays `?ff=world.endless`.
+harvest to tiles — wait on the phone.
+
+Same day, Session 7, on Marc's asks: **a camera and fewer decisions on
+screen.** Zoom `+`/`−`/`FIT` buttons plus pinch (1–4×, 1 = fit-everything),
+drag-to-pan past an 8px slop so taps stay taps, worth numbers surfacing as
+you zoom (`zoomLayout` in `render/layout.ts`, pure, pinned). A `?` opens one
+screen of how-to-play in plain words, per world; the hint line leads with a
+one-clause "what now". Harvest buttons exist only while something is ripe,
+and the draft marks BEST from the same previews the board draws. 244 tests.
+Next: Marc plays `?ff=world.endless` on the phone.
 
 ## Shipped and settled
 

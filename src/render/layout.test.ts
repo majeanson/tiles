@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { disc, type Hex } from '@engine/hex';
 import type { Orientation } from '@theme/tokens';
-import { corners, fitLayout, hexAt, place, type Layout } from './layout';
+import { corners, fitLayout, hexAt, place, zoomLayout, type Layout } from './layout';
 
 /**
  * The geometry, both ways up.
@@ -205,5 +205,31 @@ describe.each(BOTH)('hexAt (%s-top)', (orientation) => {
       q: 0,
       r: 0,
     });
+  });
+});
+
+describe('the camera', () => {
+  const base = { size: 20, originX: 160, originY: 240, orientation: 'pointy' } as const;
+
+  it('is the identity at zoom 1', () => {
+    expect(zoomLayout(base, 1, 160, 240)).toEqual(base);
+  });
+
+  it('keeps the hex under the anchor under the anchor', () => {
+    // The whole point of anchoring: leaning closer must not move what you
+    // are looking at. True for any anchor, checked at centre and off-centre.
+    for (const [ax, ay] of [
+      [160, 240],
+      [40, 300],
+    ] as const) {
+      const before = hexAt(ax, ay, base);
+      for (const zoom of [1.35, 2, 3.7]) {
+        expect(hexAt(ax, ay, zoomLayout(base, zoom, ax, ay))).toEqual(before);
+      }
+    }
+  });
+
+  it('scales cell size linearly', () => {
+    expect(zoomLayout(base, 2.5, 0, 0).size).toBeCloseTo(50);
   });
 });

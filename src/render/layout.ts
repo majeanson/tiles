@@ -91,6 +91,24 @@ export function hexAt(x: number, y: number, l: Layout): Hex {
 }
 
 /**
+ * A layout zoomed by `zoom` about a fixed screen point.
+ *
+ * Pure camera maths, kept beside the fit it modifies: the anchor is the one
+ * point whose hex does not move when the zoom changes, which is what makes a
+ * zoom button feel like leaning closer instead of the board jumping. Panning
+ * is NOT here — a pan is a plain translation the renderer applies to its
+ * containers, because translating never changes what a cell looks like.
+ */
+export function zoomLayout(l: Layout, zoom: number, anchorX: number, anchorY: number): Layout {
+  return {
+    size: l.size * zoom,
+    originX: anchorX + (l.originX - anchorX) * zoom,
+    originY: anchorY + (l.originY - anchorY) * zoom,
+    orientation: l.orientation,
+  };
+}
+
+/**
  * The six corners of a hex, as a flat [x, y, …] list.
  *
  * Pointy-top puts a corner at the top; flat-top puts a corner at the right. Both

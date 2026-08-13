@@ -25,7 +25,20 @@
            here because it is the thing that eventually kills you. -->
       <header id="stats"></header>
 
-      <div id="board"></div>
+      <div id="board">
+        <!-- The camera and the manual, floating over the canvas. Zoom is
+             buttons-first (pinch also works): unambiguous on a phone, and no
+             gesture ever fights tap-to-place. -->
+        <div id="camera">
+          <button id="help" type="button" aria-label="How to play">?</button>
+          <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+          <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+          <button id="zoom-fit" type="button" aria-label="Show everything">FIT</button>
+        </div>
+        <!-- How to play, in plain words. Filled by the game per world; closes
+             on any tap. Not a tutorial system — one screen of sentences. -->
+        <div id="help-panel" hidden></div>
+      </div>
 
       <!-- The endless world's compass and loot ticker: the nearest unclaimed
            destination and the draft's current rarity odds. One quiet line —

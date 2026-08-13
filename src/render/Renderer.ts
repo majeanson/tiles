@@ -80,6 +80,17 @@ export interface Renderer {
   /** Draw a view. Idempotent — calling it twice with the same view is a no-op visually. */
   draw(view: BoardView): void;
   /**
+   * The camera. Zoom multiplies (anchored at the viewport centre, clamped so 1
+   * is always the auto-fit), pan slides by screen pixels, reset returns to the
+   * fit that shows everything. The renderer owns the clamps and the maths; the
+   * UI owns which gesture or button asks for what.
+   */
+  zoomBy(factor: number): void;
+  panBy(dx: number, dy: number): void;
+  resetCamera(): void;
+  /** Current zoom, 1 = fit. For the buttons' disabled states. */
+  zoomLevel(): number;
+  /**
    * Which cell is under a point, in CSS pixels relative to the host element.
    * The renderer owns the board's placement on screen, so it is the only thing
    * that can answer this; the alternative is the UI duplicating the layout maths

@@ -21,6 +21,12 @@ class StubRenderer implements Renderer {
   views: BoardView[] = [];
   nextHit: HexKey | null = null;
 
+  /** Camera calls, recorded. The stub clamps like the real one so the
+      buttons' disabled logic can be exercised without a canvas. */
+  zoom = 1;
+  pans: [number, number][] = [];
+  resets = 0;
+
   mount(): Promise<void> {
     return Promise.resolve();
   }
@@ -29,6 +35,19 @@ class StubRenderer implements Renderer {
   }
   hitTest(): HexKey | null {
     return this.nextHit;
+  }
+  zoomBy(factor: number): void {
+    this.zoom = Math.min(4, Math.max(1, this.zoom * factor));
+  }
+  panBy(dx: number, dy: number): void {
+    this.pans.push([dx, dy]);
+  }
+  resetCamera(): void {
+    this.zoom = 1;
+    this.resets++;
+  }
+  zoomLevel(): number {
+    return this.zoom;
   }
   destroy(): void {}
 
@@ -42,7 +61,15 @@ class StubRenderer implements Renderer {
 function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer; el: Elements } {
   document.body.innerHTML = `
     <header id="stats"></header>
-    <div id="board"></div>
+    <div id="board">
+      <div id="camera">
+        <button id="help">?</button>
+        <button id="zoom-in">+</button>
+        <button id="zoom-out">−</button>
+        <button id="zoom-fit">FIT</button>
+      </div>
+      <div id="help-panel" hidden></div>
+    </div>
     <p id="hint" hidden></p>
     <div id="draft"></div>
     <button id="harvest-tiles"></button>
@@ -65,14 +92,26 @@ function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer;
     harvestPoints: pick<HTMLButtonElement>('harvest-points'),
     leave: pick<HTMLButtonElement>('leave'),
     end: pick('end'),
+    zoomIn: pick<HTMLButtonElement>('zoom-in'),
+    zoomOut: pick<HTMLButtonElement>('zoom-out'),
+    zoomFit: pick<HTMLButtonElement>('zoom-fit'),
+    help: pick<HTMLButtonElement>('help'),
+    helpPanel: pick('help-panel'),
   };
 
   const renderer = new StubRenderer();
   return { game: new Game(renderer, el, seed, undefined, tuning), renderer, el };
 }
 
+/** A pointer event with a stable id, so gestures can be composed by hand. */
+const pointer = (el: HTMLElement, type: string, x: number, y: number, pointerId = 1): void => {
+  el.dispatchEvent(new window.PointerEvent(type, { clientX: x, clientY: y, pointerId }));
+};
+
+/** A real tap is a press and a lift that never moved. */
 const tap = (el: HTMLElement): void => {
-  el.dispatchEvent(new window.PointerEvent('pointerup', { clientX: 0, clientY: 0 }));
+  pointer(el, 'pointerdown', 0, 0);
+  pointer(el, 'pointerup', 0, 0);
 };
 
 describe('the game loop', () => {
@@ -100,7 +139,10 @@ describe('the game loop', () => {
   // being checked, because a direction that renames all four must not produce
   // four blank buttons.
   it('names each draft card in the vocabulary of the active theme', () => {
-    const labels = [...ctx.el.draft.children].map((c) => c.textContent);
+    // The name span specifically — cards also carry BEST/MAGIC badges now.
+    const labels = [...ctx.el.draft.children].map(
+      (c) => c.querySelector('.tile-name')?.textContent,
+    );
     expect(labels.every((l) => typeof l === 'string' && l.length > 0)).toBe(true);
     expect(labels.map((l) => l?.toLowerCase())).toEqual(ctx.game.state.draft.map((t) => t.colour));
   });
@@ -158,6 +200,19 @@ describe('the game loop', () => {
     expect(ctx.el.harvestPoints.disabled).toBe(true);
     expect(ctx.el.leave.disabled).toBe(true);
     expect(ctx.el.leave.textContent).toMatch(/harvest/i);
+  });
+
+  it('marks exactly the draft card whose placement pays the most', () => {
+    // Seed 4's opening draft holds the seed tile's colour (asserted by the
+    // select test above), so next to a lone seed exactly one card can pay —
+    // and exactly one card carries the BEST word.
+    const marked = [...ctx.el.draft.children].filter((c) => (c.textContent ?? '').includes('BEST'));
+    expect(marked).toHaveLength(1);
+    const seedCell = ctx.game.state.cells[key(0, 0)];
+    const index = [...ctx.el.draft.children].indexOf(marked[0]!);
+    expect(ctx.game.state.draft[index]?.colour).toBe(
+      seedCell?.kind === 'tile' ? seedCell.colour : 'never',
+    );
   });
 
   it('runs a whole map: fill, harvest, then move on', () => {
@@ -253,5 +308,84 @@ describe('the endless world, under a thumb', () => {
     // And the answer pops exactly that pocket.
     ctx.el.harvestTiles.click();
     expect(ctx.game.state.cells[key(0, 0)]?.kind).toBe('stone');
+  });
+});
+
+describe('the camera, and staying oriented', () => {
+  let ctx: ReturnType<typeof build>;
+
+  beforeEach(() => {
+    ctx = build(7, ENDLESS_TUNING);
+    ctx.game.start();
+  });
+
+  it('pans on a drag and never mistakes it for a placement', () => {
+    ctx.renderer.nextHit = key(1, 0);
+    pointer(ctx.el.board, 'pointerdown', 0, 0);
+    pointer(ctx.el.board, 'pointermove', 40, 0);
+    pointer(ctx.el.board, 'pointerup', 40, 0);
+
+    expect(ctx.renderer.pans.length).toBeGreaterThan(0);
+    expect(ctx.game.state.placements).toBe(0);
+  });
+
+  it('treats movement inside the slop as a tap', () => {
+    ctx.renderer.nextHit = key(1, 0);
+    pointer(ctx.el.board, 'pointerdown', 0, 0);
+    pointer(ctx.el.board, 'pointermove', 3, 0);
+    pointer(ctx.el.board, 'pointerup', 3, 0);
+
+    expect(ctx.renderer.pans).toHaveLength(0);
+    expect(ctx.game.state.placements).toBe(1);
+  });
+
+  it('zooms on a pinch and swallows both lifts', () => {
+    ctx.renderer.nextHit = key(1, 0);
+    pointer(ctx.el.board, 'pointerdown', 0, 0, 1);
+    pointer(ctx.el.board, 'pointerdown', 100, 0, 2);
+    pointer(ctx.el.board, 'pointermove', 150, 0, 2);
+    pointer(ctx.el.board, 'pointerup', 150, 0, 2);
+    pointer(ctx.el.board, 'pointerup', 0, 0, 1);
+
+    expect(ctx.renderer.zoom).toBeGreaterThan(1);
+    expect(ctx.game.state.placements).toBe(0);
+  });
+
+  it('drives the camera from the buttons, with FIT the way back', () => {
+    expect(ctx.el.zoomOut.disabled).toBe(true);
+
+    ctx.el.zoomIn.click();
+    expect(ctx.renderer.zoom).toBeGreaterThan(1);
+    expect(ctx.el.zoomOut.disabled).toBe(false);
+
+    ctx.el.zoomFit.click();
+    expect(ctx.renderer.zoom).toBe(1);
+    expect(ctx.renderer.resets).toBe(1);
+    expect(ctx.el.zoomOut.disabled).toBe(true);
+  });
+
+  it('opens how-to-play with words in it, and closes on a tap', () => {
+    expect(ctx.el.helpPanel.hidden).toBe(true);
+    ctx.el.help.click();
+    expect(ctx.el.helpPanel.hidden).toBe(false);
+    expect(ctx.el.helpPanel.textContent).toMatch(/surround a tile/i);
+    expect(ctx.el.helpPanel.textContent).toMatch(/destinations/i);
+
+    ctx.el.helpPanel.click();
+    expect(ctx.el.helpPanel.hidden).toBe(true);
+  });
+
+  it('always says what to do now, and hides the harvest until it exists', () => {
+    expect(ctx.el.hint.textContent).toMatch(/place tiles/i);
+    expect(ctx.el.harvestTiles.hidden).toBe(true);
+    expect(ctx.el.harvestPoints.hidden).toBe(true);
+
+    for (const n of neighbourKeys(0, 0)) {
+      ctx.renderer.nextHit = n;
+      tap(ctx.el.board);
+    }
+    expect(ripeKeys(ctx.game.state.cells).length).toBeGreaterThan(0);
+    expect(ctx.el.harvestTiles.hidden).toBe(false);
+    expect(ctx.el.hint.textContent).toMatch(/pocket ready/i);
   });
 });

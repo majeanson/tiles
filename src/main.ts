@@ -216,6 +216,11 @@ async function main(): Promise<void> {
     harvestPoints: required<HTMLButtonElement>('harvest-points'),
     leave: required<HTMLButtonElement>('leave'),
     end: required('end'),
+    zoomIn: required<HTMLButtonElement>('zoom-in'),
+    zoomOut: required<HTMLButtonElement>('zoom-out'),
+    zoomFit: required<HTMLButtonElement>('zoom-fit'),
+    help: required<HTMLButtonElement>('help'),
+    helpPanel: required('help-panel'),
   };
 
   if (isEnabled(features, 'ui.themePicker')) {
