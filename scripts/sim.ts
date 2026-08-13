@@ -1,4 +1,4 @@
-import { TUNING, type Tuning } from '../src/content/tuning';
+import { ENDLESS_TUNING, TUNING, type Tuning } from '../src/content/tuning';
 import { POLICIES, policyByName } from '../src/sim/policy';
 import { summarise, table } from '../src/sim/report';
 import { playMany } from '../src/sim/run';
@@ -11,6 +11,10 @@ import { playMany } from '../src/sim/run';
  *   pnpm sim --policy farm,hoard      just the comparison you care about
  *   pnpm sim --set costRisesEvery=60  the same runs under a different economy
  *   pnpm sim --set ripeTilesMatch=false
+ *   pnpm sim --endless                the SHIPPED endless economy — what
+ *                                     ?ff=world.endless actually plays, with
+ *                                     destinations and rarity on. `--set
+ *                                     world=endless` is the bare plane instead.
  *
  * `--set` is the whole reason tuning is data rather than an import: answering
  * "what does this number do" should cost one command, not an edit and a rebuild.
@@ -55,7 +59,15 @@ function withSetting(tuning: Tuning, setting: string): Tuning {
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const args: Args = { seeds: 200, policies: [], tuning: TUNING, changed: [] };
+  // `--endless` swaps the BASE the --set overrides then apply to, so it is
+  // read before the loop rather than in it.
+  const endless = argv.includes('--endless');
+  const args: Args = {
+    seeds: 200,
+    policies: [],
+    tuning: endless ? ENDLESS_TUNING : TUNING,
+    changed: endless ? ['--endless'] : [],
+  };
 
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];

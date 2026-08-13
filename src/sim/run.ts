@@ -39,6 +39,8 @@ export type RunResult = {
   readonly placements: number;
   readonly harvests: number;
   readonly popped: number;
+  /** Destinations reached this run. Zero everywhere the system is off. */
+  readonly claims: number;
 
   /**
    * The biggest single harvest, and how far through the run it landed as a
@@ -82,7 +84,9 @@ function summarise(
   }
 
   let reach = 0;
+  let claims = 0;
   for (const [k, cell] of Object.entries(state.cells)) {
+    if (cell.kind === 'landmark' && cell.claimed) claims++;
     if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
     reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
   }
@@ -98,6 +102,7 @@ function summarise(
     placements: state.placements,
     harvests: state.log.harvests.length,
     popped: state.log.popped,
+    claims,
     bestHarvest,
     bestHarvestAt: state.placements === 0 ? 0 : bestHarvestAt / state.placements,
     steps,

@@ -4,11 +4,19 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-04** — Session 5: first human play metabolised.
-Economy re-targeted to 30 tiles / curve at 70 (134 banked tiles was the
-signal), native fields visible as faint patterns, and P3b specced in
-`ideas/endless-world.md` — destinations plus rarity on tiles-harvests
-(common/magic/unique by harvest size). P3b is the next build.
+Last checkpoint: **2026-08-13** — Session 6: **P3b is built.** Destinations
+(cache / site / claimable territory, seeded by the world hash, drawn as
+beacons through unrevealed ground, claimed by touch) and rarity in the draft
+(magic = wild, unique = wild + double, luck accrued by tiles-harvests raising
+the odds, odds printed in the HUD). Shaped by Marc's answers on 2026-08-13 —
+territories-not-shrines, draft-rolls-plus-luck, both systems minimal in one
+session. All of it tuning-gated: on in `ENDLESS_TUNING` (`?ff=world.endless`),
+off in the bounded defaults; `pnpm sim --endless` sweeps the shipped plane.
+Harness: nothing stalls; the timing optimum moved 15 → ~40 because caches are
+lifelines (bank40: 0 bare → 19,356 shipped; cliff at 80 holds); `seeker`
+claims 2 destinations a run and keeps bank15's pace. The two written
+questions — does a glow change where a human builds, do the odds ever flip a
+harvest to tiles — wait on the phone. Next: Marc plays `?ff=world.endless`.
 
 ## Shipped and settled
 

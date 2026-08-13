@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { TUNING, type Tuning } from '@content/tuning';
+import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
 import { key } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { legalPlacements, ripeKeys } from '@engine/rules';
 import type { GameState } from '@engine/state';
+import { destinationsWithin } from '@engine/world';
 import { toBoardView, toHudView } from './view';
 
 /**
@@ -148,5 +149,50 @@ describe('the hud', () => {
     expect(hud.ended).toBe(true);
     expect(hud.epitaph).toMatch(/out of tiles/i);
     expect(hud.epitaph).toContain(String(dead.placements));
+  });
+});
+
+/**
+ * P3b on screen: the somewhere-to-go has to be VISIBLE to be a question. The
+ * beacon set is exactly the destinations inside the horizon that growth has
+ * not reached, the hint names the nearest one, and the odds line surfaces the
+ * loot system only where it exists.
+ */
+describe('destinations and rarity in the view', () => {
+  // A seed whose nearest destination sits inside the starting horizon, found
+  // once rather than assumed, so the assertions below are about the VIEW.
+  const seeded = (): { seed: number; state: GameState } => {
+    for (let seed = 1; seed <= 200; seed++) {
+      if (destinationsWithin(seed, ENDLESS_TUNING.beaconHorizon, ENDLESS_TUNING).length > 0) {
+        return { seed, state: newRun(seed, ENDLESS_TUNING) };
+      }
+    }
+    throw new Error('no seed with a close destination in 200 tries');
+  };
+
+  it('draws unrevealed destinations as beacons, and only those', () => {
+    const { seed, state } = seeded();
+    const horizon = ENDLESS_TUNING.beaconHorizon;
+    const expected = destinationsWithin(seed, horizon, ENDLESS_TUNING)
+      .map((d) => key(d.q, d.r))
+      .sort();
+
+    const beacons = toBoardView(state).cells.filter((c) => c.beacon);
+    expect(beacons.map((c) => c.key).sort()).toEqual(expected);
+    for (const b of beacons) {
+      expect(b.kind).toBe('landmark');
+      expect(b.legal).toBe(false);
+    }
+  });
+
+  it('says where to go, in words, with a distance', () => {
+    const hud = toHudView(seeded().state);
+    expect(hud.hint).toMatch(/glows \d+ out/);
+  });
+
+  it('shows the odds on the plane and nothing in the bounded game', () => {
+    expect(toHudView(newRun(1, ENDLESS_TUNING)).odds).toMatch(/magic .+ unique/);
+    expect(toHudView(newRun(1)).odds).toBeNull();
+    expect(toHudView(newRun(1)).hint).toBeNull();
   });
 });

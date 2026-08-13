@@ -196,6 +196,29 @@ export class PixiRenderer implements Renderer {
         return theme.wall;
       case 'stone':
         return theme.stone;
+      case 'landmark': {
+        // A destination wears the wall's ground — it is solid, and it should
+        // read as a THING standing on the plane — lit with the theme's accent
+        // while unclaimed, gone quiet once reached. A beacon is the same
+        // surface faded, glowing through ground that is not drawn yet. All of
+        // it derives from tokens every direction already has; Gate E is shut
+        // and these values are structure, not art.
+        const base = cell.claimed
+          ? theme.stone
+          : {
+              ...theme.wall,
+              pattern: {
+                kind: 'dots' as const,
+                // A territory glows in the colour of the field claiming it
+                // unfurls, so the walk is toward a known reward.
+                ink: cell.colour !== null ? theme.terrain[cell.colour].fill : theme.ink.accent,
+                alpha: 0.45,
+                radius: 1.6,
+                pitch: 5,
+              },
+            };
+        return cell.beacon ? { ...base, alpha: 0.55 } : base;
+      }
       case 'empty': {
         // Ghosted where the tile you are holding would actually be WORTH
         // something — not on every legal cell, which is most of the board and
@@ -284,6 +307,14 @@ export class PixiRenderer implements Renderer {
     // harvest decision — so it gets the loudest outline on the board.
     if (cell.ripe)
       return { width: Math.max(1.5, size * board.ripeEdgeWidth), colour: board.ripeEdge };
+    // An unclaimed destination is the other thing worth walking toward, so it
+    // carries the accent even at beacon distance. Claimed, it drops to chrome.
+    if (cell.kind === 'landmark' && !cell.claimed)
+      return { width: Math.max(1.5, size * board.ripeEdgeWidth), colour: this.#theme.ink.accent };
+    // Magic and unique tiles keep a quiet accent edge so their power stays
+    // findable on a full board without shouting over ripe.
+    if (cell.kind === 'tile' && cell.rarity !== null && cell.rarity !== 'common')
+      return { width: Math.max(1, size * board.edgeWidth * 1.5), colour: this.#theme.ink.accent };
     if (cell.legal) return { width: Math.max(1, size * board.edgeWidth), colour: board.legalEdge };
     if (cell.kind === 'empty') return null;
     return { width: Math.max(1, size * board.edgeWidth), colour: board.edge };
@@ -517,12 +548,21 @@ export class PixiRenderer implements Renderer {
 }
 
 /**
- * Numbers on the board, and only the two that drive a decision: what a ripe
- * tile is worth, and what the selected tile would be worth here. A zero is
- * silence rather than a "0" — an empty hex that gains you nothing should read as
- * nothing, not as a choice with a number attached.
+ * Numbers on the board, and only the ones that drive a decision: what a ripe
+ * tile is worth, what the selected tile would be worth here, and what kind of
+ * destination is glowing. A zero is silence rather than a "0" — an empty hex
+ * that gains you nothing should read as nothing, not as a choice with a number
+ * attached.
+ *
+ * Landmark glyphs are deliberately the plainest marks that survive a tiny hex:
+ * `+` pays tiles, `★` pays points, `◆` is a territory to claim. Words for them
+ * live in the HUD hint, where there is room for words.
  */
 function labelFor(cell: CellView): { text: string; faint: boolean } | null {
+  if (cell.kind === 'landmark') {
+    const glyph = cell.landmark === 'cache' ? '+' : cell.landmark === 'site' ? '★' : '◆';
+    return { text: glyph, faint: cell.claimed };
+  }
   if (cell.ripe && cell.worth > 0) return { text: String(cell.worth), faint: false };
   if (cell.legal && cell.preview !== null && cell.preview > 0) {
     return { text: String(cell.preview), faint: true };

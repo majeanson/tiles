@@ -43,6 +43,7 @@ function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer;
   document.body.innerHTML = `
     <header id="stats"></header>
     <div id="board"></div>
+    <p id="hint" hidden></p>
     <div id="draft"></div>
     <button id="harvest-tiles"></button>
     <button id="harvest-points"></button>
@@ -58,6 +59,7 @@ function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer;
   const el: Elements = {
     board: pick('board'),
     stats: pick('stats'),
+    hint: pick('hint'),
     draft: pick('draft'),
     harvestTiles: pick<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: pick<HTMLButtonElement>('harvest-points'),

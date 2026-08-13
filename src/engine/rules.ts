@@ -1,6 +1,6 @@
-import type { Colour, Tuning } from '@content/tuning';
+import type { Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from './hex';
-import type { Cell, GameState } from './state';
+import type { Cell, GameState, Rarity, Tile } from './state';
 
 /**
  * The six rules, as functions. Nothing here decides anything — the reducer does
@@ -122,10 +122,30 @@ export function ripeClusters(cells: Cells): HexKey[][] {
   return out;
 }
 
+/** Wild tiles — magic and above — match every neighbouring tile. */
+const isWild = (rarity: Rarity | undefined): boolean => rarity === 'magic' || rarity === 'unique';
+
 /**
- * Worth: how many of the six neighbours are LIVE TILES of the same colour.
- * Stone and walls surround but never match — the asymmetry the whole design
- * turns on.
+ * What one neighbouring tile contributes to a tile's worth: 0 for no match, 1
+ * for a match, 2 when either side is UNIQUE (heavy — its matches count double,
+ * both ways). A match is same colour, or either side being wild. Symmetric on
+ * purpose: a magic tile raises its neighbours exactly as it is raised by them,
+ * so placing one visibly lifts the whole pocket — the design's core feedback,
+ * amplified rather than special-cased.
+ */
+function matchValue(
+  colour: Tile['colour'],
+  rarity: Rarity | undefined,
+  other: Extract<Cell, { kind: 'tile' }>,
+): number {
+  if (other.colour !== colour && !isWild(rarity) && !isWild(other.rarity)) return 0;
+  return rarity === 'unique' || other.rarity === 'unique' ? 2 : 1;
+}
+
+/**
+ * Worth: what the six neighbours pay this tile — one per matching LIVE TILE,
+ * with wild and heavy rarities read by `matchValue`. Stone and walls surround
+ * but never match — the asymmetry the whole design turns on.
  *
  * When `ripeTilesMatch` is off, a neighbour that is already ripe stops counting
  * too, so a tile left sitting ripe stops feeding its neighbours and waiting has
@@ -138,17 +158,28 @@ export function worthOf(cells: Cells, k: HexKey, t: Tuning): number {
   const cell = cells[k];
   if (cell?.kind !== 'tile') return 0;
   const { q, r } = parse(k);
-  const matches = neighbourKeys(q, r).filter((n) => {
+  let matches = 0;
+  for (const n of neighbourKeys(q, r)) {
     const other = cells[n];
-    if (other?.kind !== 'tile' || other.colour !== cell.colour) return false;
-    return t.ripeTilesMatch || !isRipe(cells, n);
-  }).length;
+    if (other?.kind !== 'tile') continue;
+    if (!t.ripeTilesMatch && isRipe(cells, n)) continue;
+    matches += matchValue(cell.colour, cell.rarity, other);
+  }
   // Native ground counts as one match — the endless world's rule 4 addendum.
   // Baked into the tile at placement, so worth never has to ask the terrain.
-  return matches + (cell.onNative === true ? 1 : 0);
+  // A heavy tile's ground match counts double like every other match it makes.
+  return matches + (cell.onNative === true ? (cell.rarity === 'unique' ? 2 : 1) : 0);
 }
 
 const ORIGIN: { q: number; r: number } = { q: 0, r: 0 };
+
+/**
+ * Rule 6's multiplier at a single hex: 1 + floor(distance from home /
+ * distanceStep). What a bonus-points site pays through, so a farther site is
+ * worth the longer walk by the same arithmetic as any harvest out there.
+ */
+export const distanceMultiplierAt = (k: HexKey, t: Tuning): number =>
+  1 + Math.floor(distance(parse(k), ORIGIN) / t.distanceStep);
 
 /**
  * The points multiplier a harvest of exactly these tiles earns.
@@ -223,9 +254,16 @@ export function harvestValue(
  * changes the answer. A preview that disagrees with the outcome is worse than
  * no preview.
  */
-export function previewWorth(cells: Cells, k: HexKey, colour: Colour, t: Tuning): number {
+export function previewWorth(
+  cells: Cells,
+  k: HexKey,
+  tile: Pick<Tile, 'colour' | 'rarity'>,
+  t: Tuning,
+): number {
+  const { colour, rarity } = tile;
   const ground = cells[k];
   const onNative = ground?.kind === 'empty' && ground.native === colour;
+  const nativeBonus = onNative ? (rarity === 'unique' ? 2 : 1) : 0;
 
   // Fast path: with ripe neighbours still paying, worth does not depend on
   // ripeness at all, so there is nothing the hypothetical board would change.
@@ -233,14 +271,14 @@ export function previewWorth(cells: Cells, k: HexKey, colour: Colour, t: Tuning)
   // the slow path copies the whole board to answer it.
   if (t.ripeTilesMatch) {
     const { q, r } = parse(k);
-    return (
-      neighbourKeys(q, r).filter((n) => {
-        const other = cells[n];
-        return other?.kind === 'tile' && other.colour === colour;
-      }).length + (onNative ? 1 : 0)
-    );
+    let matches = 0;
+    for (const n of neighbourKeys(q, r)) {
+      const other = cells[n];
+      if (other?.kind === 'tile') matches += matchValue(colour, rarity, other);
+    }
+    return matches + nativeBonus;
   }
-  return worthOf({ ...cells, [k]: { kind: 'tile', colour, onNative } }, k, t);
+  return worthOf({ ...cells, [k]: { kind: 'tile', colour, onNative, rarity } }, k, t);
 }
 
 /** Build a `cells` record from a list of coordinates, all empty. */

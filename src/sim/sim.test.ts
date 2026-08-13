@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { TUNING, type Tuning } from '@content/tuning';
+import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
 import {
   bank15,
   bank3,
+  bank40,
   bank80,
   blind,
   farm,
@@ -10,6 +11,7 @@ import {
   POLICIES,
   randomLegal,
   rush,
+  seeker,
   survivor,
 } from './policy';
 import { playMany } from './run';
@@ -199,5 +201,66 @@ describe('the endless world — P1', () => {
     const textured = endless(bank15).medianPoints;
     const flat = summarise('bank15', playMany(bank15, SEEDS, { tuning: bare })).medianPoints;
     expect(textured).toBeGreaterThan(flat);
+  });
+});
+
+/**
+ * P3b: the SHIPPED endless economy — what `?ff=world.endless` actually plays,
+ * destinations and rarity on (`ENDLESS_TUNING`, `pnpm sim --endless`).
+ *
+ * What the harness can say: nothing stalls, the timing structure survives the
+ * new systems, and a compass-following line is competitive while actually
+ * claiming destinations. What it cannot say — whether a human WALKS toward a
+ * glow, and whether the odds ever flip a points-harvest to tiles — are the two
+ * written questions, and they wait on a phone.
+ */
+describe('the endless world with destinations and rarity — P3b', () => {
+  const summaries = new Map<string, ReturnType<typeof summarise>>();
+  const shipped = (policy: (typeof POLICIES)[number]) => {
+    let s = summaries.get(policy.name);
+    if (s === undefined) {
+      s = summarise(policy.name, playMany(policy, SEEDS, { tuning: ENDLESS_TUNING }));
+      summaries.set(policy.name, s);
+    }
+    return s;
+  };
+
+  it('still gives every policy a run that ends by itself', { timeout: 30000 }, () => {
+    for (const policy of POLICIES) {
+      const s = shipped(policy);
+      expect({ policy: policy.name, stalled: s.stalled, capped: s.capped }).toEqual({
+        policy: policy.name,
+        stalled: 0,
+        capped: 0,
+      });
+    }
+  });
+
+  /**
+   * The timing decision survives the loot: interior optimum, cliff past it.
+   * And the optimum MOVED — caches are lifelines out on the plane, so the
+   * sustainable pocket grew from ~15 back to ~40 (bank40's median was ZERO on
+   * the bare 30/70 plane). Destinations do not just decorate the economy, they
+   * are part of it; the cliff at 80 still ends the greedy line at nothing.
+   */
+  it('keeps the interior optimum, moved outward by the caches', () => {
+    expect(shipped(bank40).medianPoints).toBeGreaterThan(shipped(bank15).medianPoints);
+    expect(shipped(bank15).medianPoints).toBeGreaterThan(shipped(bank3).medianPoints * 3);
+    expect(shipped(bank80).medianPoints).toBeLessThan(shipped(bank15).medianPoints / 10);
+  });
+
+  /**
+   * The compass is not decoration: a line that drifts toward destinations
+   * reaches them (median two claims a run) while staying in bank15's league.
+   * Whether following it FEELS worth it is the phone's question, not this one.
+   */
+  it('lets a destination-follower keep pace while actually arriving', () => {
+    expect(shipped(seeker).medianClaims).toBeGreaterThanOrEqual(1);
+    expect(shipped(seeker).medianPoints * 2).toBeGreaterThan(shipped(bank15).medianPoints);
+  });
+
+  it('keeps the dead exploits dead', () => {
+    expect(shipped(farm).medianPoints).toBeLessThan(shipped(bank15).medianPoints / 10);
+    expect(shipped(survivor).medianPoints).toBeLessThan(shipped(bank15).medianPoints / 10);
   });
 });

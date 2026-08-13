@@ -1,5 +1,6 @@
 import type { Colour } from '@content/tuning';
 import type { HexKey } from '@engine/hex';
+import type { LandmarkReward, Rarity } from '@engine/state';
 
 /**
  * The boundary between the game and the screen.
@@ -15,7 +16,7 @@ import type { HexKey } from '@engine/hex';
  * the renderer's business, and Gate E's.
  */
 
-export type CellKind = 'empty' | 'wall' | 'stone' | 'tile';
+export type CellKind = 'empty' | 'wall' | 'stone' | 'tile' | 'landmark';
 
 export type CellView = {
   readonly key: HexKey;
@@ -25,6 +26,20 @@ export type CellView = {
 
   /** Set only on tiles. */
   readonly colour: Colour | null;
+
+  /** Set only on landmarks: what reaching this destination pays. */
+  readonly landmark: LandmarkReward | null;
+  /** A landmark already reached. Claimed landmarks go quiet. */
+  readonly claimed: boolean;
+  /**
+   * A destination the board has not grown to — drawn as a glow through ground
+   * that does not exist yet. The endless world's "somewhere to go". Beacons
+   * are not cells of the game state and can never be tapped into an action.
+   */
+  readonly beacon: boolean;
+
+  /** Set on magic and unique tiles; the board marks them so power stays visible. */
+  readonly rarity: Rarity | null;
 
   /**
    * The colour this EMPTY ground is native to, if any — the endless world's

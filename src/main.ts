@@ -210,6 +210,7 @@ async function main(): Promise<void> {
   const elements: Elements = {
     board: required('board'),
     stats: required('stats'),
+    hint: required('hint'),
     draft: required('draft'),
     harvestTiles: required<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: required<HTMLButtonElement>('harvest-points'),

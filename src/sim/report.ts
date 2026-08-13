@@ -25,6 +25,8 @@ export type Summary = {
   readonly medianReach: number;
   readonly medianPlacements: number;
   readonly medianHarvests: number;
+  /** Destinations reached, median per run. Zero where the system is off. */
+  readonly medianClaims: number;
 
   /** Pops per placement — the geometry term in the income equation. */
   readonly popsPerPlacement: number;
@@ -55,6 +57,7 @@ export function summarise(policy: string, runs: readonly RunResult[]): Summary {
     medianReach: median(runs.map((r) => r.reach)),
     medianPlacements: median(runs.map((r) => r.placements)),
     medianHarvests: median(runs.map((r) => r.harvests)),
+    medianClaims: median(runs.map((r) => r.claims)),
     popsPerPlacement: placements === 0 ? 0 : popped / placements,
     arc: median(runs.map((r) => r.bestHarvestAt)),
   };
@@ -70,6 +73,7 @@ const COLUMNS: readonly (readonly [string, (s: Summary) => string])[] = [
   ['reach', (s) => String(Math.round(s.medianReach))],
   ['places', (s) => String(Math.round(s.medianPlacements))],
   ['harvests', (s) => String(Math.round(s.medianHarvests))],
+  ['claims', (s) => String(Math.round(s.medianClaims))],
   ['pops/place', (s) => s.popsPerPlacement.toFixed(2)],
   ['arc', (s) => s.arc.toFixed(2)],
   ['stalled', (s) => String(s.stalled)],

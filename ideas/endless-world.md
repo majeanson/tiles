@@ -215,10 +215,28 @@ ground remembered between runs, unlocks as places found. It is P4.
 
 ## P3b — somewhere to go, and something to find
 
+**Status: BUILT (2026-08-13, Session 6), shaped by Marc's answers below;
+its two questions are open and wait on a phone.** What shipped: destinations
+as cache (12 tiles) / site (25 × distance multiplier) / claimable territory
+(unfurls a radius-2 native field of its colour), one per ~12-hex block,
+beacons through unrevealed ground plus a HUD hint line; rarity rolled per
+DRAWN tile (magic = wild, unique = wild + heavy/double) with luck — tiles
+popped in tiles-harvests — raising the printed odds. `pnpm sim --endless`
+plays the shipped economy; the harness's findings are in `LOG.md` Session 6,
+headline: caches moved the banking optimum from ~15 back to ~40, cliff
+intact, and a compass-following policy keeps pace while claiming.
+
+**Marc's answers (2026-08-13), which override the first cut below where they
+differ:** territories pay caches and point sites PLUS claimable territory —
+not rare-tile shrines; rarity rolls on the draft AND harvests raise the odds
+(luck as a resource); all four rare powers appeal — wild and heavy shipped,
+**scout** (reveals ground in a ring, sees beacons farther) and **perk tiles**
+(placing grants a run-long passive) are the next candidates, unbuilt.
+
 Marc's direction after first playing (2026-08-04, verbatim intent): *"the
 player needs somewhere to go, a quest, bonus points, etc. Same with tiles we
 get when taking tiles — based on the number, we should get a chance of
-common, unique, magic, etc."* Two systems, one spec, neither built:
+common, unique, magic, etc."* Two systems, one spec:
 
 **Destinations.** Landmarks seeded by the terrain function, glowing through
 the fog from a distance — the "hint on where to go next" from the original

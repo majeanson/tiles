@@ -30,12 +30,40 @@ export type Cell =
       readonly colour: Colour;
       /** True when this tile stands on its own native ground. Worth reads it. */
       readonly onNative?: boolean;
+      /** Absent means common. Magic and unique tiles keep their power on the board. */
+      readonly rarity?: Rarity;
+    }
+  /**
+   * A destination (P3b): somewhere to go, baked in when growth revealed it.
+   * Solid like a wall — it surrounds, never matches, cannot be built on — but
+   * placing a tile AGAINST an unclaimed one claims it, once, and the reward
+   * says what that pays. `colour` is set on territories: the field their claim
+   * unfurls. Beacons for destinations beyond the revealed ground are the
+   * VIEW's business — the board only ever holds what growth has reached.
+   */
+  | {
+      readonly kind: 'landmark';
+      readonly reward: LandmarkReward;
+      readonly claimed: boolean;
+      readonly colour?: Colour;
     };
+
+/** cache pays tiles, site pays points at distance, territory unfurls a field. */
+export type LandmarkReward = 'cache' | 'site' | 'territory';
+
+/**
+ * Common is the tile the whole game is made of. Magic is WILD — it matches
+ * every neighbouring tile regardless of colour. Unique is wild and HEAVY —
+ * every match it is part of counts double, for both sides. Words players
+ * already own (Marc's direction, in the register torchlit speaks).
+ */
+export type Rarity = 'common' | 'magic' | 'unique';
 
 export type Tile = {
   /** Unique per instance — for renderer keys and for reading action logs. */
   readonly id: string;
   readonly colour: Colour;
+  readonly rarity: Rarity;
 };
 
 export type Phase = 'placing' | 'ended';
@@ -98,6 +126,13 @@ export type GameState = {
   /** Total placements THIS RUN, never reset. The escalation dial. */
   readonly placements: number;
   readonly mapNumber: number;
+
+  /**
+   * Tiles popped in TILES-harvests so far, capped at `tuning.luckCap`. Each
+   * point raises the draft's magic/unique odds by the per-pop rates — luck is
+   * a resource the run builds by cashing pockets as survival.
+   */
+  readonly luck: number;
 
   readonly cells: Readonly<Record<HexKey, Cell>>;
 

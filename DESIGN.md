@@ -217,6 +217,14 @@ moment for free; take away the wall and WHEN becomes yours to misjudge. Pinned
 in the same test file, harness-proven only — no human has played it, and it
 has no UI to be played on yet.
 
+**2026-08-13 addendum — the plane got destinations and loot, and the optimum
+moved.** Session 6 built P3b (`ideas/endless-world.md`): destinations
+(cache / site / claimable territory) and draft rarity with luck, on only in
+the endless tuning. Harness-proven only: caches act as lifelines, so the
+sustainable banking pocket grew from ~15 back to ~40 — the timing dial
+answered to a STRUCTURAL change this time, cliff intact, exploits still dead.
+Still true that no human has played any of it.
+
 ## What the harness confirmed
 
 **The tiles-or-points choice is real, and it is the run's spine.** Three

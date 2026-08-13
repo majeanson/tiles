@@ -56,6 +56,46 @@ export type Tuning = {
   readonly fieldSize: number;
   readonly fieldChance: number;
 
+  /**
+   * Destinations (P3b of `ideas/endless-world.md`): landmarks seeded by the
+   * same pure world hash, one per `destinationEvery`-hex block of the plane
+   * (`destinationChance` of blocks hold one; 0 for either switches the system
+   * off, which is the bounded default). Reaching one — placing a tile against
+   * it — claims it, once:
+   *
+   *   cache     — pays `cachePays` tiles on the spot. A lifeline out there.
+   *   site      — pays `sitePays` × the distance multiplier at its hex, so a
+   *               farther site is worth the longer walk, same as rule 6.
+   *   territory — Marc's "key territories" (2026-08-13): claiming one turns
+   *               the ground within `territoryRadius` into a native field of
+   *               its colour. Conquest, paid in the field mechanic P2 built.
+   */
+  readonly destinationEvery: number;
+  readonly destinationChance: number;
+  readonly cachePays: number;
+  readonly sitePays: number;
+  readonly territoryRadius: number;
+  /** How far past the built frontier a destination shows as a beacon. */
+  readonly beaconHorizon: number;
+
+  /**
+   * Rarity on the draft (P3b's second half, shaped by Marc 2026-08-13): every
+   * drawn tile rolls common / magic / unique on its own stream, so the bounded
+   * game's sequences never move. Magic is WILD — it matches every neighbouring
+   * tile. Unique is wild and HEAVY — its matches count double, both ways.
+   *
+   * Luck is the count of tiles popped in TILES-harvests, capped at `luckCap`;
+   * each point adds `luckMagicPerPop` / `luckUniquePerPop` to the odds. Cashing
+   * big pockets as tiles is what raises your odds — survival finally pays in
+   * excitement, and it couples loot to the same timing decision points have.
+   * All zeros = the system does not exist, which is the bounded default.
+   */
+  readonly magicChance: number;
+  readonly uniqueChance: number;
+  readonly luckMagicPerPop: number;
+  readonly luckUniquePerPop: number;
+  readonly luckCap: number;
+
   readonly startingTiles: number;
 
   /** cost = baseCost + floor(placements / costRisesEvery), all run, never reset. */
@@ -135,6 +175,21 @@ export const TUNING: Tuning = {
   fieldSize: 4,
   fieldChance: 0.55,
 
+  // Off in the shipped bounded game — run one is the smallest game there is.
+  // The endless tuning below turns both systems on; the harness sweeps them.
+  destinationEvery: 0,
+  destinationChance: 0,
+  cachePays: 12,
+  sitePays: 25,
+  territoryRadius: 2,
+  beaconHorizon: 8,
+
+  magicChance: 0,
+  uniqueChance: 0,
+  luckMagicPerPop: 0,
+  luckUniquePerPop: 0,
+  luckCap: 150,
+
   // 40/100 let the first human session bank 134 tiles without ever feeling
   // the curve (2026-08-04). Swept to 30/70: random-legal dies on map 1,
   // survivor caps ~325 placements, and the endless timing optimum moves from
@@ -163,12 +218,31 @@ export const TUNING: Tuning = {
 };
 
 /**
- * The endless world's economy: the shipped tuning with the world swapped. One
- * object so the UI flag, the harness and the tests all mean the same thing by
- * "endless". Balance numbers stay identical on purpose — the worlds differ by
- * structure, and any number that must differ earns its own entry here.
+ * The endless world's economy: the shipped tuning with the world swapped and
+ * the plane's own systems switched on. One object so the UI flag, the harness
+ * and the tests all mean the same thing by "endless". Shared balance numbers
+ * stay identical on purpose — the worlds differ by structure, and a number
+ * that must differ earns its own entry here.
+ *
+ * The destination and rarity numbers are FIRST VALUES, not claims: swept once
+ * for "nothing stalls, nothing explodes" (Session 6) and awaiting a human.
  */
-export const ENDLESS_TUNING: Tuning = { ...TUNING, world: 'endless' };
+export const ENDLESS_TUNING: Tuning = {
+  ...TUNING,
+  world: 'endless',
+
+  // ~one destination per 12-hex block, so the nearest glow is usually a real
+  // journey (the block around home is kept empty) but never a hopeless one.
+  destinationEvery: 12,
+  destinationChance: 0.7,
+
+  // Base odds are felt but rare: roughly one magic tile per two drafts' worth
+  // of placements, uniques an event. Luck at its cap roughly triples magic.
+  magicChance: 0.05,
+  uniqueChance: 0.01,
+  luckMagicPerPop: 0.0008,
+  luckUniquePerPop: 0.0002,
+};
 
 /** The four tile colours. Named for what they are — art direction is undecided. */
 export const COLOURS = ['green', 'yellow', 'red', 'blue'] as const;

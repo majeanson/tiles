@@ -190,15 +190,22 @@ describe('placement legality', () => {
 describe('placement preview', () => {
   it('reports what the tile will actually be worth', () => {
     const cells = ring({ kind: 'empty' }, SIX(tile('green')), 2);
-    expect(previewWorth(cells, key(0, 0), 'green', T)).toBe(6);
-    expect(previewWorth(cells, key(0, 0), 'red', T)).toBe(0);
+    expect(previewWorth(cells, key(0, 0), { colour: 'green', rarity: 'common' }, T)).toBe(6);
+    expect(previewWorth(cells, key(0, 0), { colour: 'red', rarity: 'common' }, T)).toBe(0);
   });
 
   it('accounts for neighbours that the placement itself ripens', () => {
     // Filling the last hole of a radius-1 map ripens all six neighbours at once.
     const cells = ring({ kind: 'empty' }, SIX(tile('green')));
-    expect(previewWorth(cells, key(0, 0), 'green', T)).toBe(6);
-    expect(previewWorth(cells, key(0, 0), 'green', tuned({ ripeTilesMatch: false }))).toBe(0);
+    expect(previewWorth(cells, key(0, 0), { colour: 'green', rarity: 'common' }, T)).toBe(6);
+    expect(
+      previewWorth(
+        cells,
+        key(0, 0),
+        { colour: 'green', rarity: 'common' },
+        tuned({ ripeTilesMatch: false }),
+      ),
+    ).toBe(0);
   });
 });
 

@@ -26,6 +26,7 @@ import { toBoardView, toHudView, type HudView } from './view';
 export type Elements = {
   readonly board: HTMLElement;
   readonly stats: HTMLElement;
+  readonly hint: HTMLElement;
   readonly draft: HTMLElement;
   readonly harvestTiles: HTMLButtonElement;
   readonly harvestPoints: HTMLButtonElement;
@@ -147,6 +148,12 @@ export class Game {
     this.#renderStats(hud);
     this.#renderDraft(hud);
 
+    // The compass line: nearest destination, then the draft's rarity odds.
+    // One string, so the element collapses to nothing when both are silent.
+    const hint = [hud.hint, hud.odds].filter((s) => s !== null).join(' · ');
+    this.#el.hint.textContent = hint;
+    this.#el.hint.hidden = hint === '';
+
     // Both payouts are always on screen with their real numbers. The choice is
     // only a choice if you can see what you are giving up.
     this.#el.harvestTiles.textContent = `Take ${hud.harvestTiles} tiles`;
@@ -210,6 +217,7 @@ export class Game {
         const button = document.createElement('button');
         button.className = 'tile';
         button.dataset['colour'] = tile.colour;
+        button.dataset['rarity'] = tile.rarity;
         button.setAttribute('aria-pressed', String(tile.selected));
 
         // The direction's name for this colour, or the colour itself when the
@@ -217,7 +225,20 @@ export class Game {
         // hue alone: four blocks of colour with no words is a memory test, and
         // it is also unplayable for anyone who cannot separate two of them.
         const name = this.#theme.terrainNames[tile.colour];
-        button.setAttribute('aria-label', `${name} tile`);
+        button.setAttribute(
+          'aria-label',
+          tile.rarity === 'common' ? `${name} tile` : `${tile.rarity} ${name} tile`,
+        );
+
+        // Rarity is written on the card, not just hinted: MAGIC matches every
+        // colour and UNIQUE counts double, and a power you might not notice is
+        // a power that might as well not exist.
+        if (tile.rarity !== 'common') {
+          const badge = document.createElement('span');
+          badge.className = 'tile-rarity';
+          badge.textContent = tile.rarity.toUpperCase();
+          button.append(badge);
+        }
 
         const art = this.#art[tile.colour];
         if (art !== undefined) {

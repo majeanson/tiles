@@ -106,6 +106,23 @@ body {
   color: var(--danger, #c98a6a);
 }
 
+/* ------------------------------------------------------------------ hint */
+
+/*
+ * The endless world's one line of prose: nearest destination, current odds.
+ * Faint by design — it is a compass, not a headline — and absent entirely in
+ * the bounded game.
+ */
+#hint {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 2px 16px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: var(--label-tracking, 0.04em);
+  color: var(--ink-faint, #767d8d);
+}
+
 /* ------------------------------------------------------------------ controls */
 
 #controls {
@@ -199,6 +216,22 @@ button:disabled {
   border-color: var(--panel-edge-active, #e8ecf4);
   box-shadow: 0 0 0 1px var(--panel-edge-active, #e8ecf4);
   transform: translateY(-2px);
+}
+
+/*
+ * A rare draw is an event, and the card says so in the theme's accent — the
+ * one colour every direction reserves for "look here". Values provisional;
+ * Gate E stays shut.
+ */
+.tile[data-rarity='magic'],
+.tile[data-rarity='unique'] {
+  border-color: var(--accent, #d7b45a);
+}
+
+.tile-rarity {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--accent, #d7b45a);
 }
 
 @media (prefers-reduced-motion: no-preference) {

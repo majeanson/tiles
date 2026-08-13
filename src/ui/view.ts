@@ -1,6 +1,6 @@
 import type { Colour } from '@content/tuning';
-import { distance, parse, type HexKey } from '@engine/hex';
-import { canLeave } from '@engine/reduce';
+import { distance, key, parse, type HexKey } from '@engine/hex';
+import { canLeave, rarityOdds } from '@engine/reduce';
 import {
   canPlaceAt,
   canPlaceNow,
@@ -13,7 +13,8 @@ import {
   ripeKeys,
   worthOf,
 } from '@engine/rules';
-import type { GameState } from '@engine/state';
+import type { GameState, LandmarkReward, Rarity } from '@engine/state';
+import { destinationsWithin } from '@engine/world';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
 
 /**
@@ -61,7 +62,11 @@ export function toBoardView(state: GameState, harvestAt: HexKey | null = null): 
       q,
       r,
       kind: cell.kind satisfies CellKind,
-      colour: cell.kind === 'tile' ? cell.colour : null,
+      colour: cell.kind === 'tile' || cell.kind === 'landmark' ? (cell.colour ?? null) : null,
+      landmark: cell.kind === 'landmark' ? cell.reward : null,
+      claimed: cell.kind === 'landmark' && cell.claimed,
+      beacon: false,
+      rarity: cell.kind === 'tile' ? (cell.rarity ?? null) : null,
       native: cell.kind === 'empty' ? (cell.native ?? null) : null,
       ripe: isRipe(state.cells, k),
       targeted: targeted.has(k),
@@ -69,12 +74,46 @@ export function toBoardView(state: GameState, harvestAt: HexKey | null = null): 
       legal,
       preview:
         legal && selected !== undefined
-          ? previewWorth(state.cells, k, selected.colour, state.tuning)
+          ? previewWorth(state.cells, k, selected, state.tuning)
           : null,
     };
   });
 
+  // Destinations the board has not grown to yet, glowing through ground that
+  // is not drawn: the endless world's somewhere-to-go. The horizon moves with
+  // reach, so the next glow appears at the rim as you push toward the last.
+  for (const d of beaconsFor(state)) {
+    cells.push({
+      key: key(d.q, d.r),
+      q: d.q,
+      r: d.r,
+      kind: 'landmark',
+      colour: d.colour,
+      landmark: d.reward,
+      claimed: false,
+      beacon: true,
+      rarity: null,
+      native: null,
+      ripe: false,
+      targeted: false,
+      worth: 0,
+      legal: false,
+      preview: null,
+    });
+  }
+
   return { cells };
+}
+
+/** Destinations within the beacon horizon that growth has not revealed yet. */
+function beaconsFor(
+  state: GameState,
+): { q: number; r: number; reward: LandmarkReward; colour: Colour | null }[] {
+  if (state.tuning.world !== 'endless') return [];
+  const horizon = reachOf(state) + state.tuning.beaconHorizon;
+  return destinationsWithin(state.rootSeed, horizon, state.tuning).filter(
+    (d) => state.cells[key(d.q, d.r)] === undefined,
+  );
 }
 
 /**
@@ -109,6 +148,7 @@ export type HudView = {
   readonly draft: readonly {
     readonly id: string;
     readonly colour: Colour;
+    readonly rarity: Rarity;
     readonly selected: boolean;
   }[];
 
@@ -122,6 +162,18 @@ export type HudView = {
   readonly canHarvest: boolean;
   readonly canLeave: boolean;
   readonly leaveHint: string;
+
+  /**
+   * The nearest unclaimed destination, as one short sentence — the endless
+   * world's answer to "where do I go?". Null when there is nothing to say,
+   * which includes the whole bounded game.
+   */
+  readonly hint: string | null;
+  /**
+   * The draft's current rarity odds, spelled out — Marc asked for the odds to
+   * be visible, and luck raising them is only a reward if you can watch it.
+   */
+  readonly odds: string | null;
 
   readonly ended: boolean;
   /** Gate D: the cause of death, in one sentence. */
@@ -148,6 +200,7 @@ export function toHudView(state: GameState, harvestAt: HexKey | null = null): Hu
     draft: state.draft.map((tile, i) => ({
       id: tile.id,
       colour: tile.colour,
+      rarity: tile.rarity,
       selected: i === state.selected,
     })),
 
@@ -160,9 +213,58 @@ export function toHudView(state: GameState, harvestAt: HexKey | null = null): Hu
     canLeave: leaving,
     leaveHint: leaving ? 'Move on' : 'Harvest here first',
 
+    hint: hintFor(state),
+    odds: oddsFor(state),
+
     ended: state.phase === 'ended',
     epitaph: state.phase === 'ended' ? epitaphFor(state) : null,
   };
+}
+
+/**
+ * The nearest unclaimed destination — revealed or beacon — named and priced
+ * in the one unit the player already reads the board in: hexes out.
+ */
+function hintFor(state: GameState): string | null {
+  if (state.tuning.world !== 'endless') return null;
+
+  let best: { reward: LandmarkReward; dist: number } | null = null;
+  const consider = (q: number, r: number, reward: LandmarkReward): void => {
+    const dist = distance({ q, r }, { q: 0, r: 0 });
+    if (best === null || dist < best.dist) best = { reward, dist };
+  };
+
+  for (const [k, cell] of Object.entries(state.cells)) {
+    if (cell.kind === 'landmark' && !cell.claimed) {
+      const { q, r } = parse(k);
+      consider(q, r, cell.reward);
+    }
+  }
+  const horizon = reachOf(state) + state.tuning.beaconHorizon;
+  for (const d of destinationsWithin(state.rootSeed, horizon, state.tuning)) {
+    if (state.cells[key(d.q, d.r)] === undefined) consider(d.q, d.r, d.reward);
+  }
+
+  if (best === null) return null;
+  const { reward, dist } = best as { reward: LandmarkReward; dist: number };
+  const named =
+    reward === 'cache'
+      ? `a cache of ${state.tuning.cachePays} tiles`
+      : reward === 'site'
+        ? 'a scoring site'
+        : 'a territory to claim';
+  return `${named[0]!.toUpperCase()}${named.slice(1)} glows ${dist} out`;
+}
+
+/** "magic 6% · unique 1.2%", or null while the rarity system is off. */
+function oddsFor(state: GameState): string | null {
+  const odds = rarityOdds(state.tuning, state.luck);
+  if (odds.magic + odds.unique <= 0) return null;
+  const pct = (v: number): string => {
+    const p = v * 100;
+    return `${p >= 10 ? Math.round(p) : Math.round(p * 10) / 10}%`;
+  };
+  return `magic ${pct(odds.magic)} · unique ${pct(odds.unique)}`;
 }
 
 /** Hexes from home the run has built — the plane's depth, drawn in the HUD. */

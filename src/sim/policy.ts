@@ -1,4 +1,4 @@
-import { distance, parse, type HexKey } from '@engine/hex';
+import { distance, key, parse, type HexKey } from '@engine/hex';
 import { canLeave } from '@engine/reduce';
 import { rngInt, rngPick, type RngStream } from '@engine/rng';
 import {
@@ -10,6 +10,7 @@ import {
   ripeKeys,
 } from '@engine/rules';
 import type { Action, GameState } from '@engine/state';
+import { destinationsWithin } from '@engine/world';
 
 /**
  * Scripted players.
@@ -51,7 +52,7 @@ function options(state: GameState): { index: number; hex: string; worth: number 
     const tile = state.draft[index];
     if (tile === undefined) continue;
     for (const hex of spots) {
-      out.push({ index, hex, worth: previewWorth(state.cells, hex, tile.colour, state.tuning) });
+      out.push({ index, hex, worth: previewWorth(state.cells, hex, tile, state.tuning) });
     }
   }
   return out;
@@ -295,6 +296,72 @@ export const bank40 = bankAt(40);
 export const bank80 = bankAt(80);
 
 /**
+ * The nearest destination not yet claimed, revealed or still over the horizon.
+ * What a destination-aware policy walks toward. Null when the system is off.
+ */
+function nearestDestination(state: GameState): { q: number; r: number } | null {
+  if (state.tuning.world !== 'endless') return null;
+  const horizon = reachOf(state) + state.tuning.beaconHorizon;
+
+  let best: { q: number; r: number; dist: number } | null = null;
+  for (const d of destinationsWithin(state.rootSeed, horizon, state.tuning)) {
+    const cell = state.cells[key(d.q, d.r)];
+    if (cell?.kind === 'landmark' && cell.claimed) continue;
+    const dist = distance(d, { q: 0, r: 0 });
+    if (best === null || dist < best.dist) best = { ...d, dist };
+  }
+  return best;
+}
+
+/**
+ * The best-packing placement, drifting toward `goal` on near-ties: among the
+ * spots within one worth of the best, the one that closes the most ground.
+ *
+ * The drift is deliberately this weak because the first cut was not: a seeker
+ * that simply walked at the beacon starved at 66 placements with one harvest —
+ * an arm encloses nothing, the same lesson the beeline exploit taught in P1.
+ * Following a destination has to be a lean on ordinary play, not a replacement
+ * for it, and that is true for the human too.
+ */
+function placementToward(state: GameState, goal: { q: number; r: number }): Move | null {
+  let bestWorth = -1;
+  for (const o of options(state)) bestWorth = Math.max(bestWorth, o.worth);
+  if (bestWorth < 0) return null;
+
+  let best: { index: number; hex: string; gap: number; worth: number } | null = null;
+  for (const o of options(state)) {
+    if (o.worth < bestWorth - 1) continue;
+    const gap = distance(parse(o.hex), goal);
+    if (best === null || gap < best.gap || (gap === best.gap && o.worth > best.worth)) {
+      best = { ...o, gap };
+    }
+  }
+  return best === null ? null : placeMove(best.index, best.hex);
+}
+
+/**
+ * P3b's question given hands: leans toward the nearest destination while
+ * playing bank15's line — feed on small pockets as tiles, cash the big one as
+ * points. If seeker cannot at least keep up with bank15, the destinations are
+ * decoration and the harness has said so before any human is asked to care.
+ */
+export const seeker: Policy = {
+  name: 'seeker',
+  note: 'Banks a 15-pocket while drifting placement toward the nearest destination.',
+  decide(state, stream) {
+    if (biggestHarvestSize(state) >= 15) {
+      return [biggestHarvest(state, 'points') ?? [], stream];
+    }
+    const goal = nearestDestination(state);
+    const place = goal === null ? bestPlacement(state) : placementToward(state, goal);
+    if (place !== null) return [place, stream];
+    const cash = smallestHarvest(state, 'tiles');
+    if (cash !== null) return [cash, stream];
+    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+  },
+};
+
+/**
  * A farmer who never scores. Survival is worth nothing on its own, so this
  * should live a long time and finish near zero — the control that proves points
  * and tiles are not secretly the same currency.
@@ -344,6 +411,7 @@ export const POLICIES: readonly Policy[] = [
   bank15,
   bank40,
   bank80,
+  seeker,
   survivor,
 ];
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { TUNING, COLOURS, type Tuning } from '@content/tuning';
-import { disc, key, neighbourKeys } from './hex';
+import { ENDLESS_TUNING, TUNING, COLOURS, type Tuning } from '@content/tuning';
+import { disc, distance, key, neighbourKeys } from './hex';
 import { newRun, reduce } from './reduce';
 import { previewWorth, worthOf } from './rules';
-import { terrainAt } from './world';
+import { destinationAt, destinationsWithin, terrainAt } from './world';
 
 /**
  * P2 (`ideas/endless-world.md`): the ground under the endless world. These pin
@@ -50,6 +50,44 @@ describe('the terrain function', () => {
   });
 });
 
+describe('destinations', () => {
+  const T = ENDLESS_TUNING;
+
+  it('agrees with itself: the per-hex answer is the enumeration, exactly', () => {
+    const radius = 40;
+    const listed = new Map(destinationsWithin(9, radius, T).map((d) => [key(d.q, d.r), d]));
+    for (const h of disc(radius)) {
+      const at = destinationAt(9, h.q, h.r, T);
+      expect(at).toEqual(listed.get(key(h.q, h.r)) ?? null);
+    }
+  });
+
+  it('keeps the first destination a journey — nothing lands next to home', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      for (const d of destinationsWithin(seed, 30, T)) {
+        expect(distance(d, { q: 0, r: 0 })).toBeGreaterThanOrEqual(T.destinationEvery / 2);
+      }
+    }
+  });
+
+  it('offers every reward kind, and territories always carry a colour', () => {
+    const rewards = new Set<string>();
+    for (let seed = 1; seed <= 10; seed++) {
+      for (const d of destinationsWithin(seed, 60, T)) {
+        rewards.add(d.reward);
+        if (d.reward === 'territory') expect(d.colour).not.toBeNull();
+        else expect(d.colour).toBeNull();
+      }
+    }
+    expect([...rewards].sort()).toEqual(['cache', 'site', 'territory']);
+  });
+
+  it('does not exist while the system is off — the bounded default', () => {
+    expect(destinationsWithin(9, 60, TUNING)).toEqual([]);
+    expect(destinationAt(9, 12, 12, TUNING)).toBeNull();
+  });
+});
+
 describe('native ground', () => {
   it('counts as one match, in worth and in preview alike', () => {
     // A seed run, then place next to the seed on ground made native by hand:
@@ -64,7 +102,12 @@ describe('native ground', () => {
       cells: { ...state.cells, [spot]: { kind: 'empty', native: seed.colour } },
     };
 
-    const promised = previewWorth(state.cells, spot, seed.colour, state.tuning);
+    const promised = previewWorth(
+      state.cells,
+      spot,
+      { colour: seed.colour, rarity: 'common' },
+      state.tuning,
+    );
     state = reduce(state, {
       type: 'SELECT',
       index: state.draft.findIndex((t) => t.colour === seed.colour),
@@ -84,8 +127,9 @@ describe('native ground', () => {
     const state = newRun(5, ENDLESS);
     const spot = key(1, 0);
     const cells = { ...state.cells, [spot]: { kind: 'empty', native: 'red' } as const };
-    expect(previewWorth(cells, spot, 'blue', state.tuning)).toBe(
-      previewWorth(state.cells, spot, 'blue', state.tuning),
+    const blue = { colour: 'blue', rarity: 'common' } as const;
+    expect(previewWorth(cells, spot, blue, state.tuning)).toBe(
+      previewWorth(state.cells, spot, blue, state.tuning),
     );
   });
 });

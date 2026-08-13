@@ -1,4 +1,5 @@
 import { COLOURS, type Colour, type Tuning } from '@content/tuning';
+import type { LandmarkReward } from './state';
 
 /**
  * The ground under the endless world, as a pure function.
@@ -32,6 +33,85 @@ function hashAt(seed: number, x: number, y: number): number {
   h = Math.imul(h ^ (h >>> 15), h | 1);
   h ^= h + Math.imul(h ^ (h >>> 7), h | 61);
   return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
+}
+
+export type Destination = {
+  readonly q: number;
+  readonly r: number;
+  readonly reward: LandmarkReward;
+  /** Set on territories: the colour of the field a claim unfurls. */
+  readonly colour: Colour | null;
+};
+
+const hexDistance = (q: number, r: number): number =>
+  Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r));
+
+/**
+ * The one destination a block of the plane holds, if it holds one.
+ *
+ * Same trick as native fields, one scale up: the plane is tiled into blocks of
+ * `destinationEvery` hexes, each block rolls once for whether-and-where, and
+ * the answer is a pure function of `(worldSeed, block)` — so a destination is
+ * exactly as permanent as the ground it stands on. The reward mix rides the
+ * same roll's remainder; a second hash places it inside the block so position
+ * and kind cannot correlate. Blocks whose pick lands within a block-width of
+ * home are empty: the first destination is always a journey, never a spawn gift.
+ */
+export function blockDestination(
+  seed: number,
+  bq: number,
+  br: number,
+  t: Tuning,
+): Destination | null {
+  const size = Math.max(1, t.destinationEvery);
+  if (t.destinationEvery <= 0 || t.destinationChance <= 0) return null;
+
+  const roll = hashAt(seed ^ 0x2c9277b5, bq, br);
+  if (roll >= t.destinationChance) return null;
+
+  const spot = hashAt(seed ^ 0x6b79a3d1, bq, br);
+  const q = bq * size + Math.floor((spot * size * size) % size);
+  const r = br * size + Math.floor(spot * size);
+  if (hexDistance(q, r) < size / 2) return null;
+
+  // 40% cache, 40% site, 20% territory — enough territories to matter, not so
+  // many that the plane is pre-conquered. Reward kinds ride the presence roll.
+  const kind = roll / t.destinationChance;
+  const reward: LandmarkReward = kind < 0.4 ? 'cache' : kind < 0.8 ? 'site' : 'territory';
+
+  const colour =
+    reward === 'territory'
+      ? (COLOURS[Math.floor(hashAt(seed ^ 0x1f83d9ab, q, r) * COLOURS.length) % COLOURS.length] ??
+        null)
+      : null;
+  return { q, r, reward, colour };
+}
+
+/** The destination standing at exactly this hex, if any. What reveal consults. */
+export function destinationAt(seed: number, q: number, r: number, t: Tuning): Destination | null {
+  const size = Math.max(1, t.destinationEvery);
+  const d = blockDestination(seed, Math.floor(q / size), Math.floor(r / size), t);
+  return d !== null && d.q === q && d.r === r ? d : null;
+}
+
+/**
+ * Every destination within `radius` of home. The view calls this to draw
+ * beacons for destinations the board has not grown to yet — the glow through
+ * the not-yet-drawn ground that makes "where do I push next" a real question.
+ */
+export function destinationsWithin(seed: number, radius: number, t: Tuning): Destination[] {
+  if (t.destinationEvery <= 0 || t.destinationChance <= 0) return [];
+  const size = Math.max(1, t.destinationEvery);
+  const blocks = Math.ceil(radius / size);
+
+  const out: Destination[] = [];
+  for (let bq = -blocks - 1; bq <= blocks; bq++) {
+    for (let br = -blocks - 1; br <= blocks; br++) {
+      const d = blockDestination(seed, bq, br, t);
+      if (d !== null && hexDistance(d.q, d.r) <= radius) out.push(d);
+    }
+  }
+  return out;
 }
 
 export function terrainAt(seed: number, q: number, r: number, t: Tuning): Terrain {

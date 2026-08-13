@@ -419,3 +419,79 @@ re-swept at the new economy; production build clean.
 **Not done, deliberately:** P3b itself (spec only), the depth-target tuning,
 and nothing signed on any gate — the manual phone script (prompt.md Part 3,
 plus `?ff=world.endless`) is still the next thing only Marc can do.
+
+---
+
+### Session 6 — P3b built: somewhere to go, and something to draw
+
+**Questions, written before building, one per system:**
+
+1. Destinations — does a visible destination actually change where a human
+   builds?
+2. Rarity — do the odds ever make a human take a TILES harvest they would have
+   taken as points?
+
+Neither is answerable by the harness; both wait on a phone. What the harness
+CAN answer — are the rewards worth the detour, does the loot break the
+economy — it answered below.
+
+**Marc's design answers (2026-08-13, via prompts), recorded:** territories pay
+**caches and point sites plus claimable territory** — not rare-tile shrines.
+Rarity rolls **on the draft AND harvests raise the odds** (luck as a
+resource). All four rare powers appeal (wild / heavy / scout / perk); the
+minimal cut ships wild and heavy, scout and perk stay in the ideas file.
+Build order: **both systems, minimal cuts, one session.**
+
+**Done**
+
+- **Destinations.** One per ~12-hex block of the plane (`blockDestination`,
+  same pure-hash trick as fields, one scale up; the block around home stays
+  empty so the first is always a journey). Three rewards, all in `content/`:
+  a **cache** pays 12 tiles on touch, a **site** pays 25 × the distance
+  multiplier at its hex, a **territory** — Marc's "key territories" — unfurls
+  a radius-2 native field of its colour when claimed, now and for all later
+  reveals. A landmark is solid like a wall, claimed once by placing a tile
+  against it, and paid AFTER the placement cost so a cache can save a run at
+  zero. Unrevealed destinations inside `reach + 8` draw as **beacons** —
+  glow through ground that does not exist yet — and one faint HUD line names
+  the nearest ("A cache of 12 tiles glows 9 out").
+- **Rarity.** Every drawn tile rolls common/**magic**/**unique** on the LOOT
+  stream (bounded sequences do not move; the stream existed unused since
+  Session 0). Magic is WILD — matches every neighbouring tile, both ways.
+  Unique is wild and HEAVY — its matches count double, both ways, ground
+  included. **Luck** is tiles popped in TILES-harvests, capped at 150; each
+  point adds to the draft odds, and the HUD prints the odds so watching them
+  climb is the reward. Cards say MAGIC/UNIQUE; rare tiles keep an accent edge
+  on the board.
+- Both systems are tuning-gated and OFF in the bounded defaults;
+  `ENDLESS_TUNING` — what `?ff=world.endless` plays — turns them on.
+  `pnpm sim --endless` sweeps the shipped endless economy in one flag.
+
+**What the harness said (40 seeds, and pinned at 6 in `sim.test.ts`):**
+
+- Nothing stalls, nothing caps, across all twelve policies — including the
+  new `seeker`.
+- **The timing optimum MOVED, and that is the finding:** on the bare 30/70
+  plane bank40's median is 0 (past the cliff); with destinations on it is
+  **19,356** — caches are lifelines, so the sustainable pocket grew from ~15
+  back to ~40. The cliff holds (bank80: 75), banking-until-forced still
+  scores ~0, the payout spine still stands. Destinations are part of the
+  economy, not decoration on it.
+- **`seeker` earned its keep the honest way: by failing first.** A seeker
+  that simply walked at the beacon starved — 66 placements, one harvest —
+  the beeline lesson again: an arm encloses nothing. Rebuilt as best-packing
+  with a drift toward the goal on near-ties, it claims a median 2
+  destinations per run and stays in bank15's league (3,827 vs 4,886, higher
+  best). Following the compass is viable, not dominant — whether it FEELS
+  worth it is exactly question 1.
+
+**Verified:** 234 tests green (was 212); typecheck, lint, format clean;
+production build clean; the 40-seed endless table run with the systems on and
+off; bounded pins byte-identical (the loot stream only rolls when odds are
+nonzero).
+
+**Not done, deliberately:** scout and perk tiles (recorded in
+`ideas/endless-world.md`); quests; any tuning sweep of the new numbers beyond
+"nothing breaks"; fog memory (P4); and nothing signed on any gate. The two
+written questions above are the play session this build exists for:
+**`?ff=world.endless`, on the phone, against prod.**
