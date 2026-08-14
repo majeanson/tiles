@@ -543,3 +543,67 @@ momentum/inertia on pan, no first-visit auto-open of the help panel (a `?`
 in the corner is discoverable; auto-opening it every run is a toll). The
 phone session the last two sessions have been waiting for is still the next
 thing only Marc can do.
+
+---
+
+### Session 8 — Character: why this tile, why here
+
+**Question:** do colour personalities, biomes and a stash make TAKING and
+PLACING a tile feel like decisions? Marc's diagnosis (2026-08-13): "all is
+streamlined and not much fun or exploration" — the tiles were mechanically
+identical, the ground was uniform, and the best move was usually obvious.
+The human half waits on the phone; the harness half is answered below.
+
+**Marc's picks (2026-08-13, via prompts), recorded:** placement should get
+colour personalities + pattern bonuses + a deeper economy (not reactive
+ground); exploration should get ALL of biomes / hidden finds / hazards /
+quests; drafting should get a hold slot + tiles with quirks (not
+draft-follows-land, not skip-for-luck). This session built the coherent
+minimal slice — personalities, biomes, hold — and the rest is queued in
+`ideas/endless-world.md`.
+
+**Done**
+
+- **Colour personalities.** Every colour earns its own reason to be taken,
+  all through the ONE worth channel so the preview stays the whole truth
+  (numbers in `content/`, zeros = off, on in `ENDLESS_TUNING`):
+  GREEN crowds (+1 per green neighbour past the first — mono-clusters
+  snowball) · YELLOW company (+1 per different colour adjacent — the glue in
+  mixed pockets) · RED ash (stone counts as a match — your spent wake becomes
+  red's soil) · BLUE tide (+1 worth per 6 hexes from home — the colour you
+  carry outward). Implemented as one shared `tallyWorth` under both `worthOf`
+  and `previewWorth`, so promise and payment cannot diverge. Two of the four
+  are pattern bonuses in disguise (crowds, company) — the explicit-shapes cut
+  stays queued.
+- **Biomes.** `biomeAt`, a third scale of the same pure hash (fields are
+  patches, destinations are blocks, biomes are regions ~24 hexes across, 65%
+  of the plane): inside a biome every native field wears the biome's colour,
+  so regions read as one colour's country through the existing dot rendering
+  — no new paint. Chasing a colour now means walking to it.
+- **The hold slot.** `HOLD` swaps the selected card with a stash that
+  survives rerolls (take when empty, trade when full — one action, both
+  directions). Drawn as a dashed extra card; `holdSlots: 0` in the bounded
+  game. Every draft is now "use it or save it".
+
+**What the harness said (40 seeds, `pnpm sim --endless`):** nothing stalls
+across all twelve policies, and **median reach roughly doubled everywhere**
+(rush 17 → 31, farm/survivor 18 → 33, bank40 14 → 27) — blue tide and red
+ash make the frontier and the wake worth building, so the policies WALK now.
+Exploration pays structurally, which was the complaint. Every scoring line
+rose (bank40 19,356 → 25,193; bank15 4,886 → 10,478; seeker 6,043 with 3
+claims); the interior optimum, the bank80 cliff and the dead exploits all
+hold, pinned unchanged. The inflation is accepted for now — the "deeper
+economy" re-target Marc asked for is the recorded next tuning job, done
+against these systems rather than before them.
+
+**Verified:** 256 tests green (was 244): personality arithmetic, preview/pay
+agreement per colour, biome purity and field-colour dominance, hold
+take/trade/persist, plus every prior pin. Typecheck, lint, format,
+production build clean.
+
+**Not done, deliberately (queued in `ideas/endless-world.md`):** explicit
+pattern shapes (lines, rings, four-colour pockets), hidden finds under
+unrevealed ground, hazards, quests at landmarks, tile quirks, scout and perk
+tiles, and the economy re-target. One session cannot answer nine questions;
+these three were the ones that make placement, exploration and drafting each
+mean something.

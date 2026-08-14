@@ -258,8 +258,11 @@ export class Game {
       'Popped tiles turn to stone. Stone surrounds but never matches — keep moving.',
       ...(endless
         ? [
+            'Every colour has a trick: GREEN loves green crowds, YELLOW loves mixed company, RED feeds on stone, BLUE is worth more far from home.',
             'Glows in the dark are destinations: + pays tiles, ★ pays pts, ◆ claims the land around it. Build out and touch them.',
+            'Same-coloured dot regions are biomes — one colour’s country, where that colour grows best.',
             'MAGIC tiles match any colour; UNIQUE ones count double. Taking tiles from big pockets raises the odds.',
+            'The HOLD card stashes your selected tile for later; tap again to trade it back.',
           ]
         : ['Once you have harvested here, you may move on — deeper maps pay more.']),
       'Zoom with + and −, drag to pan, FIT to see everything.',
@@ -422,6 +425,64 @@ export class Game {
         });
         return button;
       }),
+      ...this.#renderHold(hud),
     );
+  }
+
+  /**
+   * The stash, drawn as one more card at the end of the row. Tapping it swaps
+   * with the selected card — take when empty, trade when full — so saving a
+   * tile for later costs one tap and no reading.
+   */
+  #renderHold(hud: HudView): HTMLButtonElement[] {
+    if (!hud.canHold) return [];
+
+    const button = document.createElement('button');
+    button.className = 'tile hold';
+    button.addEventListener('click', () => {
+      this.#dispatch({ type: 'HOLD' });
+    });
+
+    if (hud.held === null) {
+      button.setAttribute('aria-label', 'Hold the selected tile for later');
+      const label = document.createElement('span');
+      label.className = 'tile-name';
+      label.textContent = 'HOLD';
+      button.append(label);
+      return [button];
+    }
+
+    button.dataset['colour'] = hud.held.colour;
+    const name = this.#theme.terrainNames[hud.held.colour];
+    button.setAttribute('aria-label', `Swap the held ${name} tile back into the hand`);
+
+    const art = this.#art[hud.held.colour];
+    if (art !== undefined) {
+      const img = document.createElement('img');
+      img.className = 'tile-art';
+      img.src = art;
+      img.alt = '';
+      img.draggable = false;
+      button.classList.add('has-art');
+      button.append(img);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'tile-name';
+    label.textContent = name;
+    button.append(label);
+
+    if (hud.held.rarity !== 'common') {
+      const badge = document.createElement('span');
+      badge.className = 'tile-rarity';
+      badge.textContent = hud.held.rarity.toUpperCase();
+      button.append(badge);
+    }
+
+    const badge = document.createElement('span');
+    badge.className = 'tile-held';
+    badge.textContent = 'HELD';
+    button.append(badge);
+    return [button];
   }
 }

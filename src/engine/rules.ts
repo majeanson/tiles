@@ -1,4 +1,4 @@
-import type { Tuning } from '@content/tuning';
+import type { Colour, Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from './hex';
 import type { Cell, GameState, Rarity, Tile } from './state';
 
@@ -143,9 +143,60 @@ function matchValue(
 }
 
 /**
+ * The whole worth computation, shared by `worthOf` and the preview's fast
+ * path so the number promised and the number paid come from one place.
+ *
+ * Matches per `matchValue`, plus the colour personalities (Session 8): green
+ * crowds, yellow company, red ash, blue tide — each a bonus in the same worth
+ * unit, so a personality is exactly as visible in the preview as a match is.
+ * `counts` is the ripeness filter: `worthOf` honours `ripeTilesMatch`, the
+ * preview fast path runs only when ripeness cannot matter.
+ */
+function tallyWorth(
+  cells: Cells,
+  k: HexKey,
+  colour: Colour,
+  rarity: Rarity | undefined,
+  onNative: boolean,
+  t: Tuning,
+  counts: (n: HexKey) => boolean,
+): number {
+  const { q, r } = parse(k);
+  let worth = 0;
+  let greens = 0;
+  const company = new Set<Colour>();
+
+  for (const n of neighbourKeys(q, r)) {
+    const other = cells[n];
+    if (other?.kind === 'tile') {
+      if (!counts(n)) continue;
+      worth += matchValue(colour, rarity, other);
+      if (other.colour === 'green') greens++;
+      if (other.colour !== colour) company.add(other.colour);
+    } else if (other?.kind === 'stone' && colour === 'red' && t.redAshMatches) {
+      // Ash: red reads the wake as kin. A heavy red doubles it like any match.
+      worth += rarity === 'unique' ? 2 : 1;
+    }
+  }
+
+  if (colour === 'green' && greens > 1) worth += (greens - 1) * t.greenCrowdBonus;
+  if (colour === 'yellow') worth += company.size * t.yellowCompanyBonus;
+  if (colour === 'blue' && t.blueTideEvery > 0) {
+    worth += Math.floor(distance({ q, r }, ORIGIN) / t.blueTideEvery);
+  }
+
+  // Native ground counts as one match — the endless world's rule 4 addendum.
+  // Baked into the tile at placement, so worth never has to ask the terrain.
+  // A heavy tile's ground match counts double like every other match it makes.
+  return worth + (onNative ? (rarity === 'unique' ? 2 : 1) : 0);
+}
+
+/**
  * Worth: what the six neighbours pay this tile — one per matching LIVE TILE,
- * with wild and heavy rarities read by `matchValue`. Stone and walls surround
- * but never match — the asymmetry the whole design turns on.
+ * with wild and heavy rarities read by `matchValue` and the colour
+ * personalities added by `tallyWorth`. Stone and walls surround but never
+ * match — the asymmetry the whole design turns on — with red's ash bonus the
+ * one deliberate, tuned exception.
  *
  * When `ripeTilesMatch` is off, a neighbour that is already ripe stops counting
  * too, so a tile left sitting ripe stops feeding its neighbours and waiting has
@@ -157,18 +208,9 @@ function matchValue(
 export function worthOf(cells: Cells, k: HexKey, t: Tuning): number {
   const cell = cells[k];
   if (cell?.kind !== 'tile') return 0;
-  const { q, r } = parse(k);
-  let matches = 0;
-  for (const n of neighbourKeys(q, r)) {
-    const other = cells[n];
-    if (other?.kind !== 'tile') continue;
-    if (!t.ripeTilesMatch && isRipe(cells, n)) continue;
-    matches += matchValue(cell.colour, cell.rarity, other);
-  }
-  // Native ground counts as one match — the endless world's rule 4 addendum.
-  // Baked into the tile at placement, so worth never has to ask the terrain.
-  // A heavy tile's ground match counts double like every other match it makes.
-  return matches + (cell.onNative === true ? (cell.rarity === 'unique' ? 2 : 1) : 0);
+  return tallyWorth(cells, k, cell.colour, cell.rarity, cell.onNative === true, t, (n) =>
+    t.ripeTilesMatch ? true : !isRipe(cells, n),
+  );
 }
 
 const ORIGIN: { q: number; r: number } = { q: 0, r: 0 };
@@ -263,20 +305,13 @@ export function previewWorth(
   const { colour, rarity } = tile;
   const ground = cells[k];
   const onNative = ground?.kind === 'empty' && ground.native === colour;
-  const nativeBonus = onNative ? (rarity === 'unique' ? 2 : 1) : 0;
 
   // Fast path: with ripe neighbours still paying, worth does not depend on
   // ripeness at all, so there is nothing the hypothetical board would change.
   // Worth taking — the harness asks this a few hundred times per placement, and
   // the slow path copies the whole board to answer it.
   if (t.ripeTilesMatch) {
-    const { q, r } = parse(k);
-    let matches = 0;
-    for (const n of neighbourKeys(q, r)) {
-      const other = cells[n];
-      if (other?.kind === 'tile') matches += matchValue(colour, rarity, other);
-    }
-    return matches + nativeBonus;
+    return tallyWorth(cells, k, colour, rarity, onNative, t, () => true);
   }
   return worthOf({ ...cells, [k]: { kind: 'tile', colour, onNative, rarity } }, k, t);
 }

@@ -272,6 +272,38 @@ are words players already own. The harness needs a policy that values
 special tiles before the human question gets asked, or Gate C reopens
 unmeasured.
 
+## P3c — character, and the queue behind it
+
+**Status: the first slice is BUILT (2026-08-13, Session 8).** Marc's
+diagnosis — "all is streamlined and not much fun or exploration" — and his
+picks: placement wants colour personalities + pattern bonuses + a deeper
+economy; exploration wants biomes, hidden finds, hazards AND quests;
+drafting wants a hold slot + tiles with quirks. Shipped this session:
+**colour personalities** (green crowds / yellow company / red ash / blue
+tide, all in the worth channel), **biomes** (regions ~24 hexes across where
+every field wears the region's colour), and the **hold slot** (a stash that
+survives rerolls). Harness: reach doubled across policies — exploration pays
+structurally — and the timing spine held.
+
+**The queue, in rough order, one question each:**
+
+- **Pattern shapes** (lines of 3+, a ring around a hex, a four-colour
+  pocket): does explicit geometry change how a human packs? Note crowds and
+  company already reward geometry implicitly; build only if they prove too
+  subtle on the phone.
+- **Hidden finds**: treasure sown under unrevealed ground so growth is
+  digging. Question: does a reveal-roll make placement itself exciting, or
+  just noisy?
+- **Hazards**: ground that costs or threatens (thorns, unstable ground).
+  Question: does risk texture change routes, or just punish?
+- **Quests at landmarks**: a task with a payoff at a destination. Waits on
+  the destinations themselves being felt (P3b's open question).
+- **Tile quirks**: printed modifiers beyond rarity ("pays double past 8
+  distance"). Waits on rarity being felt first.
+- **Economy re-target** (Marc's "deeper economy"): the Session 8 inflation
+  is accepted, not tuned. Re-run the depth target against personalities +
+  biomes; `costRisesEvery` and `distanceStep` are the first dials.
+
 ## Risks, written down before building
 
 - **Banking may survive as "grow one giant cluster forever".** Ringing a

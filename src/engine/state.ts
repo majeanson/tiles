@@ -138,6 +138,12 @@ export type GameState = {
 
   readonly draft: readonly Tile[];
   readonly selected: number;
+  /**
+   * The stash: a drafted tile kept for later, swapped with the selected card
+   * by HOLD. Null when empty, and always null while `tuning.holdSlots` is 0.
+   * Held tiles survive rerolls — that is the entire point of holding one.
+   */
+  readonly held: Tile | null;
 
   /** Telemetry for the end screen and the harness. */
   readonly log: {
@@ -159,4 +165,10 @@ export type Action =
    * board is a no-op, and both are the rules rather than special cases.
    */
   | { readonly type: 'HARVEST'; readonly choice: HarvestChoice; readonly at?: HexKey }
+  /**
+   * Swap the selected draft card with the stash. Empty stash takes the card
+   * (the draft shrinks until its next reroll); a full one trades. One action
+   * for both directions, so the stash is a place, not a mode.
+   */
+  | { readonly type: 'HOLD' }
   | { readonly type: 'LEAVE' };

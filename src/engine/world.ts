@@ -114,6 +114,19 @@ export function destinationsWithin(seed: number, radius: number, t: Tuning): Des
   return out;
 }
 
+/**
+ * The biome a hex sits in: one colour's country, or none. A pure hash at the
+ * broadest scale the plane has — destinations are blocks, fields are patches,
+ * biomes are regions — so "where am I" has an answer bigger than one screen.
+ */
+export function biomeAt(seed: number, q: number, r: number, t: Tuning): Colour | null {
+  if (t.biomeEvery <= 0 || t.biomeChance <= 0) return null;
+  const size = Math.max(1, t.biomeEvery);
+  const roll = hashAt(seed ^ 0x4a1c9d37, Math.floor(q / size), Math.floor(r / size));
+  if (roll >= t.biomeChance) return null;
+  return COLOURS[Math.floor((roll / t.biomeChance) * COLOURS.length) % COLOURS.length] ?? null;
+}
+
 export function terrainAt(seed: number, q: number, r: number, t: Tuning): Terrain {
   // Arrival ground is clean: the origin and its ring hold no walls and favour
   // no colour, so every run starts with the same fair, placeable clearing.
@@ -123,11 +136,15 @@ export function terrainAt(seed: number, q: number, r: number, t: Tuning): Terrai
 
   // Native fields are coarse: one roll per block of `fieldSize` hexes, so the
   // ground reads as regions rather than static. The same roll picks whether a
-  // block is native and to which colour, spending its low bits on the which.
+  // block is native and to which colour, spending its low bits on the which —
+  // unless a biome claims this ground, in which case every field in it wears
+  // the biome's colour and the region reads as one colour's country.
   const size = Math.max(1, t.fieldSize);
   const roll = hashAt(seed ^ 0x7f4a7c15, Math.floor(q / size), Math.floor(r / size));
   if (roll >= t.fieldChance) return OPEN;
 
-  const colour = COLOURS[Math.floor((roll / t.fieldChance) * COLOURS.length) % COLOURS.length];
+  const biome = biomeAt(seed, q, r, t);
+  const colour =
+    biome ?? COLOURS[Math.floor((roll / t.fieldChance) * COLOURS.length) % COLOURS.length];
   return colour === undefined ? OPEN : { wall: false, native: colour };
 }

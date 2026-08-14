@@ -96,6 +96,43 @@ export type Tuning = {
   readonly luckUniquePerPop: number;
   readonly luckCap: number;
 
+  /**
+   * Colour personalities (Session 8, Marc's "why would I take THIS tile").
+   * Every colour earns its own placement logic, all through the one worth
+   * channel so the preview numbers stay the whole truth:
+   *
+   *   green  — crowds:  +`greenCrowdBonus` worth per green neighbour past the
+   *            first. Mono-clusters snowball.
+   *   yellow — company: +`yellowCompanyBonus` worth per DIFFERENT colour
+   *            among its neighbours. The glue tile in mixed pockets.
+   *   red    — ash:     stone neighbours count as matches. Your spent wake
+   *            becomes red's soil, so red builds where nothing else pays.
+   *   blue   — tide:    +1 worth per `blueTideEvery` hexes from home. The
+   *            colour you carry outward.
+   *
+   * Zeros (and false) switch the personalities off — the bounded default.
+   */
+  readonly greenCrowdBonus: number;
+  readonly yellowCompanyBonus: number;
+  readonly redAshMatches: boolean;
+  readonly blueTideEvery: number;
+
+  /**
+   * Biomes: broad regions of the plane, `biomeEvery` hexes to a block,
+   * `biomeChance` of blocks native to one colour. Inside a biome every field
+   * takes the biome's colour, so regions read as one colour's country and
+   * chasing a colour means walking to it. 0 switches the layer off.
+   */
+  readonly biomeEvery: number;
+  readonly biomeChance: number;
+
+  /**
+   * Hold slots: pockets that keep a drafted tile for later. One tap swaps the
+   * selected card with the stash, so every draft becomes "use it or save it".
+   * 0 — no stash, the bounded default.
+   */
+  readonly holdSlots: number;
+
   readonly startingTiles: number;
 
   /** cost = baseCost + floor(placements / costRisesEvery), all run, never reset. */
@@ -190,6 +227,16 @@ export const TUNING: Tuning = {
   luckUniquePerPop: 0,
   luckCap: 150,
 
+  greenCrowdBonus: 0,
+  yellowCompanyBonus: 0,
+  redAshMatches: false,
+  blueTideEvery: 0,
+
+  biomeEvery: 0,
+  biomeChance: 0,
+
+  holdSlots: 0,
+
   // 40/100 let the first human session bank 134 tiles without ever feeling
   // the curve (2026-08-04). Swept to 30/70: random-legal dies on map 1,
   // survivor caps ~325 placements, and the endless timing optimum moves from
@@ -242,6 +289,20 @@ export const ENDLESS_TUNING: Tuning = {
   uniqueChance: 0.01,
   luckMagicPerPop: 0.0008,
   luckUniquePerPop: 0.0002,
+
+  // The personalities, at their first values: every bonus worth exactly one
+  // ordinary match, so no colour's trick outranks plain good packing.
+  greenCrowdBonus: 1,
+  yellowCompanyBonus: 1,
+  redAshMatches: true,
+  blueTideEvery: 6,
+
+  // Biomes twice the size of destination blocks: a country per two beacons,
+  // so walking somewhere changes what the ground grows.
+  biomeEvery: 24,
+  biomeChance: 0.65,
+
+  holdSlots: 1,
 };
 
 /** The four tile colours. Named for what they are — art direction is undecided. */

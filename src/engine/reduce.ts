@@ -200,6 +200,7 @@ export function newRun(rootSeed: number, tuning: Tuning = TUNING): GameState {
     cells: opened.cells,
     draft: opened.draft,
     selected: 0,
+    held: null,
     log: { harvests: [], popped: 0, placementsAtMapStart: 0 },
   };
 }
@@ -212,9 +213,32 @@ export function reduce(state: GameState, action: Action): GameState {
       return place(state, action.hex);
     case 'HARVEST':
       return harvest(state, action.choice, action.at);
+    case 'HOLD':
+      return hold(state);
     case 'LEAVE':
       return leave(state);
   }
+}
+
+/**
+ * Swap the selected card with the stash. An empty stash takes the card and
+ * the draft shrinks until its next reroll; a full one trades in place. The
+ * held tile survives rerolls — that is what holding is FOR — and the stash
+ * is a place rather than a mode: one action, both directions.
+ */
+function hold(state: GameState): GameState {
+  if (state.phase !== 'placing') return state;
+  if (state.tuning.holdSlots <= 0) return state;
+
+  const tile = state.draft[state.selected];
+  if (tile === undefined) return state;
+
+  if (state.held === null) {
+    const draft = state.draft.filter((_, i) => i !== state.selected);
+    return { ...state, held: tile, draft, selected: 0 };
+  }
+  const draft = state.draft.map((d, i) => (i === state.selected ? state.held! : d));
+  return { ...state, held: tile, draft };
 }
 
 function selectDraft(state: GameState, index: number): GameState {

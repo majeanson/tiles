@@ -25,7 +25,19 @@ you zoom (`zoomLayout` in `render/layout.ts`, pure, pinned). A `?` opens one
 screen of how-to-play in plain words, per world; the hint line leads with a
 one-clause "what now". Harvest buttons exist only while something is ripe,
 and the draft marks BEST from the same previews the board draws. 244 tests.
-Next: Marc plays `?ff=world.endless` on the phone.
+
+Session 8, same day, on "streamlined but not fun": **character.** Colour
+personalities through the one worth channel (GREEN crowds, YELLOW company,
+RED feeds on stone, BLUE worth more far from home — one shared `tallyWorth`
+so preview and payment cannot diverge), biomes as a third scale of the world
+hash (regions ~24 hexes across where every field wears the region's colour),
+and a HOLD stash that survives rerolls. All tuning-gated, on in
+`ENDLESS_TUNING` only. Harness: nothing stalls, median reach DOUBLED across
+policies (exploration pays structurally), every scoring line rose, timing
+spine holds. 256 tests. Queued in `ideas/endless-world.md`: pattern shapes,
+hidden finds, hazards, quests, quirks, economy re-target. Next: Marc plays
+`?ff=world.endless` on the phone — three sessions of build are waiting on
+that one play.
 
 ## Shipped and settled
 

@@ -292,6 +292,19 @@ button:disabled {
   color: var(--ink-dim, #8a91a0);
 }
 
+/* The stash: one more card, dashed while empty so it reads as a place to put
+   something rather than a thing to take. */
+.tile.hold:not([data-colour]) {
+  border-style: dashed;
+  color: var(--ink-faint, #767d8d);
+}
+
+.tile-held {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim, #8a91a0);
+}
+
 /* Keep the action row's height stable while the harvest buttons come and go,
    so the board above never resizes because a pocket ripened. */
 #actions {

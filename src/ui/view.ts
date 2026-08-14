@@ -159,6 +159,11 @@ export type HudView = {
     readonly best: boolean;
   }[];
 
+  /** Whether the stash exists at all (`tuning.holdSlots > 0`). */
+  readonly canHold: boolean;
+  /** The stashed tile, or null while the stash sits empty. */
+  readonly held: { readonly colour: Colour; readonly rarity: Rarity } | null;
+
   readonly ripeCount: number;
   /** What harvesting right now would pay, each way. Both are always shown. */
   readonly harvestTiles: number;
@@ -218,6 +223,9 @@ export function toHudView(state: GameState, harvestAt: HexKey | null = null): Hu
       selected: i === state.selected,
       best: i === best,
     })),
+
+    canHold: state.tuning.holdSlots > 0,
+    held: state.held === null ? null : { colour: state.held.colour, rarity: state.held.rarity },
 
     ripeCount: ripeKeys(state.cells).length,
     harvestTiles: value.tiles,
