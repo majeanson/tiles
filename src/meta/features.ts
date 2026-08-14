@@ -17,9 +17,20 @@
 export type FeatureDef = {
   readonly id: string;
   readonly label: string;
-  /** Why it exists and what turning it on changes. */
+  /**
+   * Why it exists, what turning it on changes, and — when a default moved —
+   * the decision that moved it. This is the note the in-game settings panel
+   * prints, so the registry doubles as the player-visible decision record:
+   * one source, no staleness.
+   */
   readonly note: string;
   readonly defaultOn: boolean;
+  /**
+   * Whether anything actually reads this flag yet. The settings panel shows
+   * unwired flags as NOT BUILT instead of offering a switch that does
+   * nothing — a toggle that lies is worse than no toggle.
+   */
+  readonly wired: boolean;
 };
 
 /**
@@ -32,21 +43,26 @@ export const FEATURES = [
     label: 'Treasure payout',
     note: 'Adds the third choice when a tile pops. The first thing the meta layer unlocks.',
     defaultOn: false,
+    wired: false,
   },
   {
     id: 'debug.overlay',
     label: 'Debug overlay',
     note: 'Coordinates, seed, and state readouts drawn over the board.',
     defaultOn: false,
+    wired: false,
   },
   {
     id: 'world.endless',
     label: 'The endless world',
     note:
-      'P3 of ideas/endless-world.md: one unbounded plane instead of bounded maps. ' +
-      'Local cluster harvests, distance pays, no LEAVE. Off because the bounded game ' +
-      'is the shipped default until playing this decides otherwise.',
-    defaultOn: false,
+      'One unbounded plane instead of bounded maps: local cluster harvests, distance ' +
+      'pays, destinations, biomes, rarity, the stash. ON by default since 2026-08-14 — ' +
+      'Session 4 said endless-replaces-bounded would be decided by playing, and Marc ' +
+      'played both and chose (LOG, Session 9). Off = the original bounded game. ' +
+      'World changes apply from your next run, never to the one in progress.',
+    defaultOn: true,
+    wired: true,
   },
   {
     id: 'ui.themePicker',
@@ -56,6 +72,7 @@ export const FEATURES = [
       'Off by default because Gate E is shut and the placeholder is the shipped look; ' +
       'on when you are standing outside with a phone deciding which direction survives daylight.',
     defaultOn: false,
+    wired: true,
   },
 ] as const satisfies readonly FeatureDef[];
 

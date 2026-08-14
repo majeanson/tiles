@@ -608,7 +608,35 @@ tiles, and the economy re-target. One session cannot answer nine questions;
 these three were the ones that make placement, exploration and drafting each
 mean something.
 
-**Addendum, same day — the `?` became the manual.** Marc: "add more
+**Addendum 2, 2026-08-14 — Session 9, a one-line decision with a ledger.**
+Marc: "make it so going to tiles.marcportal.com does what I want instead of
+going to an url." **The endless world is now the shipped default.** Session
+4 established that endless-replacing-bounded would be decided by playing,
+not arguing; Marc has played both and plays only the plane. `world.endless`
+defaults ON — the single recorded exception to the flags-default-off rule,
+noted in `CLAUDE.md` and pinned by the updated registry test — and
+`?ff=-world.endless` remains the bounded game, one sticky visit away. The
+feature-storage key moved v1 → v2 because a stored `false` from any earlier
+plain visit would have silently beaten the new default; the old entry is
+abandoned rather than migrated. Gates unaffected: A, B and D still want
+their evidence, now against the plane by default.
+
+**Addendum 3, 2026-08-14 — the switches moved into the game, and the ledger
+with them.** Marc: flag changes should live in the UI, not the address bar,
+must not eat the run in progress, and the game should carry its own
+what-this-is and decision record, stale-proof like the manual. The `?` panel
+gained two derived halves: **THIS BUILD** (world, seed, economy, and the
+list of systems in play — computed from the run's own tuning, so it
+re-describes itself after any change) and **SETTINGS** (one row per flag,
+rendered FROM the feature registry: label, ON/OFF, and the registry note,
+which now carries each default's decision — the registry became the
+player-visible decision record). `FeatureDef` gained `wired`: unwired flags
+(treasure, debug overlay) render as NOT BUILT instead of offering a switch
+that lies, and a test pins that an unwired flag can never default on.
+Toggles persist immediately; the theme picker applies live; world switches
+deliberately wait — a "NEW RUN with these settings" button (drops `?seed`
+and `?ff` so storage decides) is the explicit way to make them count.
+The current game is never touched by a toggle. 258 tests. Marc: "add more
 explanations, all must be detailed in ?". The help panel grew from eight
 sentences to eleven titled sections (THE LOOP → HOW IT ENDS) covering every
 system in play — cost curve, worth, pocket pricing, both payout formulas in

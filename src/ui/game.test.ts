@@ -68,7 +68,10 @@ function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer;
         <button id="zoom-out">−</button>
         <button id="zoom-fit">FIT</button>
       </div>
-      <div id="help-panel" hidden></div>
+      <div id="help-panel" hidden>
+        <div id="help-manual"></div>
+        <div id="help-meta"></div>
+      </div>
     </div>
     <p id="hint" hidden></p>
     <div id="draft"></div>
@@ -97,6 +100,7 @@ function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer;
     zoomFit: pick<HTMLButtonElement>('zoom-fit'),
     help: pick<HTMLButtonElement>('help'),
     helpPanel: pick('help-panel'),
+    helpManual: pick('help-manual'),
   };
 
   const renderer = new StubRenderer();
@@ -383,9 +387,14 @@ describe('the camera, and staying oriented', () => {
       'THE STASH',
       'READING THE SCREEN',
       'HOW IT ENDS',
+      'THIS BUILD',
     ]) {
       expect(text).toContain(section);
     }
+    // THIS BUILD is derived, not written: the seed and the systems list come
+    // from the run itself.
+    expect(text).toContain(`seed ${ctx.game.state.rootSeed}`);
+    expect(text).toMatch(/Systems in play: .*destinations/);
     // …and the numbers are the run's own tuning, not prose that can go stale.
     const t = ctx.game.state.tuning;
     expect(text).toContain(`${t.cachePays} tiles`);

@@ -35,9 +35,15 @@
           <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
           <button id="zoom-fit" type="button" aria-label="Show everything">FIT</button>
         </div>
-        <!-- How to play, in plain words. Filled by the game per world; closes
-             on any tap. Not a tutorial system — one screen of sentences. -->
-        <div id="help-panel" hidden></div>
+        <!-- The manual and the switchboard. The manual half is written by the
+             game from its LIVE tuning; the settings half is written from the
+             feature registry, whose notes carry the decisions — one source
+             for each, so neither can go stale. Tapping prose closes the
+             panel; the settings rows swallow their taps. -->
+        <div id="help-panel" hidden>
+          <div id="help-manual"></div>
+          <div id="help-meta"></div>
+        </div>
       </div>
 
       <!-- The endless world's compass and loot ticker: the nearest unclaimed

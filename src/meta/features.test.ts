@@ -15,15 +15,29 @@ describe('the registry', () => {
     expect(new Set(FEATURES.map((f) => f.id)).size).toBe(FEATURES.length);
   });
 
-  // The whole premise is that run one is the smallest game there is.
-  it('defaults every flag off', () => {
-    for (const [, on] of Object.entries(defaultFeatures())) expect(on).toBe(false);
+  // The premise stands: run one is the smallest game there is, and systems
+  // arrive off. The ONE recorded exception is the world itself — endless
+  // became the shipped default on 2026-08-14, because Session 4 said that
+  // decision belonged to playing and Marc played both worlds and chose
+  // (LOG, Session 9). A new exception here needs a decision in the ledger.
+  it('defaults every flag off, except the world play chose', () => {
+    for (const [id, on] of Object.entries(defaultFeatures())) {
+      expect(on).toBe(id === 'world.endless');
+    }
   });
 
   it('describes every flag, so the registry never becomes a list of mystery ids', () => {
     for (const f of FEATURES) {
       expect(f.label.length).toBeGreaterThan(0);
       expect(f.note.length).toBeGreaterThan(0);
+    }
+  });
+
+  // The settings panel renders unwired flags as NOT BUILT; a default that
+  // nothing reads would be a lie with extra steps.
+  it('never defaults an unwired flag on', () => {
+    for (const f of FEATURES) {
+      if (!f.wired) expect(f.defaultOn).toBe(false);
     }
   });
 });

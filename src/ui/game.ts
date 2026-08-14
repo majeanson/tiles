@@ -37,6 +37,8 @@ export type Elements = {
   readonly zoomFit: HTMLButtonElement;
   readonly help: HTMLButtonElement;
   readonly helpPanel: HTMLElement;
+  /** The manual's half of the panel. The settings half belongs to main.ts. */
+  readonly helpManual: HTMLElement;
 };
 
 /** One zoom-button step. Three taps from fit to full close-up. */
@@ -119,7 +121,7 @@ export class Game {
     // meets them, with its numbers read from the LIVE tuning so the text can
     // never disagree with the economy it describes. It closes on any tap
     // because the only thing to do with it is stop reading it.
-    this.#el.helpPanel.replaceChildren(
+    this.#el.helpManual.replaceChildren(
       ...this.#helpSections().flatMap(({ title, lines }) => {
         const heading = document.createElement('p');
         heading.className = 'help-title';
@@ -380,9 +382,49 @@ export class Game {
       ],
     };
 
+    // "What this game is", derived rather than written: the world, the
+    // economy and the list of systems in play all come from the run's own
+    // tuning, so this section re-describes itself after every balance or
+    // flag change. The decisions behind the switches live in SETTINGS below.
+    const systems: string[] = [];
+    if (t.destinationEvery > 0) systems.push('destinations');
+    if (t.biomeEvery > 0) systems.push('biomes');
+    if (t.magicChance + t.uniqueChance > 0) systems.push('rare tiles + luck');
+    if (t.greenCrowdBonus + t.yellowCompanyBonus + t.blueTideEvery > 0 || t.redAshMatches) {
+      systems.push('colour personalities');
+    }
+    if (t.holdSlots > 0) systems.push('the stash');
+
+    const build: { title: string; lines: string[] } = {
+      title: 'THIS BUILD',
+      lines: [
+        endless
+          ? `World: one endless plane, grown from seed ${this.#state.rootSeed}. Same seed, same world — share the number to share the run.`
+          : `World: bounded maps, seed ${this.#state.rootSeed}.`,
+        `Economy: start with ${t.startingTiles} tiles · a placement costs ${t.baseCost}, +1 per ${t.costRisesEvery} ever placed · ${t.draftWidth}-card draft${t.holdSlots > 0 ? ' plus the stash' : ''}.`,
+        systems.length > 0
+          ? `Systems in play: ${systems.join(' · ')}. Each is detailed above.`
+          : 'Systems in play: none — this is the smallest game there is.',
+        'SETTINGS below switches every system and carries the decision that set each default. The stamp at the bottom of the screen names the exact code this page is running.',
+      ],
+    };
+
     return endless
-      ? [loop, placing, ripe, harvest, colours, ground, destinations, rarity, stash, reading, end]
-      : [loop, placing, ripe, harvest, reading, end];
+      ? [
+          loop,
+          placing,
+          ripe,
+          harvest,
+          colours,
+          ground,
+          destinations,
+          rarity,
+          stash,
+          reading,
+          end,
+          build,
+        ]
+      : [loop, placing, ripe, harvest, reading, end, build];
   }
 
   /**

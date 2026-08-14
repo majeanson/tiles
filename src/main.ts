@@ -2,9 +2,11 @@ import { ENDLESS_TUNING, TUNING } from '@content/tuning';
 import {
   decodeFeatures,
   encodeFeatures,
+  FEATURES,
   isEnabled,
   parseOverrides,
   withOverrides,
+  type FeatureId,
   type FeatureSet,
 } from '@meta/features';
 import { AssetBook } from '@render/assets';
@@ -14,7 +16,13 @@ import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/ind
 import type { Orientation, Theme } from '@theme/tokens';
 import { Game, type Elements } from '@ui/game';
 
-const FEATURE_STORAGE_KEY = 'tiles.features.v1';
+// v2, 2026-08-14: the endless world became the default. Any device that ever
+// visited before has `world.endless: false` explicitly persisted under v1,
+// and a stored value beats a changed default by design — so the key moves,
+// every device re-derives from the new defaults, and the old entry is left
+// to rot. Overrides cost one visit to re-apply; a default that silently
+// fails to arrive costs an evening of "but it works on my phone".
+const FEATURE_STORAGE_KEY = 'tiles.features.v2';
 const THEME_STORAGE_KEY = 'tiles.theme.v1';
 const HEX_STORAGE_KEY = 'tiles.hex.v1';
 
@@ -28,6 +36,14 @@ const HEX_STORAGE_KEY = 'tiles.hex.v1';
  * `?ff=ui.themePicker` once and the picker is simply there from then on, until
  * `?ff=-ui.themePicker` takes it away. One link makes a phone a test device.
  */
+function persistFeatures(set: FeatureSet): void {
+  try {
+    localStorage.setItem(FEATURE_STORAGE_KEY, encodeFeatures(set));
+  } catch {
+    // Private mode, or storage disabled. Nothing to do, nothing worth saying.
+  }
+}
+
 function resolveFeatures(): FeatureSet {
   let stored: string | null = null;
   try {
@@ -36,11 +52,7 @@ function resolveFeatures(): FeatureSet {
     // Private mode, or storage disabled. Defaults are a fine game.
   }
   const resolved = withOverrides(decodeFeatures(stored), parseOverrides(location.search));
-  try {
-    localStorage.setItem(FEATURE_STORAGE_KEY, encodeFeatures(resolved));
-  } catch {
-    // Same deal: nothing to do, nothing worth saying.
-  }
+  persistFeatures(resolved);
   return resolved;
 }
 
@@ -180,6 +192,106 @@ function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation
   host.replaceChildren(...themeButtons, ...facingButtons);
 }
 
+/**
+ * The switchboard half of the `?` panel: one row per registered feature,
+ * written FROM the registry — label, decision note, wired-or-not — so the
+ * settings screen is the decision record and can never go stale against it.
+ *
+ * Toggles persist immediately. UI flags apply in place; world flags apply
+ * from the next run, never to the one in progress — a switch must not eat a
+ * live board. The NEW RUN button is the explicit way to make them count now.
+ */
+function mountSettings(
+  host: HTMLElement,
+  initial: FeatureSet,
+  live: { themesHost: HTMLElement; theme: Theme; facing: Orientation | null },
+): void {
+  let features = initial;
+
+  // The rows are interactive: their taps must not close the panel around them.
+  host.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
+  const heading = document.createElement('p');
+  heading.className = 'help-title';
+  heading.textContent = 'SETTINGS';
+
+  const intro = document.createElement('p');
+  intro.textContent =
+    'Sticky on this device. UI switches apply at once; world switches apply from your ' +
+    'next run and never touch the one in progress. The address bar does the same job ' +
+    '(?ff=world.endless, ?ff=-world.endless), and each note below is the decision ' +
+    'that set the default.';
+
+  const rows = FEATURES.map((f) => {
+    const row = document.createElement('div');
+    row.className = 'flag';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'flag-toggle';
+    button.disabled = !f.wired;
+    const paint = (): void => {
+      const on = isEnabled(features, f.id);
+      button.textContent = f.wired ? (on ? 'ON' : 'OFF') : 'NOT BUILT';
+      button.setAttribute('aria-pressed', String(on));
+    };
+    paint();
+
+    if (f.wired) {
+      button.addEventListener('click', () => {
+        const next: Partial<Record<FeatureId, boolean>> = {};
+        next[f.id] = !isEnabled(features, f.id);
+        features = withOverrides(features, next);
+        persistFeatures(features);
+        paint();
+
+        // The one live wire so far: the theme picker mounts and unmounts in
+        // place. Everything world-shaped waits for the next run by design.
+        if (f.id === 'ui.themePicker') {
+          if (isEnabled(features, f.id)) {
+            mountThemePicker(live.themesHost, live.theme, live.facing);
+          } else {
+            live.themesHost.hidden = true;
+            live.themesHost.replaceChildren();
+          }
+        }
+      });
+    }
+
+    const label = document.createElement('span');
+    label.className = 'flag-label';
+    label.textContent = f.label;
+
+    const top = document.createElement('div');
+    top.className = 'flag-row';
+    top.append(button, label);
+
+    const note = document.createElement('p');
+    note.className = 'flag-note';
+    note.textContent = f.note;
+
+    row.append(top, note);
+    return row;
+  });
+
+  // A fresh run under whatever the switches now say. Drops ?seed and ?ff so
+  // the STORED settings, not the address bar, decide what comes next.
+  const restart = document.createElement('button');
+  restart.type = 'button';
+  restart.id = 'new-run';
+  restart.textContent = 'NEW RUN with these settings';
+  restart.addEventListener('click', () => {
+    const url = new URL(location.href);
+    url.searchParams.delete('seed');
+    url.searchParams.delete('ff');
+    location.href = url.toString();
+  });
+
+  host.replaceChildren(heading, intro, ...rows, restart);
+}
+
 async function main(): Promise<void> {
   const features = resolveFeatures();
   const seed = resolveSeed();
@@ -221,11 +333,16 @@ async function main(): Promise<void> {
     zoomFit: required<HTMLButtonElement>('zoom-fit'),
     help: required<HTMLButtonElement>('help'),
     helpPanel: required('help-panel'),
+    helpManual: required('help-manual'),
   };
 
   if (isEnabled(features, 'ui.themePicker')) {
     mountThemePicker(required('themes'), theme, facing);
   }
+
+  // The settings half of the ? panel — mounted here rather than in Game
+  // because flags are resolved at this edge and stay out of the engine.
+  mountSettings(required('help-meta'), features, { themesHost: required('themes'), theme, facing });
 
   const renderer = new PixiRenderer(theme, AssetBook.empty(), prefersReducedMotion());
   await renderer.mount(elements.board);

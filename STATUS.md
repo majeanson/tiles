@@ -35,9 +35,16 @@ and a HOLD stash that survives rerolls. All tuning-gated, on in
 `ENDLESS_TUNING` only. Harness: nothing stalls, median reach DOUBLED across
 policies (exploration pays structurally), every scoring line rose, timing
 spine holds. 256 tests. Queued in `ideas/endless-world.md`: pattern shapes,
-hidden finds, hazards, quests, quirks, economy re-target. Next: Marc plays
-`?ff=world.endless` on the phone — three sessions of build are waiting on
-that one play.
+hidden finds, hazards, quests, quirks, economy re-target. Same day: the `?`
+became a full manual whose numbers are read from the live tuning (257
+tests).
+
+**2026-08-14 — the endless world is the shipped default** (Session 9's
+one-line decision): tiles.marcportal.com now opens the plane, no query
+string. Session 4 said the worlds question would be decided by playing;
+Marc played both and chose. `?ff=-world.endless` is the bounded game;
+feature storage moved to v2 so stale persisted defaults cannot shadow the
+new one. Next: Marc plays the bare URL on the phone.
 
 ## Shipped and settled
 

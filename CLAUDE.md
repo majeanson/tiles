@@ -17,7 +17,10 @@ Hard rules:
 - **Every balance number lives in `src/content/`.** A number that affects
   balance appearing under `src/engine/` is a bug.
 - **Every system ships behind a flag** in `src/meta/features.ts`, defaulting
-  off. Run one is the smallest game there is; depth arrives by unlock.
+  off. Run one is the smallest game there is; depth arrives by unlock. One
+  recorded exception: `world.endless` defaults ON since 2026-08-14 — the
+  worlds question belonged to play (Session 4), and Marc played both and
+  chose (LOG, Session 9). `?ff=-world.endless` is the bounded game.
 - **Plain words.** No invented vocabulary until a concept has earned a name.
   The v1 design had twenty; that was the problem, not the flavour.
 - **One question per prototype.** Write it down before building, answer it after

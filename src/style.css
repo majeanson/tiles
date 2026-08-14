@@ -120,6 +120,52 @@ body {
   margin-top: 0;
 }
 
+/* The switchboard under the manual: one row per registered flag. */
+#help-meta {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--panel-edge, #3a4150);
+}
+
+.flag {
+  margin-bottom: 12px;
+}
+
+.flag-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.flag-toggle {
+  flex: 0 0 auto;
+  min-height: 32px;
+  min-width: 76px;
+  padding: 0 8px;
+  font-size: 10px;
+}
+
+.flag-toggle[aria-pressed='true'] {
+  border-color: var(--panel-edge-active, #e8ecf4);
+  color: var(--ink, #e8ecf4);
+}
+
+.flag-label {
+  color: var(--ink, #e8ecf4);
+  font-size: 12px;
+}
+
+.flag-note {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--ink-faint, #767d8d);
+}
+
+#new-run {
+  width: 100%;
+  margin-top: 4px;
+}
+
 /* ------------------------------------------------------------------ stats */
 
 /*
