@@ -364,15 +364,47 @@ describe('the camera, and staying oriented', () => {
     expect(ctx.el.zoomOut.disabled).toBe(true);
   });
 
-  it('opens how-to-play with words in it, and closes on a tap', () => {
+  it('opens the full manual, numbers from the live tuning, and closes on a tap', () => {
     expect(ctx.el.helpPanel.hidden).toBe(true);
     ctx.el.help.click();
     expect(ctx.el.helpPanel.hidden).toBe(false);
-    expect(ctx.el.helpPanel.textContent).toMatch(/surround a tile/i);
-    expect(ctx.el.helpPanel.textContent).toMatch(/destinations/i);
+
+    // Every endless system has its section…
+    const text = ctx.el.helpPanel.textContent ?? '';
+    for (const section of [
+      'THE LOOP',
+      'PLACING',
+      'RIPE AND WORTH',
+      'HARVEST',
+      'THE COLOURS',
+      'THE GROUND',
+      'DESTINATIONS',
+      'RARE TILES AND LUCK',
+      'THE STASH',
+      'READING THE SCREEN',
+      'HOW IT ENDS',
+    ]) {
+      expect(text).toContain(section);
+    }
+    // …and the numbers are the run's own tuning, not prose that can go stale.
+    const t = ctx.game.state.tuning;
+    expect(text).toContain(`${t.cachePays} tiles`);
+    expect(text).toContain(`every ${t.costRisesEvery} tiles`);
+    expect(text).toContain(`${t.blueTideEvery} hexes`);
 
     ctx.el.helpPanel.click();
     expect(ctx.el.helpPanel.hidden).toBe(true);
+  });
+
+  it('keeps the bounded manual to the bounded game', () => {
+    const bounded = build();
+    bounded.game.start();
+    bounded.el.help.click();
+    const text = bounded.el.helpPanel.textContent ?? '';
+    expect(text).toContain('THE LOOP');
+    expect(text).toContain('MOVE ON');
+    expect(text).not.toContain('DESTINATIONS');
+    expect(text).not.toContain('THE STASH');
   });
 
   it('always says what to do now, and hides the harvest until it exists', () => {

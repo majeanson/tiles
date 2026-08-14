@@ -104,6 +104,20 @@ body {
 #help-panel p {
   margin: 0 0 10px;
   line-height: 1.5;
+  color: var(--ink-dim, #c3c9d6);
+}
+
+/* Section headings: the label voice the stats row already speaks. */
+#help-panel .help-title {
+  margin: 16px 0 6px;
+  font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 10px;
+  letter-spacing: var(--label-tracking, 0.08em);
+  color: var(--ink, #e8ecf4);
+}
+
+#help-panel .help-title:first-child {
+  margin-top: 0;
 }
 
 /* ------------------------------------------------------------------ stats */

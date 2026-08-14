@@ -607,3 +607,16 @@ unrevealed ground, hazards, quests at landmarks, tile quirks, scout and perk
 tiles, and the economy re-target. One session cannot answer nine questions;
 these three were the ones that make placement, exploration and drafting each
 mean something.
+
+**Addendum, same day — the `?` became the manual.** Marc: "add more
+explanations, all must be detailed in ?". The help panel grew from eight
+sentences to eleven titled sections (THE LOOP → HOW IT ENDS) covering every
+system in play — cost curve, worth, pocket pricing, both payout formulas in
+words, all four colour personalities, ground types, the three destination
+glyphs with their payouts, rarity and luck, the stash, the screen layout,
+and both deaths. Every number in it is read from the run's OWN tuning object
+at render time, so a balance change rewrites the manual by itself and the
+text can never describe an economy that is not the one being played. The
+bounded game gets the shorter bounded manual. Pinned by test: all eleven
+sections present, three live-tuning numbers verified in the text, bounded
+manual free of endless sections. 257 tests.
