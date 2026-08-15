@@ -648,3 +648,27 @@ text can never describe an economy that is not the one being played. The
 bounded game gets the shorter bounded manual. Pinned by test: all eleven
 sections present, three live-tuning numbers verified in the text, bounded
 manual free of endless sections. 257 tests.
+
+**Addendum 4, 2026-08-14 — the run got a clock, and points got the
+spotlight.** Marc: "how long can a game take? I'd like the time to be
+constrained yet points become more important." The harness's answer first:
+at the shipped numbers the longest possible run (pure survival stalling) was
+523 placements — half an hour of not-scoring for 125 points — with the good
+scoring lines at 220–413. Swept three candidates at 40 seeds; the pick, as
+endless-only overrides in `ENDLESS_TUNING` (bounded keeps 70/4):
+
+- `costRisesEvery` 70 → **50** — the stall ceiling drops to ~337 placements
+  (survivor 523 → 337, bank80 516 → 348), a 15–20 minute ceiling at a human
+  pace, while the bank-40 optimum (23,066) and the bank-80 cliff (25) both
+  survive. The rejected 45 collapsed the optimum to 15 — too tight.
+- `distanceStep` 4 → **3** — every scoring line gains ~40% points in the
+  SAME placements (bank15 5,034 → 7,112 · bank40 → 26,845 · seeker 3,019 →
+  4,320): a minute spent scoring is worth more, a minute spent stalling
+  still pays ~0. Sites and distance pay harder, so the constraint pushes
+  OUTWARD, not just faster.
+
+All 258 tests pass unchanged — the structural pins are ratios and the
+structure held — and the in-game manual re-wrote its own numbers, which is
+what it is for. Run lengths now: quick scoring run ~10 min (seeker, 144
+placements), deep run ~15 (bank40, 251), ceiling ~20 (337). Human timing
+untested; the estimate is ~3.5s a placement.

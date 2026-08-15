@@ -278,6 +278,18 @@ export const ENDLESS_TUNING: Tuning = {
   ...TUNING,
   world: 'endless',
 
+  // 2026-08-14, Marc: "time constrained, yet points become more important."
+  // Swept at 40 seeds. The cost curve tightens 70 -> 50: the longest possible
+  // run (pure survival stalling) drops 523 -> ~337 placements — roughly a
+  // 15-20 minute ceiling at a human pace — while the bank-40 optimum and the
+  // bank-80 cliff survive intact. The multiplier steps every 3 hexes instead
+  // of 4: every scoring line gains ~40% points in the SAME number of
+  // placements (bank15 5,034 -> 7,112 · seeker 3,019 -> 4,320), so a minute
+  // spent scoring is worth more and a minute spent stalling still pays ~0.
+  // The bounded game keeps its own 70/4; these are the plane's numbers.
+  costRisesEvery: 50,
+  distanceStep: 3,
+
   // ~one destination per 12-hex block, so the nearest glow is usually a real
   // journey (the block around home is kept empty) but never a hopeless one.
   destinationEvery: 12,
