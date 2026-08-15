@@ -7,6 +7,7 @@ import { bakeSurface } from '@render/bake';
 import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import type { Theme } from '@theme/tokens';
+import { NAME, TAGLINE } from '@meta/identity';
 import { toBoardView, toHudView, type HudView } from './view';
 
 /**
@@ -195,7 +196,16 @@ export class Game {
     // meets them, with its numbers read from the LIVE tuning so the text can
     // never disagree with the economy it describes. It closes on any tap
     // because the only thing to do with it is stop reading it.
+    const title = document.createElement('p');
+    title.id = 'help-name';
+    title.textContent = NAME;
+    const tagline = document.createElement('p');
+    tagline.className = 'flag-note';
+    tagline.textContent = TAGLINE;
+
     this.#el.helpManual.replaceChildren(
+      title,
+      tagline,
       ...this.#helpSections().flatMap(({ title, lines }) => {
         const heading = document.createElement('p');
         heading.className = 'help-title';
@@ -431,17 +441,21 @@ export class Game {
       ],
     };
 
+    // The manual speaks the DIRECTION's words for the colours, because the
+    // cards, the chips and the lens all do — a manual that says GREEN beside
+    // a card that says MOSS is a manual for a different game.
+    const name = (c: Colour): string => this.#theme.terrainNames[c];
     const colours: { title: string; lines: string[] } = {
       title: 'THE COLOURS',
       lines: [
-        `GREEN — crowds. +${t.greenCrowdBonus} worth for every green neighbour past the first. Greens want to be one big mob: commit to a mono-pocket and it snowballs.`,
+        `${name('green')} — crowds. +${t.greenCrowdBonus} worth for every neighbour of its own colour past the first. It wants to be one big mob: commit to a single-colour pocket and it snowballs.`,
         t.yellowCompanyAll
-          ? `YELLOW — company. +${t.yellowCompanyBonus} worth for every differently-coloured neighbour. Yellow scores in messy mixed ground where nothing else matches — the glue tile.`
-          : `YELLOW — company. +${t.yellowCompanyBonus} worth for every DIFFERENT colour touching it. Yellow scores in messy mixed ground where nothing else matches — the glue tile.`,
+          ? `${name('yellow')} — company. +${t.yellowCompanyBonus} worth for every differently-coloured neighbour. It scores in messy mixed ground where nothing else matches — the glue tile.`
+          : `${name('yellow')} — company. +${t.yellowCompanyBonus} worth for every DIFFERENT colour touching it. It scores in messy mixed ground where nothing else matches — the glue tile.`,
         t.redAshWalls
-          ? 'RED — ash. Stone and walls count as matches for red. Spent land and blocked land are red’s soil: build red where nothing else pays.'
-          : 'RED — ash. Stone counts as a match for red. Your spent, popped land is red’s soil: build red along the wake everyone else abandons.',
-        `BLUE — tide. +1 worth for every ${t.blueTideEvery} hexes from home. Worth little in the clearing, a lot on the frontier — blue is the colour you carry outward.`,
+          ? `${name('red')} — ash. Stone and walls count as matches for it. Spent land and blocked land are its soil: build it where nothing else pays.`
+          : `${name('red')} — ash. Stone counts as a match for it. Your spent, popped land is its soil: build it along the wake everyone else abandons.`,
+        `${name('blue')} — tide. +1 worth for every ${t.blueTideEvery} hexes from home. Worth little in the clearing, a lot on the frontier — the colour you carry outward.`,
       ],
     };
 

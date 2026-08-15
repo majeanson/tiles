@@ -520,3 +520,12 @@ button.quiet {
   color: var(--ink-dim, #8a91a0);
   font-size: 11px;
 }
+
+/* The game's own name, once, at the top of the manual. */
+#help-name {
+  margin: 0 0 2px;
+  font-family: var(--font-display, inherit);
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  color: var(--ink, #e8ecf4);
+}

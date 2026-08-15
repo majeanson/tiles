@@ -15,15 +15,27 @@ import type { Theme, ThemeId } from './tokens';
 export const THEMES: readonly Theme[] = [PLACEHOLDER, COLD_SURVEY, ROT_BLOOM, TORCHLIT];
 
 /**
- * **The placeholder is the default, and that is a rule rather than an oversight.**
+ * **Torchlit is the direction, chosen 2026-08-15 when Gate E opened.**
  *
- * Gate E is shut: no art direction until gates A–D pass (CLAUDE.md, LOG.md). The
- * three directions below it are loaded, switchable and testable so the decision
- * can be made from real play on a real phone instead of from a document — but
- * shipping one as the default would be deciding it, which is not this session's
- * to decide. Flip this line when the gate opens, not before.
+ * For eleven sessions this line read `placeholder`, because Gate E is "no art
+ * direction until A–D pass" and shipping one early would have been deciding
+ * it. A, C and D are signed; B is structurally fixed and waiting only on a
+ * human's logged pops (LOG.md, Session 11). The gate opened; this is the
+ * decision it was holding.
+ *
+ * Torchlit wins on fit rather than taste, and the fit is not a coincidence —
+ * the game grew toward it. Its own note says "the map is endless because the
+ * darkness is", and the map became endless. Its light-pool was written to do
+ * the fog-of-war job, and fog memory now needs exactly that: known ground
+ * lit, remembered ground dim, destinations glowing through the dark. Its
+ * register is the one the rarity system already speaks in — magic and unique
+ * are Diablo's words, and Diablo is what the direction is named after.
+ *
+ * Reversible in one tap: every direction is still loaded, `?theme=` still
+ * switches, and the picker is still one flag away. A default is a decision,
+ * not a cage.
  */
-export const DEFAULT_THEME_ID: ThemeId = 'placeholder';
+export const DEFAULT_THEME_ID: ThemeId = 'torchlit';
 
 const BY_ID = new Map(THEMES.map((t) => [t.id, t]));
 

@@ -101,11 +101,20 @@ export const TORCHLIT: Theme = {
       asset: 'terrain.blue',
     }),
   },
+  /**
+   * The direction's own words were CRYPT / CEMETERY / BURIAL GROUND /
+   * CATACOMB — four graveyard synonyms, which is atmospheric on a reference
+   * sheet and unusable on a card you must read in half a second. Renamed
+   * 2026-08-15, when Gate E opened and the colours had powers to be named
+   * after: each word now says what its colour DOES. Moss crowds, embers keep
+   * company, ash is what the wake is, the tide is what carries you out.
+   * Same register, four distinct silhouettes, and a name that teaches.
+   */
   terrainNames: {
-    green: 'CRYPT',
-    yellow: 'CEMETERY',
-    red: 'BURIAL GROUND',
-    blue: 'CATACOMB',
+    green: 'MOSS',
+    yellow: 'EMBER',
+    red: 'ASH',
+    blue: 'TIDE',
   },
 
   // Lifted 2026-08-15: the dark band was 0.007 above the background in L* —

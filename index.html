@@ -12,10 +12,22 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
     />
-    <meta name="theme-color" content="#14161c" />
+    <!-- Torchlit's own background: the browser chrome should be the same dark
+         the board falls off into, or the page has a seam at the top. -->
+    <meta name="theme-color" content="#0a0806" />
     <meta name="color-scheme" content="dark" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>tiles</title>
+    <meta
+      name="description"
+      content="An expedition into a dark plane. Place, ripen, cash, and push on."
+    />
+    <meta property="og:title" content="Ashwake" />
+    <meta
+      property="og:description"
+      content="An expedition into a dark plane. Place, ripen, cash, and push on."
+    />
+    <meta property="og:type" content="website" />
+    <title>Ashwake</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -71,9 +83,9 @@
            standing best, and one button — again. Built by the game. -->
       <div id="end" hidden></div>
 
-      <!-- Art directions, one button each. Hidden unless ?ff=ui.themePicker —
-           Gate E is shut and the placeholder is the shipped look, but deciding
-           between directions has to happen on the device, in daylight. -->
+      <!-- Art directions, one button each. Hidden unless ?ff=ui.themePicker.
+           Gate E opened on 2026-08-15 and torchlit is the direction; the
+           others stay loaded because a default is a decision, not a cage. -->
       <nav id="themes" hidden></nav>
 
       <!-- Testing happens on the deployed site, so which build you are looking

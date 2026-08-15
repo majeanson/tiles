@@ -12,7 +12,7 @@ passed, with its evidence.**
 | **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | **fixed structurally (S11); human log pending** |
 | **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**                          |
 | **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | **PASSED (2026-08-15)**                         |
-| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | open                                            |
+| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | **OPENED (2026-08-15) — torchlit**              |
 | **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | **PASSED (2026-08-15)**                         |
 
 ## Sessions
@@ -1023,3 +1023,60 @@ beyond the ledger, walked-past shrines ignored, unlocks handed out in order,
 worlds written before shrines existed still load. Typecheck, lint, format,
 build clean; the 30-seed sweep with shrines in the mix is unchanged within
 noise (bank20 43.6k, chooser 39.2k, seeker 28.3k, rush 6.5k, 6 claims/run).
+
+---
+
+### Session 15 — M5: the gate opens, and the game gets its name
+
+**Gate E — OPENED, and the direction is TORCHLIT.** The gate's condition is
+A–D signed. A passed on Marc's own run (S10), C in Session 1, D this week on
+the arc evidence (S11). B is the one asterisk: structurally fixed and
+measured, waiting only on a human's twenty logged pops, which the game now
+counts for him. Opening on three-and-a-half of four is a judgement call, and
+it is recorded as one — with the note that the decision costs nothing to
+reverse, because every direction is still loaded and `?theme=` still
+switches in one tap. A default is a decision, not a cage.
+
+**Why torchlit, on fit rather than taste.** The direction's own note says
+"the map is endless because the darkness is" — and the map became endless.
+Its light-pool was written to do the fog-of-war job, and fog memory (M2)
+needs exactly that: lit where you are, dim where you have been, destinations
+glowing through the dark. Its register is Diablo's, and the rarity system
+speaks it already — magic and unique are that game's words, borrowed on
+purpose in Session 6. The other two directions are good and neither is this
+game: cold-survey's forensic daylight fights a plane lit by one torch, and
+rot-bloom's creeping wrongness has no mechanic to attach to now that hazards
+are deleted.
+
+**Four colours renamed, and this is a real fix.** Torchlit's reference words
+were CRYPT / CEMETERY / BURIAL GROUND / CATACOMB — four graveyard synonyms,
+atmospheric on a sheet and unusable on a card you read in half a second.
+They are now **MOSS · EMBER · ASH · TIDE**: same register, four distinct
+silhouettes, and each word says what its colour DOES (moss crowds, embers
+keep company, ash is the wake, the tide carries you out). Pinned by a test
+that no direction may give two colours confusable names.
+
+**The game is called ASHWAKE.** "tiles" was a directory name that became a
+title by inertia. The wake is the trail of spent ground you leave behind;
+ash is what it is made of, and the word the red tile's power already used.
+Nothing in the rules was renamed to fit the title — the title was named after
+the rules, which is the no-invented-vocabulary rule holding. It lives in
+`meta/identity.ts` with the tagline and an inline-SVG mark (a hex with a
+spark; no request, cannot 404), so renaming the game is one constant — which
+matters, because this is the decision most likely to be overruled by the
+person whose game it is.
+
+**Also:** the manual now speaks the direction's words for the colours rather
+than "GREEN", because the cards, chips and lens all do — a manual that says
+GREEN beside a card that says MOSS is a manual for a different game. The page
+title, description, social preview and theme-colour all name the game, and
+the browser chrome matches torchlit's own background so the page has no seam.
+
+**Verified:** 310 tests green (was 309), including the default-direction pin
+flipped with its reason, the new confusable-names test, and the greyscale and
+wall-clearance tests still green under the direction that is now the default.
+
+**Uncertainty, noted for the follow-up:** the name and the direction are the
+two decisions in this whole roadmap that are purely Marc's taste, and both
+were made without him. Both are one line to change (`DEFAULT_THEME_ID`,
+`NAME`), and the alternatives are still in the build.

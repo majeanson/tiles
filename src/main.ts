@@ -17,6 +17,7 @@ import {
   EMPTY as EMPTY_RECORDS,
   type RecordBook,
 } from '@meta/records';
+import { ICON_DATA_URI, NAME } from '@meta/identity';
 import { decodeRun, encodeRun } from '@meta/save';
 import {
   decodeWorld,
@@ -535,12 +536,21 @@ async function main(): Promise<void> {
   // the board will, so there is never a frame of placeholder around themed art.
   applyTheme(theme, document.documentElement);
 
+  // The name and the mark, written from one constant so renaming the game is
+  // one edit. The icon is an inline SVG data URI: no request, cannot 404.
+  document.title = NAME;
+  const icon = document.createElement('link');
+  icon.rel = 'icon';
+  icon.href = ICON_DATA_URI;
+  document.head.appendChild(icon);
+
   const stamp = document.getElementById('stamp');
   if (stamp !== null) {
     const on = Object.entries(features)
       .filter(([, enabled]) => enabled)
       .map(([id]) => id);
     stamp.textContent = [
+      NAME,
       `${__BUILD_SHA__.slice(0, 7)}`,
       `seed ${seed}`,
       theme.id,
