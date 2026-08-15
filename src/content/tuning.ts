@@ -307,6 +307,23 @@ export type Tuning = {
    * gone far and reached things, added once when it ends. Points as the
    * final state.
    */
+  /**
+   * What a pop does to your NEXT draws (2026-08-15, Marc: "odds for better
+   * colours depending? or magic/unique" + "early pops pay luck").
+   *
+   * This is the answer to "why would you ever pop early": popping is not only
+   * income, it STEERS the draft. Every pop biases the next `colourBiasDraws`
+   * draws toward the colour it was made of, and luck — the rare-tile odds —
+   * arrives mostly as a FLAT `luckPerPop` rather than per tile, so many small
+   * pops out-earn one monster in luck while the monster out-earns them in
+   * tiles and score. Two strategies, both live, and which is right depends on
+   * what you need right now: the situational timing rule 5 always wanted.
+   */
+  readonly luckPerPop: number;
+  readonly luckPerTile: number;
+  readonly colourBiasDraws: number;
+  readonly colourBiasWeight: number;
+
   readonly singlePayout: boolean;
   readonly pointsPerPop: number;
   readonly burnLuck: number;
@@ -414,6 +431,11 @@ export const TUNING: Tuning = {
 
   harvestSizeBonus: 1,
   harvestSizeCap: 0,
+
+  luckPerPop: 0,
+  luckPerTile: 1,
+  colourBiasDraws: 0,
+  colourBiasWeight: 0,
 
   singlePayout: false,
   pointsPerPop: 0,
@@ -576,6 +598,16 @@ export const COLOUR_WEIGHTS: readonly (readonly [Colour, number])[] = COLOURS.ma
  */
 export const TILESONLY_TUNING: Tuning = {
   ...ENDLESS_TUNING,
+
+  // Small and often is the LUCK line, big and late is the score line: a flat
+  // 9 luck a pop against half a point per tile means three 4-pockets pay 33
+  // luck where one 12-pocket pays 15. And every pop steers the next six draws
+  // toward its own colour, so cashing a green pocket is how you get more
+  // green to build the next one with.
+  luckPerPop: 9,
+  luckPerTile: 0.5,
+  colourBiasDraws: 6,
+  colourBiasWeight: 2,
 
   singlePayout: true,
   pointsPerPop: 0.35,

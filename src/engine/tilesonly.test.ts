@@ -117,3 +117,50 @@ describe('the run itself', () => {
     expect(ended.points).toBe(harvestValue(base, key(0, 0)).points);
   });
 });
+
+describe('why you would ever pop early', () => {
+  it('pays luck mostly per POP, so small and often beats one monster', () => {
+    // Three 4-pockets against one 12-pocket: same tiles popped, more luck.
+    const small = pocket(newRun(5, T), 4);
+    const big = pocket(newRun(5, T), 12);
+
+    const afterSmall = reduce(small, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
+    const afterBig = reduce(big, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
+
+    const luckFromThreeSmall = (afterSmall.luck - small.luck) * 3;
+    const luckFromOneBig = afterBig.luck - big.luck;
+    expect(luckFromThreeSmall).toBeGreaterThan(luckFromOneBig);
+
+    // And the monster still wins on tiles and score, which is the trade.
+    expect(afterBig.tiles - big.tiles).toBeGreaterThan(afterSmall.tiles - small.tiles);
+    expect(afterBig.points).toBeGreaterThan(afterSmall.points);
+  });
+
+  it('steers the next draws toward the colour it popped', () => {
+    const state = pocket(newRun(5, T), 5);
+    const popped = reduce(state, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
+
+    expect(popped.bias?.colour).toBe('green');
+    expect(popped.bias?.left).toBe(T.colourBiasDraws);
+  });
+
+  it('spends the steering one DRAW at a time, then forgets it', () => {
+    const state = pocket(newRun(5, T), 5);
+    let s = reduce(state, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
+    const drawn = T.draftWidth;
+    expect(s.bias?.left).toBe(T.colourBiasDraws);
+
+    // Each placement rerolls the whole draft, so it burns `draftWidth` draws.
+    // `(2,2)` is the open ground the fixture leaves touching the stone rim.
+    s = { ...s, tiles: 999 };
+    const after = reduce(s, { type: 'PLACE', hex: key(2, 2) });
+    expect(after.placements).toBe(1);
+    expect(after.bias === null || after.bias.left === T.colourBiasDraws - drawn).toBe(true);
+  });
+
+  it('does not steer at all in the shipped endless game', () => {
+    const state = pocket(newRun(5, ENDLESS), 5);
+    const popped = reduce(state, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
+    expect(popped.bias).toBeNull();
+  });
+});

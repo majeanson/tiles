@@ -53,13 +53,28 @@ type Rolled = { readonly tiles: RngStream; readonly loot: RngStream };
  * system switched off draws the exact colour sequence it always drew — and it
  * rolls only when the odds are nonzero, so the loot cursor stays put too.
  */
+/**
+ * The draw weights, with the last pop's colour running hot.
+ *
+ * Steering the draft is what makes popping early worth doing on its own
+ * terms: a pocket cashed is a colour requested. Weights are built fresh per
+ * draw rather than stored, so the bias is always exactly what state says.
+ */
+function weightsFor(t: Tuning, bias: GameState['bias']): readonly (readonly [Colour, number])[] {
+  if (bias === null || bias.left <= 0 || t.colourBiasWeight <= 0) return COLOUR_WEIGHTS;
+  return COLOUR_WEIGHTS.map(([colour, weight]) =>
+    colour === bias.colour ? [colour, weight + t.colourBiasWeight] : [colour, weight],
+  );
+}
+
 function rollTile(
   tiles: RngStream,
   loot: RngStream,
   t: Tuning,
   luck: number,
+  bias: GameState['bias'] = null,
 ): Rolled & { tile: Tile } {
-  const [colour, nextTiles] = rngWeighted(tiles, COLOUR_WEIGHTS);
+  const [colour, nextTiles] = rngWeighted(tiles, weightsFor(t, bias));
 
   const odds = rarityOdds(t, luck);
   let rarity: Rarity = 'common';
@@ -78,15 +93,23 @@ function rollDraft(
   loot: RngStream,
   t: Tuning,
   luck: number,
-): Rolled & { draft: Tile[] } {
+  bias: GameState['bias'] = null,
+): Rolled & { draft: Tile[]; bias: GameState['bias'] } {
   const draft: Tile[] = [];
   let cur: Rolled = { tiles, loot };
+  // The bias is spent by DRAWING, one draw at a time, so a wide draft burns
+  // it faster than a narrow one — the steering is a number of tiles, not a
+  // number of turns.
+  let left = bias;
   for (let i = 0; i < t.draftWidth; i++) {
-    const rolled = rollTile(cur.tiles, cur.loot, t, luck);
+    const rolled = rollTile(cur.tiles, cur.loot, t, luck, left);
     draft.push(rolled.tile);
     cur = rolled;
+    if (left !== null) {
+      left = left.left > 1 ? { colour: left.colour, left: left.left - 1 } : null;
+    }
   }
-  return { draft, ...cur };
+  return { draft, bias: left, ...cur };
 }
 
 /** A tile cell, with the optional facts written only when they are true. */
@@ -271,6 +294,7 @@ export function newRun(
     selected: 0,
     held: null,
     quest: null,
+    bias: null,
     claimed: tuning.world === 'endless' ? claimed : [],
     log: { harvests: [], popped: 0, placementsAtMapStart: 0, questsDone: 0 },
   };
@@ -395,7 +419,8 @@ function place(state: GameState, hex: HexKey): GameState {
     draft,
     tiles: tilesStream,
     loot,
-  } = rollDraft(state.rng.tiles, state.rng.loot, t, state.luck);
+    bias,
+  } = rollDraft(state.rng.tiles, state.rng.loot, t, state.luck, state.bias);
 
   return endIfStuck({
     ...state,
@@ -404,6 +429,7 @@ function place(state: GameState, hex: HexKey): GameState {
     tiles,
     points,
     quest,
+    bias,
     draft,
     selected: 0,
     rng: { ...state.rng, tiles: tilesStream, loot },
@@ -455,10 +481,34 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   const scores = t.singlePayout ? pops : choice === 'points';
   const scored = t.singlePayout ? Math.floor(points * t.pointsPerPop) : points;
 
-  // Burning is the sacrifice: no tiles, no score, only better draws — paid
-  // for with the pocket that was keeping you alive.
-  const burned = choice === 'burn' ? count * t.burnLuck : 0;
-  const luckGained = burned > 0 ? burned : pops ? count : 0;
+  // Luck arrives mostly as a FLAT amount per pop, so three small pockets beat
+  // one big one at buying better draws while the big one beats them at tiles
+  // and score. That is the whole reason to ever pop early — see `luckPerPop`.
+  // Burning trades the tiles away for several times as much of it.
+  const perPop =
+    t.luckPerPop > 0 || t.luckPerTile !== 1 ? t.luckPerPop + count * t.luckPerTile : count;
+  const luckGained = choice === 'burn' ? count * t.burnLuck : pops ? perPop : 0;
+
+  // A pocket cashed is a colour requested: the plane sends more of what you
+  // just popped, so cashing a green pocket is how you get the green to build
+  // the next one. Burning steers too — it is still a pop, just a spent one.
+  const popped = new Map<Colour, number>();
+  for (const k of keys) {
+    const cell = state.cells[k];
+    if (cell?.kind === 'tile') popped.set(cell.colour, (popped.get(cell.colour) ?? 0) + 1);
+  }
+  let steer: Colour | null = null;
+  let most = 0;
+  for (const [colour, n] of popped) {
+    if (n > most) {
+      most = n;
+      steer = colour;
+    }
+  }
+  const bias =
+    t.colourBiasDraws > 0 && steer !== null
+      ? { colour: steer, left: t.colourBiasDraws }
+      : state.bias;
 
   return endIfStuck({
     ...state,
@@ -470,8 +520,9 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
     // each popped tile is a point of luck, capped so it converges rather than
     // compounds — and burning one trades the tiles away for several times as
     // much of it.
-    luck: Math.min(state.tuning.luckCap, state.luck + luckGained),
+    luck: Math.min(state.tuning.luckCap, Math.round(state.luck + luckGained)),
     quest: collected ? null : state.quest,
+    bias,
     log: {
       ...state.log,
       popped: state.log.popped + count,

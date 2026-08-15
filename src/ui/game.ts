@@ -791,7 +791,14 @@ export class Game {
         'Every drawn tile can roll MAGIC or UNIQUE — the card says so, and rare tiles keep an accent edge on the board.',
         'MAGIC is wild: it matches EVERY neighbouring tile, whatever the colour, and they match it back.',
         'UNIQUE is wild and heavy: every match it is part of counts DOUBLE, for both sides — ground included.',
-        `Luck: every tile popped in a TILES-harvest raises your odds (shown in the line above your hand), up to a cap. Cashing big pockets as survival is what buys better draws — the two currencies feed each other.`,
+        t.luckPerPop > 0
+          ? `Luck: every pop raises your odds (shown above your hand) by about ${t.luckPerPop}, plus a little per tile in it — so MANY SMALL POPS buy better draws than one monster does, while the monster wins on tiles and score. That is the whole reason to ever pop early.`
+          : `Luck: every tile popped in a TILES-harvest raises your odds (shown in the line above your hand), up to a cap. Cashing big pockets as survival is what buys better draws — the two currencies feed each other.`,
+        ...(t.colourBiasDraws > 0
+          ? [
+              `And a pop STEERS the draft: the next ${t.colourBiasDraws} tiles you draw lean toward the colour you just popped. Cashing a pocket is how you ask for more of what built it.`,
+            ]
+          : []),
       ],
     };
 

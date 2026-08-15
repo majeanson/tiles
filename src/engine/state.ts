@@ -199,6 +199,16 @@ export type GameState = {
   readonly quest: Quest | null;
 
   /**
+   * The colour the last pop was made of, and how many draws it still steers.
+   *
+   * Popping is not only income: it tells the plane what you are building
+   * with. Cash a green pocket and green runs for the next few draws, which
+   * is how you get the tiles to build the NEXT green pocket. Null where the
+   * bias is switched off.
+   */
+  readonly bias: { readonly colour: Colour; readonly left: number } | null;
+
+  /**
    * Territories this WORLD already holds, from earlier runs (P4a). Plain
    * data handed to `newRun`, never read from storage by the engine: a run
    * stays reproducible from its seed, its tuning and this list. Those

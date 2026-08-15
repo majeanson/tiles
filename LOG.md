@@ -1266,3 +1266,38 @@ tiles (Marc asked for both sacrifices; the burn is the one that needed no new
 UI), and the roguelite spending screen — points buying the five shrine
 unlocks, better base odds and richer worlds. Those wait for a play session
 that says the core loop is right.
+
+**Addendum, same day — "why would you wait to pop vs popping insta?"**
+
+Marc asked the question the whole design turns on, and the harness answered
+it against the tiles-only build: **waiting paid 5-7× and nothing punished
+it.** Popping at 3 scored 2,843; at 20, 16,341; at 40, 18,953 — and bank40
+and bank80 scored IDENTICALLY, which means the greedy threshold never even
+bound. Waiting was free, and free is fake.
+
+Two candidate taxes were measured before choosing. `ripeTilesMatch: false` —
+ripe tiles stop feeding their neighbours — was catastrophic exactly as it was
+in the bounded game years of sessions ago: every line collapsed to ~830
+points, runs halved, pops-per-placement fell 0.75 → 0.38. Rejected with
+numbers rather than with taste.
+
+**Marc's answer was better than either of mine:** make the ODDS the lever.
+"Maybe odds for better colours depending? or magic/unique" plus "early pops
+pay luck". So popping early now buys two things a monster cannot:
+
+- **Luck is mostly FLAT per pop** (`luckPerPop` 9, plus 0.5 a tile), so three
+  4-pockets pay 33 luck where one 12-pocket pays 15. Small-and-often is the
+  loot line; big-and-late is the score line.
+- **A pop steers the draft.** The colour you just cashed runs hot for the
+  next six draws (`colourBiasDraws`), so popping a green pocket is how you
+  get the green to build the next one. Cashing is now a REQUEST, which is a
+  reason to pop that has nothing to do with survival.
+
+**Measured after:** bank3 2,843 → 3,655 (+29%), and the shape acquired an
+interior optimum — bank20 15,600 now edges bank40 15,258, where before more
+patience was always better. Nothing stalls; 343 tests green.
+
+**Still true and worth saying plainly:** on SCORE alone, big pockets still
+win by ~4×. Small-and-often buys tempo, luck and the colours you need, not
+points. Whether those are worth the trade is a phone question, and the luck
+numbers are one constant each if they should be louder.
