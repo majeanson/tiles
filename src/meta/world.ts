@@ -118,6 +118,21 @@ export const encodeWorld = (world: WorldMemory): string => JSON.stringify(world)
  * touched is still out there waiting, which is the point of it being a place.
  */
 export function rememberRun(world: WorldMemory, state: GameState): WorldMemory {
+  return { ...mergeRun(world, state), runs: world.runs + 1 };
+}
+
+/**
+ * Everything `rememberRun` folds in EXCEPT the run count — so a run in
+ * progress can keep the world current after every action.
+ *
+ * Split out because waiting for the end of a run was wrong twice over: a
+ * shrine woken at placement 40 did not appear in the atlas until the
+ * expedition finished (Marc: "it still shows 0 of 5 found"), and a player who
+ * simply closed the tab lost the territory they had just claimed. Ground and
+ * claims are facts the moment they happen; only "how many runs" waits for a
+ * run to be over.
+ */
+export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
   const revealed = new Set(world.revealed);
   const territories = new Set(world.territories);
   const shrines = new Set(world.shrines);

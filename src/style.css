@@ -570,3 +570,10 @@ button.quiet {
     }
   }
 }
+
+/* A payout that buys nothing looks like it. Still pressable — the rules do
+   not forbid it — but never again mistakable for the live option. */
+button.spare {
+  opacity: 0.45;
+  border-style: dashed;
+}

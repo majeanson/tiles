@@ -23,6 +23,7 @@ import {
   decodeWorld,
   encodeWorld,
   knownFraction,
+  mergeRun,
   newWorld,
   rememberRun,
   unlockedBy,
@@ -43,7 +44,14 @@ import { Game, type Elements, type GameHooks } from '@ui/game';
 // to rot. Overrides cost one visit to re-apply; a default that silently
 // fails to arrive costs an evening of "but it works on my phone".
 const FEATURE_STORAGE_KEY = 'tiles.features.v2';
-const THEME_STORAGE_KEY = 'tiles.theme.v1';
+// v2, 2026-08-15: Gate E opened and torchlit became the default. Any device
+// that ever opened the theme picker has an explicit choice persisted under
+// v1, and a stored value beats a changed default by design — so a phone that
+// tried the picker months ago would have gone on playing the placeholder
+// forever, which is exactly what Marc's screenshot showed (cards reading
+// GREEN and BLUE instead of MOSS and TIDE). The key moves; the picker still
+// works and still sticks, under the new key.
+const THEME_STORAGE_KEY = 'tiles.theme.v2';
 const HEX_STORAGE_KEY = 'tiles.hex.v1';
 /** The run in progress (or just ended), saved after every action. */
 const RUN_STORAGE_KEY = 'tiles.run.v1';
@@ -199,6 +207,11 @@ function runKeeping(
   // its own: the world already knows whether this device has played.
   const firstVisit = world.runs === 0 && world.revealed.length === 0 && saved === null;
 
+  // The world as it stands right now, kept current between actions so the
+  // atlas and the next merge both read the truth rather than the snapshot
+  // this page happened to load with.
+  let current = world;
+
   return {
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
@@ -217,6 +230,15 @@ function runKeeping(
       } catch {
         // Storage full or forbidden — the run simply is not kept.
       }
+      // The world learns as the run happens, not only when it ends. Ground
+      // seen, territories taken and shrines woken are facts the moment they
+      // occur: waiting for the end of the expedition meant the atlas said
+      // "0 of 5 found" while the popup was still announcing a shrine, and it
+      // meant closing the tab lost a claim outright.
+      if (state.tuning.world === 'endless' && askedSeed() === null) {
+        current = mergeRun(current, state);
+        saveWorld(current);
+      }
     },
 
     finish: (state) => {
@@ -224,7 +246,8 @@ function runKeeping(
       // the run that found them, which is the whole of P4a. A replayed link
       // (`?seed=`) is somebody else's geography and must not touch it.
       if (state.tuning.world === 'endless' && askedSeed() === null) {
-        saveWorld(rememberRun(world, state));
+        current = rememberRun(current, state);
+        saveWorld(current);
       }
 
       let book: RecordBook;
@@ -621,26 +644,33 @@ async function main(): Promise<void> {
 
   // The settings half of the ? panel — mounted here rather than in Game
   // because flags are resolved at this edge and stay out of the engine.
-  mountSettings(
-    required('help-meta'),
-    features,
-    {
-      themesHost: required('themes'),
-      theme,
-      facing,
-      world,
-      abandon: () => {
-        try {
-          localStorage.removeItem(WORLD_STORAGE_KEY);
-          localStorage.removeItem(RUN_STORAGE_KEY);
-        } catch {
-          // Nothing stored is already an abandoned world.
-        }
-        location.href = new URL(location.pathname, location.href).toString();
+  // Rebuilt every time the panel is opened, from storage rather than from the
+  // snapshot this page loaded with: a shrine woken at placement 40 has to
+  // show as found the moment you go and look, not after the run ends.
+  const settingsHost = required('help-meta');
+  const paintSettings = (): void =>
+    mountSettings(
+      settingsHost,
+      features,
+      {
+        themesHost: required('themes'),
+        theme,
+        facing,
+        world: loadWorld(),
+        abandon: () => {
+          try {
+            localStorage.removeItem(WORLD_STORAGE_KEY);
+            localStorage.removeItem(RUN_STORAGE_KEY);
+          } catch {
+            // Nothing stored is already an abandoned world.
+          }
+          location.href = new URL(location.pathname, location.href).toString();
+        },
       },
-    },
-    keeper.newRun ?? (() => location.reload()),
-  );
+      keeper.newRun ?? (() => location.reload()),
+    );
+  paintSettings();
+  required('help').addEventListener('click', paintSettings);
 
   const renderer = new PixiRenderer(theme, AssetBook.empty(), prefersReducedMotion());
   await renderer.mount(elements.board);

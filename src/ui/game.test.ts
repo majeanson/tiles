@@ -839,3 +839,107 @@ describe('the curtain, and contextual help', () => {
     expect(ctx.el.toast.textContent).toMatch(/next run/i);
   });
 });
+
+describe('special tiles and what a pop did', () => {
+  /** A ripe green pocket of `size`, with a magic tile in it, on a bare board. */
+  const rarePocket = (size: number): GameState => {
+    const base = newRun(7, ENDLESS_TUNING);
+    const cells: Record<string, Cell> = {};
+    const members = new Set<string>();
+    for (let i = 0; i < size; i++) members.add(key(i, 0));
+    for (const k of members) cells[k] = { kind: 'tile', colour: 'green' };
+    cells[key(0, 0)] = { kind: 'tile', colour: 'green', rarity: 'magic' };
+    for (let i = 0; i < size; i++) {
+      for (const n of neighbourKeys(i, 0)) if (!members.has(n)) cells[n] = { kind: 'stone' };
+    }
+    return { ...base, cells };
+  };
+
+  it('explains a rare tile’s power when you tap it', () => {
+    // Given an open neighbour so the tile is NOT ripe — a ripe one is a
+    // pocket, and tapping it prices the pocket instead (covered below).
+    const base = newRun(7, ENDLESS_TUNING);
+    const spot = key(9, 9);
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: {
+        ...base,
+        cells: {
+          ...base.cells,
+          [spot]: { kind: 'tile', colour: 'blue', rarity: 'unique' },
+          [key(10, 9)]: { kind: 'empty' },
+        },
+      },
+    });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = spot;
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toMatch(/UNIQUE/);
+    expect(ctx.el.toast.textContent).toMatch(/double/i);
+  });
+
+  it('prices a pocket you tap, and says where the numbers come from', () => {
+    const ctx = build(1, ENDLESS_TUNING, { resume: rarePocket(9) });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = key(0, 0);
+    tap(ctx.el.board);
+    const text = ctx.el.toast.textContent ?? '';
+    expect(text).toMatch(/POCKET OF 9/);
+    expect(text).toMatch(/Take tiles: \+\d+/);
+    expect(text).toMatch(/worth \d+ × pocket 9 × distance \d+/);
+    expect(text).toMatch(/1 rare tile/);
+  });
+
+  it('shows the arithmetic of a pop, both ways', () => {
+    const points = build(1, ENDLESS_TUNING, { resume: rarePocket(9) });
+    points.game.start();
+    points.renderer.nextHit = key(0, 0);
+    tap(points.el.board);
+    points.el.harvestPoints.click();
+    expect(points.el.toast.textContent).toMatch(/POPPED 9/);
+    expect(points.el.toast.textContent).toMatch(/pts = worth \d+ × pocket 9 × distance/);
+
+    const tiles = build(1, ENDLESS_TUNING, { resume: rarePocket(9) });
+    tiles.game.start();
+    tiles.renderer.nextHit = key(0, 0);
+    tap(tiles.el.board);
+    tiles.el.harvestTiles.click();
+    expect(tiles.el.toast.textContent).toMatch(/POPPED 9/);
+    expect(tiles.el.toast.textContent).toMatch(/\+\d+ tiles/);
+    expect(tiles.el.toast.textContent).toMatch(/Luck \+9/);
+  });
+});
+
+describe('tiles you cannot spend', () => {
+  /** A ripe pocket, with the purse and the clock set by hand. */
+  const rich = (tiles: number, placements: number): GameState => {
+    const base = newRun(7, ENDLESS_TUNING);
+    const cells: Record<string, Cell> = {};
+    const members = new Set<string>();
+    for (let i = 0; i < 4; i++) members.add(key(i, 0));
+    for (const k of members) cells[k] = { kind: 'tile', colour: 'green' };
+    for (let i = 0; i < 4; i++) {
+      for (const n of neighbourKeys(i, 0)) if (!members.has(n)) cells[n] = { kind: 'stone' };
+    }
+    return { ...base, cells, tiles, placements };
+  };
+
+  it('marks the tiles payout SPARE once the clock cannot spend it', () => {
+    // 202 tiles with 167 placements left at cost 1 — Marc's own screenshot.
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: rich(202, ENDLESS_TUNING.runLength - 167),
+    });
+    ctx.game.start();
+    expect(ctx.el.harvestTiles.textContent).toMatch(/SPARE/);
+    expect(ctx.el.harvestTiles.classList.contains('spare')).toBe(true);
+    expect(ctx.el.hint.textContent).toMatch(/more tiles than you can spend/i);
+  });
+
+  it('says nothing of the sort while the purse still matters', () => {
+    const ctx = build(1, ENDLESS_TUNING, { resume: rich(30, 10) });
+    ctx.game.start();
+    expect(ctx.el.harvestTiles.textContent).not.toMatch(/SPARE/);
+    expect(ctx.el.hint.textContent).not.toMatch(/more tiles than you can spend/i);
+  });
+});

@@ -1,8 +1,8 @@
 import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
-import { canPlaceAt, isRipe, worthOf } from '@engine/rules';
-import type { Action, GameState, LandmarkReward } from '@engine/state';
+import { canPlaceAt, harvestMultiplier, harvestValue, isRipe, worthOf } from '@engine/rules';
+import type { Action, GameState, LandmarkReward, Rarity } from '@engine/state';
 import { destinationAt } from '@engine/world';
 import { bakeSurface } from '@render/bake';
 import type { Renderer } from '@render/Renderer';
@@ -408,8 +408,10 @@ export class Game {
     // worth?" — not a placement. The harvest buttons re-price to that pocket
     // and the board outlines it. Everywhere else a tap stays a placement.
     if (this.#state.tuning.world === 'endless' && isRipe(this.#state.cells, hex)) {
-      this.#showNote(null);
       this.#harvestAt = hex;
+      // Tapping a pocket is a question; this is the whole answer, including
+      // where the numbers on the buttons come from.
+      this.#showNote(this.#pocketNote(hex), true);
       this.render();
       return;
     }
@@ -427,6 +429,100 @@ export class Game {
 
     this.#showNote(null);
     this.#dispatch({ type: 'PLACE', hex });
+  }
+
+  /** A rare tile's power, in one line, or null for an ordinary one. */
+  #rarityLine(rarity: Rarity | undefined): string | null {
+    if (rarity === 'magic') {
+      return 'MAGIC — wild: it matches every neighbouring tile, whatever the colour, and they match it back.';
+    }
+    if (rarity === 'unique') {
+      return 'UNIQUE — wild and heavy: every match it is part of counts DOUBLE, for both sides.';
+    }
+    return null;
+  }
+
+  /**
+   * The pocket you just tapped, priced and explained — size, worth, what each
+   * button would pay, and any rare tiles inside it. The buttons already carry
+   * the numbers; this says where those numbers come FROM, which is the part a
+   * player has to learn once and then never again.
+   */
+  #pocketNote(at: HexKey): string {
+    const t = this.#state.tuning;
+    const value = harvestValue(this.#state, at);
+    const worth = value.keys.reduce((n, k) => n + worthOf(this.#state.cells, k, t), 0);
+    const multiplier = harvestMultiplier(this.#state, value.keys);
+
+    // Rare tiles inside the pocket, and what each kind does — a ripe rare
+    // tile cannot be tapped for its own explanation, because tapping it
+    // prices the pocket, so the pocket has to carry the explanation.
+    const rarities = new Set<Rarity>();
+    for (const k of value.keys) {
+      const cell = this.#state.cells[k];
+      if (cell?.kind === 'tile' && cell.rarity !== undefined) rarities.add(cell.rarity);
+    }
+    const rares = value.keys.filter((k) => {
+      const cell = this.#state.cells[k];
+      return cell?.kind === 'tile' && cell.rarity !== undefined;
+    }).length;
+
+    const lines = [
+      `POCKET OF ${value.count} — total worth ${worth}.`,
+      `Take tiles: +${value.tiles}.`,
+      `Take pts: ${value.points} = worth ${worth} × pocket ${Math.min(value.count, t.harvestSizeCap > 0 ? t.harvestSizeCap : value.count)} × distance ${multiplier}${value.questPays ? ` × bounty ${t.questBonus}` : ''}.`,
+    ];
+    if (value.treasure !== null)
+      lines.push(`Take treasure: a ${value.treasure.toUpperCase()} tile.`);
+    if (value.questPays)
+      lines.push('★ This pocket collects the bounty — but only if you take PTS.');
+    if (rares > 0) {
+      lines.push(
+        `${rares} rare tile${rares === 1 ? '' : 's'} in here will be spent by popping it.`,
+      );
+    }
+    return lines.join('\n');
+  }
+
+  /**
+   * What a harvest just did, with its arithmetic shown.
+   *
+   * The pop is the loudest thing that happens in a run and it used to leave
+   * only a number moving in the stat row. Saying the sum out loud at the
+   * moment it pays is the cheapest teaching in the game: two or three of
+   * these and the formula stops being a thing to read in the manual.
+   */
+  #harvestNote(
+    before: GameState,
+    choice: 'tiles' | 'points' | 'treasure',
+    value: ReturnType<typeof harvestValue>,
+  ): string {
+    const t = before.tuning;
+    const worth = value.keys.reduce((n, k) => n + worthOf(before.cells, k, t), 0);
+    const multiplier = harvestMultiplier(before, value.keys);
+    const head = `POPPED ${value.count} — total worth ${worth}`;
+
+    if (choice === 'tiles') {
+      const luck =
+        t.magicChance + t.uniqueChance > 0
+          ? `\nLuck +${value.count} — your rare-tile odds just rose.`
+          : '';
+      return `${head}\n+${value.tiles} tiles: ${t.tilesPerPop} per tile, +1 more per ${t.worthPerExtraTile} worth.${luck}`;
+    }
+    if (choice === 'treasure') {
+      return `${head}\nA ${String(value.treasure).toUpperCase()} tile goes to your stash — no tiles, no points.`;
+    }
+
+    const counted = t.harvestSizeCap > 0 ? Math.min(value.count, t.harvestSizeCap) : value.count;
+    const capped =
+      t.harvestSizeCap > 0 && value.count > t.harvestSizeCap
+        ? ` (the size bonus stops at ${t.harvestSizeCap})`
+        : '';
+    return (
+      `${head}\n+${value.points} pts = worth ${worth} × pocket ${counted}${capped} × distance ${multiplier}` +
+      (value.questPays ? ` × BOUNTY ${t.questBonus}` : '') +
+      (value.questPays ? '\n★ Bounty collected.' : '')
+    );
   }
 
   /**
@@ -530,7 +626,11 @@ export class Game {
         return `Spent ground — a popped tile. It surrounds but never matches, except for ${name('red')}, which feeds on it.`;
       case 'tile': {
         const worth = worthOf(this.#state.cells, hex, t);
-        return `${name(cell.colour)} tile, worth ${worth}. It ripens when all six sides are covered.`;
+        const power = this.#rarityLine(cell.rarity);
+        return (
+          `${name(cell.colour)} tile, worth ${worth}. It ripens when all six sides are covered.` +
+          (power === null ? '' : `\n${power}`)
+        );
       }
       case 'empty':
         return cell.native === undefined
@@ -790,6 +890,10 @@ export class Game {
   }
 
   #dispatch(action: Action): void {
+    // Priced BEFORE the pop, because after it the pocket is stone and the
+    // sum cannot be shown any more.
+    const harvested = action.type === 'HARVEST' ? harvestValue(this.#state, action.at) : null;
+
     const next = reduce(this.#state, action);
     // The engine returns the same state for anything illegal, so this is also
     // the "that did nothing" check — no need to ask permission before acting.
@@ -800,8 +904,16 @@ export class Game {
     // else on the screen. A shrine was worse than that: its whole payoff
     // lands on the NEXT run, so claiming one looked like nothing at all.
     const claimed = this.#claimNote(this.#state, next);
+    const popped =
+      harvested !== null && action.type === 'HARVEST'
+        ? this.#harvestNote(this.#state, action.choice, harvested)
+        : null;
+
     this.#state = next;
-    if (claimed !== null) this.#showNote(claimed);
+    // A pop outranks a claim in the popup: it is the thing the player just
+    // decided, and its arithmetic is the thing worth learning.
+    const note = popped ?? claimed;
+    if (note !== null) this.#showNote(note);
     // Every real change is offered to the shell to keep. Saving after each
     // action rather than on some timer means the most a crash can eat is one
     // tap — a run is 10-20 minutes of a phone's attention, and phones wander.
@@ -879,7 +991,13 @@ export class Game {
     // that were not decisions; their appearing IS the "pocket ready" signal,
     // and when they appear both payouts show their real numbers — the choice
     // is only a choice if you can see what you are giving up.
-    this.#el.harvestTiles.textContent = `Take ${hud.harvestTiles} tiles`;
+    // A tiles-harvest that buys nothing says so on the button itself, because
+    // a dead option that looks exactly like a live one is how a player wastes
+    // the back half of a run.
+    this.#el.harvestTiles.textContent = hud.tilesSpare
+      ? `Take ${hud.harvestTiles} tiles · SPARE`
+      : `Take ${hud.harvestTiles} tiles`;
+    this.#el.harvestTiles.classList.toggle('spare', hud.tilesSpare);
     // The bounty rides on the button that collects it, with its multiplier
     // shown — the reason to press a button belongs on the button.
     this.#el.harvestPoints.textContent = hud.questPays

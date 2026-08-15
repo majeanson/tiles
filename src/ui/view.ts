@@ -187,6 +187,14 @@ export type HudView = {
    * first second rather than sprung at the end.
    */
   readonly left: number | null;
+  /**
+   * True when the purse already holds more tiles than the clock can spend —
+   * so a tiles-harvest buys literally nothing and points are the only thing
+   * left to want. Marc found this state on the board with 202 tiles and 167
+   * placements left: the mechanism was working exactly as designed and the
+   * game never said a word about it.
+   */
+  readonly tilesSpare: boolean;
 
   /** Bounded only. The plane has no LEAVE, so the button has no reason to exist. */
   readonly showLeave: boolean;
@@ -312,6 +320,7 @@ export function toHudView(
     cost: costOf(state.placements, state.tuning),
     placements: state.placements,
     left: placementsLeft(state),
+    tilesSpare: tilesSpareIn(state),
 
     showLeave: !endless,
 
@@ -473,6 +482,9 @@ function guideFor(state: GameState): string | null {
   if (ripe) {
     const value = harvestValue(state, resolveHarvestTarget(state, null) ?? undefined);
     if (value.questPays) return 'BOUNTY READY — take this pocket as pts';
+    // More tiles than the clock can spend: the survival button is dead and
+    // saying so is the whole job of this line.
+    if (tilesSpareIn(state)) return 'More tiles than you can spend — take PTS from here on';
     return state.tuning.world === 'endless'
       ? 'Pocket ready — tap it, then take tiles or pts'
       : 'Ripe — harvest, or keep building it bigger';
@@ -486,6 +498,21 @@ function guideFor(state: GameState): string | null {
  */
 export const runwayOf = (state: GameState): number =>
   Math.floor(state.tiles / Math.max(1, costOf(state.placements, state.tuning)));
+
+/**
+ * Does the purse already hold more than the clock can ever spend?
+ *
+ * The remaining placements cost at least `cost` each — more later, as the
+ * curve climbs — so `left × cost` is the CHEAPEST the rest of the expedition
+ * can possibly be. Holding more than that means a tiles-harvest buys nothing
+ * at all, and the game should say so rather than leave a dead button looking
+ * exactly like a live one.
+ */
+function tilesSpareIn(state: GameState): boolean {
+  const left = placementsLeft(state);
+  if (left === null) return false;
+  return state.tiles > left * costOf(state.placements, state.tuning);
+}
 
 /**
  * Runway at which the guide line starts saying "low".
