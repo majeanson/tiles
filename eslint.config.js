@@ -65,7 +65,13 @@ const pure = {
 };
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'ideas/**', 'coverage/**'] },
+  // `public/**` is shipped verbatim, not compiled: the service worker is
+  // hand-written browser JS that runs outside the app's module graph and is
+  // deliberately not in the TypeScript project, so the type-aware rules have
+  // nothing to check it against. Linting it means teaching the config about a
+  // second environment for one file; its correctness is proved by the deploy
+  // verifier fetching it and by the build asserting its stamp.
+  { ignores: ['dist/**', 'node_modules/**', 'ideas/**', 'coverage/**', 'public/**'] },
 
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
