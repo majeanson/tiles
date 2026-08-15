@@ -233,6 +233,47 @@ body {
   color: var(--ink-faint, #767d8d);
 }
 
+/* ------------------------------------------------------------------ colours */
+
+/* The colour lens: four small chips, each wearing its colour and its standing
+   worth. Pressed = that colour is spotlit on the board. */
+#colours {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  padding: 2px 10px 0;
+}
+
+.chip {
+  flex: 0 1 auto;
+  min-height: 30px;
+  min-width: 64px;
+  padding: 0 8px;
+  font-size: 10px;
+  color: var(--ink, #e8ecf4);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 65%);
+  border-radius: 3px;
+}
+
+.chip[data-colour='green'] {
+  background: var(--tile-green, #3f7d55);
+}
+.chip[data-colour='yellow'] {
+  background: var(--tile-yellow, #a8912f);
+}
+.chip[data-colour='red'] {
+  background: var(--tile-red, #9c4340);
+}
+.chip[data-colour='blue'] {
+  background: var(--tile-blue, #304a70);
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--panel-edge-active, #e8ecf4);
+  box-shadow: 0 0 0 1px var(--panel-edge-active, #e8ecf4);
+}
+
 /* ------------------------------------------------------------------ controls */
 
 #controls {

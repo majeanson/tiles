@@ -27,6 +27,7 @@ export type Elements = {
   readonly board: HTMLElement;
   readonly stats: HTMLElement;
   readonly hint: HTMLElement;
+  readonly colours: HTMLElement;
   readonly draft: HTMLElement;
   readonly harvestTiles: HTMLButtonElement;
   readonly harvestPoints: HTMLButtonElement;
@@ -74,6 +75,12 @@ export class Game {
    * popped) degrades to the biggest pocket rather than to a dead button.
    */
   #harvestAt: HexKey | null = null;
+
+  /**
+   * The colour lens: the chip currently held down, or null. UI state like the
+   * tapped pocket — the engine never learns a colour was being studied.
+   */
+  #spotlight: Colour | null = null;
 
   constructor(
     renderer: Renderer,
@@ -446,17 +453,27 @@ export class Game {
   }
 
   render(): void {
-    this.#renderer.draw(toBoardView(this.#state, this.#harvestAt));
-    this.#renderHud(toHudView(this.#state, this.#harvestAt));
+    this.#renderer.draw(toBoardView(this.#state, this.#harvestAt, this.#spotlight));
+    this.#renderHud(toHudView(this.#state, this.#harvestAt, this.#spotlight));
   }
 
   #renderHud(hud: HudView): void {
     this.#renderStats(hud);
     this.#renderDraft(hud);
+    this.#renderColours(hud);
 
     // The reorientation line: what to do now, then the nearest destination,
     // then the odds. One string, collapsing to nothing when all are silent.
-    const hint = [hud.guide, hud.hint, hud.odds].filter((s) => s !== null).join(' · ');
+    // With a colour chip held down, its calculation takes the line instead —
+    // the lens is exactly a question, and this is its answer.
+    const spot = hud.spotlight;
+    const spotLine =
+      spot === null
+        ? null
+        : `${this.#theme.terrainNames[spot.colour]}: ${spot.count} tiles standing · ` +
+          `worth ${spot.worth}${spot.ripeCount > 0 ? ` (${spot.ripeWorth} of it ripe now)` : ''} · ` +
+          `pts when popped = worth × pocket size × ${hud.showLeave ? 'map' : 'distance'}`;
+    const hint = [spotLine ?? hud.guide, hud.hint, hud.odds].filter((s) => s !== null).join(' · ');
     this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
 
@@ -583,6 +600,36 @@ export class Game {
         return button;
       }),
       ...this.#renderHold(hud),
+    );
+  }
+
+  /**
+   * The colour lens: one chip per colour, printing that colour's standing
+   * worth — the exact number a points harvest sums. Tapping a chip spotlights
+   * the colour on the board and expands the chip into its calculation in the
+   * hint line; tapping it again lets go.
+   */
+  #renderColours(hud: HudView): void {
+    this.#el.colours.replaceChildren(
+      ...hud.colours.map((c) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip';
+        chip.dataset['colour'] = c.colour;
+        const active = hud.spotlight?.colour === c.colour;
+        chip.setAttribute('aria-pressed', String(active));
+        const name = this.#theme.terrainNames[c.colour];
+        chip.textContent = `${name} ${c.worth}`;
+        chip.setAttribute(
+          'aria-label',
+          `${name}: ${c.count} tiles standing, total worth ${c.worth}`,
+        );
+        chip.addEventListener('click', () => {
+          this.#spotlight = this.#spotlight === c.colour ? null : c.colour;
+          this.render();
+        });
+        return chip;
+      }),
     );
   }
 

@@ -351,7 +351,9 @@ export class PixiRenderer implements Renderer {
       const wide = layout.orientation === 'pointy' ? Math.sqrt(3) : 2;
       const tall = layout.orientation === 'pointy' ? 2 : Math.sqrt(3);
       sprite.setSize(layout.size * wide, layout.size * tall);
-      sprite.alpha = surface.alpha;
+      // The colour lens steps other colours back rather than hiding them —
+      // the shape being studied still needs its surroundings to mean anything.
+      sprite.alpha = surface.alpha * (cell.dimmed ? 0.25 : 1);
       group.addChild(sprite);
     }
 
@@ -366,7 +368,7 @@ export class PixiRenderer implements Renderer {
     }
 
     const label = labelFor(cell);
-    if (label !== null && layout.size > 12) {
+    if (label !== null && layout.size > 12 && !cell.dimmed) {
       group.addChild(this.#drawLabel(label, x, y, layout.size));
     }
 

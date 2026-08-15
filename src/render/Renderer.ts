@@ -51,6 +51,11 @@ export type CellView = {
   /** A live tile touched on all six sides, waiting to be harvested. */
   readonly ripe: boolean;
   /**
+   * Stepped back by the colour lens: a tile of some other colour while one
+   * colour's chip is held down. Drawn faded, label withheld.
+   */
+  readonly dimmed: boolean;
+  /**
    * Part of the pocket the harvest buttons are currently pricing. Endless world
    * only — the bounded harvest is the whole board, so nothing is singled out.
    */

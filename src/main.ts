@@ -323,6 +323,7 @@ async function main(): Promise<void> {
     board: required('board'),
     stats: required('stats'),
     hint: required('hint'),
+    colours: required('colours'),
     draft: required('draft'),
     harvestTiles: required<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: required<HTMLButtonElement>('harvest-points'),

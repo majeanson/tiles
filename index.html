@@ -46,9 +46,13 @@
         </div>
       </div>
 
-      <!-- The endless world's compass and loot ticker: the nearest unclaimed
-           destination and the draft's current rarity odds. One quiet line —
-           empty (and collapsed) in the bounded game. -->
+      <!-- The colour lens: one chip per colour with its standing worth — the
+           number a points harvest sums. Tap to spotlight that colour on the
+           board and see the calculation in the hint line. -->
+      <div id="colours"></div>
+
+      <!-- The reorientation line: what to do now, the nearest unclaimed
+           destination, the current odds — or the held-down chip's numbers. -->
       <p id="hint" hidden></p>
 
       <!-- Both payouts sit on screen with their real numbers at all times. The

@@ -1,4 +1,4 @@
-import type { Colour } from '@content/tuning';
+import { COLOURS, type Colour } from '@content/tuning';
 import { distance, key, parse, type HexKey } from '@engine/hex';
 import { canLeave, rarityOdds } from '@engine/reduce';
 import {
@@ -47,7 +47,11 @@ export function resolveHarvestTarget(state: GameState, asked: HexKey | null): He
   return best?.[0] ?? null;
 }
 
-export function toBoardView(state: GameState, harvestAt: HexKey | null = null): BoardView {
+export function toBoardView(
+  state: GameState,
+  harvestAt: HexKey | null = null,
+  spotlight: Colour | null = null,
+): BoardView {
   const selected = state.draft[state.selected];
   const placeable = canPlaceNow(state);
 
@@ -71,6 +75,9 @@ export function toBoardView(state: GameState, harvestAt: HexKey | null = null): 
       native: cell.kind === 'empty' ? (cell.native ?? null) : null,
       ripe: isRipe(state.cells, k),
       targeted: targeted.has(k),
+      // The colour lens: with a chip active, every OTHER colour's tiles step
+      // back so one colour's holdings read as a single shape on the board.
+      dimmed: spotlight !== null && cell.kind === 'tile' && cell.colour !== spotlight,
       worth: worthOf(state.cells, k, state.tuning),
       legal,
       preview:
@@ -97,6 +104,7 @@ export function toBoardView(state: GameState, harvestAt: HexKey | null = null): 
       native: null,
       ripe: false,
       targeted: false,
+      dimmed: false,
       worth: 0,
       legal: false,
       preview: null,
@@ -164,6 +172,15 @@ export type HudView = {
   /** The stashed tile, or null while the stash sits empty. */
   readonly held: { readonly colour: Colour; readonly rarity: Rarity } | null;
 
+  /**
+   * The colour lens: each colour's standing holdings on the board, in the
+   * exact unit the points formula sums — worth. What the chips print, and
+   * what the active chip expands into a calculation.
+   */
+  readonly colours: readonly ColourPotential[];
+  /** The chip currently held down, with its numbers. Null when none. */
+  readonly spotlight: ColourPotential | null;
+
   readonly ripeCount: number;
   /** What harvesting right now would pay, each way. Both are always shown. */
   readonly harvestTiles: number;
@@ -198,12 +215,17 @@ export type HudView = {
   readonly epitaph: string | null;
 };
 
-export function toHudView(state: GameState, harvestAt: HexKey | null = null): HudView {
+export function toHudView(
+  state: GameState,
+  harvestAt: HexKey | null = null,
+  spotlight: Colour | null = null,
+): HudView {
   const endless = state.tuning.world === 'endless';
   const target = resolveHarvestTarget(state, harvestAt);
   const value = endless ? harvestValue(state, target ?? undefined) : harvestValue(state);
   const leaving = canLeave(state);
   const best = bestDraftIndex(state);
+  const colours = colourPotentials(state);
 
   return {
     tiles: state.tiles,
@@ -227,6 +249,9 @@ export function toHudView(state: GameState, harvestAt: HexKey | null = null): Hu
     canHold: state.tuning.holdSlots > 0,
     held: state.held === null ? null : { colour: state.held.colour, rarity: state.held.rarity },
 
+    colours,
+    spotlight: colours.find((c) => c.colour === spotlight) ?? null,
+
     ripeCount: ripeKeys(state.cells).length,
     harvestTiles: value.tiles,
     harvestPoints: value.points,
@@ -243,6 +268,45 @@ export function toHudView(state: GameState, harvestAt: HexKey | null = null): Hu
     ended: state.phase === 'ended',
     epitaph: state.phase === 'ended' ? epitaphFor(state) : null,
   };
+}
+
+/**
+ * One colour's holdings, counted in the unit the points formula sums.
+ *
+ * `worth` is the truthful "potential points by colour": a points harvest
+ * pays summed worth × pocket size × the multiplier, and worth is the only
+ * term a colour owns. The split into ripe and still-growing says how much of
+ * that potential is cashable right now versus still being set up.
+ */
+export type ColourPotential = {
+  readonly colour: Colour;
+  /** Live tiles of this colour on the board. */
+  readonly count: number;
+  /** Their summed worth — the colour's standing investment. */
+  readonly worth: number;
+  readonly ripeCount: number;
+  /** The worth already sitting ripe, cashable in the next pop. */
+  readonly ripeWorth: number;
+};
+
+function colourPotentials(state: GameState): ColourPotential[] {
+  const acc = new Map<
+    Colour,
+    { count: number; worth: number; ripeCount: number; ripeWorth: number }
+  >(COLOURS.map((c) => [c, { count: 0, worth: 0, ripeCount: 0, ripeWorth: 0 }]));
+  for (const [k, cell] of Object.entries(state.cells)) {
+    if (cell.kind !== 'tile') continue;
+    const entry = acc.get(cell.colour);
+    if (entry === undefined) continue;
+    const worth = worthOf(state.cells, k, state.tuning);
+    entry.count++;
+    entry.worth += worth;
+    if (isRipe(state.cells, k)) {
+      entry.ripeCount++;
+      entry.ripeWorth += worth;
+    }
+  }
+  return COLOURS.map((colour) => ({ colour, ...acc.get(colour)! }));
 }
 
 /**

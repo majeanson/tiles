@@ -73,6 +73,7 @@ function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer;
         <div id="help-meta"></div>
       </div>
     </div>
+    <div id="colours"></div>
     <p id="hint" hidden></p>
     <div id="draft"></div>
     <button id="harvest-tiles"></button>
@@ -90,6 +91,7 @@ function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer;
     board: pick('board'),
     stats: pick('stats'),
     hint: pick('hint'),
+    colours: pick('colours'),
     draft: pick('draft'),
     harvestTiles: pick<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: pick<HTMLButtonElement>('harvest-points'),
@@ -414,6 +416,39 @@ describe('the camera, and staying oriented', () => {
     expect(text).toContain('MOVE ON');
     expect(text).not.toContain('DESTINATIONS');
     expect(text).not.toContain('THE STASH');
+  });
+
+  it('shows a chip per colour, and a held chip spotlights and explains', () => {
+    const chips = [...ctx.el.colours.children] as HTMLButtonElement[];
+    expect(chips).toHaveLength(4);
+
+    // Grow the seed tile a same-coloured neighbour so one colour has worth.
+    const seed = ctx.game.state.cells[key(0, 0)];
+    if (seed?.kind !== 'tile') throw new Error('no seed');
+    const colour = seed.colour;
+
+    const chip = chips.find((c) => c.dataset['colour'] === colour);
+    if (chip === undefined) throw new Error('no chip for the seed colour');
+
+    chip.click();
+    expect(chip.getAttribute('aria-pressed')).toBe('false'); // rebuilt below
+    const pressed = [...ctx.el.colours.children].find(
+      (c) => c.getAttribute('aria-pressed') === 'true',
+    );
+    expect(pressed).toBeDefined();
+    // The hint line carries the calculation, in the theme's word for it.
+    expect(ctx.el.hint.textContent).toMatch(/tiles standing/);
+    expect(ctx.el.hint.textContent).toMatch(/worth × pocket size × distance/);
+
+    // Other-coloured tiles dim on the board; the studied colour does not.
+    const drawn = ctx.renderer.last.cells.filter((c) => c.kind === 'tile');
+    for (const cell of drawn) {
+      expect(cell.dimmed).toBe(cell.colour !== colour);
+    }
+
+    // Tapping the pressed chip again lets go.
+    (pressed as HTMLButtonElement).click();
+    expect(ctx.renderer.last.cells.some((c) => c.dimmed)).toBe(false);
   });
 
   it('always says what to do now, and hides the harvest until it exists', () => {
