@@ -284,23 +284,41 @@ export type ColourPotential = {
   readonly count: number;
   /** Their summed worth — the colour's standing investment. */
   readonly worth: number;
+  /**
+   * How much of that worth the colour's own TRICK earned — crowds, company,
+   * ash or tide — versus plain matching. Measured, not estimated: the same
+   * board is re-tallied with the personalities switched off and the
+   * difference is the trick's take. This is what makes each colour's tip its
+   * own; the payout formula itself is one channel for everyone, by design.
+   */
+  readonly bonus: number;
   readonly ripeCount: number;
   /** The worth already sitting ripe, cashable in the next pop. */
   readonly ripeWorth: number;
 };
 
 function colourPotentials(state: GameState): ColourPotential[] {
+  const t = state.tuning;
+  const plain = {
+    ...t,
+    greenCrowdBonus: 0,
+    yellowCompanyBonus: 0,
+    redAshMatches: false,
+    blueTideEvery: 0,
+  };
+
   const acc = new Map<
     Colour,
-    { count: number; worth: number; ripeCount: number; ripeWorth: number }
-  >(COLOURS.map((c) => [c, { count: 0, worth: 0, ripeCount: 0, ripeWorth: 0 }]));
+    { count: number; worth: number; bonus: number; ripeCount: number; ripeWorth: number }
+  >(COLOURS.map((c) => [c, { count: 0, worth: 0, bonus: 0, ripeCount: 0, ripeWorth: 0 }]));
   for (const [k, cell] of Object.entries(state.cells)) {
     if (cell.kind !== 'tile') continue;
     const entry = acc.get(cell.colour);
     if (entry === undefined) continue;
-    const worth = worthOf(state.cells, k, state.tuning);
+    const worth = worthOf(state.cells, k, t);
     entry.count++;
     entry.worth += worth;
+    entry.bonus += worth - worthOf(state.cells, k, plain);
     if (isRipe(state.cells, k)) {
       entry.ripeCount++;
       entry.ripeWorth += worth;

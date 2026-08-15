@@ -488,14 +488,22 @@ export class Game {
     // The reorientation line: what to do now, then the nearest destination,
     // then the odds. One string, collapsing to nothing when all are silent.
     // With a colour chip held down, its calculation takes the line instead —
-    // the lens is exactly a question, and this is its answer.
+    // the lens is exactly a question, and this is its answer, per colour:
+    // the numbers, how much the colour's own trick earned of them, and the
+    // trick itself. The formula is one channel for everyone by design; what
+    // differs is how each colour builds worth, so that is what the tip says.
     const spot = hud.spotlight;
     const spotLine =
       spot === null
         ? null
-        : `${this.#theme.terrainNames[spot.colour]}: ${spot.count} tiles standing · ` +
-          `worth ${spot.worth}${spot.ripeCount > 0 ? ` (${spot.ripeWorth} of it ripe now)` : ''} · ` +
-          `pts when popped = worth × pocket size × ${hud.showLeave ? 'map' : 'distance'}`;
+        : `${this.#theme.terrainNames[spot.colour]}: ` +
+          (spot.count === 0
+            ? 'nothing standing yet'
+            : `${spot.count} ${spot.count === 1 ? 'tile' : 'tiles'} standing · worth ${spot.worth}` +
+              (spot.bonus > 0 ? ` (${spot.bonus} earned by its trick)` : '') +
+              (spot.ripeCount > 0 ? ` · ${spot.ripeWorth} of it ripe now` : '') +
+              ` · pts when popped = worth × pocket size × ${hud.showLeave ? 'map' : 'distance'}`) +
+          this.#trickOf(spot.colour);
     const hint = [spotLine ?? hud.guide, hud.hint, hud.odds].filter((s) => s !== null).join(' · ');
     this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
@@ -624,6 +632,31 @@ export class Game {
       }),
       ...this.#renderHold(hud),
     );
+  }
+
+  /**
+   * The colour's trick, in one clause, with its numbers read from the live
+   * tuning — same no-staleness contract as the manual. Empty string when the
+   * personalities are off (the bounded game), so the tip stays honest there.
+   */
+  #trickOf(colour: Colour): string {
+    const t = this.#state.tuning;
+    switch (colour) {
+      case 'green':
+        return t.greenCrowdBonus > 0
+          ? ` · crowds: +${t.greenCrowdBonus} worth per green neighbour past the first`
+          : '';
+      case 'yellow':
+        return t.yellowCompanyBonus > 0
+          ? ` · company: +${t.yellowCompanyBonus} worth per different colour beside it`
+          : '';
+      case 'red':
+        return t.redAshMatches ? ' · ash: stone beside red counts as a match' : '';
+      case 'blue':
+        return t.blueTideEvery > 0
+          ? ` · tide: +1 worth per ${t.blueTideEvery} hexes from home`
+          : '';
+    }
   }
 
   /**

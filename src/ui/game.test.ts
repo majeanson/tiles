@@ -459,9 +459,11 @@ describe('the camera, and staying oriented', () => {
       (c) => c.getAttribute('aria-pressed') === 'true',
     );
     expect(pressed).toBeDefined();
-    // The hint line carries the calculation, in the theme's word for it.
-    expect(ctx.el.hint.textContent).toMatch(/tiles standing/);
+    // The hint line carries the calculation, in the theme's word for it —
+    // and each colour's OWN trick, so no two colours read the same.
+    expect(ctx.el.hint.textContent).toMatch(/standing/);
     expect(ctx.el.hint.textContent).toMatch(/worth × pocket size × distance/);
+    expect(ctx.el.hint.textContent).toMatch(/crowds|company|ash|tide/);
 
     // Other-coloured tiles dim on the board; the studied colour does not.
     const drawn = ctx.renderer.last.cells.filter((c) => c.kind === 'tile');
