@@ -285,10 +285,10 @@ export type ColourPotential = {
   /** Their summed worth — the colour's standing investment. */
   readonly worth: number;
   /**
-   * How much of that worth the colour's own TRICK earned — crowds, company,
+   * How much of that worth the colour's own POWER earned — crowds, company,
    * ash or tide — versus plain matching. Measured, not estimated: the same
    * board is re-tallied with the personalities switched off and the
-   * difference is the trick's take. This is what makes each colour's tip its
+   * difference is the power's take. This is what makes each colour's tip its
    * own; the payout formula itself is one channel for everyone, by design.
    */
   readonly bonus: number;

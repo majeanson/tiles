@@ -42,6 +42,14 @@ export type Elements = {
   readonly helpManual: HTMLElement;
 };
 
+/** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
+const POWER_NAMES: Record<Colour, string> = {
+  green: 'crowds',
+  yellow: 'company',
+  red: 'ash',
+  blue: 'tide',
+};
+
 /** One zoom-button step. Three taps from fit to full close-up. */
 const ZOOM_STEP = 1.6;
 
@@ -489,8 +497,8 @@ export class Game {
     // then the odds. One string, collapsing to nothing when all are silent.
     // With a colour chip held down, its calculation takes the line instead —
     // the lens is exactly a question, and this is its answer, per colour:
-    // the numbers, how much the colour's own trick earned of them, and the
-    // trick itself. The formula is one channel for everyone by design; what
+    // the numbers, how much the colour's own power earned of them, and the
+    // power itself. The formula is one channel for everyone by design; what
     // differs is how each colour builds worth, so that is what the tip says.
     const spot = hud.spotlight;
     const spotLine =
@@ -500,10 +508,15 @@ export class Game {
           (spot.count === 0
             ? 'nothing standing yet'
             : `${spot.count} ${spot.count === 1 ? 'tile' : 'tiles'} standing · worth ${spot.worth}` +
-              (spot.bonus > 0 ? ` (${spot.bonus} earned by its trick)` : '') +
+              // The power's take, by name: "worth 14 — 5 from its power
+              // (ash)" reads as a report card on playing the colour its own
+              // way, where "earned by its trick" read as a riddle.
+              (spot.bonus > 0
+                ? ` — ${spot.bonus} from its power (${POWER_NAMES[spot.colour]})`
+                : '') +
               (spot.ripeCount > 0 ? ` · ${spot.ripeWorth} of it ripe now` : '') +
               ` · pts when popped = worth × pocket size × ${hud.showLeave ? 'map' : 'distance'}`) +
-          this.#trickOf(spot.colour);
+          this.#powerOf(spot.colour);
     const hint = [spotLine ?? hud.guide, hud.hint, hud.odds].filter((s) => s !== null).join(' · ');
     this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
@@ -635,11 +648,11 @@ export class Game {
   }
 
   /**
-   * The colour's trick, in one clause, with its numbers read from the live
+   * The colour's power, in one clause, with its numbers read from the live
    * tuning — same no-staleness contract as the manual. Empty string when the
    * personalities are off (the bounded game), so the tip stays honest there.
    */
-  #trickOf(colour: Colour): string {
+  #powerOf(colour: Colour): string {
     const t = this.#state.tuning;
     switch (colour) {
       case 'green':

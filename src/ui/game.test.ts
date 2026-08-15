@@ -460,7 +460,7 @@ describe('the camera, and staying oriented', () => {
     );
     expect(pressed).toBeDefined();
     // The hint line carries the calculation, in the theme's word for it —
-    // and each colour's OWN trick, so no two colours read the same.
+    // and each colour's OWN power, so no two colours read the same.
     expect(ctx.el.hint.textContent).toMatch(/standing/);
     expect(ctx.el.hint.textContent).toMatch(/worth × pocket size × distance/);
     expect(ctx.el.hint.textContent).toMatch(/crowds|company|ash|tide/);

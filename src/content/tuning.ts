@@ -303,7 +303,7 @@ export const ENDLESS_TUNING: Tuning = {
   luckUniquePerPop: 0.0002,
 
   // The personalities, at their first values: every bonus worth exactly one
-  // ordinary match, so no colour's trick outranks plain good packing.
+  // ordinary match, so no colour's power outranks plain good packing.
   greenCrowdBonus: 1,
   yellowCompanyBonus: 1,
   redAshMatches: true,
