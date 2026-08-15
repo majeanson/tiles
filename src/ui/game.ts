@@ -186,7 +186,17 @@ export class Game {
       return a !== undefined && b !== undefined ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
     };
 
+    // Only the canvas is a gesture surface. The camera buttons and the help
+    // panel LIVE INSIDE the board element, and a press on them bubbles here —
+    // capturing that pointer steals the button's click entirely (how every
+    // board-mounted button died on desktop), and treating its lift as a tap
+    // could place a tile through the help panel. Anything that is not the
+    // bare board or its canvas is somebody else's press.
+    const isBoardSurface = (target: EventTarget | null): boolean =>
+      target === board || target instanceof HTMLCanvasElement;
+
     board.addEventListener('pointerdown', (event) => {
+      if (!isBoardSurface(event.target)) return;
       down.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (down.size === 2) pinch = spread();
       try {
@@ -196,6 +206,19 @@ export class Game {
         // a drag that leaves the element just ends early.
       }
     });
+
+    // Desktop's native zoom gesture. The trackpad pinch arrives as a wheel
+    // too, so this covers both mice and trackpads.
+    board.addEventListener(
+      'wheel',
+      (event) => {
+        if (!isBoardSurface(event.target)) return;
+        event.preventDefault();
+        this.#renderer.zoomBy(event.deltaY < 0 ? 1.12 : 1 / 1.12);
+        this.#syncCamera();
+      },
+      { passive: false },
+    );
 
     board.addEventListener('pointermove', (event) => {
       const from = down.get(event.pointerId);

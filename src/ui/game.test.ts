@@ -357,6 +357,29 @@ describe('the camera, and staying oriented', () => {
     expect(ctx.game.state.placements).toBe(0);
   });
 
+  it('leaves presses on board-mounted buttons alone — they are not taps', () => {
+    // The camera stack and help panel live INSIDE the board element. A press
+    // there must not be captured as a gesture or lifted as a placement —
+    // that is exactly how every board-mounted button died on desktop.
+    ctx.renderer.nextHit = key(1, 0);
+    pointer(ctx.el.zoomIn, 'pointerdown', 5, 5);
+    pointer(ctx.el.zoomIn, 'pointerup', 5, 5);
+    expect(ctx.game.state.placements).toBe(0);
+
+    ctx.el.help.click();
+    pointer(ctx.el.helpPanel, 'pointerdown', 50, 50);
+    pointer(ctx.el.helpPanel, 'pointerup', 50, 50);
+    expect(ctx.game.state.placements).toBe(0);
+  });
+
+  it('zooms on the wheel, for desktops and trackpads', () => {
+    ctx.el.board.dispatchEvent(new window.WheelEvent('wheel', { deltaY: -100 }));
+    expect(ctx.renderer.zoom).toBeGreaterThan(1);
+    ctx.el.board.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 100 }));
+    ctx.el.board.dispatchEvent(new window.WheelEvent('wheel', { deltaY: 100 }));
+    expect(ctx.renderer.zoom).toBe(1);
+  });
+
   it('drives the camera from the buttons, with FIT the way back', () => {
     expect(ctx.el.zoomOut.disabled).toBe(true);
 
