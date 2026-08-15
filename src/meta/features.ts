@@ -72,6 +72,17 @@ export const FEATURES = [
     wired: true,
   },
   {
+    id: 'run.tilesonly',
+    label: 'The tiles-only run',
+    note:
+      'The pivot of 2026-08-15: one currency. A pop always pays TILES, points become the ' +
+      'SCORE rather than a payout, there is no clock — you die when you run dry — and a pocket ' +
+      'can be BURNED for luck instead of taken. Off while it is a prototype: play it against the ' +
+      'shipped game and keep whichever is better.',
+    defaultOn: false,
+    wired: true,
+  },
+  {
     id: 'ui.themePicker',
     label: 'Theme picker',
     note:

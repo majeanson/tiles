@@ -281,6 +281,38 @@ export type Tuning = {
    */
   readonly harvestSizeCap: number;
 
+  /**
+   * The tiles-only run (Marc's pivot, 2026-08-15). One currency to live on,
+   * and points as the SCORE rather than a payout you must trade your life
+   * for: "start with 30 tiles, get tiles along the way if you're good or
+   * lucky, die when you run dry, and go farther over time."
+   *
+   * `singlePayout` — a pop pays TILES, always, with no choice to make. This
+   * is Gate B's own prescribed fallback ("fix it, or cut it to a single
+   * automatic payout"), reached after the gate failed twice in a row for
+   * opposite reasons: tiles dominating early, then tiles going SPARE and the
+   * button dying for the back half of a run.
+   *
+   * `pointsPerPop` — what a pop adds to the score automatically, as a
+   * fraction of what the old points payout would have been. Score becomes
+   * something you accumulate by playing well rather than something you buy
+   * with survival.
+   *
+   * `burnLuck` — a pop can instead be BURNED: no tiles, no points, but
+   * `burnLuck` luck per tile in it, which is Marc's "sacrifice the run for
+   * better tiles". The sacrifice is real because tiles are now the only
+   * thing keeping you alive.
+   *
+   * `endReachBonus` / `endClaimBonus` — what the run is worth for having
+   * gone far and reached things, added once when it ends. Points as the
+   * final state.
+   */
+  readonly singlePayout: boolean;
+  readonly pointsPerPop: number;
+  readonly burnLuck: number;
+  readonly endReachBonus: number;
+  readonly endClaimBonus: number;
+
   /** Draft width. Three is the base game; more is an unlock. */
   readonly draftWidth: number;
 
@@ -382,6 +414,12 @@ export const TUNING: Tuning = {
 
   harvestSizeBonus: 1,
   harvestSizeCap: 0,
+
+  singlePayout: false,
+  pointsPerPop: 0,
+  burnLuck: 0,
+  endReachBonus: 0,
+  endClaimBonus: 0,
 
   draftWidth: 3,
 
@@ -505,3 +543,52 @@ export type Colour = (typeof COLOURS)[number];
 
 /** Uniform for now. A weighted table is where biome character will come from. */
 export const COLOUR_WEIGHTS: readonly (readonly [Colour, number])[] = COLOURS.map((c) => [c, 1]);
+
+/**
+ * The tiles-only run — Marc's pivot, 2026-08-15, behind `run.tilesonly`.
+ *
+ * "Start with 30 tiles, get tiles along the way if you're good or lucky,
+ * die when you run dry, and go farther over time." One currency to live on,
+ * points as the score rather than a payout, and the roguelite carrying the
+ * reach across runs.
+ *
+ * What changes from the endless economy, and why:
+ *
+ * - `singlePayout` — a pop pays tiles, always. Gate B failed twice for
+ *   opposite reasons (tiles dominating, then tiles going spare); this is the
+ *   gate's own written fallback rather than a third attempt to balance it.
+ * - `runLength: 0` — no clock. Marc: no infinite runs, but the ending should
+ *   be running DRY, so a good or lucky run genuinely goes farther. The cost
+ *   curve is what guarantees it ends: income is capped by geometry at about
+ *   one pop per placement while cost climbs forever.
+ * - `costGrace: 0` and a steeper curve — with no clock, the curve IS the
+ *   clock, so it starts working immediately rather than after 120 free
+ *   placements.
+ * - `cachePays` down to 26 — caches still fund the expedition, but a purse
+ *   that outgrows what the run can spend was the exact state Marc hit at 202
+ *   tiles, and without a clock the only cure is charging more for a
+ *   placement than a cache hands over.
+ * - `pointsPerPop`, `endReachBonus`, `endClaimBonus` — score from playing
+ *   (a fraction of the old points formula), from sites and bounties as
+ *   before, and from the expedition itself when it ends.
+ * - `burnLuck: 3` — a burned pocket pays three luck a tile instead of its
+ *   tiles: sacrifice the run to draw better.
+ */
+export const TILESONLY_TUNING: Tuning = {
+  ...ENDLESS_TUNING,
+
+  singlePayout: true,
+  pointsPerPop: 0.35,
+  burnLuck: 3,
+  endReachBonus: 40,
+  endClaimBonus: 60,
+
+  runLength: 0,
+  costGrace: 0,
+  // Swept: 22 gave ~140-placement runs (8 min), 38 gave ~270 (16). 30 lands
+  // a good run near 200 placements — about twelve minutes — with careless
+  // play dead at 111 and random play at 32, which is the skill spread Gate C
+  // asks for.
+  costRisesEvery: 30,
+  cachePays: 26,
+};

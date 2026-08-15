@@ -1209,3 +1209,60 @@ everything else. It stays until you dismiss it, because you asked for it.
 
 **Verified:** 326 tests green (was 322). Typecheck, lint, format, build
 clean.
+
+---
+
+### Session 19 — The tiles-only run, behind a flag
+
+**Marc's pivot, in his words:** "build around the tiles only, have a maximum
+of tiles (or if you're lucky your run goes farther), and points could be used
+roguelite style to unlock better things… start with 30 tiles, get tiles along
+the way if you're good/lucky to continue, die when you don't have any (dry)."
+
+**Why this is not a retreat.** Gate B failed twice in a row for OPPOSITE
+reasons: first tiles dominated 94-98% because an economy that ends in
+bankruptcy makes every marginal harvest a survival harvest; then M1's clock
+fixed that and Marc promptly found the mirror image — 202 tiles with 167
+placements left, the tiles button dead for the entire back half of a run.
+Two failures, opposite directions, same fork. The gate's own written fallback
+is "fix it, or cut it to a single automatic payout", and this is that,
+arrived at by evidence rather than by giving up.
+
+**Built behind `run.tilesonly`** (off; play it against the shipped game):
+
+- **One payout.** A pop always pays TILES and scores automatically, at
+  `pointsPerPop` (0.35) of the old points formula. `tiles` and `points` are
+  now the same instruction, so every saved run, replay and policy written
+  before the pivot still means what it meant.
+- **No clock.** `runLength: 0` — you die dry, so a good or lucky run
+  genuinely goes farther, which was the whole point. The cost curve is what
+  guarantees an ending: income is capped by geometry at about one pop per
+  placement while cost climbs forever. `costGrace: 0` too — with no clock the
+  curve IS the clock and it has to start working immediately.
+- **BURN.** A ripe pocket can be sacrificed for `burnLuck` (3) luck per tile
+  instead of taken: no tiles, no score, better draws. Marc's "sacrifice the
+  run to get better tiles", and it costs the only thing keeping you alive.
+- **Points as the final state.** Sites and bounties still pay them mid-run,
+  pops trickle them, and the ending adds `endReachBonus` per hex reached and
+  `endClaimBonus` per destination — an expedition is worth something for
+  having gone far, not only for what it cashed.
+- `cachePays` 40 → 26, because without a clock a cache that hands over more
+  than a placement costs is a purse that outgrows the run — the 202-tile
+  state again.
+
+**Swept before shipping.** `pnpm sim --tilesonly`. `costRisesEvery` at 22
+gave ~140-placement runs (8 minutes), 38 gave ~270 (16); **30 lands a good
+run near 200 placements — about twelve minutes** — with careless play dead at
+111 and random play at 32. Nothing stalls, nothing caps, and `farm` and
+`survivor` now produce IDENTICAL runs, which is the tell that the fork is
+really gone rather than merely hidden.
+
+**Verified:** 339 tests green (was 331), including that the shipped endless
+game still forks exactly as before — the prototype is additive, not a
+replacement, until playing says otherwise.
+
+**Open, and deliberately not built yet:** the shrine that sells odds for
+tiles (Marc asked for both sacrifices; the burn is the one that needed no new
+UI), and the roguelite spending screen — points buying the five shrine
+unlocks, better base odds and richer worlds. Those wait for a play session
+that says the core loop is right.

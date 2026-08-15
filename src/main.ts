@@ -1,4 +1,4 @@
-import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
+import { ENDLESS_TUNING, TILESONLY_TUNING, TUNING, type Tuning } from '@content/tuning';
 import {
   decodeFeatures,
   encodeFeatures,
@@ -627,6 +627,7 @@ async function main(): Promise<void> {
     harvestTiles: required<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: required<HTMLButtonElement>('harvest-points'),
     harvestTreasure: required<HTMLButtonElement>('harvest-treasure'),
+    harvestBurn: required<HTMLButtonElement>('harvest-burn'),
     leave: required<HTMLButtonElement>('leave'),
     end: required('end'),
     zoomIn: required<HTMLButtonElement>('zoom-in'),
@@ -680,7 +681,11 @@ async function main(): Promise<void> {
   // progress. `?ff=-world.endless` is the bounded game.
   // Flags and UNLOCKS become TUNING here at the edge and travel no further:
   // the engine sees numbers, never a feature registry and never a world.
-  const base = isEnabled(features, 'world.endless') ? ENDLESS_TUNING : TUNING;
+  const base = isEnabled(features, 'run.tilesonly')
+    ? TILESONLY_TUNING
+    : isEnabled(features, 'world.endless')
+      ? ENDLESS_TUNING
+      : TUNING;
   const tuning = applyUnlocks(base, features, seed === world.worldSeed ? unlockedBy(world) : []);
   // Territories the world already holds arrive as plain data — the engine
   // still knows nothing about storage, and a replay is reproducible from

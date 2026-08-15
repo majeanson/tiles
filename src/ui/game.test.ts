@@ -86,6 +86,7 @@ function build(
     <button id="harvest-tiles"></button>
     <button id="harvest-points"></button>
     <button id="harvest-treasure" hidden></button>
+    <button id="harvest-burn" hidden></button>
     <button id="leave"></button>
     <p id="end" hidden></p>`;
 
@@ -104,6 +105,7 @@ function build(
     harvestTiles: pick<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: pick<HTMLButtonElement>('harvest-points'),
     harvestTreasure: pick<HTMLButtonElement>('harvest-treasure'),
+    harvestBurn: pick<HTMLButtonElement>('harvest-burn'),
     leave: pick<HTMLButtonElement>('leave'),
     end: pick('end'),
     zoomIn: pick<HTMLButtonElement>('zoom-in'),

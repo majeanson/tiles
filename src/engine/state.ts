@@ -80,7 +80,18 @@ export type Phase = 'placing' | 'ended';
  * `treasureNeed`: a big pocket may be cashed for a rare tile instead of
  * either currency. Still exactly one of the three, never two.
  */
-export type HarvestChoice = 'tiles' | 'points' | 'treasure';
+/**
+ * `treasure` is the third payout, unlocked by `pop.treasure`: a big pocket
+ * cashed for a rare tile instead of either currency. `burn` is Marc's
+ * sacrifice (2026-08-15): no tiles, no points, only luck — you give up the
+ * thing keeping you alive to make your next draws better.
+ *
+ * Under `singlePayout` the tiles/points fork is gone: `tiles` and `points`
+ * both mean "pop it", paying tiles and scoring automatically. The two names
+ * survive so every saved run, replay and policy written before the pivot
+ * still means something.
+ */
+export type HarvestChoice = 'tiles' | 'points' | 'treasure' | 'burn';
 
 /**
  * A bounty on a place, opened by claiming a scoring site.

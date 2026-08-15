@@ -1,4 +1,4 @@
-import { ENDLESS_TUNING, TUNING, type Tuning } from '../src/content/tuning';
+import { ENDLESS_TUNING, TILESONLY_TUNING, TUNING, type Tuning } from '../src/content/tuning';
 import { POLICIES, policyByName } from '../src/sim/policy';
 import { summarise, table } from '../src/sim/report';
 import { playMany } from '../src/sim/run';
@@ -62,11 +62,12 @@ function parseArgs(argv: readonly string[]): Args {
   // `--endless` swaps the BASE the --set overrides then apply to, so it is
   // read before the loop rather than in it.
   const endless = argv.includes('--endless');
+  const tilesonly = argv.includes('--tilesonly');
   const args: Args = {
     seeds: 200,
     policies: [],
-    tuning: endless ? ENDLESS_TUNING : TUNING,
-    changed: endless ? ['--endless'] : [],
+    tuning: tilesonly ? TILESONLY_TUNING : endless ? ENDLESS_TUNING : TUNING,
+    changed: tilesonly ? ['--tilesonly'] : endless ? ['--endless'] : [],
   };
 
   for (let i = 0; i < argv.length; i++) {

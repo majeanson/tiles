@@ -2,7 +2,7 @@ import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { canPlaceAt, harvestMultiplier, harvestValue, isRipe, worthOf } from '@engine/rules';
-import type { Action, GameState, LandmarkReward, Rarity } from '@engine/state';
+import type { Action, GameState, HarvestChoice, LandmarkReward, Rarity } from '@engine/state';
 import { destinationAt } from '@engine/world';
 import { bakeSurface } from '@render/bake';
 import type { Renderer } from '@render/Renderer';
@@ -35,6 +35,8 @@ export type Elements = {
   readonly harvestPoints: HTMLButtonElement;
   /** The third payout. Present only while a pocket is big enough for it. */
   readonly harvestTreasure: HTMLButtonElement;
+  /** The sacrifice: pop for luck instead of tiles. Only where it exists. */
+  readonly harvestBurn: HTMLButtonElement;
   readonly leave: HTMLButtonElement;
   readonly end: HTMLElement;
   readonly zoomIn: HTMLButtonElement;
@@ -283,6 +285,9 @@ export class Game {
     this.#el.harvestTreasure.addEventListener('click', () => {
       this.#harvest('treasure');
     });
+    this.#el.harvestBurn.addEventListener('click', () => {
+      this.#harvest('burn');
+    });
     this.#el.leave.addEventListener('click', () => {
       this.#dispatch({ type: 'LEAVE' });
     });
@@ -494,7 +499,7 @@ export class Game {
    */
   #harvestNote(
     before: GameState,
-    choice: 'tiles' | 'points' | 'treasure',
+    choice: HarvestChoice,
     value: ReturnType<typeof harvestValue>,
   ): string {
     const t = before.tuning;
@@ -660,11 +665,15 @@ export class Game {
       title: 'THE LOOP',
       lines: [
         endless
-          ? `One endless plane, and one expedition of ${t.runLength} placements. Place tiles, surround them to ripen them, pop ripe pockets for tiles or points, and push outward — farther pays more.`
+          ? t.singlePayout
+            ? `One endless plane and one purse. You start with ${t.startingTiles} tiles, every placement spends them, and every pocket you pop hands some back — so a good or lucky run simply goes farther. When you cannot afford a placement, the expedition is over.`
+            : `One endless plane, and one expedition of ${t.runLength} placements. Place tiles, surround them to ripen them, pop ripe pockets for tiles or points, and push outward — farther pays more.`
           : 'Place tiles, surround them to ripen them, harvest for tiles or points, and move on to deeper, better-paying maps. The run ends when you run out of tiles.',
         ...(endless
           ? [
-              'Tiles keep you going; points are the score. The expedition ends whether or not you spent your tiles — so tiles you never use are wasted, and a pocket you never cash is a fortune left in the ground.',
+              t.singlePayout
+                ? 'Tiles are the only thing keeping you alive, so popping is never a dilemma — it always pays tiles, and it scores at the same time. What you decide is WHEN to pop, WHERE, and whether a pocket is worth burning instead.'
+                : 'Tiles keep you going; points are the score. The expedition ends whether or not you spent your tiles — so tiles you never use are wasted, and a pocket you never cash is a fortune left in the ground.',
             ]
           : []),
       ],
@@ -697,7 +706,14 @@ export class Game {
         endless
           ? 'A pocket is a connected group of ripe tiles. Tap any ripe tile to price its pocket — the board outlines it and the two buttons show what popping it pays. The biggest pocket is priced by default.'
           : 'Harvest pops EVERY ripe tile on the map at once.',
-        `Take tiles: ${t.tilesPerPop} per popped tile, +1 more per ${t.worthPerExtraTile} worth. Linear and safe — this is how you keep placing.`,
+        t.singlePayout
+          ? `POP pays ${t.tilesPerPop} tile per popped tile, +1 more per ${t.worthPerExtraTile} worth — and scores at the same time, from the pocket's worth, its size and how far from home it sat. One button, both results.`
+          : `Take tiles: ${t.tilesPerPop} per popped tile, +1 more per ${t.worthPerExtraTile} worth. Linear and safe — this is how you keep placing.`,
+        ...(t.burnLuck > 0
+          ? [
+              `BURN instead: the pocket pays no tiles and no points, only ${t.burnLuck} luck per tile in it — better odds of magic and unique for the rest of the run. Sacrificing the thing keeping you alive is the whole price.`,
+            ]
+          : []),
         endless
           ? `Take pts: the pocket’s summed worth × its size bonus × the distance multiplier. Bigger pockets pay disproportionately more, and the multiplier rises by 1 for every ${t.distanceStep} hexes the pocket sits from home. Score lives out there.`
           : 'Take pts: summed worth × size bonus × the map number. Bigger harvests and deeper maps pay disproportionately more.',
@@ -884,7 +900,7 @@ export class Game {
    * Harvest what the buttons are pricing. The selector owns which pocket that
    * is (`hud.harvestAt`), so the dispatch and the price cannot disagree.
    */
-  #harvest(choice: 'tiles' | 'points' | 'treasure'): void {
+  #harvest(choice: HarvestChoice): void {
     const at = toHudView(this.#state, this.#harvestAt).harvestAt;
     this.#dispatch(at === null ? { type: 'HARVEST', choice } : { type: 'HARVEST', choice, at });
   }
@@ -998,12 +1014,31 @@ export class Game {
       ? `Take ${hud.harvestTiles} tiles · SPARE`
       : `Take ${hud.harvestTiles} tiles`;
     this.#el.harvestTiles.classList.toggle('spare', hud.tilesSpare);
-    // The bounty rides on the button that collects it, with its multiplier
-    // shown — the reason to press a button belongs on the button.
-    this.#el.harvestPoints.textContent = hud.questPays
-      ? `Take ${hud.harvestPoints} pts ★`
-      : `Take ${hud.harvestPoints} pts`;
-    this.#el.harvestPoints.classList.toggle('bounty', hud.questPays);
+    // Under the single payout there is nothing to choose between: one POP
+    // button that pays tiles and scores, and the points button stops
+    // existing rather than sitting there meaning the same thing.
+    if (hud.singlePayout) {
+      this.#el.harvestTiles.textContent = hud.questPays
+        ? `POP ${hud.harvestTiles} tiles · ${hud.harvestPoints} pts ★`
+        : `POP ${hud.harvestTiles} tiles · ${hud.harvestPoints} pts`;
+      this.#el.harvestTiles.classList.toggle('bounty', hud.questPays);
+      this.#el.harvestTiles.classList.remove('spare');
+      this.#el.harvestPoints.hidden = true;
+      this.#el.harvestPoints.disabled = true;
+    } else {
+      // The bounty rides on the button that collects it, with its multiplier
+      // shown — the reason to press a button belongs on the button.
+      this.#el.harvestPoints.textContent = hud.questPays
+        ? `Take ${hud.harvestPoints} pts ★`
+        : `Take ${hud.harvestPoints} pts`;
+      this.#el.harvestPoints.classList.toggle('bounty', hud.questPays);
+    }
+
+    // The sacrifice, where it exists: give up the pocket for luck instead.
+    const burn = hud.canHarvest ? hud.harvestBurn : 0;
+    this.#el.harvestBurn.hidden = burn <= 0;
+    this.#el.harvestBurn.disabled = burn <= 0;
+    if (burn > 0) this.#el.harvestBurn.textContent = `BURN for +${burn} luck`;
     this.#el.harvestTiles.hidden = !hud.canHarvest;
     this.#el.harvestPoints.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;

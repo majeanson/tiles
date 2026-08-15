@@ -253,6 +253,14 @@ export type HudView = {
    * when this does.
    */
   readonly harvestTreasure: Rarity | null;
+  /** Luck a BURN would pay for the priced pocket; 0 where burning is off. */
+  readonly harvestBurn: number;
+  /**
+   * True when a pop pays tiles and scores with no choice to make — the
+   * tiles-only run. The points button stops existing rather than sitting
+   * there meaning the same thing as its neighbour.
+   */
+  readonly singlePayout: boolean;
 
   readonly canHarvest: boolean;
   readonly canLeave: boolean;
@@ -346,6 +354,8 @@ export function toHudView(
     questPays: value.questPays,
     questLine: questLineFor(state),
     harvestTreasure: value.treasure,
+    harvestBurn: state.tuning.burnLuck > 0 ? value.count * state.tuning.burnLuck : 0,
+    singlePayout: state.tuning.singlePayout,
 
     canHarvest: state.phase === 'placing' && value.count > 0,
     canLeave: leaving,

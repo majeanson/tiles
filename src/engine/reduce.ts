@@ -13,7 +13,16 @@ import {
   payPlacement,
   ripeKeys,
 } from './rules';
-import type { Action, Cell, GameState, HarvestChoice, Quest, Rarity, Tile } from './state';
+import type {
+  Action,
+  Cell,
+  DeathCause,
+  GameState,
+  HarvestChoice,
+  Quest,
+  Rarity,
+  Tile,
+} from './state';
 import { destinationAt, terrainAt } from './world';
 
 /**
@@ -404,8 +413,11 @@ function place(state: GameState, hex: HexKey): GameState {
 function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameState {
   if (state.phase !== 'placing') return state;
 
+  const t = state.tuning;
   const { keys, count, tiles, points, questPays, treasure } = harvestValue(state, at);
   if (keys.length === 0) return state;
+  // Burning is only a thing where the sacrifice exists.
+  if (choice === 'burn' && t.burnLuck <= 0) return state;
   // Treasure is refused rather than downgraded when the pocket is too small:
   // a button that quietly pays something else is worse than a button that
   // does nothing. The UI only offers it when `treasure` is non-null.
@@ -434,16 +446,31 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
         }
       : state.held;
 
+  // Under the single payout there is no fork left to take: a pop pays TILES
+  // and scores automatically, and only BURN and TREASURE trade that away.
+  // `tiles` and `points` become the same instruction — the two names survive
+  // so every saved run, replay and policy written before the pivot still
+  // means what it meant.
+  const pops = t.singlePayout ? choice !== 'treasure' && choice !== 'burn' : choice === 'tiles';
+  const scores = t.singlePayout ? pops : choice === 'points';
+  const scored = t.singlePayout ? Math.floor(points * t.pointsPerPop) : points;
+
+  // Burning is the sacrifice: no tiles, no score, only better draws — paid
+  // for with the pocket that was keeping you alive.
+  const burned = choice === 'burn' ? count * t.burnLuck : 0;
+  const luckGained = burned > 0 ? burned : pops ? count : 0;
+
   return endIfStuck({
     ...state,
     cells,
     held: stashed,
-    tiles: choice === 'tiles' ? state.tiles + tiles : state.tiles,
-    points: choice === 'points' ? state.points + points : state.points,
-    // Cashing a pocket as SURVIVAL is what raises the draft's rarity odds —
+    tiles: pops ? state.tiles + tiles : state.tiles,
+    points: scores ? state.points + scored : state.points,
+    // Cashing a pocket for survival is what raises the draft's rarity odds —
     // each popped tile is a point of luck, capped so it converges rather than
-    // compounds. The points side already had its excitement; now tiles do.
-    luck: choice === 'tiles' ? Math.min(state.tuning.luckCap, state.luck + count) : state.luck,
+    // compounds — and burning one trades the tiles away for several times as
+    // much of it.
+    luck: Math.min(state.tuning.luckCap, state.luck + luckGained),
     quest: collected ? null : state.quest,
     log: {
       ...state.log,
@@ -451,7 +478,14 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
       questsDone: state.log.questsDone + (collected ? 1 : 0),
       harvests: [
         ...state.log.harvests,
-        { mapNumber: state.mapNumber, at: state.placements, count, choice, tiles, points },
+        {
+          mapNumber: state.mapNumber,
+          at: state.placements,
+          count,
+          choice,
+          tiles: pops ? tiles : 0,
+          points: scores ? scored : 0,
+        },
       ],
     },
   });
@@ -513,8 +547,40 @@ function endIfStuck(state: GameState): GameState {
   // decision. What the clock takes is the pockets you did NOT finish.
   if (ripeKeys(state.cells).length > 0) return state;
 
-  if (timeUp) return { ...state, phase: 'ended', death: 'spent' };
-  if (!solvent) return { ...state, phase: 'ended', death: 'broke' };
-  if (isExhausted(state.cells)) return { ...state, phase: 'ended', death: 'walled' };
+  if (timeUp) return ending(state, 'spent');
+  if (!solvent) return ending(state, 'broke');
+  if (isExhausted(state.cells)) return ending(state, 'walled');
   return state;
+}
+
+/**
+ * The run, ended — and paid for what it was.
+ *
+ * Points as the FINAL state (Marc, 2026-08-15): an expedition is worth
+ * something for having gone far and reached things, not only for what it
+ * cashed on the way. Applied here, once, so `state.points` is the whole
+ * score by the time anything reads it — the end screen, the record book and
+ * the share link all say the same number without one of them doing arithmetic
+ * the others do not know about.
+ */
+function ending(state: GameState, death: DeathCause): GameState {
+  const t = state.tuning;
+  if (t.endReachBonus <= 0 && t.endClaimBonus <= 0) {
+    return { ...state, phase: 'ended', death };
+  }
+
+  let reach = 0;
+  let claims = 0;
+  for (const [k, cell] of Object.entries(state.cells)) {
+    if (cell.kind === 'landmark' && cell.claimed) claims++;
+    if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
+    reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+  }
+
+  return {
+    ...state,
+    phase: 'ended',
+    death,
+    points: state.points + reach * t.endReachBonus + claims * t.endClaimBonus,
+  };
 }
