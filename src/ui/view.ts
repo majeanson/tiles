@@ -16,7 +16,7 @@ import {
   worthOf,
 } from '@engine/rules';
 import type { GameState, LandmarkReward, Rarity } from '@engine/state';
-import { destinationsWithin } from '@engine/world';
+import { destinationAt, destinationsWithin, terrainAt } from '@engine/world';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
 
 /**
@@ -52,6 +52,7 @@ export function toBoardView(
   state: GameState,
   harvestAt: HexKey | null = null,
   spotlight: Colour | null = null,
+  memory: readonly HexKey[] = [],
 ): BoardView {
   const selected = state.draft[state.selected];
   const placeable = canPlaceNow(state);
@@ -74,6 +75,7 @@ export function toBoardView(
       beacon: false,
       rarity: cell.kind === 'tile' ? (cell.rarity ?? null) : null,
       native: cell.kind === 'empty' ? (cell.native ?? null) : null,
+      remembered: false,
       ripe: isRipe(state.cells, k),
       targeted: targeted.has(k),
       // The colour lens: with a chip active, every OTHER colour's tiles step
@@ -88,10 +90,42 @@ export function toBoardView(
     };
   });
 
+  // Ground this WORLD remembers from earlier runs (P4a), drawn faint under
+  // everything: terrain re-derived from the same pure hash that made it, so
+  // only the keys had to be kept. It is scenery and a map, never playable —
+  // this run still has to grow its own way out there.
+  const onBoard = new Set(Object.keys(state.cells));
+  for (const k of memory) {
+    if (onBoard.has(k)) continue;
+    const { q, r } = parse(k);
+    const ground = terrainAt(state.rootSeed, q, r, state.tuning);
+    const dest = destinationAt(state.rootSeed, q, r, state.tuning);
+    cells.push({
+      key: k,
+      q,
+      r,
+      kind: dest !== null ? 'landmark' : ground.wall ? 'wall' : 'empty',
+      colour: dest?.colour ?? null,
+      landmark: dest?.reward ?? null,
+      claimed: dest !== null && state.claimed.includes(k),
+      beacon: false,
+      remembered: true,
+      rarity: null,
+      native: dest === null ? ground.native : null,
+      ripe: false,
+      targeted: false,
+      dimmed: false,
+      worth: 0,
+      legal: false,
+      preview: null,
+    });
+  }
+
   // Destinations the board has not grown to yet, glowing through ground that
   // is not drawn: the endless world's somewhere-to-go. The horizon moves with
   // reach, so the next glow appears at the rim as you push toward the last.
   for (const d of beaconsFor(state)) {
+    if (onBoard.has(key(d.q, d.r))) continue;
     cells.push({
       key: key(d.q, d.r),
       q: d.q,
@@ -99,8 +133,9 @@ export function toBoardView(
       kind: 'landmark',
       colour: d.colour,
       landmark: d.reward,
-      claimed: false,
+      claimed: state.claimed.includes(key(d.q, d.r)),
       beacon: true,
+      remembered: false,
       rarity: null,
       native: null,
       ripe: false,

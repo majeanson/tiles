@@ -18,6 +18,14 @@ import {
   type RecordBook,
 } from '@meta/records';
 import { decodeRun, encodeRun } from '@meta/save';
+import {
+  decodeWorld,
+  encodeWorld,
+  knownFraction,
+  newWorld,
+  rememberRun,
+  type WorldMemory,
+} from '@meta/world';
 import { AssetBook } from '@render/assets';
 import { PixiRenderer } from '@render/PixiRenderer';
 import { applyTheme } from '@theme/apply';
@@ -36,6 +44,8 @@ const THEME_STORAGE_KEY = 'tiles.theme.v1';
 const HEX_STORAGE_KEY = 'tiles.hex.v1';
 /** The run in progress (or just ended), saved after every action. */
 const RUN_STORAGE_KEY = 'tiles.run.v1';
+/** The world this device explores: seed, revealed ground, territories held. */
+const WORLD_STORAGE_KEY = 'tiles.world.v1';
 /**
  * The record book, per world — runs, best, and the harvest-choice tally that
  * Gate B is measured on. v2: v1 held bare numbers, this holds records.
@@ -139,11 +149,38 @@ function askedSeed(): number | null {
 }
 
 /**
- * The run keeper: resume, autosave, records, and the one way to start over.
- * All of it lives here at the edge — the game reports through hooks and never
- * learns storage exists, the same split as the feature flags.
+ * The world this device plays (P4a): rolled once, kept, and abandonable.
+ *
+ * `?seed=` still means "replay this exact run", which deliberately bypasses
+ * the world — a shared link must show the sender's run, not the receiver's
+ * geography.
  */
-function runKeeping(): GameHooks & { savedSeed: number | null } {
+function loadWorld(): WorldMemory {
+  try {
+    const stored = decodeWorld(localStorage.getItem(WORLD_STORAGE_KEY));
+    if (stored !== null) return stored;
+  } catch {
+    // Private mode: every visit is a new world, which is a fine game too.
+  }
+  const world = newWorld(Date.now() & 0x7fffffff);
+  saveWorld(world);
+  return world;
+}
+
+function saveWorld(world: WorldMemory): void {
+  try {
+    localStorage.setItem(WORLD_STORAGE_KEY, encodeWorld(world));
+  } catch {
+    // Unwritable memory is a world you rediscover each time. Still playable.
+  }
+}
+
+/**
+ * The run keeper: resume, autosave, records, world memory, and the one way to
+ * start over. All of it lives here at the edge — the game reports through
+ * hooks and never learns storage exists, the same split as the feature flags.
+ */
+function runKeeping(world: WorldMemory): GameHooks & { savedSeed: number | null } {
   let saved = null;
   try {
     saved = askedSeed() === null ? decodeRun(localStorage.getItem(RUN_STORAGE_KEY)) : null;
@@ -154,6 +191,7 @@ function runKeeping(): GameHooks & { savedSeed: number | null } {
   return {
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
+    memory: world.revealed,
 
     onChange: (state) => {
       try {
@@ -164,14 +202,23 @@ function runKeeping(): GameHooks & { savedSeed: number | null } {
     },
 
     finish: (state) => {
+      // The world remembers first: ground seen and territories held outlive
+      // the run that found them, which is the whole of P4a. A replayed link
+      // (`?seed=`) is somebody else's geography and must not touch it.
+      if (state.tuning.world === 'endless' && askedSeed() === null) {
+        saveWorld(rememberRun(world, state));
+      }
+
       let book: RecordBook;
       try {
         book = decodeRecords(localStorage.getItem(BEST_STORAGE_KEY));
       } catch {
         book = {};
       }
-      const world = state.tuning.world;
-      const before = book[world] ?? EMPTY_RECORDS;
+      // Records are kept per WORLD KIND (endless / bounded), which is a
+      // different thing from `world`, the plane this device explores.
+      const kind = state.tuning.world;
+      const before = book[kind] ?? EMPTY_RECORDS;
       const after = recordRun(book, state);
       try {
         localStorage.setItem(BEST_STORAGE_KEY, encodeRecords(after));
@@ -179,7 +226,7 @@ function runKeeping(): GameHooks & { savedSeed: number | null } {
         // A record that cannot be written is still a run that happened.
       }
 
-      const now = after[world] ?? EMPTY_RECORDS;
+      const now = after[kind] ?? EMPTY_RECORDS;
       const gate = gateB(now);
       return {
         runs: now.runs,
@@ -285,7 +332,13 @@ function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation
 function mountSettings(
   host: HTMLElement,
   initial: FeatureSet,
-  live: { themesHost: HTMLElement; theme: Theme; facing: Orientation | null },
+  live: {
+    themesHost: HTMLElement;
+    theme: Theme;
+    facing: Orientation | null;
+    world: WorldMemory;
+    abandon: () => void;
+  },
   startNewRun: () => void,
 ): void {
   let features = initial;
@@ -367,15 +420,48 @@ function mountSettings(
   restart.textContent = 'NEW RUN with these settings';
   restart.addEventListener('click', startNewRun);
 
-  host.replaceChildren(heading, intro, ...rows, restart);
+  // The atlas, and the way out of a world (P4a). Abandoning is the only
+  // destructive control in the game, so it confirms — and it takes the
+  // ground and the territories with it, which is the point.
+  const atlas = document.createElement('p');
+  atlas.className = 'help-title';
+  atlas.textContent = 'YOUR WORLD';
+
+  const atlasLine = document.createElement('p');
+  atlasLine.id = 'atlas';
+  atlasLine.textContent =
+    `Seed ${live.world.worldSeed} · ${live.world.runs} run${live.world.runs === 1 ? '' : 's'} · ` +
+    `${Math.round(knownFraction(live.world) * 100)}% of it known · ` +
+    `${live.world.revealed.length} hexes seen · ` +
+    `${live.world.territories.length} territor${live.world.territories.length === 1 ? 'y' : 'ies'} held · ` +
+    `best ${live.world.bestPoints} pts · farthest ${live.world.farthestReach}`;
+
+  let armed = false;
+  const abandon = document.createElement('button');
+  abandon.type = 'button';
+  abandon.id = 'abandon-world';
+  abandon.className = 'quiet';
+  abandon.textContent = 'ABANDON THIS WORLD';
+  abandon.addEventListener('click', () => {
+    if (!armed) {
+      armed = true;
+      abandon.textContent = 'TAP AGAIN — this forgets the map and the territories';
+      return;
+    }
+    live.abandon();
+  });
+
+  host.replaceChildren(heading, intro, ...rows, restart, atlas, atlasLine, abandon);
 }
 
 async function main(): Promise<void> {
   const features = resolveFeatures();
-  const keeper = runKeeping();
-  // Resumed run > shared seed link > a fresh roll. The stamp shows whichever
-  // seed actually ended up on the board.
-  const seed = keeper.savedSeed ?? askedSeed() ?? Date.now() & 0x7fffffff;
+  const world = loadWorld();
+  const keeper = runKeeping(world);
+  // Resumed run > shared seed link > THIS DEVICE'S WORLD. The last is P4a:
+  // without a link or a run in progress you go back to your own plane, which
+  // is what makes the fog memory and the held territories mean anything.
+  const seed = keeper.savedSeed ?? askedSeed() ?? world.worldSeed;
   const facing = resolveFacing();
   const picked = resolveTheme(resolveThemeId());
   // The facing override rides on top of the theme as data, so every consumer —
@@ -427,7 +513,21 @@ async function main(): Promise<void> {
   mountSettings(
     required('help-meta'),
     features,
-    { themesHost: required('themes'), theme, facing },
+    {
+      themesHost: required('themes'),
+      theme,
+      facing,
+      world,
+      abandon: () => {
+        try {
+          localStorage.removeItem(WORLD_STORAGE_KEY);
+          localStorage.removeItem(RUN_STORAGE_KEY);
+        } catch {
+          // Nothing stored is already an abandoned world.
+        }
+        location.href = new URL(location.pathname, location.href).toString();
+      },
+    },
     keeper.newRun ?? (() => location.reload()),
   );
 
@@ -438,7 +538,11 @@ async function main(): Promise<void> {
   // tuning it was saved with, by design — rebalances never re-score a run in
   // progress. `?ff=-world.endless` is the bounded game.
   const tuning = isEnabled(features, 'world.endless') ? ENDLESS_TUNING : TUNING;
-  new Game(renderer, elements, seed, theme, tuning, keeper).start();
+  // Territories the world already holds arrive as plain data — the engine
+  // still knows nothing about storage, and a replay is reproducible from
+  // seed + tuning + this list.
+  const held = seed === world.worldSeed ? world.territories : [];
+  new Game(renderer, elements, seed, theme, tuning, keeper, held).start();
 
   // Art loads AFTER the first playable frame, never before it. Every slot is
   // empty today and the procedural surfaces are a complete board; a bitmap that

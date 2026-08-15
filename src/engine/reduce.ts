@@ -120,11 +120,38 @@ function openMap(
  */
 type Field = { readonly q: number; readonly r: number; readonly colour: Colour };
 
-function claimedFields(cells: Readonly<Record<HexKey, Cell>>): Field[] {
+/**
+ * Every territory whose field is live: the ones claimed on this board, plus
+ * the ones this WORLD already held when the run began (P4a). The remembered
+ * ones are read from the terrain function rather than the board, because
+ * their ground can be revealed before the landmark itself is — and a field
+ * that switched on late would make the same hex mean two different things
+ * depending on which way you walked into it.
+ */
+function claimedFields(state: {
+  cells: Readonly<Record<HexKey, Cell>>;
+  claimed: readonly HexKey[];
+  rootSeed: number;
+  tuning: Tuning;
+}): Field[] {
   const out: Field[] = [];
-  for (const [k, cell] of Object.entries(cells)) {
+  const seen = new Set<HexKey>();
+
+  for (const [k, cell] of Object.entries(state.cells)) {
     if (cell.kind === 'landmark' && cell.reward === 'territory' && cell.claimed) {
-      if (cell.colour !== undefined) out.push({ ...parse(k), colour: cell.colour });
+      if (cell.colour !== undefined) {
+        out.push({ ...parse(k), colour: cell.colour });
+        seen.add(k);
+      }
+    }
+  }
+
+  for (const k of state.claimed) {
+    if (seen.has(k)) continue;
+    const { q, r } = parse(k);
+    const dest = destinationAt(state.rootSeed, q, r, state.tuning);
+    if (dest?.reward === 'territory' && dest.colour !== null) {
+      out.push({ q, r, colour: dest.colour });
     }
   }
   return out;
@@ -137,14 +164,24 @@ function claimedFields(cells: Readonly<Record<HexKey, Cell>>): Field[] {
  * Open ground remembers which colour it is native to, and ground inside a
  * claimed territory's field is native to the territory's colour first.
  */
-function revealCell(rootSeed: number, k: HexKey, t: Tuning, fields: readonly Field[]): Cell {
+function revealCell(
+  rootSeed: number,
+  k: HexKey,
+  t: Tuning,
+  fields: readonly Field[],
+  claimed: ReadonlySet<HexKey> = new Set(),
+): Cell {
   const { q, r } = parse(k);
 
   const dest = destinationAt(rootSeed, q, r, t);
   if (dest !== null) {
+    // A territory this world already holds arrives already yours: no second
+    // payout, and its field is live. Caches and sites re-arm every run —
+    // known ground stays worth walking, which is P4a's whole bet.
+    const was = claimed.has(k);
     return dest.colour === null
       ? { kind: 'landmark', reward: dest.reward, claimed: false }
-      : { kind: 'landmark', reward: dest.reward, claimed: false, colour: dest.colour };
+      : { kind: 'landmark', reward: dest.reward, claimed: was, colour: dest.colour };
   }
 
   const ground = terrainAt(rootSeed, q, r, t);
@@ -168,22 +205,34 @@ function openWorld(
   rootSeed: number,
   rng: RngStreams,
   t: Tuning,
+  claimed: readonly HexKey[],
 ): { cells: Record<HexKey, Cell>; draft: Tile[]; rng: RngStreams } {
   const seeded = rollTile(rng.tiles, rng.loot, t, 0);
   const cells: Record<HexKey, Cell> = {
     [key(0, 0)]: tileCell(seeded.tile.colour, false, seeded.tile.rarity),
   };
-  for (const n of neighbourKeys(0, 0)) cells[n] = revealCell(rootSeed, n, t, []);
+  const held = new Set(claimed);
+  const fields = claimedFields({ cells, claimed, rootSeed, tuning: t });
+  for (const n of neighbourKeys(0, 0)) cells[n] = revealCell(rootSeed, n, t, fields, held);
 
   const { draft, tiles, loot } = rollDraft(seeded.tiles, seeded.loot, t, 0);
   return { cells, draft, rng: { ...rng, tiles, loot } };
 }
 
-export function newRun(rootSeed: number, tuning: Tuning = TUNING): GameState {
+/**
+ * Start a run. `claimed` is the world's standing territories (P4a) — plain
+ * data, so the engine still knows nothing about storage and a run remains
+ * reproducible from seed + tuning + this list.
+ */
+export function newRun(
+  rootSeed: number,
+  tuning: Tuning = TUNING,
+  claimed: readonly HexKey[] = [],
+): GameState {
   const streams = streamsFrom(rootSeed);
   const opened =
     tuning.world === 'endless'
-      ? openWorld(rootSeed, streams, tuning)
+      ? openWorld(rootSeed, streams, tuning, claimed)
       : openMap(streams, 1, tuning, 0);
 
   return {
@@ -203,6 +252,7 @@ export function newRun(rootSeed: number, tuning: Tuning = TUNING): GameState {
     selected: 0,
     held: null,
     quest: null,
+    claimed: tuning.world === 'endless' ? claimed : [],
     log: { harvests: [], popped: 0, placementsAtMapStart: 0, questsDone: 0 },
   };
 }
@@ -282,8 +332,11 @@ function place(state: GameState, hex: HexKey): GameState {
     // absent cell. What it reveals is the terrain function's answer — walls
     // and landmarks included, which is how the plane gets to say no and where.
     const { q, r } = parse(hex);
-    const fields = claimedFields(state.cells);
-    for (const n of neighbourKeys(q, r)) cells[n] ??= revealCell(state.rootSeed, n, t, fields);
+    const fields = claimedFields(state);
+    const held = new Set(state.claimed);
+    for (const n of neighbourKeys(q, r)) {
+      cells[n] ??= revealCell(state.rootSeed, n, t, fields, held);
+    }
 
     // Reaching a destination: the tile you just placed touching an unclaimed
     // landmark claims it, once, on the spot. A cache pays after the placement

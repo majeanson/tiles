@@ -353,7 +353,10 @@ export class PixiRenderer implements Renderer {
       sprite.setSize(layout.size * wide, layout.size * tall);
       // The colour lens steps other colours back rather than hiding them —
       // the shape being studied still needs its surroundings to mean anything.
-      sprite.alpha = surface.alpha * (cell.dimmed ? 0.25 : 1);
+      // Remembered ground is the faintest thing on the board on purpose: it
+      // is a map, not a place you can act on, and it must never compete with
+      // the run you are actually playing.
+      sprite.alpha = surface.alpha * (cell.dimmed ? 0.25 : 1) * (cell.remembered ? 0.3 : 1);
       group.addChild(sprite);
     }
 
@@ -368,7 +371,7 @@ export class PixiRenderer implements Renderer {
     }
 
     const label = labelFor(cell);
-    if (label !== null && layout.size > 12 && !cell.dimmed) {
+    if (label !== null && layout.size > 12 && !cell.dimmed && !cell.remembered) {
       group.addChild(this.#drawLabel(label, x, y, layout.size));
     }
 
@@ -377,6 +380,8 @@ export class PixiRenderer implements Renderer {
 
   #strokeFor(cell: CellView, size: number): { width: number; colour: number } | null {
     const board = this.#theme.board;
+    // Memory gets no outline at all — an edge would read as a live cell.
+    if (cell.remembered) return null;
     // The pocket being priced outranks even ripe: on the plane the harvest
     // buttons answer for exactly these cells, and the outline is that promise.
     if (cell.targeted)

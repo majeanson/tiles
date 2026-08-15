@@ -70,6 +70,11 @@ export type GameHooks = {
   /** Start a fresh run under the current settings. Wired to the end screen. */
   readonly newRun?: () => void;
   /**
+   * Ground this world remembers from earlier runs (P4a) — drawn faint under
+   * the board. Keys only; the terrain is re-derived from the world seed.
+   */
+  readonly memory?: readonly HexKey[];
+  /**
    * Send this run somewhere — the share sheet, or the clipboard. Absent means
    * the button is not drawn, which is the honest state on a browser with no
    * way to share.
@@ -140,12 +145,13 @@ export class Game {
     theme: Theme = PLACEHOLDER,
     tuning: Tuning = TUNING,
     hooks: GameHooks = {},
+    claimed: readonly HexKey[] = [],
   ) {
     this.#renderer = renderer;
     this.#el = elements;
     this.#theme = theme;
     this.#hooks = hooks;
-    this.#state = hooks.resume ?? newRun(seed, tuning);
+    this.#state = hooks.resume ?? newRun(seed, tuning, claimed);
 
     for (const colour of COLOURS) {
       try {
@@ -511,6 +517,16 @@ export class Game {
     }
     if (t.holdSlots > 0) systems.push('the stash');
 
+    const yourWorld: { title: string; lines: string[] } = {
+      title: 'YOUR WORLD',
+      lines: [
+        'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs — a map you are filling in, expedition by expedition.',
+        'Territories you claim (◆) are yours for good: they greet you already claimed, with their field live, and they never pay twice.',
+        'Caches and sites re-arm every run, so ground you know is still worth walking. What changes between runs is you knowing where to walk.',
+        'SETTINGS shows what your world has seen, and can abandon it for a fresh one if you ever want a stranger’s plane again.',
+      ],
+    };
+
     const build: { title: string; lines: string[] } = {
       title: 'THIS BUILD',
       lines: [
@@ -540,6 +556,7 @@ export class Game {
           destinations,
           rarity,
           stash,
+          yourWorld,
           reading,
           end,
           build,
@@ -570,7 +587,9 @@ export class Game {
   }
 
   render(): void {
-    this.#renderer.draw(toBoardView(this.#state, this.#harvestAt, this.#spotlight));
+    this.#renderer.draw(
+      toBoardView(this.#state, this.#harvestAt, this.#spotlight, this.#hooks.memory ?? []),
+    );
     this.#renderHud(toHudView(this.#state, this.#harvestAt, this.#spotlight));
   }
 

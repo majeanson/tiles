@@ -175,6 +175,15 @@ export type GameState = {
   /** The bounty in play, or null. Opened by claiming a site; one at a time. */
   readonly quest: Quest | null;
 
+  /**
+   * Territories this WORLD already holds, from earlier runs (P4a). Plain
+   * data handed to `newRun`, never read from storage by the engine: a run
+   * stays reproducible from its seed, its tuning and this list. Those
+   * landmarks arrive already claimed — they pay nothing again, and their
+   * fields are live the moment the ground around them is revealed.
+   */
+  readonly claimed: readonly HexKey[];
+
   /** Telemetry for the end screen and the harness. */
   readonly log: {
     readonly harvests: readonly HarvestRecord[];

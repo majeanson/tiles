@@ -416,6 +416,7 @@ describe('the camera, and staying oriented', () => {
       'DESTINATIONS',
       'RARE TILES AND LUCK',
       'THE STASH',
+      'YOUR WORLD',
       'READING THE SCREEN',
       'HOW IT ENDS',
       'THIS BUILD',
@@ -651,5 +652,30 @@ describe('the clock, the bounty, and the guide', () => {
     const ctxLate = build(1, ENDLESS_TUNING, { resume: late });
     ctxLate.game.start();
     expect(ctxLate.el.hint.textContent).toMatch(/Low on tiles/);
+  });
+});
+
+describe('the remembered world on screen', () => {
+  it('draws remembered ground faint, unplayable, and never twice', () => {
+    const base = newRun(7, ENDLESS_TUNING);
+    const onBoard = Object.keys(base.cells)[0]!;
+    const remembered = key(20, -5);
+
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: base,
+      memory: [onBoard, remembered],
+    });
+    ctx.game.start();
+
+    const drawn = ctx.renderer.last.cells;
+    // The remembered hex appears once, marked, and cannot be built on.
+    const ghosts = drawn.filter((c) => c.remembered);
+    expect(ghosts).toHaveLength(1);
+    expect(ghosts[0]!.key).toBe(remembered);
+    expect(ghosts[0]!.legal).toBe(false);
+
+    // A hex that is BOTH remembered and on the board is drawn once, live.
+    expect(drawn.filter((c) => c.key === onBoard)).toHaveLength(1);
+    expect(drawn.find((c) => c.key === onBoard)?.remembered).toBe(false);
   });
 });

@@ -871,3 +871,53 @@ caches (a good run now scores tens of thousands). Score is score and nothing
 breaks, but if Marc wants human-legible numbers, dividing the points formula
 by a constant is a one-line change that affects nothing else. Recorded for
 the follow-up rather than guessed at.
+
+---
+
+### Session 12 — M2: the world you keep (P4a)
+
+**Question, from `ideas/persistent-world.md`:** does knowing the world change
+where a human pushes — is run two more interesting than run one, not less?
+The build is done; the question is Marc's, and it is in the follow-up.
+
+**Done, exactly to the plan Marc's decisions set:**
+
+- **`meta/world.ts` — one world per device.** A seed rolled once and kept,
+  the union of every hex ever revealed, the territories ever claimed, and the
+  world's own tallies (runs, best, farthest). Only KEYS are stored: terrain
+  is a pure function of `(worldSeed, hex)`, so remembering that a hex was
+  seen is enough to redraw exactly what was there, and nothing goes stale
+  when a tuning number moves.
+- **Fog memory, drawn.** Ground the world remembers but this run has not
+  grown to is drawn at 30% alpha with no outline and no numbers — a map, not
+  a place you can act on. It cannot be built on, cannot be tapped into an
+  action, and a hex that is both remembered and live is drawn once, live.
+- **Territories persist; caches and sites re-arm.** A held territory arrives
+  already claimed, pays nothing again, and its field is live from the moment
+  the ground near it is revealed — read from the terrain function rather than
+  the board, because its ground can be revealed before the landmark is, and a
+  field that switched on late would make the same hex mean two things.
+- **The engine stayed pure.** Memory reaches the reducer as a plain
+  `claimed: HexKey[]` argument to `newRun`, so a run is still reproducible
+  from seed + tuning + that list, and `src/engine/` still knows nothing about
+  storage. Saves written before the field exists load fine and default it —
+  a save format that eats runs when the game grows is not a save format.
+- **The atlas line and Abandon World** in SETTINGS: seed, runs, percent known
+  (of a disc the size of your farthest reach — honest rather than
+  flattering), hexes seen, territories held, best, farthest. Abandoning is
+  the only destructive control in the game, so it arms on first tap and acts
+  on the second, and it takes the run in progress with it.
+- **`?seed=` still bypasses the world**, in both directions: a shared link
+  opens the sender's run, and finishing it does not write your neighbour's
+  geography into your own atlas.
+
+**Verified:** 300 tests green (was 293) — memory accumulates and never
+shrinks, only claimed territories are kept, a held territory comes back
+claimed with its field live, the bounded game ignores all of it, decoding
+refuses a broken world whole, and the fraction-known cannot exceed 1.
+
+**Uncertainty, noted:** storage grows with the union of revealed ground
+(~200KB after ten long runs as a JSON array). The plan's compaction — a
+per-block bitmap — is written down and unbuilt, because at the current rate
+it is years of play away from mattering. If the atlas ever reports a world
+over ~1MB, that is the moment.

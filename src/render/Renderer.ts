@@ -37,6 +37,12 @@ export type CellView = {
    * are not cells of the game state and can never be tapped into an action.
    */
   readonly beacon: boolean;
+  /**
+   * Ground REMEMBERED from an earlier run in this world (P4a) but not part of
+   * this run's board. Drawn faint, never playable — the map you carry in your
+   * head, which is the whole meta-progression.
+   */
+  readonly remembered: boolean;
 
   /** Set on magic and unique tiles; the board marks them so power stays visible. */
   readonly rarity: Rarity | null;

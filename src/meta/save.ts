@@ -79,5 +79,14 @@ export function decodeRun(raw: string | null): GameState | null {
     return null;
   }
 
-  return parsed as unknown as GameState;
+  // `claimed` (P4a) arrived after the first saves existed. A run written
+  // before it is not corrupt, it is just older — fill the field rather than
+  // throw the run away, which is the whole difference between a save format
+  // that can evolve and one that eats a run every time the game grows.
+  const claimed = parsed['claimed'];
+  const state = {
+    ...parsed,
+    claimed: Array.isArray(claimed) && claimed.every((k) => typeof k === 'string') ? claimed : [],
+  };
+  return state as unknown as GameState;
 }
