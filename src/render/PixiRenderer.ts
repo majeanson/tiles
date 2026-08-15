@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from 'pixi.js';
 import { key, type HexKey } from '@engine/hex';
-import { hex, rgba, type Surface, type Theme } from '@theme/tokens';
+import { fieldDots, hex, rgba, type Surface, type Theme } from '@theme/tokens';
 import { AssetBook } from './assets';
 import { corners, fitLayout, hexAt, place, zoomLayout, type Layout } from './layout';
 import type { BoardView, CellView, Renderer } from './Renderer';
@@ -313,14 +313,21 @@ export class PixiRenderer implements Renderer {
         // the pattern numbers are PROVISIONAL placeholder values (Gate E), and a
         // direction that wants its own field texture overrides `empty` per se.
         if (cell.native !== null) {
+          // Ink and alpha come from `fieldDots`, which equalises how strongly
+          // all four read against this theme's ground — drawing each colour
+          // in its own fill at one flat alpha made the bright fields shout
+          // and the dark ones disappear. Slightly larger and tighter than
+          // before, too: at phone scale a 1.1px dot on a 7px pitch is a
+          // texture you have to hunt for.
+          const dots = fieldDots(theme, cell.native);
           return {
             ...theme.empty,
             pattern: {
               kind: 'dots',
-              ink: theme.terrain[cell.native].fill,
-              alpha: 0.22,
-              radius: 1.1,
-              pitch: 7,
+              ink: dots.ink,
+              alpha: dots.alpha,
+              radius: 1.4,
+              pitch: 6,
             },
           };
         }

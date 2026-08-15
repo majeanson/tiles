@@ -30,6 +30,17 @@ export const hex = (c: Rgb): string => `#${c.toString(16).padStart(6, '0')}`;
 export const rgba = (c: Rgb, alpha: number): string =>
   `rgba(${(c >> 16) & 0xff},${(c >> 8) & 0xff},${c & 0xff},${alpha})`;
 
+/** Blend two colours channel-wise. `t` 0 is all `a`, 1 is all `b`. */
+export function mix(a: Rgb, b: Rgb, t: number): Rgb {
+  const k = Math.min(1, Math.max(0, t));
+  const lerp = (shift: number): number => {
+    const from = (a >> shift) & 0xff;
+    const to = (b >> shift) & 0xff;
+    return Math.round(from + (to - from) * k) & 0xff;
+  };
+  return (lerp(16) << 16) | (lerp(8) << 8) | lerp(0);
+}
+
 /**
  * Perceptual lightness, 0..1 — CIE L* over Rec. 709 relative luminance.
  *
@@ -284,6 +295,42 @@ export type Theme = {
   /** What the selected tile would look like here. Drawn under the preview number. */
   readonly ghost: Surface;
 };
+
+/**
+ * How much lighter the field dots must READ than the ground they sit on, in
+ * L* after the alpha is applied. This is the number Marc's report is about:
+ * the dots were drawn in each colour's own fill at a flat 0.22 alpha, so
+ * their legibility was whatever that colour's contrast happened to be —
+ * torchlit's yellow landed at 0.147 and read fine, its blue at 0.039 and was
+ * invisible. A field you cannot see is a rule you cannot use.
+ */
+export const MIN_FIELD_LIFT = 0.12;
+
+/**
+ * The dots that mark ground native to a colour, as ink and alpha.
+ *
+ * Two jobs at once, and they pull against each other: the dots must SAY which
+ * colour owns this ground (so they keep its hue) and must be equally visible
+ * for all four (so they cannot keep its lightness — the four terrains are
+ * spaced apart in L* on purpose, and that spacing is exactly what made the
+ * dark ones vanish).
+ *
+ * So: brighten toward white, which keeps hue and buys contrast, until the
+ * colour clears the ground by a workable margin — then choose the alpha that
+ * makes the FINAL lift the same for every colour. Bright fields stop
+ * shouting, dark fields become readable, and all four still say their name.
+ */
+export function fieldDots(theme: Theme, colour: Colour): { ink: Rgb; alpha: number } {
+  const ground = luma(theme.empty.fill);
+
+  let ink = theme.terrain[colour].fill;
+  for (let step = 0; step < 12 && luma(ink) - ground < 0.45; step++) {
+    ink = mix(ink, 0xffffff, 0.1);
+  }
+
+  const gap = Math.max(0.001, luma(ink) - ground);
+  return { ink, alpha: Math.min(0.5, Math.max(0.12, MIN_FIELD_LIFT / gap)) };
+}
 
 /**
  * A surface with the boring answers filled in, so a theme states only what it

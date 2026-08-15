@@ -1133,3 +1133,37 @@ cache name is this commit.
 stranger test.** `ROADMAP.md` asks for a person who is not Marc, on their own
 phone, unaided, finishing a run and starting another. No amount of code
 produces that evidence. It is the first item in the human follow-up.
+
+---
+
+### Session 17 — Fields you can actually see
+
+**Marc, on the deployed build:** the dotted ground is hard to see on some
+colours. Correct, and measurable: the dots were drawn in each colour's OWN
+fill at a flat 0.22 alpha, so their legibility was whatever that colour's
+contrast against the empty ground happened to be. In torchlit, effective
+lift over the ground: yellow 0.147 (fine), red 0.085, green 0.052, **blue
+0.038 — invisible.** The four terrains are spaced apart in L* on purpose,
+and that spacing is exactly what made the dark ones disappear.
+
+This matters more than decoration. A native field is a RULE — a tile of the
+right colour there is worth one more, and a claimed territory unfurls one —
+so a field you cannot see is a rule you cannot use.
+
+**Fixed by `fieldDots(theme, colour)` in `theme/tokens.ts`**, which does two
+jobs that pull against each other: keep the hue (a field must say WHICH
+colour owns the ground) while equalising visibility (all four must read the
+same). So it brightens toward white — hue kept, contrast bought — until the
+colour clears the ground by a workable margin, then picks the alpha that
+makes the FINAL lift identical for every colour. Dots are also a little
+larger and tighter (1.4px on a 6px pitch, was 1.1 on 7): at phone scale the
+old texture was something you had to hunt for.
+
+Every colour in every direction now lifts exactly 0.120 over its own ground
+— blue 3× more visible than before, yellow quieter than before, and the four
+inks still distinct so a field still names its colour. Pinned by two tests
+per direction, in the same idiom as the greyscale and wall-clearance rules:
+a floor on the effective lift, and a check that brightening never converges
+the four on one pale grey.
+
+**Verified:** 322 tests green (was 314); lint, types, build clean.

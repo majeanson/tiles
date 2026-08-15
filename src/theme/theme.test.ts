@@ -3,7 +3,7 @@ import { COLOURS } from '@content/tuning';
 import { decodeManifest, manifestHas } from './assets';
 import { themeCssVars } from './css';
 import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from './index';
-import { luma, type Surface, type Theme } from './tokens';
+import { fieldDots, luma, MIN_FIELD_LIFT, type Surface, type Theme } from './tokens';
 
 /**
  * The art direction, checked without a screen.
@@ -237,5 +237,37 @@ describe('the asset manifest', () => {
     expect(manifestHas(manifest, 'torchlit', 'terrain.green')).toBe(true);
     expect(manifestHas(manifest, 'torchlit', 'terrain.red')).toBe(false);
     expect(manifestHas(manifest, 'cold-survey', 'terrain.green')).toBe(false);
+  });
+});
+
+/**
+ * Native fields are a RULE — a tile of the right colour on its own ground is
+ * worth one more — so a field you cannot see is a rule you cannot use. Marc
+ * reported exactly that on 2026-08-15: the dots were invisible on some
+ * colours. They were drawn in each colour's own fill at a flat alpha, so
+ * their legibility was whatever that colour's contrast happened to be.
+ */
+describe.each(THEMES.map((t) => [t.name, t] as const))('%s field dots', (_name, theme: Theme) => {
+  const ground = luma(theme.empty.fill);
+
+  it('reads every colour’s field at the same strength, against its own ground', () => {
+    for (const colour of COLOURS) {
+      const { ink, alpha } = fieldDots(theme, colour);
+      const lift = alpha * (luma(ink) - ground);
+      expect(
+        lift,
+        `${colour} field dots lift ${lift.toFixed(3)} over the ground; ` +
+          `${MIN_FIELD_LIFT} is the floor that keeps a field visible`,
+      ).toBeGreaterThanOrEqual(MIN_FIELD_LIFT - 0.001);
+      // And never so loud that ground reads as a placed tile.
+      expect(alpha).toBeLessThanOrEqual(0.5);
+    }
+  });
+
+  it('keeps the four fields telling you WHICH colour owns the ground', () => {
+    // Brightening for contrast must not converge the four on one pale grey:
+    // the whole point of a field is that it names a colour.
+    const inks = COLOURS.map((c) => fieldDots(theme, c).ink);
+    expect(new Set(inks).size).toBe(inks.length);
   });
 });
