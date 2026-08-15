@@ -312,6 +312,20 @@ button:disabled {
   cursor: default;
 }
 
+/* The bounty is collectable by this exact press. The theme's one signature
+   colour, spent where the game most wants to be understood. */
+button.bounty {
+  border-color: var(--accent, #d7b45a);
+  color: var(--accent, #d7b45a);
+}
+
+/* Secondary actions: present, not shouting. */
+button.quiet {
+  min-height: 34px;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
 /*
  * A draft card is a swatch with the direction's own word on it. Both matter: the
  * colour is how you read the board at a glance, and the word is what makes the

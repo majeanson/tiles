@@ -41,6 +41,11 @@ export type RunResult = {
   readonly popped: number;
   /** Destinations reached this run. Zero everywhere the system is off. */
   readonly claims: number;
+  /** Bounties collected. Gate B's manufactured reason to take points. */
+  readonly quests: number;
+  /** Harvests taken each way — Gate B's subject, per run. */
+  readonly tilesTaken: number;
+  readonly pointsTaken: number;
 
   /**
    * The biggest single harvest, and how far through the run it landed as a
@@ -76,7 +81,11 @@ function summarise(
 ): RunResult {
   let bestHarvest = 0;
   let bestHarvestAt = 0;
+  let tilesTaken = 0;
+  let pointsTaken = 0;
   for (const h of state.log.harvests) {
+    if (h.choice === 'tiles') tilesTaken++;
+    else pointsTaken++;
     if (h.points > bestHarvest) {
       bestHarvest = h.points;
       bestHarvestAt = h.at;
@@ -103,6 +112,9 @@ function summarise(
     harvests: state.log.harvests.length,
     popped: state.log.popped,
     claims,
+    quests: state.log.questsDone,
+    tilesTaken,
+    pointsTaken,
     bestHarvest,
     bestHarvestAt: state.placements === 0 ? 0 : bestHarvestAt / state.placements,
     steps,

@@ -1,0 +1,133 @@
+import type { GameState } from '@engine/state';
+
+/**
+ * What the runs add up to.
+ *
+ * Gate B's condition is "across 20 logged pops, no option is taken more than
+ * ~70% of the time" — a claim about a HUMAN's play, which means it can only
+ * ever be settled by counting a human's actual harvests. So the game counts
+ * them: every finished run folds its harvest choices into a per-world record,
+ * and the end screen prints the standing split against the gate's own line.
+ * The gate stops being a memory of how a session felt and becomes a number on
+ * the screen that decided it.
+ *
+ * Kept at the edge like every other stored thing: the engine reports, the
+ * shell keeps. Corrupt or partial storage degrades to a fresh record rather
+ * than throwing — a lost tally must never cost a run.
+ */
+
+export type Records = {
+  readonly runs: number;
+  readonly bestPoints: number;
+  /** Harvests taken as tiles, and as points. Gate B's whole subject. */
+  readonly tilesHarvests: number;
+  readonly pointsHarvests: number;
+  /**
+   * Where the biggest harvest landed, summed as fractions of run length,
+   * over runs that scored at all. Gate D's subject: the mean is the arc.
+   */
+  readonly arcSum: number;
+  readonly arcRuns: number;
+};
+
+export const EMPTY: Records = {
+  runs: 0,
+  bestPoints: 0,
+  tilesHarvests: 0,
+  pointsHarvests: 0,
+  arcSum: 0,
+  arcRuns: 0,
+};
+
+export type RecordBook = Readonly<Record<string, Records>>;
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Read a stored book, keeping only entries that are whole. */
+export function decodeRecords(raw: string | null): RecordBook {
+  if (raw === null) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+  if (!isRecord(parsed)) return {};
+
+  const out: Record<string, Records> = {};
+  for (const [world, value] of Object.entries(parsed)) {
+    if (!isRecord(value)) continue;
+    const entry: Record<string, number> = {};
+    let ok = true;
+    for (const key of Object.keys(EMPTY)) {
+      const v = value[key];
+      if (typeof v !== 'number' || !Number.isFinite(v)) {
+        ok = false;
+        break;
+      }
+      entry[key] = v;
+    }
+    if (ok) out[world] = entry as unknown as Records;
+  }
+  return out;
+}
+
+export const encodeRecords = (book: RecordBook): string => JSON.stringify(book);
+
+/** Fold one finished run into the book. Pure — the caller stores the result. */
+export function recordRun(book: RecordBook, state: GameState): RecordBook {
+  const world = state.tuning.world;
+  const before = book[world] ?? EMPTY;
+
+  let tiles = 0;
+  let points = 0;
+  let biggest = 0;
+  let biggestAt = 0;
+  for (const h of state.log.harvests) {
+    if (h.choice === 'tiles') tiles++;
+    else points++;
+    if (h.points > biggest) {
+      biggest = h.points;
+      biggestAt = h.at;
+    }
+  }
+
+  const scored = biggest > 0 && state.placements > 0;
+  return {
+    ...book,
+    [world]: {
+      runs: before.runs + 1,
+      bestPoints: Math.max(before.bestPoints, state.points),
+      tilesHarvests: before.tilesHarvests + tiles,
+      pointsHarvests: before.pointsHarvests + points,
+      arcSum: before.arcSum + (scored ? biggestAt / state.placements : 0),
+      arcRuns: before.arcRuns + (scored ? 1 : 0),
+    },
+  };
+}
+
+/**
+ * Gate B, evaluated: the dominant option's share, and whether the sample is
+ * big enough for the gate to speak. `null` share when nothing was harvested.
+ */
+export function gateB(r: Records): {
+  pops: number;
+  tilesShare: number | null;
+  /** The gate's own threshold, and whether the count has reached its sample. */
+  passing: boolean;
+  enough: boolean;
+} {
+  const pops = r.tilesHarvests + r.pointsHarvests;
+  if (pops === 0) return { pops, tilesShare: null, passing: false, enough: false };
+  const tilesShare = r.tilesHarvests / pops;
+  const dominant = Math.max(tilesShare, 1 - tilesShare);
+  return { pops, tilesShare, passing: dominant <= 0.7, enough: pops >= 20 };
+}
+
+/** Gate D, evaluated: the mean arc, and whether it lands near the end. */
+export function gateD(r: Records): { arc: number | null; passing: boolean } {
+  if (r.arcRuns === 0) return { arc: null, passing: false };
+  const arc = r.arcSum / r.arcRuns;
+  return { arc, passing: arc >= 0.6 };
+}

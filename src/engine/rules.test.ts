@@ -247,6 +247,12 @@ describe('harvest value', () => {
   it('pays nothing when nothing is ripe', () => {
     const cells = blankMap(disc(2));
     cells[key(0, 0)] = tile('green');
-    expect(harvestValue(stateWith(cells))).toEqual({ keys: [], count: 0, tiles: 0, points: 0 });
+    expect(harvestValue(stateWith(cells))).toEqual({
+      keys: [],
+      count: 0,
+      tiles: 0,
+      points: 0,
+      questPays: false,
+    });
   });
 });

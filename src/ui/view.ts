@@ -8,6 +8,7 @@ import {
   harvestValue,
   isRipe,
   legalPlacements,
+  placementsLeft,
   previewWorth,
   ripeClusterAt,
   ripeClusters,
@@ -145,6 +146,12 @@ export type HudView = {
   readonly depthValue: number;
   readonly cost: number;
   readonly placements: number;
+  /**
+   * Placements the clock still allows, or null where there is no clock. The
+   * number that makes leftover tiles worthless, so it is on screen from the
+   * first second rather than sprung at the end.
+   */
+  readonly left: number | null;
 
   /** Bounded only. The plane has no LEAVE, so the button has no reason to exist. */
   readonly showLeave: boolean;
@@ -188,6 +195,15 @@ export type HudView = {
   /** The pocket those prices are FOR, on the plane. Null on bounded maps. */
   readonly harvestAt: HexKey | null;
 
+  /**
+   * True when taking the priced pocket as POINTS collects the standing
+   * bounty. The points button wears it, because a reason to press a button
+   * belongs on the button.
+   */
+  readonly questPays: boolean;
+  /** The bounty in play, as one sentence. Null when there is none. */
+  readonly questLine: string | null;
+
   readonly canHarvest: boolean;
   readonly canLeave: boolean;
   readonly leaveHint: string;
@@ -224,7 +240,12 @@ export type HudView = {
     readonly biggestHarvest: number;
     readonly biggestAt: number;
     readonly claims: number;
+    readonly quests: number;
     readonly luck: number;
+    /** Gate B's subject, for this run: how the harvests were cashed. */
+    readonly harvests: number;
+    readonly tilesTaken: number;
+    readonly pointsTaken: number;
   } | null;
 };
 
@@ -248,6 +269,7 @@ export function toHudView(
     depthValue: endless ? reachOf(state) : state.mapNumber,
     cost: costOf(state.placements, state.tuning),
     placements: state.placements,
+    left: placementsLeft(state),
 
     showLeave: !endless,
 
@@ -270,6 +292,9 @@ export function toHudView(
     harvestPoints: value.points,
     harvestAt: target,
 
+    questPays: value.questPays,
+    questLine: questLineFor(state),
+
     canHarvest: state.phase === 'placing' && value.count > 0,
     canLeave: leaving,
     leaveHint: leaving ? 'Move on' : 'Harvest here first',
@@ -288,7 +313,11 @@ export function toHudView(
 function summariseRun(state: GameState): NonNullable<HudView['summary']> {
   let biggestHarvest = 0;
   let biggestPlacement = 0;
+  let tilesTaken = 0;
+  let pointsTaken = 0;
   for (const h of state.log.harvests) {
+    if (h.choice === 'tiles') tilesTaken++;
+    else pointsTaken++;
     if (h.points > biggestHarvest) {
       biggestHarvest = h.points;
       biggestPlacement = h.at;
@@ -304,7 +333,11 @@ function summariseRun(state: GameState): NonNullable<HudView['summary']> {
     biggestHarvest,
     biggestAt: state.placements === 0 ? 0 : biggestPlacement / state.placements,
     claims,
+    quests: state.log.questsDone,
     luck: state.luck,
+    harvests: state.log.harvests.length,
+    tilesTaken,
+    pointsTaken,
   };
 }
 
@@ -365,28 +398,62 @@ function colourPotentials(state: GameState): ColourPotential[] {
   return COLOURS.map((colour) => ({ colour, ...acc.get(colour)! }));
 }
 
+/** The standing bounty, as one sentence with its distance from home. */
+function questLineFor(state: GameState): string | null {
+  const quest = state.quest;
+  if (quest === null) return null;
+  const out = distance(parse(quest.at), { q: 0, r: 0 });
+  return `BOUNTY ${out} out: pop ${quest.need}+ within ${quest.radius} of it as pts → ×${quest.bonus}`;
+}
+
 /**
- * The one-clause "what now". Danger first, then the harvest moment, then the
- * default loop. Deliberately never more than a sentence: this is the line a
- * player reads to reorient, not a tutorial.
+ * The one-clause "what now". Danger first, then the bounty being collectable
+ * right now, then the harvest moment, then the default loop. Deliberately
+ * never more than a sentence: this is the line a player reads to reorient,
+ * not a tutorial.
+ *
+ * "Low on tiles" is measured in RUNWAY, not in a flat tile count: how many
+ * more placements the purse buys at today's cost, against how many the board
+ * needs to ripen anything. Marc's first debrief said survival always felt
+ * forced; a warning that fires while three comfortable placements remain is
+ * a warning that teaches fear rather than danger. See `RUNWAY_ALARM`.
  */
 function guideFor(state: GameState): string | null {
   if (state.phase !== 'placing') return null;
 
   const ripe = ripeKeys(state.cells).length > 0;
-  const cost = costOf(state.placements, state.tuning);
-  if (state.tiles <= cost * 3) {
+  if (runwayOf(state) <= RUNWAY_ALARM) {
     return ripe
       ? 'Low on tiles — cash a pocket as tiles'
       : 'Low on tiles — ripen something to cash in';
   }
   if (ripe) {
+    const value = harvestValue(state, resolveHarvestTarget(state, null) ?? undefined);
+    if (value.questPays) return 'BOUNTY READY — take this pocket as pts';
     return state.tuning.world === 'endless'
       ? 'Pocket ready — tap it, then take tiles or pts'
       : 'Ripe — harvest, or keep building it bigger';
   }
   return 'Place tiles — surround one on all six sides to ripen it';
 }
+
+/**
+ * Placements the purse still buys at today's cost. The honest unit for
+ * danger: ten tiles is a fortune at cost 1 and a death sentence at cost 5.
+ */
+export const runwayOf = (state: GameState): number =>
+  Math.floor(state.tiles / Math.max(1, costOf(state.placements, state.tuning)));
+
+/**
+ * Runway at which the guide line starts saying "low".
+ *
+ * Six placements is about one pocket's worth of building — the point at
+ * which you genuinely cannot start something new and finish it. The old
+ * threshold (three times the cost, i.e. three placements) fired so late it
+ * was useless as a warning, while the FEELING of scarcity ran the whole
+ * game; this fires when scarcity is real and stays quiet when it is not.
+ */
+const RUNWAY_ALARM = 6;
 
 /**
  * The nearest unclaimed destination — revealed or beacon — named and priced
@@ -473,6 +540,15 @@ function reachOf(state: GameState): number {
  * should be the last thing the player reads.
  */
 function epitaphFor(state: GameState): string {
+  if (state.death === 'spent') {
+    const unripe = Object.values(state.cells).filter((c) => c.kind === 'tile').length;
+    return (
+      `The expedition is over — ${state.placements} placements spent. ` +
+      (unripe > 0
+        ? `${unripe} tile${unripe === 1 ? '' : 's'} left standing, never cashed.`
+        : `Everything you built was cashed.`)
+    );
+  }
   if (state.death === 'walled') {
     return `Walled in after ${state.placements} placements — nowhere left to build, nothing left to pop.`;
   }

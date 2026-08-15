@@ -9,10 +9,11 @@ import {
   distanceMultiplierAt,
   harvestValue,
   isExhausted,
+  outOfTime,
   payPlacement,
   ripeKeys,
 } from './rules';
-import type { Action, Cell, GameState, HarvestChoice, Rarity, Tile } from './state';
+import type { Action, Cell, GameState, HarvestChoice, Quest, Rarity, Tile } from './state';
 import { destinationAt, terrainAt } from './world';
 
 /**
@@ -201,7 +202,8 @@ export function newRun(rootSeed: number, tuning: Tuning = TUNING): GameState {
     draft: opened.draft,
     selected: 0,
     held: null,
-    log: { harvests: [], popped: 0, placementsAtMapStart: 0 },
+    quest: null,
+    log: { harvests: [], popped: 0, placementsAtMapStart: 0, questsDone: 0 },
   };
 }
 
@@ -259,6 +261,7 @@ function place(state: GameState, hex: HexKey): GameState {
   if (tile === undefined) return state;
   if (!canPlaceAt(state.cells, hex)) return state;
   if (!canAfford(state.tiles)) return state;
+  if (outOfTime(state)) return state;
 
   // A tile on its own native ground carries that fact from the cell it covers.
   const ground = state.cells[hex];
@@ -271,6 +274,7 @@ function place(state: GameState, hex: HexKey): GameState {
 
   let tiles = payPlacement(state.tiles, costOf(state.placements, t));
   let points = state.points;
+  let quest: Quest | null = state.quest;
 
   if (t.world === 'endless') {
     // The endless plane grows under your feet: placing a tile reveals the
@@ -290,7 +294,14 @@ function place(state: GameState, hex: HexKey): GameState {
       cells[n] = { ...c, claimed: true };
 
       if (c.reward === 'cache') tiles += t.cachePays;
-      if (c.reward === 'site') points += t.sitePays * distanceMultiplierAt(n, t);
+      if (c.reward === 'site') {
+        points += t.sitePays * distanceMultiplierAt(n, t);
+        // A site also opens its bounty, if quests are on and none is in play.
+        // One at a time: a second goal is not twice the goal, it is none.
+        if (t.questNeed > 0 && quest === null) {
+          quest = { at: n, need: t.questNeed, radius: t.questRadius, bonus: t.questBonus };
+        }
+      }
       if (c.reward === 'territory' && c.colour !== undefined) {
         // The claim unfurls: already-revealed open ground inside the radius
         // becomes the territory's field now; ground revealed later gets the
@@ -317,6 +328,7 @@ function place(state: GameState, hex: HexKey): GameState {
     placements: state.placements + 1,
     tiles,
     points,
+    quest,
     draft,
     selected: 0,
     rng: { ...state.rng, tiles: tilesStream, loot },
@@ -326,8 +338,13 @@ function place(state: GameState, hex: HexKey): GameState {
 function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameState {
   if (state.phase !== 'placing') return state;
 
-  const { keys, count, tiles, points } = harvestValue(state, at);
+  const { keys, count, tiles, points, questPays } = harvestValue(state, at);
   if (keys.length === 0) return state;
+
+  // The bounty is collected by PRESSING POINTS on a qualifying pocket — its
+  // multiplier is already inside `points`. Taking the same pocket as tiles
+  // leaves the bounty standing, which is the decision it exists to create.
+  const collected = questPays && choice === 'points';
 
   // Popped tiles become stone: still surrounding, no longer matching. On a
   // bounded map that is the reason to leave; on the endless plane it is the
@@ -344,9 +361,11 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
     // each popped tile is a point of luck, capped so it converges rather than
     // compounds. The points side already had its excitement; now tiles do.
     luck: choice === 'tiles' ? Math.min(state.tuning.luckCap, state.luck + count) : state.luck,
+    quest: collected ? null : state.quest,
     log: {
       ...state.log,
       popped: state.log.popped + count,
+      questsDone: state.log.questsDone + (collected ? 1 : 0),
       harvests: [
         ...state.log.harvests,
         { mapNumber: state.mapNumber, at: state.placements, count, choice, tiles, points },
@@ -397,11 +416,21 @@ function leave(state: GameState): GameState {
  * any price no matter how rich you are.
  */
 function endIfStuck(state: GameState): GameState {
+  const t = state.tuning;
   const solvent = canAfford(state.tiles);
-  // The bounded game can only die broke, so money alone settles it there.
-  if (solvent && state.tuning.world !== 'endless') return state;
+  const timeUp = outOfTime(state);
 
+  // The bounded game has no clock and can only die broke, so money alone
+  // settles it there.
+  if (solvent && !timeUp && t.world !== 'endless') return state;
+
+  // Whatever ended the run — money or the clock — you always get to cash what
+  // is already ripe. Dying with a finished pocket unpopped because the timer
+  // ticked between the placement and the tap would be a cheat, not a
+  // decision. What the clock takes is the pockets you did NOT finish.
   if (ripeKeys(state.cells).length > 0) return state;
+
+  if (timeUp) return { ...state, phase: 'ended', death: 'spent' };
   if (!solvent) return { ...state, phase: 'ended', death: 'broke' };
   if (isExhausted(state.cells)) return { ...state, phase: 'ended', death: 'walled' };
   return state;

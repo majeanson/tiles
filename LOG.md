@@ -6,14 +6,14 @@ Established before any code, so that no work is done twice and no polish lands
 on an unproven design. **A gate is not passed until it is written down here as
 passed, with its evidence.**
 
-| Gate                         | Rule                                                                               | Passes when                                                                                                                    | State                      |
-| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| **A — The minute is fun**    | No pops, no regions, no meta until placing a tile feels good                       | 20 consecutive placements with placeholder art feel good, on the phone                                                         | **PASSED (2026-08-15)**    |
-| **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | **failing in human hands** |
-| **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**     |
-| **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | open                       |
-| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | open                       |
-| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | open                       |
+| Gate                         | Rule                                                                               | Passes when                                                                                                                    | State                                           |
+| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| **A — The minute is fun**    | No pops, no regions, no meta until placing a tile feels good                       | 20 consecutive placements with placeholder art feel good, on the phone                                                         | **PASSED (2026-08-15)**                         |
+| **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | **fixed structurally (S11); human log pending** |
+| **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**                          |
+| **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | **PASSED (2026-08-15)**                         |
+| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | open                                            |
+| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | open                                            |
 
 ## Sessions
 
@@ -764,3 +764,110 @@ background by ~0.05–0.09. Pinned as `MIN_WALL_CLEARANCE = 0.045` in
 `theme.test.ts` over every colour a wall is painted with — the greyscale
 test's move, applied to the fog boundary. Value spacing, not art direction;
 Gate E stays shut. 267 tests.
+
+---
+
+### Session 11 — M1: the choice, made real (and what it cost)
+
+**Question:** why does a human take tiles nine times out of ten, and what
+change makes both buttons live? Gate B has been failing since Marc's first
+full run; M1 of `ROADMAP.md` is the milestone that owes an answer.
+
+**The instrumentation came first, and it indicted the economy, not the
+player.** A new probe policy — `chooser`, which prices every pocket both ways
+and takes the better, with no rule about which — plus a `%tiles` column in
+`pnpm sim` and a per-world record book in the game itself. First reading:
+
+| policy                  | %tiles  |
+| ----------------------- | ------- |
+| chooser (the optimiser) | 94      |
+| bank15 / bank40         | 96 / 98 |
+| seeker                  | 95      |
+
+Ninety-four per cent for a player trying to maximise. So Marc's habit was not
+a habit — it was the correct play, and no quest, perk or content would have
+moved it. The reason, written out during the session and now in
+`content/tuning.ts`:
+
+> tiles needed = P × C̄ · tiles income = Nt × T · so the tiles SHARE of all
+> harvests ≈ C̄ / (pops-per-placement × tiles-per-popped-tile).
+
+An economy whose only ending is bankruptcy converges on income ≈ cost — that
+convergence IS the ending — so the last harvests of every run must be taken
+as tiles, at any tuning. The fixed point was the ending itself.
+
+**Three structural changes, swept together (endless only; the bounded game
+keeps its original numbers and its Gate C evidence):**
+
+1. **A hard clock.** `runLength: 260` — an expedition, not a slow suffocation.
+   Tiles you never get to spend are worth nothing, so survival stops being
+   infinitely valuable. It is also, exactly, the constraint Marc asked for.
+   A new death, `spent`, and the clock never steals a ripe pocket: at zero you
+   may still cash what is ripe, you just cannot build.
+2. **Survival funded by walking.** Caches went from a lucky find to the
+   engine: one destination per ~6-hex block, 40 tiles a cache (was 12 per
+   12-hex block). Median claims per run 1 → 6. Emergency tile-harvests fall,
+   and exploration pays the rent — which is the game the endless world was
+   always describing.
+3. **A cap on the size bonus.** `harvestSizeCap: 20`. The clock alone
+   RESURRECTED the mega-bank exploit (bank80 scored 150k risk-free, because a
+   known ending makes one giant cash-in arithmetic). Past 20 a pocket earns
+   worth but no more multiplier, so cashing well and often beats hoarding.
+   The old cliff (bank80 → 0) is gone; the optimum at the cap replaces it.
+
+Plus the **knee**: `costGrace: 120` placements at cost 1, then +1 every 25.
+Most of a run now has surplus — which is where a choice can exist at all.
+
+**The result, 40 seeds, shipped endless economy:** lines that harvest as they
+go now mix — rush 59% tiles, trickle 64%, bank3 48%, farm 41% — against 94-98%
+before. Banking lines stay tiles-heavy by construction (they cash points once
+by definition). `bank20` is now the top of the bank family (48.6k) over
+bank40 (45.4k) and bank80 (47.8k): an interior optimum AT the cap. Nothing
+stalls, every run ends on or before the clock, and arcs sit 0.59–0.92.
+
+**Gate D — PASSED.** Its two conditions: the end screen names the cause of
+death in one sentence (it has since Session 1, and now names three), and the
+run's biggest number comes near the end. Measured: median arc 0.70–0.92 for
+every scoring line, and the clock is why — a run that knows when it ends
+saves its biggest pocket for the end. Pinned in `sim.test.ts` ("peaks near
+the end"). The end screen now prints each run's own arc, so Marc's runs
+report the same statistic the gate was judged on.
+
+**Gate B — structurally fixed, human log pending, and deliberately NOT
+flipped to PASSED.** The gate's condition names a human's twenty pops, and no
+harness can produce those. What this session can claim: the choice is now
+available to make (both sides within reach for anyone who harvests as they
+go, pinned as a test), and the game COUNTS the player's own split and prints
+it on every end screen ("across 7 runs: 31 harvests, 61% tiles / 39% pts").
+The next real session settles the gate with evidence rather than memory. If
+it still reads >70%, the gate's own fallback — cut it to a single automatic
+payout — is on the table.
+
+**Also built for M1:**
+
+- **Quests.** Claiming a site opens a bounty: pop a pocket of 8+ within 6
+  hexes of it AS POINTS and that harvest pays ×3. Deliberately a MULTIPLIER
+  on the one scoring channel, never a second income (v1 died of two channels
+  that could not be priced against each other). It manufactures a legible
+  moment where points is obviously right — and taking that pocket as tiles
+  leaves the bounty standing, which is the decision. The pts button wears a ★
+  when the selected pocket would collect it; the hint line names the bounty
+  and its distance. This is also the answer to the boring mid-run stretch:
+  every site is a goal with a payoff.
+- **The guide line stopped crying wolf.** "Low on tiles" was a flat multiple
+  of the cost; it is now measured in RUNWAY — placements the purse still
+  buys — and fires at six, the point where you genuinely cannot start
+  something and finish it.
+- **LEFT** joins the stat row wherever a clock exists, from the first second,
+  because a budget sprung at the end is a trick.
+
+**Verified:** 293 tests green (was 276), including the new economy's pins,
+quest mechanics (collected only by pressing points; refuses small or distant
+pockets), the record book's two gate readings, and the manual re-writing
+itself from the new numbers. Typecheck, lint, format, build clean.
+
+**Uncertainty, noted and carried:** the points scale inflated with the new
+caches (a good run now scores tens of thousands). Score is score and nothing
+breaks, but if Marc wants human-legible numbers, dividing the points formula
+by a constant is a one-line change that affects nothing else. Recorded for
+the follow-up rather than guessed at.

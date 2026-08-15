@@ -4,7 +4,7 @@ import { ENDLESS_TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
-import type { GameState } from '@engine/state';
+import type { Cell, GameState } from '@engine/state';
 import type { BoardView, Renderer } from '@render/Renderer';
 import { Game, type Elements, type GameHooks } from './game';
 
@@ -429,8 +429,11 @@ describe('the camera, and staying oriented', () => {
     // …and the numbers are the run's own tuning, not prose that can go stale.
     const t = ctx.game.state.tuning;
     expect(text).toContain(`${t.cachePays} tiles`);
-    expect(text).toContain(`every ${t.costRisesEvery} tiles`);
+    expect(text).toContain(`${t.costGrace} placements, then +1 for every ${t.costRisesEvery}`);
     expect(text).toContain(`${t.blueTideEvery} hexes`);
+    expect(text).toContain(`expedition of ${t.runLength} placements`);
+    expect(text).toContain(`past ${t.harvestSizeCap} tiles`);
+    expect(text).toContain(`pop a pocket of ${t.questNeed}+`);
 
     ctx.el.helpPanel.click();
     expect(ctx.el.helpPanel.hidden).toBe(true);
@@ -529,10 +532,9 @@ describe('keeping the run, and ending it properly', () => {
     let starts = 0;
     const ctx = build(1, ENDLESS_TUNING, {
       resume: ended,
-      best: (world, points) => {
-        expect(world).toBe('endless');
-        expect(points).toBe(0);
-        return { best: 999, isNew: false };
+      finish: (state) => {
+        expect(state.tuning.world).toBe('endless');
+        return { runs: 4, best: 999, isNewBest: false, pops: 30, tilesShare: 0.5 };
       },
       newRun: () => {
         starts++;
@@ -545,6 +547,8 @@ describe('keeping the run, and ending it properly', () => {
     expect(text).toMatch(/0 pts/);
     expect(text).toMatch(/best 999 pts/);
     expect(text).toMatch(/placements/);
+    // Gate B's tally, printed where the player will actually read it.
+    expect(text).toMatch(/across 4 runs: 30 harvests, 50% tiles \/ 50% pts/);
 
     const again = ctx.el.end.querySelector('#end-new-run');
     expect(again).not.toBeNull();
@@ -561,9 +565,91 @@ describe('keeping the run, and ending it properly', () => {
     };
     const ctx = build(1, ENDLESS_TUNING, {
       resume: ended,
-      best: () => ({ best: 500, isNew: true }),
+      finish: () => ({ runs: 1, best: 500, isNewBest: true, pops: 0, tilesShare: null }),
     });
     ctx.game.start();
     expect(ctx.el.end.textContent).toMatch(/NEW BEST — 500 pts/);
+  });
+
+  it('writes the record book exactly once per ended run', () => {
+    const ended: GameState = { ...newRun(9, ENDLESS_TUNING), phase: 'ended', death: 'broke' };
+    let writes = 0;
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: ended,
+      finish: () => {
+        writes++;
+        return { runs: 1, best: 0, isNewBest: false, pops: 0, tilesShare: null };
+      },
+    });
+    ctx.game.start();
+    ctx.game.render();
+    ctx.game.render();
+    expect(writes).toBe(1);
+  });
+});
+
+describe('the clock, the bounty, and the guide', () => {
+  it('shows LEFT counting the expedition down, and hides it where there is no clock', () => {
+    const ctx = build(7, ENDLESS_TUNING);
+    ctx.game.start();
+    const left = (): string =>
+      ctx.el.stats.querySelector('[data-stat="left"] .stat-value')?.textContent ?? '';
+    expect(left()).toBe(String(ENDLESS_TUNING.runLength));
+
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(left()).toBe(String(ENDLESS_TUNING.runLength - 1));
+
+    const bounded = build(4);
+    bounded.game.start();
+    expect(bounded.el.stats.querySelector('[data-stat="left"]')).toBeNull();
+  });
+
+  it('marks the pts button when it would collect the bounty, and says so', () => {
+    // A ripe pocket at the origin, with a bounty standing on it.
+    const base = newRun(7, ENDLESS_TUNING);
+    const cells: Record<string, Cell> = {};
+    const pocket: string[] = [];
+    for (let i = 0; i < ENDLESS_TUNING.questNeed; i++) pocket.push(key(i, 0));
+    for (const k of pocket) cells[k] = { kind: 'tile', colour: 'green' };
+    for (let i = 0; i < ENDLESS_TUNING.questNeed; i++) {
+      for (const n of neighbourKeys(i, 0)) if (!pocket.includes(n)) cells[n] = { kind: 'stone' };
+    }
+    const ready: GameState = {
+      ...base,
+      cells,
+      quest: {
+        at: key(2, 0),
+        need: ENDLESS_TUNING.questNeed,
+        radius: ENDLESS_TUNING.questRadius,
+        bonus: ENDLESS_TUNING.questBonus,
+      },
+    };
+
+    const ctx = build(1, ENDLESS_TUNING, { resume: ready });
+    ctx.game.start();
+    expect(ctx.el.harvestPoints.textContent).toMatch(/★/);
+    expect(ctx.el.harvestPoints.classList.contains('bounty')).toBe(true);
+    expect(ctx.el.hint.textContent).toMatch(/BOUNTY READY/);
+
+    // Taking it as points collects it; the button goes plain again.
+    ctx.el.harvestPoints.click();
+    expect(ctx.game.state.log.questsDone).toBe(1);
+    expect(ctx.el.harvestPoints.classList.contains('bounty')).toBe(false);
+  });
+
+  it('warns about tiles by runway, not by a flat count', () => {
+    const base = newRun(7, ENDLESS_TUNING);
+    // Ten tiles at cost 1 is ten placements of runway: not a warning.
+    const rich: GameState = { ...base, tiles: 10 };
+    const ctxRich = build(1, ENDLESS_TUNING, { resume: rich });
+    ctxRich.game.start();
+    expect(ctxRich.el.hint.textContent).not.toMatch(/Low on tiles/);
+
+    // The same ten tiles deep into the run, when a placement costs five.
+    const late: GameState = { ...base, tiles: 10, placements: ENDLESS_TUNING.costGrace + 100 };
+    const ctxLate = build(1, ENDLESS_TUNING, { resume: late });
+    ctxLate.game.start();
+    expect(ctxLate.el.hint.textContent).toMatch(/Low on tiles/);
   });
 });

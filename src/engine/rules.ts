@@ -14,9 +14,13 @@ import type { Cell, GameState, Rarity, Tile } from './state';
 
 export type Cells = Readonly<Record<HexKey, Cell>>;
 
-/** Cost of the next placement. Rises with every tile ever placed this run. */
+/**
+ * Cost of the next placement: flat through the grace, then rising with every
+ * tile ever placed this run. The knee is the whole shape of a run — see
+ * `costGrace` in `content/tuning.ts` for why it is not a straight line.
+ */
 export const costOf = (placements: number, t: Tuning): number =>
-  t.baseCost + Math.floor(placements / t.costRisesEvery);
+  t.baseCost + Math.floor(Math.max(0, placements - t.costGrace) / t.costRisesEvery);
 
 /**
  * You may place while you hold any tiles at all, even fewer than the cost.
@@ -61,14 +65,29 @@ export const isExhausted = (cells: Cells): boolean =>
   !Object.keys(cells).some((k) => canPlaceAt(cells, k));
 
 /**
+ * The hard clock, spent. Placements left is `runLength - placements`; at zero
+ * the run may still harvest what is ripe, but may not build again.
+ */
+export const outOfTime = (state: GameState): boolean =>
+  state.tuning.runLength > 0 && state.placements >= state.tuning.runLength;
+
+/** Placements the clock still allows, or null where there is no clock. */
+export const placementsLeft = (state: GameState): number | null =>
+  state.tuning.runLength > 0 ? Math.max(0, state.tuning.runLength - state.placements) : null;
+
+/**
  * Can this run place a tile anywhere at all, right now?
  *
- * Room and money are separate failures that look identical on the board, and
- * both the UI and the scripted policies need to tell them apart — a board full
- * of legal-looking hexes you cannot afford is how the harness first deadlocked.
+ * Room, money and TIME are separate failures that look identical on the board,
+ * and both the UI and the scripted policies need to tell them apart — a board
+ * full of legal-looking hexes you cannot afford is how the harness first
+ * deadlocked.
  */
 export const canPlaceNow = (state: GameState): boolean =>
-  state.phase === 'placing' && canAfford(state.tiles) && !isExhausted(state.cells);
+  state.phase === 'placing' &&
+  canAfford(state.tiles) &&
+  !outOfTime(state) &&
+  !isExhausted(state.cells);
 
 /** Ripe: a live tile touched on all six sides. */
 export function isRipe(cells: Cells, k: HexKey): boolean {
@@ -266,6 +285,21 @@ export function harvestMultiplier(state: GameState, pops: readonly HexKey[]): nu
  * see the HARVEST action. `keys` is the exact set that would pop, so the
  * reducer stones precisely what was priced and can never disagree with it.
  */
+/**
+ * Does this exact set of pops collect the standing bounty?
+ *
+ * Big enough, near enough, and — decided at the call site — taken as POINTS.
+ * Distance is measured from the pocket's mean to the site, the same
+ * "no borrowing the tip's reach" rule the multiplier uses.
+ */
+export function questMet(state: GameState, pops: readonly HexKey[]): boolean {
+  const quest = state.quest;
+  if (quest === null || pops.length < quest.need) return false;
+  const site = parse(quest.at);
+  const mean = pops.reduce((n, k) => n + distance(parse(k), site), 0) / pops.length;
+  return mean <= quest.radius;
+}
+
 export function harvestValue(
   state: GameState,
   at?: HexKey,
@@ -274,6 +308,8 @@ export function harvestValue(
   count: number;
   tiles: number;
   points: number;
+  /** True when taking THIS pocket as points collects the bounty. */
+  questPays: boolean;
 } {
   const t = state.tuning;
   const pops =
@@ -290,12 +326,19 @@ export function harvestValue(
     tiles += t.tilesPerPop + Math.floor(worth / t.worthPerExtraTile);
   }
 
-  const sizeBonus = 1 + t.harvestSizeBonus * Math.max(0, pops.length - 1);
+  const counted = t.harvestSizeCap > 0 ? Math.min(pops.length, t.harvestSizeCap) : pops.length;
+  const sizeBonus = 1 + t.harvestSizeBonus * Math.max(0, counted - 1);
+  // The bounty multiplies the one scoring channel rather than adding another.
+  // It is priced into the button so the reason to press it is on the button.
+  const questPays = pops.length > 0 && questMet(state, pops);
+  const bounty = questPays ? (state.quest?.bonus ?? 1) : 1;
+
   return {
     keys: pops,
     count: pops.length,
     tiles,
-    points: Math.floor(sumWorth * sizeBonus * harvestMultiplier(state, pops)),
+    points: Math.floor(sumWorth * sizeBonus * harvestMultiplier(state, pops) * bounty),
+    questPays,
   };
 }
 

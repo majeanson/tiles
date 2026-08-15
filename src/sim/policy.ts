@@ -3,8 +3,11 @@ import { canLeave } from '@engine/reduce';
 import { rngInt, rngPick, type RngStream } from '@engine/rng';
 import {
   canPlaceNow,
+  costOf,
+  harvestValue,
   isExhausted,
   legalPlacements,
+  placementsLeft,
   previewWorth,
   ripeClusters,
   ripeKeys,
@@ -291,6 +294,8 @@ const bankAt = (threshold: number): Policy => ({
 
 export const bank3 = bankAt(3);
 export const bank15 = bankAt(15);
+/** Cashing exactly at the size bonus's cap — the economy's own answer. */
+export const bank20 = bankAt(20);
 export const bank40 = bankAt(40);
 /** The overshoot: a pocket this size is never built before the money runs out. */
 export const bank80 = bankAt(80);
@@ -362,6 +367,87 @@ export const seeker: Policy = {
 };
 
 /**
+ * Gate B's own probe: a player who values both currencies and picks the
+ * better one every single time, with no rule about WHICH.
+ *
+ * Every other policy has its choice written into it — that is what makes them
+ * legible, and it is also why none of them can answer the gate. This one
+ * prices the pocket both ways in the only common unit there is (points now,
+ * versus tiles converted at what a tile is worth in future points) and takes
+ * the bigger. If the choice is real, its tally comes out mixed; if one option
+ * is simply better, this policy finds that out and the tally goes lopsided —
+ * which is the gate failing, honestly, before a human is asked to feel it.
+ *
+ * A tile's worth in points is estimated from the run so far: points banked
+ * per placement, times the placements a tile buys. Crude on purpose — a
+ * player's own estimate is crude, and the gate is about whether the DECISION
+ * has two live sides, not about playing it perfectly.
+ */
+export const chooser: Policy = {
+  name: 'chooser',
+  note: 'Prices every pocket both ways and takes the better. The probe Gate B is measured with.',
+  decide(state, stream) {
+    const t = state.tuning;
+    const cost = costOf(state.placements, t);
+    const perPlacement = state.placements > 0 ? state.points / state.placements : 1;
+
+    /**
+     * What a pile of tiles is worth in points.
+     *
+     * Only the tiles the run can actually SPEND are worth anything: the clock
+     * allows so many more placements, each costing `cost`, and tiles past
+     * that buy nothing. This is where the hard clock does its work — as the
+     * end approaches, survival deflates to zero and points are all that is
+     * left to want, which is the whole reason the clock exists.
+     */
+    const tilesInPoints = (gained: number): number => {
+      const left = placementsLeft(state) ?? Infinity;
+      const spendable = Math.max(0, left * cost - state.tiles);
+      const useful = Math.min(gained, spendable);
+      return (useful / Math.max(1, cost)) * perPlacement;
+    };
+
+    const cash = (): Move | null => {
+      let best: { move: Move; value: number } | null = null;
+      const pockets =
+        t.world === 'endless'
+          ? ripeClusters(state.cells).map((p) => p[0]!)
+          : ripeKeys(state.cells).length > 0
+            ? [undefined]
+            : [];
+
+      for (const at of pockets) {
+        const value = harvestValue(state, at);
+        if (value.count === 0) continue;
+        const asTiles = tilesInPoints(value.tiles);
+        const asPoints = value.points;
+        const choice: 'tiles' | 'points' = asPoints >= asTiles ? 'points' : 'tiles';
+        const score = Math.max(asPoints, asTiles);
+        const move: Move =
+          at === undefined ? [{ type: 'HARVEST', choice }] : [{ type: 'HARVEST', choice, at }];
+        if (best === null || score > best.value) best = { move, value: score };
+      }
+      return best?.move ?? null;
+    };
+
+    // Cash at the size the economy stops paying more for, keep a little
+    // runway rather than running to zero, and otherwise build — which is
+    // what a person who has understood the game does, turn by turn.
+    const ripeAt = t.harvestSizeCap > 0 ? t.harvestSizeCap : 8;
+    const runway = Math.floor(state.tiles / Math.max(1, cost));
+    if (biggestHarvestSize(state) >= ripeAt || runway <= 3) {
+      const move = cash();
+      if (move !== null) return [move, stream];
+    }
+    const place = bestPlacement(state);
+    if (place !== null) return [place, stream];
+    const move = cash();
+    if (move !== null) return [move, stream];
+    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+  },
+};
+
+/**
  * A farmer who never scores. Survival is worth nothing on its own, so this
  * should live a long time and finish near zero — the control that proves points
  * and tiles are not secretly the same currency.
@@ -409,9 +495,11 @@ export const POLICIES: readonly Policy[] = [
   trickle,
   bank3,
   bank15,
+  bank20,
   bank40,
   bank80,
   seeker,
+  chooser,
   survivor,
 ];
 

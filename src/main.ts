@@ -9,6 +9,14 @@ import {
   type FeatureId,
   type FeatureSet,
 } from '@meta/features';
+import {
+  decodeRecords,
+  encodeRecords,
+  gateB,
+  recordRun,
+  EMPTY as EMPTY_RECORDS,
+  type RecordBook,
+} from '@meta/records';
 import { decodeRun, encodeRun } from '@meta/save';
 import { AssetBook } from '@render/assets';
 import { PixiRenderer } from '@render/PixiRenderer';
@@ -28,8 +36,11 @@ const THEME_STORAGE_KEY = 'tiles.theme.v1';
 const HEX_STORAGE_KEY = 'tiles.hex.v1';
 /** The run in progress (or just ended), saved after every action. */
 const RUN_STORAGE_KEY = 'tiles.run.v1';
-/** Personal bests, per world: {"endless": 1234, "bounded": 99}. */
-const BEST_STORAGE_KEY = 'tiles.best.v1';
+/**
+ * The record book, per world — runs, best, and the harvest-choice tally that
+ * Gate B is measured on. v2: v1 held bare numbers, this holds records.
+ */
+const BEST_STORAGE_KEY = 'tiles.records.v2';
 
 /**
  * Flags are resolved once, here at the edge, and passed downward as data. The
@@ -152,27 +163,31 @@ function runKeeping(): GameHooks & { savedSeed: number | null } {
       }
     },
 
-    best: (world, points) => {
-      let bests: Record<string, number> = {};
+    finish: (state) => {
+      let book: RecordBook;
       try {
-        const parsed: unknown = JSON.parse(localStorage.getItem(BEST_STORAGE_KEY) ?? '{}');
-        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-          for (const [k, v] of Object.entries(parsed)) {
-            if (typeof v === 'number') bests[k] = v;
-          }
-        }
+        book = decodeRecords(localStorage.getItem(BEST_STORAGE_KEY));
       } catch {
-        bests = {};
+        book = {};
       }
-      const standing = bests[world] ?? 0;
-      const isNew = points > standing;
-      const best = Math.max(points, standing);
+      const world = state.tuning.world;
+      const before = book[world] ?? EMPTY_RECORDS;
+      const after = recordRun(book, state);
       try {
-        localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify({ ...bests, [world]: best }));
+        localStorage.setItem(BEST_STORAGE_KEY, encodeRecords(after));
       } catch {
         // A record that cannot be written is still a run that happened.
       }
-      return { best, isNew };
+
+      const now = after[world] ?? EMPTY_RECORDS;
+      const gate = gateB(now);
+      return {
+        runs: now.runs,
+        best: now.bestPoints,
+        isNewBest: state.points > before.bestPoints && state.points > 0,
+        pops: gate.pops,
+        tilesShare: gate.tilesShare,
+      };
     },
 
     newRun: () => {

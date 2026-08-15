@@ -75,6 +75,21 @@ export type Tuning = {
   readonly cachePays: number;
   readonly sitePays: number;
   readonly territoryRadius: number;
+
+  /**
+   * Quests (M1 of `ROADMAP.md`, Gate B's structural fix). Claiming a scoring
+   * site opens a bounty: pop a pocket of `questNeed`+ within `questRadius` of
+   * it AS POINTS, and that harvest pays `questBonus` times.
+   *
+   * Not a second income stream — a multiplier on the one channel, at a named
+   * place, collectable only by pressing the points button. That is the whole
+   * design intent: a human who takes tiles nine times in ten needs a moment
+   * where points is obviously right, and this manufactures one per site.
+   * `questNeed` 0 switches quests off (the bounded default).
+   */
+  readonly questNeed: number;
+  readonly questRadius: number;
+  readonly questBonus: number;
   /** How far past the built frontier a destination shows as a beacon. */
   readonly beaconHorizon: number;
 
@@ -149,9 +164,46 @@ export type Tuning = {
 
   readonly startingTiles: number;
 
-  /** cost = baseCost + floor(placements / costRisesEvery), all run, never reset. */
+  /**
+   * cost = baseCost + floor(max(0, placements - costGrace) / costRisesEvery),
+   * all run, never reset.
+   *
+   * `costGrace` is the KNEE, and it exists because of what M1's
+   * instrumentation found (2026-08-15). With a curve that rises from the
+   * first placement, income and cost converge across the whole back half of a
+   * run — and at the margin a harvest MUST be taken as tiles, because that
+   * convergence is what "the run is ending" means. Measured: 94-98% tiles for
+   * every policy, including one that prices both sides and takes the better.
+   * No amount of content fixes that; the shape of the curve does.
+   *
+   * A flat grace, then a sharper rise, gives a run two eras: a long one where
+   * survival is handled and a harvest is a scoring DECISION, and a short
+   * desperate one where it is not. That is also the arc Gate D asks for.
+   */
   readonly baseCost: number;
+  readonly costGrace: number;
   readonly costRisesEvery: number;
+
+  /**
+   * The hard clock: placements a run gets, or 0 for none (the bounded game).
+   *
+   * The deepest thing M1's instrumentation found. An economy whose ONLY end
+   * is bankruptcy always converges — income meets cost, that convergence IS
+   * the ending, and so the last harvests of every run must be taken as tiles.
+   * Measured at 94-98% tiles for every policy, including one that prices both
+   * sides. No content and no curve shape fixes it, because the fixed point is
+   * the ending itself.
+   *
+   * A hard budget breaks the fixed point: tiles you never get to spend are
+   * worth nothing, so a run with runway to spare should cash pockets as
+   * POINTS — and the closer the end, the more obviously so. Survival stops
+   * being infinitely valuable, which is precisely what made the choice fake.
+   *
+   * It is also the constraint Marc asked for in as many words ("I'd like the
+   * time to be constrained yet points become more important"), and it makes
+   * the run's length a promise the game can print rather than a mystery.
+   */
+  readonly runLength: number;
 
   /**
    * Tiles returned per popped tile: tilesPerPop + floor(worth / worthPerExtraTile).
@@ -181,6 +233,24 @@ export type Tuning = {
    * harness is for.
    */
   readonly harvestSizeBonus: number;
+
+  /**
+   * Pocket size past which the size bonus stops growing; 0 for no cap.
+   *
+   * The quadratic is what makes a big pocket worth more than two small ones,
+   * and that is the tension rule 5 lives on. Unbounded, though, it means ONE
+   * pocket grown as large as the run allows beats every other line — and once
+   * the run has a hard clock (`runLength`), timing that single cash-in stops
+   * being a gamble and becomes arithmetic. Measured: with the clock and no
+   * cap, the bank-everything line scored 150k against the next line's 63k,
+   * with its risk removed.
+   *
+   * The cap keeps "bigger is better" and removes "biggest is everything":
+   * past it, a pocket still pays more worth but no more multiplier, so
+   * cashing well and often competes with hoarding. It is the smallest change
+   * that restores the cliff the clock flattened.
+   */
+  readonly harvestSizeCap: number;
 
   /** Draft width. Three is the base game; more is an unlock. */
   readonly draftWidth: number;
@@ -235,6 +305,10 @@ export const TUNING: Tuning = {
   territoryRadius: 2,
   beaconHorizon: 8,
 
+  questNeed: 0,
+  questRadius: 6,
+  questBonus: 3,
+
   magicChance: 0,
   uniqueChance: 0,
   luckMagicPerPop: 0,
@@ -262,12 +336,17 @@ export const TUNING: Tuning = {
   startingTiles: 30,
 
   baseCost: 1,
+  // The bounded game keeps the original straight line: no grace, and the
+  // curve it was balanced against. Its Gate C evidence stands on it.
+  costGrace: 0,
   costRisesEvery: 70,
+  runLength: 0,
 
   tilesPerPop: 1,
   worthPerExtraTile: 2,
 
   harvestSizeBonus: 1,
+  harvestSizeCap: 0,
 
   draftWidth: 3,
 
@@ -303,13 +382,39 @@ export const ENDLESS_TUNING: Tuning = {
   // placements (bank15 5,034 -> 7,112 · seeker 3,019 -> 4,320), so a minute
   // spent scoring is worth more and a minute spent stalling still pays ~0.
   // The bounded game keeps its own 70/4; these are the plane's numbers.
-  costRisesEvery: 50,
+  // 2026-08-15 (M1): the knee. See `costGrace` — a straight curve made every
+  // late harvest a forced tiles-harvest and Gate B unpassable at any content
+  // setting. Swept in Session 11: grace 120 placements at cost 1, then +1
+  // every 25. Clock preserved, choice restored.
+  costGrace: 120,
+  costRisesEvery: 25,
   distanceStep: 3,
 
-  // ~one destination per 12-hex block, so the nearest glow is usually a real
-  // journey (the block around home is kept empty) but never a hopeless one.
-  destinationEvery: 12,
+  // The hard clock, and the three numbers M1 moved with it (Session 11).
+  // Together they are one change, not four: a run is a fixed expedition of
+  // 260 placements (~15 minutes), survival is funded mostly by CACHES rather
+  // than by emergency harvests, and the size bonus stops paying past 20 so
+  // hoarding one monster pocket cannot out-score cashing well and often.
+  // Measured effect on Gate B: the tiles share of harvests fell from 94-98%
+  // (every policy, unfixable by content) to 59-63% for lines that harvest as
+  // they go. See LOG.md, Session 11.
+  runLength: 260,
+  harvestSizeCap: 20,
+
+  // Destinations went from a landmark you might meet to the plane's SURVIVAL
+  // ENGINE (Session 11): one per ~6-hex block, a cache paying 40 tiles. That
+  // is the change that lets a harvest be a scoring decision — with survival
+  // funded by walking, the tiles button stops being the only safe answer.
+  // The block around home is still kept empty, so the first glow is a journey.
+  destinationEvery: 6,
   destinationChance: 0.7,
+  cachePays: 40,
+
+  // A pocket of 8 is a real but reachable ask — bank15's line clears it
+  // routinely and bank3's never does, so the bounty asks the player to grow
+  // something rather than cash reflexively. ×3 is loud enough to be worth
+  // changing your mind for; swept in Session 11.
+  questNeed: 8,
 
   // Base odds are felt but rare: roughly one magic tile per two drafts' worth
   // of placements, uniques an event. Luck at its cap roughly triples magic.

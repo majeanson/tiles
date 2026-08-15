@@ -53,12 +53,28 @@ export type GameHooks = {
   /** Called with the new state after every action that changed it. */
   readonly onChange?: (state: GameState) => void;
   /**
-   * Submit the finished run's points; returns the standing best and whether
-   * this run set it. Called once per ended run.
+   * Submit a finished run to the record book; returns what the book now says.
+   * Called exactly once per ended run.
+   *
+   * `tilesShare` across `pops` harvests is Gate B's own measurement, carried
+   * here so the end screen can print the gate's verdict on the player's own
+   * play rather than on a memory of it.
    */
-  readonly best?: (world: string, points: number) => { best: number; isNew: boolean };
+  readonly finish?: (state: GameState) => {
+    readonly runs: number;
+    readonly best: number;
+    readonly isNewBest: boolean;
+    readonly pops: number;
+    readonly tilesShare: number | null;
+  };
   /** Start a fresh run under the current settings. Wired to the end screen. */
   readonly newRun?: () => void;
+  /**
+   * Send this run somewhere — the share sheet, or the clipboard. Absent means
+   * the button is not drawn, which is the honest state on a browser with no
+   * way to share.
+   */
+  readonly share?: (state: GameState) => void | Promise<void>;
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -112,10 +128,10 @@ export class Game {
   readonly #hooks: GameHooks;
 
   /**
-   * The best-line for the end screen, computed once per ended run so the
-   * records hook is submitted exactly once however many times ended renders.
+   * The end screen's record lines, computed once per ended run so the book is
+   * written exactly once however many times the ended state renders.
    */
-  #bestLine: string | null = null;
+  #recordLines: string[] | null = null;
 
   constructor(
     renderer: Renderer,
@@ -334,8 +350,13 @@ export class Game {
       title: 'THE LOOP',
       lines: [
         endless
-          ? 'One endless plane. Place tiles, surround them to ripen them, pop ripe pockets for tiles or points, and push outward — farther pays more. The run ends when you cannot act.'
+          ? `One endless plane, and one expedition of ${t.runLength} placements. Place tiles, surround them to ripen them, pop ripe pockets for tiles or points, and push outward — farther pays more.`
           : 'Place tiles, surround them to ripen them, harvest for tiles or points, and move on to deeper, better-paying maps. The run ends when you run out of tiles.',
+        ...(endless
+          ? [
+              'Tiles keep you going; points are the score. The expedition ends whether or not you spent your tiles — so tiles you never use are wasted, and a pocket you never cash is a fortune left in the ground.',
+            ]
+          : []),
       ],
     };
 
@@ -343,7 +364,9 @@ export class Game {
       title: 'PLACING',
       lines: [
         'Tap a card to pick it up, then tap any hex with a glowing edge. A tile must touch something already built.',
-        `Placing costs tiles: ${t.baseCost} to start, +1 for every ${t.costRisesEvery} tiles you have ever placed this run. The cost NEVER resets — this is the clock that ends every run.`,
+        t.costGrace > 0
+          ? `Placing costs tiles: ${t.baseCost} for your first ${t.costGrace} placements, then +1 for every ${t.costRisesEvery} after that. The cost NEVER comes back down, so the back half of an expedition is the expensive half.`
+          : `Placing costs tiles: ${t.baseCost} to start, +1 for every ${t.costRisesEvery} tiles you have ever placed this run. The cost NEVER resets — this is the clock that ends every run.`,
         'The faint number on an empty hex is exactly what the selected tile will be worth there. It is a promise, not an estimate.',
         'BEST marks the card whose strongest placement pays the most right now. Advice, not an order.',
       ],
@@ -364,13 +387,25 @@ export class Game {
         endless
           ? 'A pocket is a connected group of ripe tiles. Tap any ripe tile to price its pocket — the board outlines it and the two buttons show what popping it pays. The biggest pocket is priced by default.'
           : 'Harvest pops EVERY ripe tile on the map at once.',
-        `Take tiles: ${t.tilesPerPop} per popped tile, +1 more per ${t.worthPerExtraTile} worth. Linear and safe — this is how you stay alive.`,
+        `Take tiles: ${t.tilesPerPop} per popped tile, +1 more per ${t.worthPerExtraTile} worth. Linear and safe — this is how you keep placing.`,
         endless
           ? `Take pts: the pocket’s summed worth × its size bonus × the distance multiplier. Bigger pockets pay disproportionately more, and the multiplier rises by 1 for every ${t.distanceStep} hexes the pocket sits from home. Score lives out there.`
           : 'Take pts: summed worth × size bonus × the map number. Bigger harvests and deeper maps pay disproportionately more.',
+        ...(t.harvestSizeCap > 0
+          ? [
+              `The size bonus stops growing past ${t.harvestSizeCap} tiles. A bigger pocket than that still pays more worth, but no more multiplier — so cashing at about ${t.harvestSizeCap} and starting another beats hoarding one monster.`,
+            ]
+          : []),
         'You take ONE of the two, never both. Small pockets favour tiles; big far ones favour points. When to stop growing a pocket and cash it is the whole game.',
+        ...(t.runLength > 0
+          ? [
+              'Watch LEFT: tiles are only worth what you can still spend. Early, a tiles-harvest buys a lot of expedition. Late, it buys nothing — and points are all that is left to take.',
+            ]
+          : []),
         'Popped tiles turn to STONE. Stone still surrounds (helps ripen) but never matches (pays nothing) — every harvest makes that ground cheaper, which is the pressure to keep moving.',
-        'Wait too long and you can die with a fortune unpopped. Greed has a cliff.',
+        t.runLength > 0
+          ? 'Wait too long and the expedition ends around your unfinished pocket. Greed costs.'
+          : 'Wait too long and you can die with a fortune unpopped. Greed has a cliff.',
       ],
     };
 
@@ -402,8 +437,13 @@ export class Game {
       title: 'DESTINATIONS',
       lines: [
         'The glows beyond your ground are destinations. They shine through undiscovered land — build your chain out and TOUCH one with a tile to claim it. Each pays once.',
-        `+ is a CACHE: ${t.cachePays} tiles on the spot. A lifeline when the cost curve is biting — it pays after the placement cost, so it can save a run at zero.`,
-        `★ is a SITE: ${t.sitePays} pts × the distance multiplier at its hex. The farther the site, the more the same walk is worth.`,
+        `+ is a CACHE: ${t.cachePays} tiles on the spot. Caches are how an expedition funds itself — walking to them is meant to keep you alive, so that your harvests can be about scoring instead of surviving.`,
+        `★ is a SITE: ${t.sitePays} pts × the distance multiplier at its hex, and it opens a BOUNTY.`,
+        ...(t.questNeed > 0
+          ? [
+              `A bounty asks for one thing: pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of that site, and take it as PTS — that harvest pays ×${t.questBonus}. Take it as tiles and the bounty stays standing. One bounty at a time; the line above your hand names it, and the pts button wears a ★ when the pocket you have selected would collect it.`,
+            ]
+          : []),
         `◆ is a TERRITORY: claiming it turns the ground within ${t.territoryRadius} hexes into a native field of its colour — permanently yours, and it glows in the colour it will grant.`,
         'The line above your hand always names the nearest unclaimed destination and how many hexes out it sits.',
       ],
@@ -431,7 +471,7 @@ export class Game {
       title: 'READING THE SCREEN',
       lines: [
         endless
-          ? 'TILES is your life — it is the number that ends the run. POINTS is your score. REACH is how far from home you have built. COST is what the next placement takes.'
+          ? 'TILES is what you place with. POINTS is your score. REACH is how far from home you have built. COST is what the next placement takes. LEFT is how many placements the expedition has still to give.'
           : 'TILES is your life — it is the number that ends the run. POINTS is your score. MAP is how deep you are. COST is what the next placement takes.',
         'The line above your hand reads: what to do now · the nearest destination · your current odds.',
         'Zoom with + and −, pinch works too, drag to pan, FIT shows everything. Worth numbers appear as you zoom in.',
@@ -441,7 +481,12 @@ export class Game {
     const end: { title: string; lines: string[] } = {
       title: 'HOW IT ENDS',
       lines: [
-        'Out of tiles with nothing ripe to cash: broke. The cost curve always wins eventually — the question is what you scored on the way.',
+        ...(t.runLength > 0
+          ? [
+              `LEFT reaches zero: the expedition is over. You may still cash anything already ripe — what the clock takes is the pockets you never finished.`,
+            ]
+          : []),
+        'Out of tiles with nothing ripe to cash: broke. Walking to caches is how you avoid this.',
         ...(endless
           ? [
               'A frontier that is all wall with nothing left to pop: walled in. Rare, and worth avoiding on the way past.',
@@ -472,7 +517,11 @@ export class Game {
         endless
           ? `World: one endless plane, grown from seed ${this.#state.rootSeed}. Same seed, same world — share the number to share the run.`
           : `World: bounded maps, seed ${this.#state.rootSeed}.`,
-        `Economy: start with ${t.startingTiles} tiles · a placement costs ${t.baseCost}, +1 per ${t.costRisesEvery} ever placed · ${t.draftWidth}-card draft${t.holdSlots > 0 ? ' plus the stash' : ''}.`,
+        `Economy: start with ${t.startingTiles} tiles · a placement costs ${t.baseCost}` +
+          (t.costGrace > 0 ? ` for ${t.costGrace} placements, then` : ',') +
+          ` +1 per ${t.costRisesEvery} placed` +
+          (t.runLength > 0 ? ` · ${t.runLength} placements to the expedition` : '') +
+          ` · ${t.draftWidth}-card draft${t.holdSlots > 0 ? ' plus the stash' : ''}.`,
         systems.length > 0
           ? `Systems in play: ${systems.join(' · ')}. Each is detailed above.`
           : 'Systems in play: none — this is the smallest game there is.',
@@ -554,7 +603,9 @@ export class Game {
               (spot.ripeCount > 0 ? ` · ${spot.ripeWorth} of it ripe now` : '') +
               ` · pts when popped = worth × pocket size × ${hud.showLeave ? 'map' : 'distance'}`) +
           this.#powerOf(spot.colour);
-    const hint = [spotLine ?? hud.guide, hud.hint, hud.odds].filter((s) => s !== null).join(' · ');
+    const hint = [spotLine ?? hud.guide, hud.questLine ?? hud.hint, hud.odds]
+      .filter((s) => s !== null)
+      .join(' · ');
     this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
 
@@ -564,7 +615,12 @@ export class Game {
     // and when they appear both payouts show their real numbers — the choice
     // is only a choice if you can see what you are giving up.
     this.#el.harvestTiles.textContent = `Take ${hud.harvestTiles} tiles`;
-    this.#el.harvestPoints.textContent = `Take ${hud.harvestPoints} pts`;
+    // The bounty rides on the button that collects it, with its multiplier
+    // shown — the reason to press a button belongs on the button.
+    this.#el.harvestPoints.textContent = hud.questPays
+      ? `Take ${hud.harvestPoints} pts ★`
+      : `Take ${hud.harvestPoints} pts`;
+    this.#el.harvestPoints.classList.toggle('bounty', hud.questPays);
     this.#el.harvestTiles.hidden = !hud.canHarvest;
     this.#el.harvestPoints.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;
@@ -586,9 +642,24 @@ export class Game {
    * immediately poses the next one's question. One button: again.
    */
   #renderEnd(hud: HudView): void {
-    if (this.#bestLine === null && this.#hooks.best !== undefined) {
-      const record = this.#hooks.best(this.#state.tuning.world, hud.points);
-      this.#bestLine = record.isNew ? `NEW BEST — ${record.best} pts` : `best ${record.best} pts`;
+    if (this.#recordLines === null) {
+      this.#recordLines = [];
+      const book = this.#hooks.finish?.(this.#state);
+      if (book !== undefined) {
+        this.#recordLines.push(
+          book.isNewBest ? `NEW BEST — ${book.best} pts` : `best ${book.best} pts`,
+        );
+        // Gate B's own measurement, printed. A player who can see they take
+        // tiles nine times in ten is a player who might take points.
+        if (book.tilesShare !== null) {
+          const tiles = Math.round(book.tilesShare * 100);
+          this.#recordLines.push(
+            `across ${book.runs} run${book.runs === 1 ? '' : 's'}: ` +
+              `${book.pops} harvest${book.pops === 1 ? '' : 's'}, ` +
+              `${tiles}% tiles / ${100 - tiles}% pts`,
+          );
+        }
+      }
     }
 
     const line = (cls: string, text: string): HTMLElement => {
@@ -598,9 +669,11 @@ export class Game {
       return p;
     };
 
-    const score = line('end-score', `${hud.points} pts`);
-    const parts: HTMLElement[] = [line('end-epitaph', hud.epitaph ?? ''), score];
-    if (this.#bestLine !== null) parts.push(line('end-best', this.#bestLine));
+    const parts: HTMLElement[] = [
+      line('end-epitaph', hud.epitaph ?? ''),
+      line('end-score', `${hud.points} pts`),
+    ];
+    if (this.#recordLines.length > 0) parts.push(line('end-best', this.#recordLines[0]!));
 
     const s = hud.summary;
     if (s !== null) {
@@ -608,15 +681,19 @@ export class Game {
         `${hud.depthLabel.toLowerCase()} ${hud.depthValue}`,
         `${hud.placements} placements`,
       ];
+      if (s.harvests > 0) facts.push(`${s.tilesTaken} tiles / ${s.pointsTaken} pts taken`);
       if (s.biggestHarvest > 0) {
         facts.push(
           `biggest pop ${s.biggestHarvest} pts at ${Math.round(s.biggestAt * 100)}% of the run`,
         );
       }
       if (s.claims > 0) facts.push(`${s.claims} destination${s.claims === 1 ? '' : 's'} reached`);
+      if (s.quests > 0) facts.push(`${s.quests} quest${s.quests === 1 ? '' : 's'} done`);
       if (s.luck > 0) facts.push(`luck ${s.luck}`);
       parts.push(line('end-facts', facts.join(' · ')));
     }
+
+    if (this.#recordLines.length > 1) parts.push(line('end-facts', this.#recordLines[1]!));
 
     if (this.#hooks.newRun !== undefined) {
       const again = document.createElement('button');
@@ -628,6 +705,19 @@ export class Game {
         start();
       });
       parts.push(again);
+    }
+
+    if (this.#hooks.share !== undefined) {
+      const share = document.createElement('button');
+      share.type = 'button';
+      share.id = 'end-share';
+      share.className = 'quiet';
+      share.textContent = 'SHARE THIS RUN';
+      const send = this.#hooks.share;
+      share.addEventListener('click', () => {
+        void send(this.#state);
+      });
+      parts.push(share);
     }
 
     this.#el.end.replaceChildren(...parts);
@@ -651,6 +741,12 @@ export class Game {
       { id: 'points', label: 'POINTS', value: String(hud.points) },
       { id: 'map', label: hud.depthLabel, value: String(hud.depthValue) },
       { id: 'cost', label: 'COST', value: `−${hud.cost}` },
+      // The clock, where there is one. Last on the row because it is the
+      // number you check rather than the number you watch — but on screen
+      // from the first second, because a budget sprung at the end is a trick.
+      ...(hud.left === null
+        ? []
+        : [{ id: 'left', label: 'LEFT', value: String(hud.left) } satisfies Stat]),
     ];
 
     this.#el.stats.replaceChildren(

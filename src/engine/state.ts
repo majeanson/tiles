@@ -71,6 +71,28 @@ export type Phase = 'placing' | 'ended';
 export type HarvestChoice = 'tiles' | 'points';
 
 /**
+ * A bounty on a place, opened by claiming a scoring site.
+ *
+ * "Pop a pocket of `need`+ within `radius` of here AS POINTS, and that
+ * harvest pays `bonus` times." One at a time, so it is one sentence on the
+ * screen and one goal in the head.
+ *
+ * The shape is chosen to serve Gate B rather than to add content. The gate is
+ * failing because a human takes tiles almost always — points feel unsafe and,
+ * early, worthless. A quest does not add a second income stream (v1 died of
+ * two channels that could not be priced against each other); it MULTIPLIES the
+ * one channel at a named place and time. That makes a concrete, legible moment
+ * where points is obviously the right button — and it cannot be double-dipped,
+ * because taking that pocket as tiles wastes the bounty.
+ */
+export type Quest = {
+  readonly at: HexKey;
+  readonly need: number;
+  readonly radius: number;
+  readonly bonus: number;
+};
+
+/**
  * Why the run stopped.
  *
  * Gate D asks the end screen to name the cause of death in one sentence, so the
@@ -86,8 +108,13 @@ export type HarvestChoice = 'tiles' | 'points';
  * no map to leave, so a run whose entire frontier is wall, with nothing ripe
  * left to cash, has no move at any price. Rare by construction, named rather
  * than inferred.
+ *
+ * `spent` is the hard clock running out (`tuning.runLength`), and it is the
+ * COMMON ending by design — see that field. A run that ends on the clock with
+ * tiles still in hand wasted them, which is exactly the pressure that makes
+ * cashing a pocket for points a real decision rather than a luxury.
  */
-export type DeathCause = 'broke' | 'walled';
+export type DeathCause = 'broke' | 'walled' | 'spent';
 
 /**
  * What one harvest did. Kept as a list because Gate D's real question — did the
@@ -145,12 +172,17 @@ export type GameState = {
    */
   readonly held: Tile | null;
 
+  /** The bounty in play, or null. Opened by claiming a site; one at a time. */
+  readonly quest: Quest | null;
+
   /** Telemetry for the end screen and the harness. */
   readonly log: {
     readonly harvests: readonly HarvestRecord[];
     readonly popped: number;
     /** Placements spent on maps already left behind — for cost-per-depth. */
     readonly placementsAtMapStart: number;
+    /** Bounties collected this run. The end screen counts them. */
+    readonly questsDone: number;
   };
 };
 

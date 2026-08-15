@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
 import {
   bank15,
+  bank20,
   bank3,
   bank40,
   bank80,
   blind,
+  chooser,
   farm,
   hoard,
   POLICIES,
@@ -13,6 +15,7 @@ import {
   rush,
   seeker,
   survivor,
+  trickle,
 } from './policy';
 import { playMany } from './run';
 import { summarise } from './report';
@@ -246,32 +249,69 @@ describe('the endless world with destinations and rarity — P3b', () => {
   });
 
   /**
-   * The timing decision survives the loot: interior optimum, cliff past it.
-   * And the optimum MOVED — caches are lifelines out on the plane, so the
-   * sustainable pocket grew from ~15 back to ~40 (bank40's median was ZERO on
-   * the bare 30/70 plane). Destinations do not just decorate the economy, they
-   * are part of it; the cliff at 80 still ends the greedy line at nothing.
+   * The timing decision, under M1's economy: an interior optimum AT THE CAP.
+   *
+   * The old cliff (bank80 scored zero, dying with its fortune unpopped) was a
+   * casualty of the hard clock — a known ending makes one giant cash-in
+   * arithmetic rather than a gamble, and bank80 promptly scored 150k. The cap
+   * on the size bonus replaces it with a gentler, fairer discipline: past 20
+   * a pocket earns worth but no more multiplier, so cashing at the cap beats
+   * hoarding. Hoarding is no longer suicide; it is merely worse, which is
+   * what a real optimum looks like. See LOG.md, Session 11.
    */
-  it('keeps the interior optimum, moved outward by the caches', () => {
-    expect(shipped(bank40).medianPoints).toBeGreaterThan(shipped(bank15).medianPoints);
-    expect(shipped(bank15).medianPoints).toBeGreaterThan(shipped(bank3).medianPoints * 3);
-    expect(shipped(bank80).medianPoints).toBeLessThan(shipped(bank15).medianPoints / 10);
+  it('puts the optimum at the size cap, not beyond it', () => {
+    const cap = shipped(bank20).medianPoints;
+    expect(cap).toBeGreaterThan(shipped(bank3).medianPoints * 3);
+    expect(cap).toBeGreaterThanOrEqual(shipped(bank40).medianPoints);
+    expect(cap).toBeGreaterThanOrEqual(shipped(bank80).medianPoints);
+  });
+
+  /**
+   * Gate B's structural evidence, pinned so a future tuning cannot quietly
+   * undo it. Before M1 every policy took tiles 94-98% of the time and no
+   * content setting moved it, because an economy that ends in bankruptcy
+   * makes the marginal harvest a survival harvest by definition. With the
+   * hard clock, cache-funded survival and the size cap, lines that harvest as
+   * they go now mix. The gate's own verdict still belongs to a human's log —
+   * this only proves the choice is available to make.
+   */
+  it('offers both payouts to a player who harvests as they go', () => {
+    for (const policy of [rush, trickle]) {
+      const share = shipped(policy).tilesShare;
+      expect(share).not.toBeNull();
+      expect(share!).toBeLessThanOrEqual(0.7);
+      expect(share!).toBeGreaterThanOrEqual(0.3);
+    }
+  });
+
+  /**
+   * Gate D's subject, measured: the run's biggest number lands late. The clock
+   * is what guarantees it — a run that ends on a known schedule saves its
+   * biggest pocket for the end rather than dribbling value out.
+   */
+  it('peaks near the end', () => {
+    for (const policy of [bank20, chooser, seeker]) {
+      expect(shipped(policy).arc).toBeGreaterThanOrEqual(0.55);
+    }
   });
 
   /**
    * The compass is not decoration: a line that drifts toward destinations
-   * reaches them (median two claims a run) while staying in bank15's league —
-   * within 3×, not 2×, since the yellow-company buff fattened mixed pockets
-   * and bank15 is the line that lives in them. Whether following the compass
-   * FEELS worth it is the phone's question, not this one.
+   * reaches them — and now that caches fund survival, it reaches MORE of them
+   * than anyone else while scoring in the same league.
    */
   it('lets a destination-follower keep pace while actually arriving', () => {
-    expect(shipped(seeker).medianClaims).toBeGreaterThanOrEqual(1);
-    expect(shipped(seeker).medianPoints * 3).toBeGreaterThan(shipped(bank15).medianPoints);
+    expect(shipped(seeker).medianClaims).toBeGreaterThanOrEqual(3);
+    expect(shipped(seeker).medianPoints * 3).toBeGreaterThan(shipped(bank20).medianPoints);
   });
 
-  it('keeps the dead exploits dead', () => {
-    expect(shipped(farm).medianPoints).toBeLessThan(shipped(bank15).medianPoints / 10);
-    expect(shipped(survivor).medianPoints).toBeLessThan(shipped(bank15).medianPoints / 10);
+  it('keeps the never-score line worthless', () => {
+    expect(shipped(survivor).medianPoints).toBeLessThan(shipped(bank20).medianPoints / 10);
+  });
+
+  it('ends every run on the clock or before it', () => {
+    for (const policy of POLICIES) {
+      expect(shipped(policy).medianPlacements).toBeLessThanOrEqual(ENDLESS_TUNING.runLength);
+    }
   });
 });
