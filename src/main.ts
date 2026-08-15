@@ -9,12 +9,13 @@ import {
   type FeatureId,
   type FeatureSet,
 } from '@meta/features';
+import { decodeRun, encodeRun } from '@meta/save';
 import { AssetBook } from '@render/assets';
 import { PixiRenderer } from '@render/PixiRenderer';
 import { applyTheme } from '@theme/apply';
 import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
 import type { Orientation, Theme } from '@theme/tokens';
-import { Game, type Elements } from '@ui/game';
+import { Game, type Elements, type GameHooks } from '@ui/game';
 
 // v2, 2026-08-14: the endless world became the default. Any device that ever
 // visited before has `world.endless: false` explicitly persisted under v1,
@@ -25,6 +26,10 @@ import { Game, type Elements } from '@ui/game';
 const FEATURE_STORAGE_KEY = 'tiles.features.v2';
 const THEME_STORAGE_KEY = 'tiles.theme.v1';
 const HEX_STORAGE_KEY = 'tiles.hex.v1';
+/** The run in progress (or just ended), saved after every action. */
+const RUN_STORAGE_KEY = 'tiles.run.v1';
+/** Personal bests, per world: {"endless": 1234, "bounded": 99}. */
+const BEST_STORAGE_KEY = 'tiles.best.v1';
 
 /**
  * Flags are resolved once, here at the edge, and passed downward as data. The
@@ -112,15 +117,76 @@ function rememberTheme(id: string): void {
  *
  * The engine is deterministic precisely so that "it did something odd on my
  * phone" can become "run this seed", and that is worth nothing unless the seed
- * can be set from the address bar and read back off the screen.
+ * can be set from the address bar and read back off the screen. An EXPLICIT
+ * seed also outranks a saved run — a shared seed link must open that run.
  */
-function resolveSeed(): number {
+function askedSeed(): number | null {
   const asked = new URLSearchParams(location.search).get('seed');
-  if (asked !== null) {
-    const parsed = Number(asked);
-    if (Number.isFinite(parsed)) return Math.trunc(parsed);
+  if (asked === null) return null;
+  const parsed = Number(asked);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+}
+
+/**
+ * The run keeper: resume, autosave, records, and the one way to start over.
+ * All of it lives here at the edge — the game reports through hooks and never
+ * learns storage exists, the same split as the feature flags.
+ */
+function runKeeping(): GameHooks & { savedSeed: number | null } {
+  let saved = null;
+  try {
+    saved = askedSeed() === null ? decodeRun(localStorage.getItem(RUN_STORAGE_KEY)) : null;
+  } catch {
+    // Private mode. Every run is its own life; that is also a game.
   }
-  return Date.now() & 0x7fffffff;
+
+  return {
+    resume: saved,
+    savedSeed: saved?.rootSeed ?? null,
+
+    onChange: (state) => {
+      try {
+        localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
+      } catch {
+        // Storage full or forbidden — the run simply is not kept.
+      }
+    },
+
+    best: (world, points) => {
+      let bests: Record<string, number> = {};
+      try {
+        const parsed: unknown = JSON.parse(localStorage.getItem(BEST_STORAGE_KEY) ?? '{}');
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === 'number') bests[k] = v;
+          }
+        }
+      } catch {
+        bests = {};
+      }
+      const standing = bests[world] ?? 0;
+      const isNew = points > standing;
+      const best = Math.max(points, standing);
+      try {
+        localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify({ ...bests, [world]: best }));
+      } catch {
+        // A record that cannot be written is still a run that happened.
+      }
+      return { best, isNew };
+    },
+
+    newRun: () => {
+      try {
+        localStorage.removeItem(RUN_STORAGE_KEY);
+      } catch {
+        // Nothing to clear is fine too.
+      }
+      const url = new URL(location.href);
+      url.searchParams.delete('seed');
+      url.searchParams.delete('ff');
+      location.href = url.toString();
+    },
+  };
 }
 
 function prefersReducedMotion(): boolean {
@@ -205,6 +271,7 @@ function mountSettings(
   host: HTMLElement,
   initial: FeatureSet,
   live: { themesHost: HTMLElement; theme: Theme; facing: Orientation | null },
+  startNewRun: () => void,
 ): void {
   let features = initial;
 
@@ -276,25 +343,24 @@ function mountSettings(
     return row;
   });
 
-  // A fresh run under whatever the switches now say. Drops ?seed and ?ff so
-  // the STORED settings, not the address bar, decide what comes next.
+  // A fresh run under whatever the switches now say — the same path as the
+  // end screen's button, so it also clears the saved run and drops ?seed and
+  // ?ff, leaving the STORED settings to decide what comes next.
   const restart = document.createElement('button');
   restart.type = 'button';
   restart.id = 'new-run';
   restart.textContent = 'NEW RUN with these settings';
-  restart.addEventListener('click', () => {
-    const url = new URL(location.href);
-    url.searchParams.delete('seed');
-    url.searchParams.delete('ff');
-    location.href = url.toString();
-  });
+  restart.addEventListener('click', startNewRun);
 
   host.replaceChildren(heading, intro, ...rows, restart);
 }
 
 async function main(): Promise<void> {
   const features = resolveFeatures();
-  const seed = resolveSeed();
+  const keeper = runKeeping();
+  // Resumed run > shared seed link > a fresh roll. The stamp shows whichever
+  // seed actually ended up on the board.
+  const seed = keeper.savedSeed ?? askedSeed() ?? Date.now() & 0x7fffffff;
   const facing = resolveFacing();
   const picked = resolveTheme(resolveThemeId());
   // The facing override rides on top of the theme as data, so every consumer —
@@ -343,15 +409,21 @@ async function main(): Promise<void> {
 
   // The settings half of the ? panel — mounted here rather than in Game
   // because flags are resolved at this edge and stay out of the engine.
-  mountSettings(required('help-meta'), features, { themesHost: required('themes'), theme, facing });
+  mountSettings(
+    required('help-meta'),
+    features,
+    { themesHost: required('themes'), theme, facing },
+    keeper.newRun ?? (() => location.reload()),
+  );
 
   const renderer = new PixiRenderer(theme, AssetBook.empty(), prefersReducedMotion());
   await renderer.mount(elements.board);
 
-  // The world is a flag until playing P3 decides its fate — `?ff=world.endless`
-  // and the same link's phone is on the plane; without it, the shipped game.
+  // The world flag decides a NEW run's economy; a resumed run plays under the
+  // tuning it was saved with, by design — rebalances never re-score a run in
+  // progress. `?ff=-world.endless` is the bounded game.
   const tuning = isEnabled(features, 'world.endless') ? ENDLESS_TUNING : TUNING;
-  new Game(renderer, elements, seed, theme, tuning).start();
+  new Game(renderer, elements, seed, theme, tuning, keeper).start();
 
   // Art loads AFTER the first playable frame, never before it. Every slot is
   // empty today and the procedural surfaces are a complete board; a bitmap that

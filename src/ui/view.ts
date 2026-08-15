@@ -213,6 +213,19 @@ export type HudView = {
   readonly ended: boolean;
   /** Gate D: the cause of death, in one sentence. */
   readonly epitaph: string | null;
+  /**
+   * The run, summarised for its end screen — Gate D's arc made visible.
+   * `biggestAt` is where the run's biggest harvest landed as a fraction of
+   * its length: near 1 is an arc, near 0.5 is a plateau, and the player
+   * seeing that number is the gate's own question asked of every run.
+   * Null while the run lives.
+   */
+  readonly summary: {
+    readonly biggestHarvest: number;
+    readonly biggestAt: number;
+    readonly claims: number;
+    readonly luck: number;
+  } | null;
 };
 
 export function toHudView(
@@ -267,6 +280,31 @@ export function toHudView(
 
     ended: state.phase === 'ended',
     epitaph: state.phase === 'ended' ? epitaphFor(state) : null,
+    summary: state.phase === 'ended' ? summariseRun(state) : null,
+  };
+}
+
+/** The end screen's numbers, from the log the engine already keeps. */
+function summariseRun(state: GameState): NonNullable<HudView['summary']> {
+  let biggestHarvest = 0;
+  let biggestPlacement = 0;
+  for (const h of state.log.harvests) {
+    if (h.points > biggestHarvest) {
+      biggestHarvest = h.points;
+      biggestPlacement = h.at;
+    }
+  }
+
+  let claims = 0;
+  for (const cell of Object.values(state.cells)) {
+    if (cell.kind === 'landmark' && cell.claimed) claims++;
+  }
+
+  return {
+    biggestHarvest,
+    biggestAt: state.placements === 0 ? 0 : biggestPlacement / state.placements,
+    claims,
+    luck: state.luck,
   };
 }
 

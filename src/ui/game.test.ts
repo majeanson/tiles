@@ -2,9 +2,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ENDLESS_TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from '@engine/hex';
+import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
+import type { GameState } from '@engine/state';
 import type { BoardView, Renderer } from '@render/Renderer';
-import { Game, type Elements } from './game';
+import { Game, type Elements, type GameHooks } from './game';
 
 /**
  * The wiring, checked without a canvas.
@@ -58,7 +60,11 @@ class StubRenderer implements Renderer {
   }
 }
 
-function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer; el: Elements } {
+function build(
+  seed = 4,
+  tuning?: Tuning,
+  hooks?: GameHooks,
+): { game: Game; renderer: StubRenderer; el: Elements } {
   document.body.innerHTML = `
     <header id="stats"></header>
     <div id="board">
@@ -106,7 +112,7 @@ function build(seed = 4, tuning?: Tuning): { game: Game; renderer: StubRenderer;
   };
 
   const renderer = new StubRenderer();
-  return { game: new Game(renderer, el, seed, undefined, tuning), renderer, el };
+  return { game: new Game(renderer, el, seed, undefined, tuning, hooks), renderer, el };
 }
 
 /** A pointer event with a stable id, so gestures can be composed by hand. */
@@ -488,5 +494,76 @@ describe('the camera, and staying oriented', () => {
     expect(ripeKeys(ctx.game.state.cells).length).toBeGreaterThan(0);
     expect(ctx.el.harvestTiles.hidden).toBe(false);
     expect(ctx.el.hint.textContent).toMatch(/pocket ready/i);
+  });
+});
+
+describe('keeping the run, and ending it properly', () => {
+  it('resumes a saved state instead of starting fresh', () => {
+    let saved: GameState = newRun(9, ENDLESS_TUNING);
+    saved = reduce(saved, { type: 'PLACE', hex: key(1, 0) });
+
+    const ctx = build(1, ENDLESS_TUNING, { resume: saved });
+    ctx.game.start();
+    expect(ctx.game.state).toBe(saved);
+    expect(ctx.game.state.placements).toBe(1);
+  });
+
+  it('offers every change to the shell, so a crash costs one tap at most', () => {
+    const kept: GameState[] = [];
+    const ctx = build(7, ENDLESS_TUNING, { onChange: (s) => kept.push(s) });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(kept).toHaveLength(1);
+    expect(kept[0]).toBe(ctx.game.state);
+
+    // An illegal tap changes nothing and saves nothing.
+    ctx.renderer.nextHit = key(0, 0);
+    tap(ctx.el.board);
+    expect(kept).toHaveLength(1);
+  });
+
+  it('shows the arc, the best, and the way to go again', () => {
+    const ended: GameState = { ...newRun(9, ENDLESS_TUNING), phase: 'ended', death: 'broke' };
+    let starts = 0;
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: ended,
+      best: (world, points) => {
+        expect(world).toBe('endless');
+        expect(points).toBe(0);
+        return { best: 999, isNew: false };
+      },
+      newRun: () => {
+        starts++;
+      },
+    });
+    ctx.game.start();
+
+    expect(ctx.el.end.hidden).toBe(false);
+    const text = ctx.el.end.textContent ?? '';
+    expect(text).toMatch(/0 pts/);
+    expect(text).toMatch(/best 999 pts/);
+    expect(text).toMatch(/placements/);
+
+    const again = ctx.el.end.querySelector('#end-new-run');
+    expect(again).not.toBeNull();
+    (again as HTMLButtonElement).click();
+    expect(starts).toBe(1);
+  });
+
+  it('celebrates a new best as one', () => {
+    const ended: GameState = {
+      ...newRun(9, ENDLESS_TUNING),
+      phase: 'ended',
+      death: 'broke',
+      points: 500,
+    };
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: ended,
+      best: () => ({ best: 500, isNew: true }),
+    });
+    ctx.game.start();
+    expect(ctx.el.end.textContent).toMatch(/NEW BEST — 500 pts/);
   });
 });

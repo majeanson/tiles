@@ -6,14 +6,14 @@ Established before any code, so that no work is done twice and no polish lands
 on an unproven design. **A gate is not passed until it is written down here as
 passed, with its evidence.**
 
-| Gate                         | Rule                                                                               | Passes when                                                                                                                    | State                     |
-| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
-| **A — The minute is fun**    | No pops, no regions, no meta until placing a tile feels good                       | 20 consecutive placements with placeholder art feel good, on the phone                                                         | **playable, unjudged**    |
-| **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | open, mechanism confirmed |
-| **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**    |
-| **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | open                      |
-| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | open                      |
-| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | open                      |
+| Gate                         | Rule                                                                               | Passes when                                                                                                                    | State                      |
+| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| **A — The minute is fun**    | No pops, no regions, no meta until placing a tile feels good                       | 20 consecutive placements with placeholder art feel good, on the phone                                                         | **PASSED (2026-08-15)**    |
+| **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | **failing in human hands** |
+| **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**     |
+| **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | open                       |
+| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | open                       |
+| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | open                       |
 
 ## Sessions
 
@@ -705,6 +705,54 @@ adjusted honestly: the P3b suite runs 12 seeds (the powers raised bank40's
 variance — at 6 seeds its median lands on whichever side of the cliff the
 coin fell) and seeker's "keeps pace" margin widened to 3× (the yellow buff
 fattened bank15's mixed pockets more than the compass line).
+
+**Addendum 7, 2026-08-15 — Session 10: first full-run debrief, two gates
+move, and the run gets kept.**
+
+Marc played a full run and answered the debrief prompts. The evidence:
+
+- **Gate A — PASSED.** "Placing feels right" after a full run on the phone
+  against prod, with placeholder art. The minute is fun; the gate's exact
+  condition, met by its arbiter. Three sessions of texture (powers, biomes,
+  destinations) between the gate being set and being passed.
+- **Gate B — failing in human hands, cause named.** Marc took TILES almost
+  every harvest — over the gate's 70% line. His why, from the prompts:
+  points felt worthless early, and he never felt SAFE enough to take them —
+  "we should add roguelite elements maybe." The harness always said the
+  mixture wins; a human's risk perception says otherwise. Fix directions
+  recorded: P4b's territory starting-perks (soften the start), possibly an
+  early points taste (quests/sites), and a look at whether the low-tiles
+  guide line cries wolf. Not fixed this session; the gate now has a real
+  target instead of a hope.
+- **Worst moment: a boring stretch mid-run.** The all-survival middle is
+  flat — consistent with mostly-tiles play being the flat line. This is the
+  next CONTENT session's target (quests at landmarks are the queued
+  candidate: mid-run goals with payoffs).
+
+**Built this session — the run is kept, and it ends properly (Gate D's
+screen).** `meta/save.ts`: a run autosaves after every action (state was
+JSON-ready since Session 0; decoding is the work — structural validation,
+corrupt saves refused whole). Reload resumes exactly, mid-run or at the end
+screen; a resumed run plays under its SAVED tuning, so rebalances never
+re-score a run in progress; an explicit `?seed=` link outranks the save.
+The end screen shows the arc: score big, cause of death, reach, placements,
+**biggest pop and WHERE it landed as % of the run** (Gate D's own question,
+asked of every run), destinations reached, luck, the **personal best per
+world** (NEW BEST called out), and one button — NEW RUN — sharing the same
+path as the settings button (clears the save, drops `?seed`/`?ff`).
+Gate D still needs its judgment (does the biggest number come near the
+end, per Marc's runs), but the screen that answers it now exists.
+
+**Planned this session — P4, thoroughly (`ideas/persistent-world.md`).**
+Marc's calls: revealed ground + claimed territories persist; caches/sites
+re-arm every run; one world per device with Abandon; unlocks phased as
+places-become-features + atlas + territory starting-perks (the roguelite
+answer to Gate B). Architecture drafted pure: memory is data INTO newRun,
+fog memory is view-level, terrain re-derives from the hash so only keys are
+stored. Three phases, one question each. P4a is the next big build.
+
+276 tests green (was 267): save round-trip and refusal, resume, autosave
+on every change and only on change, the end screen's numbers and best-line.
 
 **Also: walls no longer read as fog.** Marc asked for blocked ground to be
 clearly defined against the void in all skins; the numbers agreed — in all

@@ -429,6 +429,33 @@ button:disabled {
   color: var(--ink, #e8ecf4);
 }
 
+#end p {
+  margin: 0 0 6px;
+}
+
+.end-score {
+  font-family: var(--font-display, inherit);
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.end-best {
+  color: var(--accent, #d7b45a);
+  font-size: 12px;
+  letter-spacing: var(--label-tracking, 0.04em);
+}
+
+.end-facts {
+  color: var(--ink-dim, #8a91a0);
+  font-size: 12px;
+}
+
+#end-new-run {
+  margin-top: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+
 #themes {
   flex: 0 0 auto;
   display: flex;

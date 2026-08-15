@@ -44,7 +44,23 @@ one-line decision): tiles.marcportal.com now opens the plane, no query
 string. Session 4 said the worlds question would be decided by playing;
 Marc played both and chose. `?ff=-world.endless` is the bounded game;
 feature storage moved to v2 so stale persisted defaults cannot shadow the
-new one. Next: Marc plays the bare URL on the phone.
+new one.
+
+**2026-08-15 — GATE A PASSED; Gate B failing in human hands; the run is
+kept.** Marc's full-run debrief: placing feels right (A's condition, met);
+harvests were almost all TILES — over B's 70% line — because points felt
+worthless early and never safe ("add roguelite elements maybe"); worst
+moment was a boring mid-run stretch (next content session's target, quests
+the queued candidate). Built: save/resume (`meta/save.ts`, autosave every
+action, corrupt saves refused whole, resumed runs keep their saved tuning)
+and Gate D's end screen (score, arc — biggest pop and where it landed —
+claims, luck, personal best per world, NEW RUN). Planned:
+`ideas/persistent-world.md` — P4 in three phases from Marc's decisions
+(ground + territories persist, caches re-arm, one world per device,
+territory starting-perks as the Gate B roguelite fix). Powers rebalanced
+same day (red+walls, yellow-counts-all — spread halved) and walls lifted
+clear of the fog in all skins, pinned. 276 tests. Next build: P4a, the
+remembered world.
 
 ## Shipped and settled
 

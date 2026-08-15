@@ -42,6 +42,25 @@ export type Elements = {
   readonly helpManual: HTMLElement;
 };
 
+/**
+ * What the shell (main.ts) lends the game: persistence and records. All
+ * optional so the headless tests and the gallery can run the loop bare.
+ * The game never touches localStorage itself — it reports, the shell keeps.
+ */
+export type GameHooks = {
+  /** A saved run to resume instead of starting fresh. Plays under ITS tuning. */
+  readonly resume?: GameState | null;
+  /** Called with the new state after every action that changed it. */
+  readonly onChange?: (state: GameState) => void;
+  /**
+   * Submit the finished run's points; returns the standing best and whether
+   * this run set it. Called once per ended run.
+   */
+  readonly best?: (world: string, points: number) => { best: number; isNew: boolean };
+  /** Start a fresh run under the current settings. Wired to the end screen. */
+  readonly newRun?: () => void;
+};
+
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
 const POWER_NAMES: Record<Colour, string> = {
   green: 'crowds',
@@ -90,17 +109,27 @@ export class Game {
    */
   #spotlight: Colour | null = null;
 
+  readonly #hooks: GameHooks;
+
+  /**
+   * The best-line for the end screen, computed once per ended run so the
+   * records hook is submitted exactly once however many times ended renders.
+   */
+  #bestLine: string | null = null;
+
   constructor(
     renderer: Renderer,
     elements: Elements,
     seed: number,
     theme: Theme = PLACEHOLDER,
     tuning: Tuning = TUNING,
+    hooks: GameHooks = {},
   ) {
     this.#renderer = renderer;
     this.#el = elements;
     this.#theme = theme;
-    this.#state = newRun(seed, tuning);
+    this.#hooks = hooks;
+    this.#state = hooks.resume ?? newRun(seed, tuning);
 
     for (const colour of COLOURS) {
       try {
@@ -484,6 +513,10 @@ export class Game {
     // the "that did nothing" check — no need to ask permission before acting.
     if (next === this.#state) return;
     this.#state = next;
+    // Every real change is offered to the shell to keep. Saving after each
+    // action rather than on some timer means the most a crash can eat is one
+    // tap — a run is 10-20 minutes of a phone's attention, and phones wander.
+    this.#hooks.onChange?.(next);
     this.render();
   }
 
@@ -542,7 +575,62 @@ export class Game {
     this.#el.leave.disabled = !hud.canLeave;
 
     this.#el.end.hidden = !hud.ended;
-    if (hud.epitaph !== null) this.#el.end.textContent = hud.epitaph;
+    if (hud.ended) this.#renderEnd(hud);
+  }
+
+  /**
+   * The run, ended — Gate D's screen. The cause of death in one sentence,
+   * then the arc in numbers: the score, how far, the biggest pop and WHERE it
+   * landed in the run (near the end is an arc; the gate's question, asked of
+   * every run), what was claimed, and the standing best so a finished run
+   * immediately poses the next one's question. One button: again.
+   */
+  #renderEnd(hud: HudView): void {
+    if (this.#bestLine === null && this.#hooks.best !== undefined) {
+      const record = this.#hooks.best(this.#state.tuning.world, hud.points);
+      this.#bestLine = record.isNew ? `NEW BEST — ${record.best} pts` : `best ${record.best} pts`;
+    }
+
+    const line = (cls: string, text: string): HTMLElement => {
+      const p = document.createElement('p');
+      p.className = cls;
+      p.textContent = text;
+      return p;
+    };
+
+    const score = line('end-score', `${hud.points} pts`);
+    const parts: HTMLElement[] = [line('end-epitaph', hud.epitaph ?? ''), score];
+    if (this.#bestLine !== null) parts.push(line('end-best', this.#bestLine));
+
+    const s = hud.summary;
+    if (s !== null) {
+      const facts: string[] = [
+        `${hud.depthLabel.toLowerCase()} ${hud.depthValue}`,
+        `${hud.placements} placements`,
+      ];
+      if (s.biggestHarvest > 0) {
+        facts.push(
+          `biggest pop ${s.biggestHarvest} pts at ${Math.round(s.biggestAt * 100)}% of the run`,
+        );
+      }
+      if (s.claims > 0) facts.push(`${s.claims} destination${s.claims === 1 ? '' : 's'} reached`);
+      if (s.luck > 0) facts.push(`luck ${s.luck}`);
+      parts.push(line('end-facts', facts.join(' · ')));
+    }
+
+    if (this.#hooks.newRun !== undefined) {
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.id = 'end-new-run';
+      again.textContent = 'NEW RUN';
+      const start = this.#hooks.newRun;
+      again.addEventListener('click', () => {
+        start();
+      });
+      parts.push(again);
+    }
+
+    this.#el.end.replaceChildren(...parts);
   }
 
   /**
