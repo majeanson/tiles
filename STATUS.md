@@ -59,8 +59,17 @@ claims, luck, personal best per world, NEW RUN). Planned:
 (ground + territories persist, caches re-arm, one world per device,
 territory starting-perks as the Gate B roguelite fix). Powers rebalanced
 same day (red+walls, yellow-counts-all — spread halved) and walls lifted
-clear of the fog in all skins, pinned. 276 tests. Next build: P4a, the
-remembered world.
+clear of the fog in all skins, pinned. 276 tests.
+
+**Same day — the finish line exists: `ROADMAP.md`.** Marc set the goal:
+1.0 is a public web release — real name, PWA, offline, share-your-wins,
+silent (audio post-1.0), no backend. Six milestones with per-milestone
+definitions of done: M1 Gates B+D (quests, choice instrumentation), M2 the
+remembered world (P4a), M3 roguelite spine (P4b, registry honesty), M4
+places + content queue (Gate F), M5 identity (Gate E, a real name), M6
+shipped to strangers (PWA, onboarding, share, the stranger test). The 1.0
+checklist is in the roadmap; estimates 11–18 sessions. **Current
+milestone: M1.**
 
 ## Shipped and settled
 

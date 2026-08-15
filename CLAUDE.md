@@ -3,6 +3,8 @@
 Read `STATUS.md` first — the checkpoint ledger of what is done **and verified**,
 so shipped ground doesn't get re-audited. `LOG.md` holds the gates and the
 per-session record. `DESIGN.md` records only what play has actually proven.
+`ROADMAP.md` is the finish line — the milestones to 1.0 and the definition of
+done Marc set on 2026-08-15; new work should serve the current milestone.
 
 `ideas/v1-archive/` is the unbuilt v1 design (Hearthfall). It is **reference,
 not spec** — its economy was never run through a spreadsheet and breaks around
