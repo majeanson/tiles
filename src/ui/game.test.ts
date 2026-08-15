@@ -74,6 +74,7 @@ function build(
         <button id="zoom-out">−</button>
         <button id="zoom-fit">FIT</button>
       </div>
+      <div id="toast" hidden></div>
       <div id="help-panel" hidden>
         <div id="help-manual"></div>
         <div id="help-meta"></div>
@@ -111,6 +112,7 @@ function build(
     help: pick<HTMLButtonElement>('help'),
     helpPanel: pick('help-panel'),
     helpManual: pick('help-manual'),
+    toast: pick('toast'),
   };
 
   const renderer = new StubRenderer();
@@ -739,5 +741,101 @@ describe('a stranger arriving', () => {
     for (const chip of [...ctx.el.colours.children]) {
       expect(chip.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('the curtain, and contextual help', () => {
+  it('takes no gesture at all while the manual is open', () => {
+    const ctx = build(7, ENDLESS_TUNING);
+    ctx.game.start();
+    ctx.el.help.click();
+    expect(ctx.el.helpPanel.hidden).toBe(false);
+
+    // A tap that lands on the live 8px frame around the panel used to reach
+    // the board and place a tile as the manual closed.
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.game.state.placements).toBe(0);
+
+    // Dragging and the wheel are just as ignored.
+    pointer(ctx.el.board, 'pointerdown', 0, 0);
+    pointer(ctx.el.board, 'pointermove', 60, 0);
+    pointer(ctx.el.board, 'pointerup', 60, 0);
+    expect(ctx.renderer.pans).toHaveLength(0);
+
+    // Closed again, the board answers as usual.
+    ctx.el.helpPanel.click();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.game.state.placements).toBe(1);
+  });
+
+  it('explains a glyph you tap instead of doing nothing', () => {
+    const base = newRun(7, ENDLESS_TUNING);
+    const site = key(4, 0);
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: {
+        ...base,
+        cells: { ...base.cells, [site]: { kind: 'landmark', reward: 'site', claimed: false } },
+      },
+    });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = site;
+    tap(ctx.el.board);
+    expect(ctx.el.toast.hidden).toBe(false);
+    expect(ctx.el.toast.textContent).toMatch(/★/);
+    expect(ctx.el.toast.textContent).toMatch(/SITE/);
+    expect(ctx.el.toast.textContent).toMatch(/bounty/i);
+    // Explaining is not playing.
+    expect(ctx.game.state.placements).toBe(0);
+
+    // And it goes away when you tap it.
+    ctx.el.toast.click();
+    expect(ctx.el.toast.hidden).toBe(true);
+  });
+
+  it('describes walls, stone and native ground in the direction’s words', () => {
+    const base = newRun(7, ENDLESS_TUNING);
+    const wall = key(6, 0);
+    const stone = key(7, 0);
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: {
+        ...base,
+        cells: { ...base.cells, [wall]: { kind: 'wall' }, [stone]: { kind: 'stone' } },
+      },
+    });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = wall;
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toMatch(/wall/i);
+
+    ctx.renderer.nextHit = stone;
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toMatch(/spent ground/i);
+  });
+
+  it('announces a claim, and names what a shrine woke', () => {
+    // A shrine one hex from a legal spot: placing beside it claims it.
+    const base = newRun(7, ENDLESS_TUNING);
+    const shrine = key(2, 0);
+    const ctx = build(1, ENDLESS_TUNING, {
+      resume: {
+        ...base,
+        cells: { ...base.cells, [shrine]: { kind: 'landmark', reward: 'shrine', claimed: false } },
+      },
+      unlockLabel: (nth) => (nth === 0 ? 'A fourth draft card' : null),
+    });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+
+    expect(ctx.el.toast.hidden).toBe(false);
+    expect(ctx.el.toast.textContent).toMatch(/◈/);
+    expect(ctx.el.toast.textContent).toMatch(/SHRINE WOKEN/);
+    expect(ctx.el.toast.textContent).toMatch(/A fourth draft card/);
+    expect(ctx.el.toast.textContent).toMatch(/next run/i);
   });
 });

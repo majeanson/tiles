@@ -304,7 +304,26 @@ export type Theme = {
  * torchlit's yellow landed at 0.147 and read fine, its blue at 0.039 and was
  * invisible. A field you cannot see is a rule you cannot use.
  */
-export const MIN_FIELD_LIFT = 0.12;
+export const MIN_FIELD_LIFT = 0.2;
+
+/**
+ * The same colour at full strength: every channel scaled up until the
+ * brightest one is maxed.
+ *
+ * This is the difference between "lighter" and "brighter", and it is the
+ * whole fix for Marc's second report — that blue and green fields were still
+ * hard to tell apart. Mixing toward white raises lightness by REMOVING
+ * colour, so four brightened terrains converge on four pale greys and the
+ * only thing that made a field say its name is the first thing spent. Scaling
+ * to full saturation raises lightness while keeping the hue exactly, so blue
+ * gets bluer rather than paler.
+ */
+function vivid(c: Rgb): Rgb {
+  const channels = [(c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff];
+  const peak = Math.max(...channels, 1);
+  const scaled = channels.map((v) => Math.min(255, Math.round((v * 255) / peak)));
+  return ((scaled[0] ?? 0) << 16) | ((scaled[1] ?? 0) << 8) | (scaled[2] ?? 0);
+}
 
 /**
  * The dots that mark ground native to a colour, as ink and alpha.
@@ -323,13 +342,16 @@ export const MIN_FIELD_LIFT = 0.12;
 export function fieldDots(theme: Theme, colour: Colour): { ink: Rgb; alpha: number } {
   const ground = luma(theme.empty.fill);
 
-  let ink = theme.terrain[colour].fill;
+  // Full saturation first — hue kept, lightness bought, the four kept apart.
+  // Only if that still is not enough does white get involved, and by then the
+  // colour is as vivid as it can be, so the wash is as small as possible.
+  let ink = vivid(theme.terrain[colour].fill);
   for (let step = 0; step < 12 && luma(ink) - ground < 0.45; step++) {
     ink = mix(ink, 0xffffff, 0.1);
   }
 
   const gap = Math.max(0.001, luma(ink) - ground);
-  return { ink, alpha: Math.min(0.5, Math.max(0.12, MIN_FIELD_LIFT / gap)) };
+  return { ink, alpha: Math.min(0.65, Math.max(0.18, MIN_FIELD_LIFT / gap)) };
 }
 
 /**

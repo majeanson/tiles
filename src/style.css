@@ -529,3 +529,44 @@ button.quiet {
   letter-spacing: 0.06em;
   color: var(--ink, #e8ecf4);
 }
+
+/* ------------------------------------------------------------------ toast */
+
+/*
+ * What just happened, said over the board. Loud enough to read at a glance
+ * and gone on a tap — it exists because a claim announced in the faint hint
+ * line read as "some text appeared" rather than "that star did this".
+ * `white-space: pre-line` because every note leads with its glyph on its own
+ * line, which is what ties the words to the thing on the board.
+ */
+#toast {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  padding: 12px 14px;
+  border: 1px solid var(--accent, #c79a4b);
+  border-left-width: 4px;
+  border-radius: 5px;
+  background: var(--panel, #1e222b);
+  color: var(--ink, #e8ecf4);
+  font-family: var(--font-body, inherit);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-line;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #toast {
+    animation: toast-in 140ms ease-out;
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+}

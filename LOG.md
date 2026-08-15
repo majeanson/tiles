@@ -1167,3 +1167,45 @@ a floor on the effective lift, and a check that brightening never converges
 the four on one pale grey.
 
 **Verified:** 322 tests green (was 314); lint, types, build clean.
+
+---
+
+### Session 18 — Four things a play session found
+
+All four came from Marc playing the deployed build, and three of them were
+bugs no test could have caught because no test has a thumb.
+
+**1. The manual was a curtain with a hole in it.** The help panel is inset
+inside `#board`, so its 8px frame was live board the whole time: closing the
+manual could place a tile you never meant, and taps near the edge went
+straight through. Gestures now refuse EVERYTHING while the panel is open —
+tap, drag, pinch, wheel. Pinned by test.
+
+**2. The field dots, again.** Session 17 equalised their brightness by mixing
+toward white, which raises lightness by REMOVING colour — so the four
+brightened terrains converged on four pale greys and blue and green read as
+each other. Fixed properly: `vivid()` scales every channel until the
+brightest one is maxed, which raises lightness while keeping the hue exactly,
+and the lift floor went 0.12 → 0.20. Blue is now a vivid blue rather than a
+pale one. The distinctness test got teeth: every pair of field inks must be
+at least 60 apart in summed RGB, not merely unequal.
+
+**3. Claiming something said nothing, and a shrine said least of all.** A
+shrine's whole payoff lands on the NEXT run, so waking one looked like
+nothing happening. Every claim now announces itself in a **popup over the
+board**, glyph first — `★  SITE CLAIMED` and what the bounty now wants,
+`◈  SHRINE WOKEN` and the name of the system it just switched on. Marc's
+words: it was unclear that the star was the thing giving the power, so the
+glyph leads and the words follow it. Five seconds, or a tap.
+
+**4. Contextual help, from a gesture that did nothing.** Tapping a hex you
+cannot build on was a silent no-op — the engine returned the same state and
+the screen said nothing, which is the worst possible answer to a deliberate
+action. That tap now EXPLAINS the hex: each destination glyph and what
+reaching it pays (including ones still glowing in the dark), walls, spent
+ground, native fields, an unripe tile and its worth, and ground the world
+only remembers. In the direction's words and this run's numbers, like
+everything else. It stays until you dismiss it, because you asked for it.
+
+**Verified:** 326 tests green (was 322). Typecheck, lint, format, build
+clean.

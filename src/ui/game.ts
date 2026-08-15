@@ -1,8 +1,9 @@
 import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
-import type { HexKey } from '@engine/hex';
+import { parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
-import { isRipe } from '@engine/rules';
-import type { Action, GameState } from '@engine/state';
+import { canPlaceAt, isRipe, worthOf } from '@engine/rules';
+import type { Action, GameState, LandmarkReward } from '@engine/state';
+import { destinationAt } from '@engine/world';
 import { bakeSurface } from '@render/bake';
 import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
@@ -43,6 +44,12 @@ export type Elements = {
   readonly helpPanel: HTMLElement;
   /** The manual's half of the panel. The settings half belongs to main.ts. */
   readonly helpManual: HTMLElement;
+  /**
+   * The popup over the board: what you just claimed, or what the glyph you
+   * tapped does. Loud enough to be read, gone on a tap or after a few
+   * seconds — the hint line was too quiet for something that just happened.
+   */
+  readonly toast: HTMLElement;
 };
 
 /**
@@ -95,6 +102,12 @@ export type GameHooks = {
    * way to share.
    */
   readonly share?: (state: GameState) => void | Promise<void>;
+  /**
+   * What the next shrine will unlock, by how many this run has already
+   * claimed. The ledger belongs to the world, which lives outside the game —
+   * the game only needs the words to put in the popup.
+   */
+  readonly unlockLabel?: (nth: number) => string | null;
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -113,6 +126,9 @@ const TAP_SLOP = 8;
 
 /** Label, value, and whether this is the number counting down to the end. */
 type Stat = { readonly id: string; readonly label: string; readonly value: string };
+
+/** How long a claim announcement stays up before it fades on its own. */
+const NOTE_MS = 5200;
 
 /** Circumradius of the hex drawn on a draft card, in CSS pixels. */
 const HAND_HEX_SIZE = 24;
@@ -146,6 +162,14 @@ export class Game {
   #spotlight: Colour | null = null;
 
   readonly #hooks: GameHooks;
+
+  /**
+   * The popup's text, and the timer that clears it. UI state: the engine
+   * neither knows nor cares that anything was announced.
+   */
+  #noteTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Shrines claimed this run, so each one announces the right unlock. */
+  #shrinesClaimed = 0;
 
   /**
    * The end screen's record lines, computed once per ended run so the book is
@@ -245,6 +269,11 @@ export class Game {
       this.#el.helpPanel.hidden = true;
     });
 
+    // The popup goes away on a tap, like everything else that covers a board.
+    this.#el.toast.addEventListener('click', () => {
+      this.#showNote(null);
+    });
+
     this.#el.harvestTiles.addEventListener('click', () => {
       this.#harvest('tiles');
     });
@@ -296,8 +325,14 @@ export class Game {
     // board-mounted button died on desktop), and treating its lift as a tap
     // could place a tile through the help panel. Anything that is not the
     // bare board or its canvas is somebody else's press.
-    const isBoardSurface = (target: EventTarget | null): boolean =>
-      target === board || target instanceof HTMLCanvasElement;
+    const isBoardSurface = (target: EventTarget | null): boolean => {
+      // While the manual is up, the board is behind a curtain and must not
+      // take a single gesture — not a tap, not a drag, not a wheel. The panel
+      // is inset inside `#board`, so its 8px frame was live board the whole
+      // time, and closing the manual could place a tile you never meant.
+      if (!this.#el.helpPanel.hidden) return false;
+      return target === board || target instanceof HTMLCanvasElement;
+    };
 
     board.addEventListener('pointerdown', (event) => {
       if (!isBoardSurface(event.target)) return;
@@ -373,11 +408,135 @@ export class Game {
     // worth?" — not a placement. The harvest buttons re-price to that pocket
     // and the board outlines it. Everywhere else a tap stays a placement.
     if (this.#state.tuning.world === 'endless' && isRipe(this.#state.cells, hex)) {
+      this.#showNote(null);
       this.#harvestAt = hex;
       this.render();
       return;
     }
+
+    // A tap you cannot build on used to be a silent no-op — the engine
+    // returned the same state and the screen said nothing, which is the
+    // worst answer a game can give a deliberate action. It is now the
+    // contextual help: tap a glyph, learn what it does. Nothing to learn a
+    // mode for, and it costs a gesture that did nothing before.
+    if (!canPlaceAt(this.#state.cells, hex)) {
+      // Sticky: you asked for this one, so it waits for you to be done.
+      this.#showNote(this.#describe(hex), true);
+      return;
+    }
+
+    this.#showNote(null);
     this.#dispatch({ type: 'PLACE', hex });
+  }
+
+  /**
+   * What a placement just claimed, if anything — announced in the hint line
+   * so the reward is legible at the moment it is earned.
+   */
+  #claimNote(before: GameState, after: GameState): string | null {
+    const t = after.tuning;
+    for (const [k, cell] of Object.entries(after.cells)) {
+      if (cell.kind !== 'landmark' || !cell.claimed) continue;
+      const was = before.cells[k];
+      if (was?.kind === 'landmark' && was.claimed) continue;
+
+      // Every announcement leads with the GLYPH it happened to, because the
+      // thing that pays and the words about it have to be the same object in
+      // the player's head — "a star gave me that" rather than "some text
+      // appeared".
+      switch (cell.reward) {
+        case 'cache':
+          return `+  CACHE CLAIMED\n+${t.cachePays} tiles, on the spot.`;
+        case 'site':
+          return (
+            `★  SITE CLAIMED\nPoints banked — and this star has set a BOUNTY: ` +
+            `pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it and take it as PTS for ×${t.questBonus}.`
+          );
+        case 'territory': {
+          const owns =
+            cell.colour === undefined ? 'its colour' : this.#theme.terrainNames[cell.colour];
+          return `◆  TERRITORY CLAIMED\nGround within ${t.territoryRadius} hexes is native to ${owns} now — and it stays yours between runs.`;
+        }
+        case 'shrine': {
+          const label = this.#hooks.unlockLabel?.(this.#shrinesClaimed) ?? null;
+          this.#shrinesClaimed++;
+          return label === null
+            ? '◈  SHRINE WOKEN\nThis world is fully awake — every unlock is yours.'
+            : `◈  SHRINE WOKEN\n${label}\nYours from your next run on, in this world for good.`;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * What that hex is, in one sentence, in the direction's own words and this
+   * run's own numbers. Covers the things a player can tap and not understand:
+   * the four destination glyphs (reached or still glowing in the dark), wall,
+   * stone, native ground, a tile not yet ripe, and ground this world only
+   * remembers.
+   */
+  #describe(hex: HexKey): string {
+    const t = this.#state.tuning;
+    const name = (c: Colour): string => this.#theme.terrainNames[c];
+    const cell = this.#state.cells[hex];
+
+    const destination = (
+      reward: LandmarkReward,
+      colour: Colour | null,
+      claimed: boolean,
+    ): string => {
+      if (reward === 'cache') {
+        return claimed
+          ? '+ CACHE — already claimed. It gave its tiles.'
+          : `+ CACHE — build a tile touching it to claim ${t.cachePays} tiles on the spot.`;
+      }
+      if (reward === 'site') {
+        return claimed
+          ? '★ SITE — already claimed.'
+          : `★ SITE — claim it for ${t.sitePays} pts × its distance, and it opens a bounty worth ×${t.questBonus}.`;
+      }
+      if (reward === 'shrine') {
+        const next = this.#hooks.unlockLabel?.(this.#shrinesClaimed) ?? null;
+        return claimed
+          ? '◈ SHRINE — woken. It switched a system on for this world.'
+          : `◈ SHRINE — claim it to unlock ${next ?? 'a system'} for this world, permanently.`;
+      }
+      const owns = colour === null ? 'a colour' : name(colour);
+      return claimed
+        ? `◆ TERRITORY — yours. The ground within ${t.territoryRadius} hexes is native to ${owns}.`
+        : `◆ TERRITORY — claim it and the ground within ${t.territoryRadius} hexes becomes native to ${owns}, for good.`;
+    };
+
+    if (cell === undefined) {
+      // Not on the board: either a destination glowing through the dark, or
+      // ground this world remembers from an earlier run.
+      const { q, r } = parse(hex);
+      const dest = destinationAt(this.#state.rootSeed, q, r, t);
+      if (dest !== null) {
+        return `${destination(dest.reward, dest.colour, false)} Build your chain out to it.`;
+      }
+      return 'Remembered from an earlier run — this run has not grown here yet.';
+    }
+
+    switch (cell.kind) {
+      case 'landmark':
+        return destination(cell.reward, cell.colour ?? null, cell.claimed);
+      case 'wall':
+        return t.redAshWalls
+          ? `Wall — cannot be built on. It surrounds (so it helps things ripen) but never matches, except for ${name('red')}, which counts it as one.`
+          : 'Wall — cannot be built on. It surrounds (so it helps things ripen) but never matches.';
+      case 'stone':
+        return `Spent ground — a popped tile. It surrounds but never matches, except for ${name('red')}, which feeds on it.`;
+      case 'tile': {
+        const worth = worthOf(this.#state.cells, hex, t);
+        return `${name(cell.colour)} tile, worth ${worth}. It ripens when all six sides are covered.`;
+      }
+      case 'empty':
+        return cell.native === undefined
+          ? 'Open ground — you can build here once something of yours touches it.'
+          : `Ground native to ${name(cell.native)} — a ${name(cell.native)} tile here is worth one more.`;
+    }
   }
 
   /** Zooming out below fit is meaningless, so those two buttons say so. */
@@ -635,7 +794,14 @@ export class Game {
     // The engine returns the same state for anything illegal, so this is also
     // the "that did nothing" check — no need to ask permission before acting.
     if (next === this.#state) return;
+
+    // Reaching a destination is the biggest thing that can happen in a
+    // placement, and until now the only sign was a number moving somewhere
+    // else on the screen. A shrine was worse than that: its whole payoff
+    // lands on the NEXT run, so claiming one looked like nothing at all.
+    const claimed = this.#claimNote(this.#state, next);
     this.#state = next;
+    if (claimed !== null) this.#showNote(claimed);
     // Every real change is offered to the shell to keep. Saving after each
     // action rather than on some timer means the most a crash can eat is one
     // tap — a run is 10-20 minutes of a phone's attention, and phones wander.
@@ -648,6 +814,29 @@ export class Game {
       toBoardView(this.#state, this.#harvestAt, this.#spotlight, this.#hooks.memory ?? []),
     );
     this.#renderHud(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+  }
+
+  /**
+   * Say something over the board, and take it away again.
+   *
+   * Claims announce themselves for `NOTE_MS`; an explanation you asked for by
+   * tapping a glyph stays until you tap it away, because you are reading it
+   * deliberately and a timer would be a race against your own eyes.
+   */
+  #showNote(text: string | null, sticky = false): void {
+    if (this.#noteTimer !== null) {
+      clearTimeout(this.#noteTimer);
+      this.#noteTimer = null;
+    }
+    this.#el.toast.textContent = text ?? '';
+    this.#el.toast.hidden = text === null;
+
+    if (text !== null && !sticky) {
+      this.#noteTimer = setTimeout(() => {
+        this.#el.toast.hidden = true;
+        this.#noteTimer = null;
+      }, NOTE_MS);
+    }
   }
 
   #renderHud(hud: HudView): void {

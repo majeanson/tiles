@@ -266,8 +266,24 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s field dots', (_name, 
 
   it('keeps the four fields telling you WHICH colour owns the ground', () => {
     // Brightening for contrast must not converge the four on one pale grey:
-    // the whole point of a field is that it names a colour.
+    // the whole point of a field is that it names a colour, and Marc's second
+    // report was that blue and green fields still read as each other. Being
+    // merely UNEQUAL is not enough — they have to be far apart in the channels
+    // an eye actually compares.
     const inks = COLOURS.map((c) => fieldDots(theme, c).ink);
-    expect(new Set(inks).size).toBe(inks.length);
+    const apart = (a: number, b: number): number =>
+      Math.abs(((a >> 16) & 0xff) - ((b >> 16) & 0xff)) +
+      Math.abs(((a >> 8) & 0xff) - ((b >> 8) & 0xff)) +
+      Math.abs((a & 0xff) - (b & 0xff));
+
+    for (let i = 0; i < inks.length; i++) {
+      for (let j = i + 1; j < inks.length; j++) {
+        const gap = apart(inks[i]!, inks[j]!);
+        expect(
+          gap,
+          ` and  field dots are  apart in RGB; ` + 'fields that close read as the same ground',
+        ).toBeGreaterThanOrEqual(60);
+      }
+    }
   });
 });

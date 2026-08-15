@@ -206,6 +206,11 @@ function runKeeping(
     debug: debugOn,
     firstVisit,
 
+    // Which unlock the next shrine gives, so the game can NAME it at the
+    // moment it is woken. The ledger lives out here with the world; the game
+    // only knows how many shrines this run has claimed.
+    unlockLabel: (nth) => UNLOCKS[world.shrines.length + nth]?.label ?? null,
+
     onChange: (state) => {
       try {
         localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
@@ -607,6 +612,7 @@ async function main(): Promise<void> {
     help: required<HTMLButtonElement>('help'),
     helpPanel: required('help-panel'),
     helpManual: required('help-manual'),
+    toast: required('toast'),
   };
 
   if (isEnabled(features, 'ui.themePicker')) {
