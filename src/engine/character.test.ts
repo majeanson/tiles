@@ -68,6 +68,30 @@ describe('colour personalities', () => {
     expect(worthOf(cells, centre, CHAR)).toBe(0);
   });
 
+  it('red ash reaches walls only under the redAshWalls experiment', () => {
+    const centre = key(0, 0);
+    const cells: Record<HexKey, Cell> = { [centre]: tile('red') };
+    const around = neighbourKeys(0, 0);
+    cells[around[0]!] = { kind: 'wall' };
+    cells[around[1]!] = { kind: 'stone' };
+
+    expect(worthOf(cells, centre, CHAR)).toBe(1);
+    expect(worthOf(cells, centre, { ...CHAR, redAshWalls: true })).toBe(2);
+  });
+
+  it('yellow company counts every stranger under yellowCompanyAll', () => {
+    const centre = key(0, 0);
+    const cells: Record<HexKey, Cell> = { [centre]: tile('yellow') };
+    const around = neighbourKeys(0, 0);
+    cells[around[0]!] = tile('red');
+    cells[around[1]!] = tile('red');
+    cells[around[2]!] = tile('blue');
+
+    // Distinct colours: two (red, blue). Every stranger: three.
+    expect(worthOf(cells, centre, CHAR)).toBe(2);
+    expect(worthOf(cells, centre, { ...CHAR, yellowCompanyAll: true })).toBe(3);
+  });
+
   it('blue tide: +1 worth per six hexes from home', () => {
     const far = key(12, 0);
     const cells: Record<HexKey, Cell> = { [far]: tile('blue'), [key(0, 0)]: tile('blue') };

@@ -349,8 +349,12 @@ export class Game {
       title: 'THE COLOURS',
       lines: [
         `GREEN — crowds. +${t.greenCrowdBonus} worth for every green neighbour past the first. Greens want to be one big mob: commit to a mono-pocket and it snowballs.`,
-        `YELLOW — company. +${t.yellowCompanyBonus} worth for every DIFFERENT colour touching it. Yellow scores in messy mixed ground where nothing else matches — the glue tile.`,
-        'RED — ash. Stone counts as a match for red. Your spent, popped land is red’s soil: build red along the wake everyone else abandons.',
+        t.yellowCompanyAll
+          ? `YELLOW — company. +${t.yellowCompanyBonus} worth for every differently-coloured neighbour. Yellow scores in messy mixed ground where nothing else matches — the glue tile.`
+          : `YELLOW — company. +${t.yellowCompanyBonus} worth for every DIFFERENT colour touching it. Yellow scores in messy mixed ground where nothing else matches — the glue tile.`,
+        t.redAshWalls
+          ? 'RED — ash. Stone and walls count as matches for red. Spent land and blocked land are red’s soil: build red where nothing else pays.'
+          : 'RED — ash. Stone counts as a match for red. Your spent, popped land is red’s soil: build red along the wake everyone else abandons.',
         `BLUE — tide. +1 worth for every ${t.blueTideEvery} hexes from home. Worth little in the clearing, a lot on the frontier — blue is the colour you carry outward.`,
       ],
     };
@@ -661,10 +665,12 @@ export class Game {
           : '';
       case 'yellow':
         return t.yellowCompanyBonus > 0
-          ? ` · company: +${t.yellowCompanyBonus} worth per different colour beside it`
+          ? ` · company: +${t.yellowCompanyBonus} worth per ${t.yellowCompanyAll ? 'differently-coloured neighbour' : 'different colour beside it'}`
           : '';
       case 'red':
-        return t.redAshMatches ? ' · ash: stone beside red counts as a match' : '';
+        return t.redAshMatches
+          ? ` · ash: stone${t.redAshWalls ? ' and walls' : ''} beside red count as matches`
+          : '';
       case 'blue':
         return t.blueTideEvery > 0
           ? ` · tide: +1 worth per ${t.blueTideEvery} hexes from home`

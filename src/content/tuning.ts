@@ -118,6 +118,20 @@ export type Tuning = {
   readonly blueTideEvery: number;
 
   /**
+   * Power experiments from the first colour-balance report (LOG addendum 5):
+   * red was an era colour competent play barely placed before stone existed,
+   * and yellow was the most-placed, least-valuable tile on the board.
+   *
+   * `redAshWalls` — ash counts WALLS as well as stone, giving red a little
+   * soil from the first placement instead of none until the first harvest.
+   * `yellowCompanyAll` — company counts every differently-coloured NEIGHBOUR
+   * rather than every distinct colour, lifting its cap from 3 to 6 so a
+   * well-surrounded yellow can actually compete with a well-crowded green.
+   */
+  readonly redAshWalls: boolean;
+  readonly yellowCompanyAll: boolean;
+
+  /**
    * Biomes: broad regions of the plane, `biomeEvery` hexes to a block,
    * `biomeChance` of blocks native to one colour. Inside a biome every field
    * takes the biome's colour, so regions read as one colour's country and
@@ -231,6 +245,8 @@ export const TUNING: Tuning = {
   yellowCompanyBonus: 0,
   redAshMatches: false,
   blueTideEvery: 0,
+  redAshWalls: false,
+  yellowCompanyAll: false,
 
   biomeEvery: 0,
   biomeChance: 0,
@@ -308,6 +324,16 @@ export const ENDLESS_TUNING: Tuning = {
   yellowCompanyBonus: 1,
   redAshMatches: true,
   blueTideEvery: 6,
+
+  // 2026-08-15, from the colour-balance report (LOG addendum 5) and measured
+  // before shipping: walls give red soil before the first harvest (placed
+  // +43%, worth share 13% → 16-18%, still the late-game riser), and counting
+  // every differently-coloured neighbour lifts yellow from worst-per-tile to
+  // the middle (5.70 → 6.23 avg). Per-tile spread across the four colours
+  // halved; every power now earns 25-31% of its colour's worth; the timing
+  // optimum, cliff, clock and seeker all held at 40 seeds.
+  redAshWalls: true,
+  yellowCompanyAll: true,
 
   // Biomes twice the size of destination blocks: a country per two beacons,
   // so walking somewhere changes what the ground grows.

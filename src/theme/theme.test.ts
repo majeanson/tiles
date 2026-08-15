@@ -48,6 +48,17 @@ const MIN_SEPARATION = 0.05;
 /** Stone against live ground. Weaker, because texture and pattern also carry it. */
 const MIN_STONE_SEPARATION = 0.03;
 
+/**
+ * Walls against the void. On the endless plane the canvas background IS the
+ * fog — undiscovered ground is simply not drawn — so a wall whose paint sits
+ * on the background's value reads as a hole in the world instead of a thing
+ * blocking it. Every colour a wall is painted with (fill, gradient end, and
+ * BOTH band stripes) must clear the background; the first run of this test
+ * found the dark stripe within 0.007 of the background in all three
+ * handed-down directions.
+ */
+const MIN_WALL_CLEARANCE = 0.045;
+
 describe('the registry', () => {
   it('defaults to the placeholder, because Gate E is shut', () => {
     // Not a style preference. CLAUDE.md and LOG.md gate all art direction behind
@@ -115,6 +126,22 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
    * not be mistakeable for a live tile — that is the difference between "this
    * board is spent" and "this board still pays".
    */
+  it('keeps every colour of its wall clear of the fog', () => {
+    const bg = luma(theme.board.background);
+    const paints: [string, number][] = [['fill', luma(theme.wall.fill)]];
+    if (theme.wall.fillTo !== null) paints.push(['fillTo', luma(theme.wall.fillTo)]);
+    if (theme.wall.pattern.kind === 'bands') {
+      paints.push(['band a', luma(theme.wall.pattern.a)], ['band b', luma(theme.wall.pattern.b)]);
+    }
+    for (const [name, paint] of paints) {
+      expect(
+        paint - bg,
+        `the wall's ${name} sits ${(paint - bg).toFixed(3)} above the background; ` +
+          `${MIN_WALL_CLEARANCE} is the floor that keeps blocked ground from reading as fog`,
+      ).toBeGreaterThanOrEqual(MIN_WALL_CLEARANCE);
+    }
+  });
+
   it('keeps stone distinguishable from every live colour', () => {
     const stone = value(theme.stone);
     for (const colour of COLOURS) {

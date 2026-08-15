@@ -103,8 +103,13 @@ export const COLD_SURVEY: Theme = {
     blue: 'CATACOMB',
   },
 
-  wall: surface(0x191c1f, {
-    pattern: { kind: 'bands', angleDeg: 135, a: 0x191c1f, b: 0x0f1113, width: 4 },
+  // Lifted 2026-08-15: the dark band sat 0.001 above the canvas background in
+  // L*, so half of every wall melted into the fog. The whole wall moved up one
+  // step — dark band to the old fill, fill one step above — keeping the band
+  // contrast while clearing the background by the terrain bar. Value spacing,
+  // not a new hue; `theme.test.ts` pins it.
+  wall: surface(0x21252a, {
+    pattern: { kind: 'bands', angleDeg: 135, a: 0x21252a, b: 0x191c1f, width: 4 },
     asset: 'terrain.wall',
   }),
 

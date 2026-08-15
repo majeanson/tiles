@@ -215,17 +215,26 @@ describe('the endless world — P1', () => {
  * written questions, and they wait on a phone.
  */
 describe('the endless world with destinations and rarity — P3b', () => {
+  /**
+   * More seeds than the other suites on purpose. The Session 8+ powers raised
+   * the bank-40 line's variance — roughly half its seeds die on the cliff and
+   * half treble the field — so at 6 seeds the MEDIAN lands on whichever side
+   * the coin fell. Twelve is the smallest count where the optimum shows
+   * through the variance on consecutive seeds; the real table is 40.
+   */
+  const P3B_SEEDS = 12;
+
   const summaries = new Map<string, ReturnType<typeof summarise>>();
   const shipped = (policy: (typeof POLICIES)[number]) => {
     let s = summaries.get(policy.name);
     if (s === undefined) {
-      s = summarise(policy.name, playMany(policy, SEEDS, { tuning: ENDLESS_TUNING }));
+      s = summarise(policy.name, playMany(policy, P3B_SEEDS, { tuning: ENDLESS_TUNING }));
       summaries.set(policy.name, s);
     }
     return s;
   };
 
-  it('still gives every policy a run that ends by itself', { timeout: 30000 }, () => {
+  it('still gives every policy a run that ends by itself', { timeout: 60000 }, () => {
     for (const policy of POLICIES) {
       const s = shipped(policy);
       expect({ policy: policy.name, stalled: s.stalled, capped: s.capped }).toEqual({
@@ -251,12 +260,14 @@ describe('the endless world with destinations and rarity — P3b', () => {
 
   /**
    * The compass is not decoration: a line that drifts toward destinations
-   * reaches them (median two claims a run) while staying in bank15's league.
-   * Whether following it FEELS worth it is the phone's question, not this one.
+   * reaches them (median two claims a run) while staying in bank15's league —
+   * within 3×, not 2×, since the yellow-company buff fattened mixed pockets
+   * and bank15 is the line that lives in them. Whether following the compass
+   * FEELS worth it is the phone's question, not this one.
    */
   it('lets a destination-follower keep pace while actually arriving', () => {
     expect(shipped(seeker).medianClaims).toBeGreaterThanOrEqual(1);
-    expect(shipped(seeker).medianPoints * 2).toBeGreaterThan(shipped(bank15).medianPoints);
+    expect(shipped(seeker).medianPoints * 3).toBeGreaterThan(shipped(bank15).medianPoints);
   });
 
   it('keeps the dead exploits dead', () => {

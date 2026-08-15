@@ -43,7 +43,24 @@ const blank = (): Tally => ({
   phasePopped: [0, 0, 0],
 });
 
-const T = ENDLESS_TUNING;
+/** `--set key=value` overrides, same idea as sim.ts, so ideas can be A/B'd. */
+function tuningFromArgs(argv: readonly string[]): Tuning {
+  let t: Tuning = ENDLESS_TUNING;
+  for (let i = 0; i < argv.length - 1; i++) {
+    if (argv[i] !== '--set') continue;
+    const setting = argv[i + 1]!;
+    const eq = setting.indexOf('=');
+    const name = setting.slice(0, eq) as keyof Tuning;
+    const raw = setting.slice(eq + 1);
+    if (!(name in t)) throw new Error(`no such tuning key "${name}"`);
+    const value: unknown =
+      typeof t[name] === 'boolean' ? raw === 'true' : name === 'world' ? raw : Number(raw);
+    t = { ...t, [name]: value };
+  }
+  return t;
+}
+
+const T = tuningFromArgs(process.argv.slice(2));
 const PLAIN: Tuning = {
   ...T,
   greenCrowdBonus: 0,

@@ -108,8 +108,11 @@ export const TORCHLIT: Theme = {
     blue: 'CATACOMB',
   },
 
-  wall: surface(0x1b1512, {
-    pattern: { kind: 'bands', angleDeg: 135, a: 0x1b1512, b: 0x0e0a08, width: 4 },
+  // Lifted 2026-08-15: the dark band was 0.007 above the background in L* —
+  // under a torch, blocked ground vanished into the dark instead of blocking.
+  // Up a step, band contrast kept, pinned in `theme.test.ts`.
+  wall: surface(0x261d16, {
+    pattern: { kind: 'bands', angleDeg: 135, a: 0x261d16, b: 0x1b1512, width: 4 },
     asset: 'terrain.wall',
   }),
 

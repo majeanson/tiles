@@ -164,6 +164,7 @@ function tallyWorth(
   const { q, r } = parse(k);
   let worth = 0;
   let greens = 0;
+  let strangers = 0;
   const company = new Set<Colour>();
 
   for (const n of neighbourKeys(q, r)) {
@@ -172,15 +173,28 @@ function tallyWorth(
       if (!counts(n)) continue;
       worth += matchValue(colour, rarity, other);
       if (other.colour === 'green') greens++;
-      if (other.colour !== colour) company.add(other.colour);
-    } else if (other?.kind === 'stone' && colour === 'red' && t.redAshMatches) {
-      // Ash: red reads the wake as kin. A heavy red doubles it like any match.
+      if (other.colour !== colour) {
+        company.add(other.colour);
+        strangers++;
+      }
+    } else if (
+      colour === 'red' &&
+      t.redAshMatches &&
+      (other?.kind === 'stone' || (t.redAshWalls && other?.kind === 'wall'))
+    ) {
+      // Ash: red reads the wake as kin — and, under `redAshWalls`, the walls
+      // too, so red has soil before the first harvest exists. A heavy red
+      // doubles it like any match.
       worth += rarity === 'unique' ? 2 : 1;
     }
   }
 
   if (colour === 'green' && greens > 1) worth += (greens - 1) * t.greenCrowdBonus;
-  if (colour === 'yellow') worth += company.size * t.yellowCompanyBonus;
+  // Company counts distinct colours by default (cap 3); `yellowCompanyAll`
+  // counts every differently-coloured neighbour instead (cap 6).
+  if (colour === 'yellow') {
+    worth += (t.yellowCompanyAll ? strangers : company.size) * t.yellowCompanyBonus;
+  }
   if (colour === 'blue' && t.blueTideEvery > 0) {
     worth += Math.floor(distance({ q, r }, ORIGIN) / t.blueTideEvery);
   }

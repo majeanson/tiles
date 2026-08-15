@@ -689,3 +689,30 @@ company bonus caps at 3 and mixing spoils its neighbours' own matches).
 No dead colour, real character, two flags worth watching: yellow may be
 quietly weak, and early red may feel like a brick to a human who has not
 learned to stash it. No numbers changed — measurement only, Marc decides.
+
+**Addendum 6, 2026-08-15 — Marc said try both, so both were measured, then
+shipped.** Two new dials, A/B'd with the colour report before touching the
+default: `redAshWalls` (ash counts walls too — red has soil before the
+first harvest) lifted red's placements 43% and its worth share 13% → 16-18%
+while red kept its late-game rise; `yellowCompanyAll` (company counts every
+differently-coloured neighbour, cap 6 not 3) lifted yellow from worst per
+tile (5.70) to the middle (6.23) with its power share 18% → 29%. Together:
+per-tile spread across the four colours HALVED (7.28–5.70 → 7.04–6.23),
+every power now earns 25–31% of its colour's worth, and the 40-seed economy
+held — optimum (bank40 32,340), cliff, clock, seeker, nothing stalls. Both
+ON in `ENDLESS_TUNING`; manual and lens text follow the dials. Two pins
+adjusted honestly: the P3b suite runs 12 seeds (the powers raised bank40's
+variance — at 6 seeds its median lands on whichever side of the cliff the
+coin fell) and seeker's "keeps pace" margin widened to 3× (the yellow buff
+fattened bank15's mixed pockets more than the compass line).
+
+**Also: walls no longer read as fog.** Marc asked for blocked ground to be
+clearly defined against the void in all skins; the numbers agreed — in all
+three handed-down directions the wall's dark band sat within 0.007 L* of
+the canvas background, so half of every wall hex melted into the
+undiscovered dark. Each wall moved up one value step (dark band to the old
+fill, fill a step above), keeping the band texture while clearing the
+background by ~0.05–0.09. Pinned as `MIN_WALL_CLEARANCE = 0.045` in
+`theme.test.ts` over every colour a wall is painted with — the greyscale
+test's move, applied to the fog boundary. Value spacing, not art direction;
+Gate E stays shut. 267 tests.

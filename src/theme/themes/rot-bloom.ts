@@ -101,8 +101,11 @@ export const ROT_BLOOM: Theme = {
     blue: 'CATACOMB',
   },
 
-  wall: surface(0x15161a, {
-    pattern: { kind: 'bands', angleDeg: 135, a: 0x15161a, b: 0x0a0b0d, width: 4 },
+  // Lifted 2026-08-15: the dark band was 0.004 above the background in L* —
+  // walls read as holes in the world. Same move as every value fix here: up a
+  // step, band contrast kept, pinned in `theme.test.ts`.
+  wall: surface(0x1d1f24, {
+    pattern: { kind: 'bands', angleDeg: 135, a: 0x1d1f24, b: 0x15161a, width: 4 },
     asset: 'terrain.wall',
   }),
 
