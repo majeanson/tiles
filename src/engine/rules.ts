@@ -310,6 +310,8 @@ export function harvestValue(
   points: number;
   /** True when taking THIS pocket as points collects the bounty. */
   questPays: boolean;
+  /** The rare tile this pocket would yield as treasure, if big enough. */
+  treasure: Rarity | null;
 } {
   const t = state.tuning;
   const pops =
@@ -339,7 +341,18 @@ export function harvestValue(
     tiles,
     points: Math.floor(sumWorth * sizeBonus * harvestMultiplier(state, pops) * bounty),
     questPays,
+    treasure: treasureFor(pops.length, t),
   };
+}
+
+/**
+ * The rare tile a pocket this size would yield as TREASURE, or null when the
+ * pocket is too small (or the option is not built). Pure, so the button can
+ * promise exactly what the reducer will hand over.
+ */
+export function treasureFor(count: number, t: Tuning): Rarity | null {
+  if (t.treasureNeed <= 0 || count < t.treasureNeed) return null;
+  return t.treasureUnique > 0 && count >= t.treasureUnique ? 'unique' : 'magic';
 }
 
 /**

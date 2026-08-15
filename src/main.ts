@@ -180,7 +180,10 @@ function saveWorld(world: WorldMemory): void {
  * start over. All of it lives here at the edge — the game reports through
  * hooks and never learns storage exists, the same split as the feature flags.
  */
-function runKeeping(world: WorldMemory): GameHooks & { savedSeed: number | null } {
+function runKeeping(
+  world: WorldMemory,
+  debugOn: boolean,
+): GameHooks & { savedSeed: number | null } {
   let saved = null;
   try {
     saved = askedSeed() === null ? decodeRun(localStorage.getItem(RUN_STORAGE_KEY)) : null;
@@ -192,6 +195,7 @@ function runKeeping(world: WorldMemory): GameHooks & { savedSeed: number | null 
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
     memory: world.revealed,
+    debug: debugOn,
 
     onChange: (state) => {
       try {
@@ -457,7 +461,7 @@ function mountSettings(
 async function main(): Promise<void> {
   const features = resolveFeatures();
   const world = loadWorld();
-  const keeper = runKeeping(world);
+  const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'));
   // Resumed run > shared seed link > THIS DEVICE'S WORLD. The last is P4a:
   // without a link or a run in progress you go back to your own plane, which
   // is what makes the fog memory and the held territories mean anything.
@@ -494,6 +498,7 @@ async function main(): Promise<void> {
     draft: required('draft'),
     harvestTiles: required<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: required<HTMLButtonElement>('harvest-points'),
+    harvestTreasure: required<HTMLButtonElement>('harvest-treasure'),
     leave: required<HTMLButtonElement>('leave'),
     end: required('end'),
     zoomIn: required<HTMLButtonElement>('zoom-in'),
@@ -537,7 +542,10 @@ async function main(): Promise<void> {
   // The world flag decides a NEW run's economy; a resumed run plays under the
   // tuning it was saved with, by design — rebalances never re-score a run in
   // progress. `?ff=-world.endless` is the bounded game.
-  const tuning = isEnabled(features, 'world.endless') ? ENDLESS_TUNING : TUNING;
+  // Flags become TUNING here at the edge and travel no further: the engine
+  // sees numbers, never a feature registry.
+  const base = isEnabled(features, 'world.endless') ? ENDLESS_TUNING : TUNING;
+  const tuning = isEnabled(features, 'pop.treasure') ? base : { ...base, treasureNeed: 0 };
   // Territories the world already holds arrive as plain data — the engine
   // still knows nothing about storage, and a replay is reproducible from
   // seed + tuning + this list.

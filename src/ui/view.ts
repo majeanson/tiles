@@ -239,6 +239,13 @@ export type HudView = {
   /** The bounty in play, as one sentence. Null when there is none. */
   readonly questLine: string | null;
 
+  /**
+   * The rare tile the priced pocket would yield as TREASURE, or null when it
+   * is too small or the third payout is not unlocked. The button only exists
+   * when this does.
+   */
+  readonly harvestTreasure: Rarity | null;
+
   readonly canHarvest: boolean;
   readonly canLeave: boolean;
   readonly leaveHint: string;
@@ -329,6 +336,7 @@ export function toHudView(
 
     questPays: value.questPays,
     questLine: questLineFor(state),
+    harvestTreasure: value.treasure,
 
     canHarvest: state.phase === 'placing' && value.count > 0,
     canLeave: leaving,

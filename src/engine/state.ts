@@ -68,7 +68,12 @@ export type Tile = {
 
 export type Phase = 'placing' | 'ended';
 
-export type HarvestChoice = 'tiles' | 'points';
+/**
+ * `treasure` is the third payout, unlocked by `pop.treasure` and priced by
+ * `treasureNeed`: a big pocket may be cashed for a rare tile instead of
+ * either currency. Still exactly one of the three, never two.
+ */
+export type HarvestChoice = 'tiles' | 'points' | 'treasure';
 
 /**
  * A bounty on a place, opened by claiming a scoring site.

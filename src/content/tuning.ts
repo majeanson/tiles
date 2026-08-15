@@ -162,6 +162,35 @@ export type Tuning = {
    */
   readonly holdSlots: number;
 
+  /**
+   * Territory perks (P4b, M3 of `ROADMAP.md`): every territory this world
+   * holds adds `territoryTiles` to the next run's purse, up to
+   * `territoryTilesCap` in total.
+   *
+   * This is the roguelite answer Marc asked for by name, aimed at the thing
+   * his first debrief actually described — "I never felt SAFE enough to take
+   * points". A softer start is safety that compounds with exploration rather
+   * than with luck, and it is bounded so a well-held world cannot buy its way
+   * out of the clock. 0 switches it off.
+   */
+  readonly territoryTiles: number;
+  readonly territoryTilesCap: number;
+
+  /**
+   * The third payout (`pop.treasure`, declared in Session 0 and wired in
+   * M3): a harvest of `treasureNeed`+ may be taken as TREASURE instead —
+   * neither tiles nor points, but a guaranteed rare tile straight into the
+   * stash, magic below `treasureUnique` tiles and unique at or above it.
+   *
+   * It earns its place by being a third answer to the same question rather
+   * than a bonus on top: taking it forfeits both the tiles and the points, so
+   * it is a real cost every time, and it is the only way to CHOOSE a rare
+   * tile rather than wait for one. 0 leaves the option unbuilt, which is what
+   * the bounded game and every pre-M3 build had.
+   */
+  readonly treasureNeed: number;
+  readonly treasureUnique: number;
+
   readonly startingTiles: number;
 
   /**
@@ -327,6 +356,12 @@ export const TUNING: Tuning = {
 
   holdSlots: 0,
 
+  territoryTiles: 0,
+  territoryTilesCap: 0,
+
+  treasureNeed: 0,
+  treasureUnique: 0,
+
   // 40/100 let the first human session bank 134 tiles without ever feeling
   // the curve (2026-08-04). Swept to 30/70: random-legal dies on map 1,
   // survivor caps ~325 placements, and the endless timing optimum moves from
@@ -446,6 +481,22 @@ export const ENDLESS_TUNING: Tuning = {
   biomeChance: 0.65,
 
   holdSlots: 1,
+
+  // Six tiles a territory, capped at 24 — four territories' worth. That is
+  // about a fifth of the starting purse per territory and never more than
+  // four-fifths of it in total: felt on the first placements of a run,
+  // powerless to change how it ends. Swept in Session 13 against runs 0-8 of
+  // a world; the clock and the optimum are unmoved.
+  territoryTiles: 6,
+  territoryTilesCap: 24,
+
+  // A treasure needs a pocket of 10 — bigger than the bounty's 8, so the two
+  // goals pull in the same direction without collapsing into one — and pays
+  // unique at 20, the size cap, where points are at their best. Choosing
+  // treasure there is giving up the best points harvest in the game for a
+  // tile, which is exactly the weight this option should carry.
+  treasureNeed: 10,
+  treasureUnique: 20,
 };
 
 /** The four tile colours. Named for what they are — art direction is undecided. */

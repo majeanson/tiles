@@ -31,6 +31,8 @@ export type Elements = {
   readonly draft: HTMLElement;
   readonly harvestTiles: HTMLButtonElement;
   readonly harvestPoints: HTMLButtonElement;
+  /** The third payout. Present only while a pocket is big enough for it. */
+  readonly harvestTreasure: HTMLButtonElement;
   readonly leave: HTMLButtonElement;
   readonly end: HTMLElement;
   readonly zoomIn: HTMLButtonElement;
@@ -74,6 +76,12 @@ export type GameHooks = {
    * the board. Keys only; the terrain is re-derived from the world seed.
    */
   readonly memory?: readonly HexKey[];
+  /**
+   * Print the run's raw numbers under the board (`debug.overlay`). A phone
+   * has no console, and "it did something odd" needs a readout to become a
+   * seed and a state.
+   */
+  readonly debug?: boolean;
   /**
    * Send this run somewhere — the share sheet, or the clipboard. Absent means
    * the button is not drawn, which is the honest state on a browser with no
@@ -214,6 +222,9 @@ export class Game {
     });
     this.#el.harvestPoints.addEventListener('click', () => {
       this.#harvest('points');
+    });
+    this.#el.harvestTreasure.addEventListener('click', () => {
+      this.#harvest('treasure');
     });
     this.#el.leave.addEventListener('click', () => {
       this.#dispatch({ type: 'LEAVE' });
@@ -402,7 +413,12 @@ export class Game {
               `The size bonus stops growing past ${t.harvestSizeCap} tiles. A bigger pocket than that still pays more worth, but no more multiplier — so cashing at about ${t.harvestSizeCap} and starting another beats hoarding one monster.`,
             ]
           : []),
-        'You take ONE of the two, never both. Small pockets favour tiles; big far ones favour points. When to stop growing a pocket and cash it is the whole game.',
+        ...(t.treasureNeed > 0
+          ? [
+              `Take a rare tile: a pocket of ${t.treasureNeed}+ can be cashed as TREASURE instead — a magic tile straight into your stash, or a unique one from ${t.treasureUnique}+. You give up both the tiles and the points to do it, which is the price of choosing a power instead of waiting for one.`,
+            ]
+          : []),
+        `You take ONE of the ${t.treasureNeed > 0 ? 'three' : 'two'}, never more. Small pockets favour tiles; big far ones favour points. When to stop growing a pocket and cash it is the whole game.`,
         ...(t.runLength > 0
           ? [
               'Watch LEFT: tiles are only worth what you can still spend. Early, a tiles-harvest buys a lot of expedition. Late, it buys nothing — and points are all that is left to take.',
@@ -521,7 +537,9 @@ export class Game {
       title: 'YOUR WORLD',
       lines: [
         'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs — a map you are filling in, expedition by expedition.',
-        'Territories you claim (◆) are yours for good: they greet you already claimed, with their field live, and they never pay twice.',
+        t.territoryTiles > 0
+          ? `Territories you claim (◆) are yours for good: they greet you already claimed, with their field live, and each one starts every later run with +${t.territoryTiles} tiles (up to +${t.territoryTilesCap}). Conquest compounds; it just cannot buy past the clock.`
+          : 'Territories you claim (◆) are yours for good: they greet you already claimed, with their field live, and they never pay twice.',
         'Caches and sites re-arm every run, so ground you know is still worth walking. What changes between runs is you knowing where to walk.',
         'SETTINGS shows what your world has seen, and can abandon it for a fresh one if you ever want a stranger’s plane again.',
       ],
@@ -568,7 +586,7 @@ export class Game {
    * Harvest what the buttons are pricing. The selector owns which pocket that
    * is (`hud.harvestAt`), so the dispatch and the price cannot disagree.
    */
-  #harvest(choice: 'tiles' | 'points'): void {
+  #harvest(choice: 'tiles' | 'points' | 'treasure'): void {
     const at = toHudView(this.#state, this.#harvestAt).harvestAt;
     this.#dispatch(at === null ? { type: 'HARVEST', choice } : { type: 'HARVEST', choice, at });
   }
@@ -622,9 +640,9 @@ export class Game {
               (spot.ripeCount > 0 ? ` · ${spot.ripeWorth} of it ripe now` : '') +
               ` · pts when popped = worth × pocket size × ${hud.showLeave ? 'map' : 'distance'}`) +
           this.#powerOf(spot.colour);
-    const hint = [spotLine ?? hud.guide, hud.questLine ?? hud.hint, hud.odds]
-      .filter((s) => s !== null)
-      .join(' · ');
+    const parts = [spotLine ?? hud.guide, hud.questLine ?? hud.hint, hud.odds];
+    if (this.#hooks.debug === true) parts.push(this.#debugLine());
+    const hint = parts.filter((s) => s !== null).join(' · ');
     this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
 
@@ -644,6 +662,16 @@ export class Game {
     this.#el.harvestPoints.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;
     this.#el.harvestPoints.disabled = !hud.canHarvest;
+
+    // The third payout appears only for a pocket big enough to earn it, and
+    // says which rare tile it hands over — the whole point is choosing a
+    // specific power instead of waiting for the draft to offer one.
+    const treasure = hud.canHarvest ? hud.harvestTreasure : null;
+    this.#el.harvestTreasure.hidden = treasure === null;
+    this.#el.harvestTreasure.disabled = treasure === null;
+    if (treasure !== null) {
+      this.#el.harvestTreasure.textContent = `Take a ${treasure.toUpperCase()} tile`;
+    }
 
     this.#el.leave.hidden = !hud.showLeave;
     this.#el.leave.textContent = hud.leaveHint;
@@ -851,6 +879,22 @@ export class Game {
         return button;
       }),
       ...this.#renderHold(hud),
+    );
+  }
+
+  /**
+   * The raw run, for when something looks wrong on a device with no console
+   * (`debug.overlay`). Everything here is enough to reproduce a report: the
+   * seed names the world, the cursors name the exact draw, and the cell
+   * count names how far it had grown when it went strange.
+   */
+  #debugLine(): string {
+    const s = this.#state;
+    return (
+      `seed ${s.rootSeed} · cells ${Object.keys(s.cells).length} · ` +
+      `p${s.placements} t${s.tiles} pts${s.points} luck${s.luck} · ` +
+      `rng ${s.rng.tiles.cursor}/${s.rng.loot.cursor}` +
+      (s.death === null ? '' : ` · ${s.death}`)
     );
   }
 

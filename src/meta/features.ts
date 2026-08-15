@@ -41,16 +41,23 @@ export const FEATURES = [
   {
     id: 'pop.treasure',
     label: 'Treasure payout',
-    note: 'Adds the third choice when a tile pops. The first thing the meta layer unlocks.',
+    note:
+      'A third choice when a big pocket pops: take a rare tile into your stash instead of ' +
+      'the tiles or the points — magic from 10 tiles, unique from 20. Declared in Session 0 ' +
+      'and wired in M3 (2026-08-15); off by default because run one is the smallest game ' +
+      'there is, and this is the first thing worth unlocking.',
     defaultOn: false,
-    wired: false,
+    wired: true,
   },
   {
     id: 'debug.overlay',
     label: 'Debug overlay',
-    note: 'Coordinates, seed, and state readouts drawn over the board.',
+    note:
+      'Seed, cell counts and the run’s own numbers, printed under the board. Built in M3 ' +
+      'so the registry holds no flags that do nothing; off unless you are diagnosing ' +
+      'something on a phone with no console.',
     defaultOn: false,
-    wired: false,
+    wired: true,
   },
   {
     id: 'world.endless',

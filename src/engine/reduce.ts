@@ -220,6 +220,14 @@ function openWorld(
 }
 
 /**
+ * Tiles a world's held territories add to a run's purse (P4b), capped. Pure
+ * and exported so the UI can say WHY the starting number is not 30 — a perk
+ * nobody can see is indistinguishable from a bug.
+ */
+export const startingPerk = (t: Tuning, territories: number): number =>
+  t.territoryTiles <= 0 ? 0 : Math.min(t.territoryTilesCap, territories * t.territoryTiles);
+
+/**
  * Start a run. `claimed` is the world's standing territories (P4a) — plain
  * data, so the engine still knows nothing about storage and a run remains
  * reproducible from seed + tuning + this list.
@@ -242,7 +250,9 @@ export function newRun(
     tuning,
     phase: 'placing',
     death: null,
-    tiles: tuning.startingTiles,
+    // Territory perks (P4b): a world you have conquered starts you richer,
+    // bounded so conquest can never buy its way past the clock.
+    tiles: tuning.startingTiles + startingPerk(tuning, claimed.length),
     points: 0,
     placements: 0,
     mapNumber: 1,
@@ -391,8 +401,12 @@ function place(state: GameState, hex: HexKey): GameState {
 function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameState {
   if (state.phase !== 'placing') return state;
 
-  const { keys, count, tiles, points, questPays } = harvestValue(state, at);
+  const { keys, count, tiles, points, questPays, treasure } = harvestValue(state, at);
   if (keys.length === 0) return state;
+  // Treasure is refused rather than downgraded when the pocket is too small:
+  // a button that quietly pays something else is worse than a button that
+  // does nothing. The UI only offers it when `treasure` is non-null.
+  if (choice === 'treasure' && treasure === null) return state;
 
   // The bounty is collected by PRESSING POINTS on a qualifying pocket — its
   // multiplier is already inside `points`. Taking the same pocket as tiles
@@ -405,9 +419,22 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   const cells: Record<HexKey, Cell> = { ...state.cells };
   for (const k of keys) cells[k] = { kind: 'stone' };
 
+  // Treasure goes to the stash, which is where a tile you are saving for the
+  // right moment belongs. It displaces whatever was held — taking a second
+  // treasure while holding one is a choice about which rare tile you want.
+  const stashed: Tile | null =
+    choice === 'treasure' && treasure !== null
+      ? {
+          id: `x${state.placements}`,
+          colour: state.draft[state.selected]?.colour ?? 'green',
+          rarity: treasure,
+        }
+      : state.held;
+
   return endIfStuck({
     ...state,
     cells,
+    held: stashed,
     tiles: choice === 'tiles' ? state.tiles + tiles : state.tiles,
     points: choice === 'points' ? state.points + points : state.points,
     // Cashing a pocket as SURVIVAL is what raises the draft's rarity odds —

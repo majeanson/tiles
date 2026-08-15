@@ -253,6 +253,7 @@ describe('harvest value', () => {
       tiles: 0,
       points: 0,
       questPays: false,
+      treasure: null,
     });
   });
 });

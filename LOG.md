@@ -921,3 +921,47 @@ refuses a broken world whole, and the fraction-known cannot exceed 1.
 per-block bitmap — is written down and unbuilt, because at the current rate
 it is years of play away from mattering. If the atlas ever reports a world
 over ~1MB, that is the moment.
+
+---
+
+### Session 13 — M3: the roguelite spine, and a registry that tells the truth
+
+**Question:** does a world you have conquered make the next run's start safe
+enough to change how it is played — and can the registry stop listing things
+that do not exist?
+
+**Territory perks (P4b).** Every territory the world holds adds 6 tiles to
+the next run's purse, capped at 24. Deliberately small and bounded: it is
+aimed at Marc's exact words ("I never felt SAFE enough to take points"), and
+safety at the START is the only kind that can change a decision without
+changing an ending. Swept at 30 seeds against a fully-perked world: every
+scoring line gains 10-18% points, run length does not move (239-260, the
+clock holds), nothing stalls, and the tiles share drifts DOWN (chooser 84 →
+82, rush 59 → 56) — the intended direction, small.
+
+**`pop.treasure` wired, not deleted.** Declared in Session 0 and empty ever
+since. It is now the third payout: a pocket of 10+ can be cashed as a MAGIC
+tile straight into the stash, 20+ as UNIQUE. It earns its place by being a
+third answer to the same question rather than a bonus — taking it forfeits
+both the tiles and the points, and at 20 it means giving up the best points
+harvest in the game for a tile you chose. Off by default: run one is still
+the smallest game there is, and this is the first thing worth unlocking.
+
+**`debug.overlay` wired too.** Seed, cell count, placements, purse, score,
+luck and both rng cursors under the board — everything needed to turn "it
+did something odd on my phone" into a reproducible report, on a device with
+no console.
+
+**The registry now holds zero unwired flags**, which was M3's other half. The
+`wired` field and its test (an unwired flag may never default on) stay, for
+the next flag that is declared before it is built.
+
+**Verified:** 305 tests green (was 300): the perk's arithmetic and its cap,
+the perk reaching the purse a run starts with, treasure's thresholds, its
+refusal below them (a button that quietly pays something else is worse than
+one that does nothing), and its forfeit of both currencies.
+
+**Uncertainty, noted:** treasure's colour is taken from the selected draft
+card, so the tile you get is "this colour, but rare". An alternative — let
+the player pick the colour — is a second tap on a third button, and this
+build prefers the terse version. Worth watching in play.

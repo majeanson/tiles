@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
 import { disc, key, neighbourKeys } from './hex';
-import { newRun, reduce } from './reduce';
-import { previewWorth, worthOf } from './rules';
+import { newRun, reduce, startingPerk } from './reduce';
+import { previewWorth, treasureFor, worthOf } from './rules';
 import { biomeAt, terrainAt } from './world';
 import type { HexKey } from './hex';
-import type { Cell } from './state';
+import type { Cell, GameState } from './state';
 
 /**
  * Session 8: character. Colour personalities (green crowds, yellow company,
@@ -193,5 +193,66 @@ describe('the hold slot', () => {
   it('does not exist in the bounded game', () => {
     const state = newRun(4, TUNING);
     expect(reduce(state, { type: 'HOLD' })).toBe(state);
+  });
+});
+
+/**
+ * M3's roguelite spine: perks that a conquered world pays forward, and the
+ * third payout that turns a big pocket into a chosen power.
+ */
+describe('territory perks', () => {
+  it('pays per territory, capped, and nothing when switched off', () => {
+    const t = ENDLESS_TUNING;
+    expect(startingPerk(t, 0)).toBe(0);
+    expect(startingPerk(t, 2)).toBe(2 * t.territoryTiles);
+    expect(startingPerk(t, 99)).toBe(t.territoryTilesCap);
+    expect(startingPerk({ ...t, territoryTiles: 0 }, 5)).toBe(0);
+  });
+
+  it('reaches the purse a run actually starts with', () => {
+    const plain = newRun(3, ENDLESS_TUNING);
+    const held = newRun(3, ENDLESS_TUNING, ['9,9', '12,4']);
+    expect(held.tiles - plain.tiles).toBe(startingPerk(ENDLESS_TUNING, 2));
+  });
+});
+
+describe('the treasure payout', () => {
+  const T = { ...ENDLESS_TUNING, worldWalls: 0 };
+
+  /** A ripe green row of `size`, walled in stone, on a bare board. */
+  const pocket = (state: GameState, size: number): GameState => {
+    const cells: Record<HexKey, Cell> = {};
+    const members = new Set<HexKey>();
+    for (let i = 0; i < size; i++) members.add(key(i, 0));
+    for (const k of members) cells[k] = { kind: 'tile', colour: 'green' };
+    for (let i = 0; i < size; i++) {
+      for (const n of neighbourKeys(i, 0)) if (!members.has(n)) cells[n] = { kind: 'stone' };
+    }
+    return { ...state, cells };
+  };
+
+  it('offers nothing below the threshold, magic above it, unique at the cap', () => {
+    expect(treasureFor(T.treasureNeed - 1, T)).toBeNull();
+    expect(treasureFor(T.treasureNeed, T)).toBe('magic');
+    expect(treasureFor(T.treasureUnique, T)).toBe('unique');
+    // Unbuilt is the honest default: no threshold, no option.
+    expect(treasureFor(50, { ...T, treasureNeed: 0 })).toBeNull();
+  });
+
+  it('hands the tile to the stash and forfeits both currencies', () => {
+    const state = pocket(newRun(5, T), T.treasureNeed);
+    const before = { tiles: state.tiles, points: state.points };
+
+    const after = reduce(state, { type: 'HARVEST', choice: 'treasure', at: key(0, 0) });
+    expect(after.held?.rarity).toBe('magic');
+    expect(after.tiles).toBe(before.tiles);
+    expect(after.points).toBe(before.points);
+    // And the pocket is spent, exactly like any other harvest.
+    expect(after.cells[key(0, 0)]?.kind).toBe('stone');
+  });
+
+  it('refuses a pocket too small rather than quietly paying something else', () => {
+    const state = pocket(newRun(5, T), T.treasureNeed - 1);
+    expect(reduce(state, { type: 'HARVEST', choice: 'treasure', at: key(0, 0) })).toBe(state);
   });
 });

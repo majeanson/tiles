@@ -85,9 +85,10 @@ describe('a world already held', () => {
     const fresh = newRun(seed, ENDLESS_TUNING);
     const held = newRun(seed, ENDLESS_TUNING, [at]);
 
-    // Same seed, same everything except the standing claim.
+    // Same seed, same everything except the standing claim — and the perk it
+    // pays (P4b): a held territory starts the next run richer, capped.
     expect(held.claimed).toEqual([at]);
-    expect(held.tiles).toBe(fresh.tiles);
+    expect(held.tiles).toBe(fresh.tiles + ENDLESS_TUNING.territoryTiles);
     expect(held.points).toBe(fresh.points);
 
     // Walk the board out to the territory and check it arrives claimed —
