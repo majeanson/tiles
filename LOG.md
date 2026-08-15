@@ -672,3 +672,20 @@ structure held — and the in-game manual re-wrote its own numbers, which is
 what it is for. Run lengths now: quick scoring run ~10 min (seeker, 144
 placements), deep run ~15 (bank40, 251), ceiling ~20 (337). Human timing
 untested; the estimate is ~3.5s a placement.
+
+**Addendum 5, 2026-08-15 — the colours, measured.** Marc asked how the
+colours balance through a run, so the harness grew a standing report:
+`pnpm exec tsx scripts/colours.ts` plays four policies over 30 seeds and
+credits every popped tile's worth to its colour, its power, and its third
+of the run. First findings (shipped economy): **green** is the strongest
+tile in hand (avg worth 7.28, 31% of it from crowds) and fades through the
+run as harvests break its mobs. **Blue** is the volume workhorse — placed
+and popped the most, 32% of all worth, rising late with the tide. **Red is
+an era colour**: placed 3× less than blue (its power is literally worthless
+until stone exists) but the ONLY colour whose per-tile worth rises all run
+(6.18 → 7.46) — early red draws are what the stash is for. **Yellow is the
+most-placed and least-valuable** per tile (5.70 avg, power-share 18% — the
+company bonus caps at 3 and mixing spoils its neighbours' own matches).
+No dead colour, real character, two flags worth watching: yellow may be
+quietly weak, and early red may feel like a brick to a human who has not
+learned to stash it. No numbers changed — measurement only, Marc decides.
