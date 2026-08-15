@@ -1,4 +1,4 @@
-import { ENDLESS_TUNING, TUNING } from '@content/tuning';
+import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
 import {
   decodeFeatures,
   encodeFeatures,
@@ -24,6 +24,8 @@ import {
   knownFraction,
   newWorld,
   rememberRun,
+  unlockedBy,
+  UNLOCKS,
   type WorldMemory,
 } from '@meta/world';
 import { AssetBook } from '@render/assets';
@@ -431,14 +433,37 @@ function mountSettings(
   atlas.className = 'help-title';
   atlas.textContent = 'YOUR WORLD';
 
+  const w = live.world;
   const atlasLine = document.createElement('p');
   atlasLine.id = 'atlas';
   atlasLine.textContent =
-    `Seed ${live.world.worldSeed} · ${live.world.runs} run${live.world.runs === 1 ? '' : 's'} · ` +
-    `${Math.round(knownFraction(live.world) * 100)}% of it known · ` +
-    `${live.world.revealed.length} hexes seen · ` +
-    `${live.world.territories.length} territor${live.world.territories.length === 1 ? 'y' : 'ies'} held · ` +
-    `best ${live.world.bestPoints} pts · farthest ${live.world.farthestReach}`;
+    `Seed ${w.worldSeed} · ${w.runs} run${w.runs === 1 ? '' : 's'} · ` +
+    `${Math.round(knownFraction(w) * 100)}% of it known · ` +
+    `${w.revealed.length} hexes seen · ` +
+    `${w.territories.length} territor${w.territories.length === 1 ? 'y' : 'ies'} held · ` +
+    `best ${w.bestPoints} pts · farthest ${w.farthestReach}`;
+
+  // The unlock ledger, as geography: what this world has switched on, and
+  // what the next shrine will. A list of locked things you can still read is
+  // the difference between a reason to explore and a surprise.
+  const ledger = document.createElement('div');
+  ledger.id = 'unlocks';
+  ledger.append(
+    ...UNLOCKS.map((unlock, i) => {
+      const row = document.createElement('p');
+      const found = i < w.shrines.length;
+      row.className = found ? 'unlock found' : 'unlock';
+      row.textContent = `${found ? '◈' : '◇'} ${unlock.label}`;
+      return row;
+    }),
+  );
+
+  const shrineHint = document.createElement('p');
+  shrineHint.className = 'flag-note';
+  shrineHint.textContent =
+    w.shrines.length >= UNLOCKS.length
+      ? 'Every shrine in the ledger has been found. This world is fully awake.'
+      : `Reach a shrine (◈ in the fog) to unlock the next one. ${w.shrines.length} of ${UNLOCKS.length} found.`;
 
   let armed = false;
   const abandon = document.createElement('button');
@@ -455,7 +480,41 @@ function mountSettings(
     live.abandon();
   });
 
-  host.replaceChildren(heading, intro, ...rows, restart, atlas, atlasLine, abandon);
+  host.replaceChildren(
+    heading,
+    intro,
+    ...rows,
+    restart,
+    atlas,
+    atlasLine,
+    ledger,
+    shrineHint,
+    abandon,
+  );
+}
+
+/**
+ * Flags and a world's unlocks, folded into the numbers the engine plays with.
+ *
+ * Both live out here for the same reason: `src/engine/` must stay a pure
+ * function of state and tuning, so anything ambient — a switch, a shrine
+ * somebody walked to three runs ago — has to become a number before it
+ * crosses the line. The manual then describes the result automatically,
+ * because it reads the same tuning.
+ */
+function applyUnlocks(base: Tuning, features: FeatureSet, unlocked: readonly string[]): Tuning {
+  let t = base;
+  // The treasure payout is either unlocked by a shrine or switched on by hand.
+  if (!isEnabled(features, 'pop.treasure') && !unlocked.includes('treasure')) {
+    t = { ...t, treasureNeed: 0 };
+  }
+  if (unlocked.includes('draft')) t = { ...t, draftWidth: t.draftWidth + 1 };
+  if (unlocked.includes('hold')) t = { ...t, holdSlots: t.holdSlots + 1 };
+  if (unlocked.includes('luck')) {
+    t = { ...t, magicChance: t.magicChance * 2, uniqueChance: t.uniqueChance * 2 };
+  }
+  if (unlocked.includes('reach')) t = { ...t, beaconHorizon: t.beaconHorizon * 2 };
+  return t;
 }
 
 async function main(): Promise<void> {
@@ -542,10 +601,10 @@ async function main(): Promise<void> {
   // The world flag decides a NEW run's economy; a resumed run plays under the
   // tuning it was saved with, by design — rebalances never re-score a run in
   // progress. `?ff=-world.endless` is the bounded game.
-  // Flags become TUNING here at the edge and travel no further: the engine
-  // sees numbers, never a feature registry.
+  // Flags and UNLOCKS become TUNING here at the edge and travel no further:
+  // the engine sees numbers, never a feature registry and never a world.
   const base = isEnabled(features, 'world.endless') ? ENDLESS_TUNING : TUNING;
-  const tuning = isEnabled(features, 'pop.treasure') ? base : { ...base, treasureNeed: 0 };
+  const tuning = applyUnlocks(base, features, seed === world.worldSeed ? unlockedBy(world) : []);
   // Territories the world already holds arrive as plain data — the engine
   // still knows nothing about storage, and a replay is reproducible from
   // seed + tuning + this list.

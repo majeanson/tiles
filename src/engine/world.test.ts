@@ -79,7 +79,9 @@ describe('destinations', () => {
         else expect(d.colour).toBeNull();
       }
     }
-    expect([...rewards].sort()).toEqual(['cache', 'site', 'territory']);
+    // Shrines (M4) are rare by design — an unlock you meet every run is not
+    // an unlock — so the sweep has to be wide before it finds one.
+    expect([...rewards].sort()).toEqual(['cache', 'shrine', 'site', 'territory']);
   });
 
   it('does not exist while the system is off — the bounded default', () => {

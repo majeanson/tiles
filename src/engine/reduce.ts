@@ -365,6 +365,9 @@ function place(state: GameState, hex: HexKey): GameState {
           quest = { at: n, need: t.questNeed, radius: t.questRadius, bonus: t.questBonus };
         }
       }
+      // A shrine pays nothing here on purpose: what it grants outlives the
+      // run, so the engine only marks it reached and the shell reads that
+      // when the world is written.
       if (c.reward === 'territory' && c.colour !== undefined) {
         // The claim unfurls: already-revealed open ground inside the radius
         // becomes the territory's field now; ground revealed later gets the

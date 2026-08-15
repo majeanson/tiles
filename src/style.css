@@ -499,3 +499,24 @@ button.quiet {
   color: var(--ink-faint, #4d5462);
   text-align: center;
 }
+
+/* The unlock ledger in the atlas: found things stand out, locked ones stay
+   readable — a reason to explore has to be legible before it is earned. */
+#unlocks {
+  margin: 6px 0 0;
+}
+
+.unlock {
+  margin: 0 0 3px;
+  font-size: 11px;
+  color: var(--ink-faint, #767d8d);
+}
+
+.unlock.found {
+  color: var(--accent, #d7b45a);
+}
+
+#atlas {
+  color: var(--ink-dim, #8a91a0);
+  font-size: 11px;
+}

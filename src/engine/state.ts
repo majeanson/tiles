@@ -48,8 +48,15 @@ export type Cell =
       readonly colour?: Colour;
     };
 
-/** cache pays tiles, site pays points at distance, territory unfurls a field. */
-export type LandmarkReward = 'cache' | 'site' | 'territory';
+/**
+ * cache pays tiles, site pays points at distance and opens a bounty,
+ * territory unfurls a field and is kept for good — and a SHRINE is the unlock
+ * ledger turned into geography (M4): reaching one for the first time switches
+ * a system on for this world, permanently. The engine only marks it claimed;
+ * WHICH system it grants is the shell's business, because an unlock outlives
+ * the run that found it and the engine may not know that runs have a past.
+ */
+export type LandmarkReward = 'cache' | 'site' | 'territory' | 'shrine';
 
 /**
  * Common is the tile the whole game is made of. Magic is WILD — it matches

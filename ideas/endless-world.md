@@ -332,3 +332,56 @@ structurally — and the timing spine held.
   is layout, not art direction.
 - Everything ships behind flags as always; the bounded game remains the
   default until P1–P3 say otherwise.
+
+## The content queue, resolved (M4, 2026-08-15)
+
+Marc's picks from 2026-08-13, each now built or killed in writing, as
+`ROADMAP.md`'s contract requires. A kept corpse is a cut corner; so is a
+feature kept because it was promised.
+
+**BUILT and kept**
+
+- **Quests at landmarks** (M1). A site opens a bounty: pop 8+ within 6 hexes
+  as POINTS for ×3. Kept because it is the one thing that manufactures a
+  moment where points is obviously right, which is Gate B's whole problem.
+- **Shrines — places as features** (M4). 8% of destinations; reaching one
+  switches a system on for the world, permanently, in a fixed five-entry
+  ledger (treasure · fourth card · second stash · double odds · double
+  beacon range). The unlock table `DESIGN.md` has carried since the first
+  design pass, now addressed as geography instead of as a list.
+- **The atlas** (M4). Seed, runs, percent known, hexes seen, territories,
+  best, farthest, and the unlock ledger with the locked entries still
+  readable — a reason to explore has to be legible before it is earned.
+- **Territory perks** (M3), **treasure** (M3), **the stash** (S8),
+  **personalities and biomes** (S8), **rarity and luck** (S6).
+
+**KILLED, with reasons**
+
+- **Hazards** — built, swept, deleted the same session. Unstable ground cost
+  +3 tiles and paid +2 worth, which reads as a decision and measures as a
+  trap: at 12% density the value-following policy died at 27 placements with
+  517 points against a 38,753 baseline, and at 25% two more lines collapsed.
+  The cause is structural, not a number: the REWARD sits on the preview
+  number — the game's central teaching signal, the one Gate A passed on —
+  and the COST does not, so every player who has learned to read the board
+  is walked into bankruptcy by having learned it. A mechanic that punishes
+  the game's own lesson is not a risk, it is a lie. Deleted rather than
+  parked at zero.
+- **Hidden finds** — killed unbuilt. Destinations now sit one per ~6-hex
+  block and pay 40 tiles (M1), which IS the dig-and-find layer, at a density
+  where a run claims six. A second, smaller, invisible version of the same
+  idea would be two systems answering one question, and the plane already
+  asks the player to read four kinds of ground.
+- **Tile quirks** — killed unbuilt. Rarity already prints modifiers on a
+  card: magic is wild, unique is wild and heavy, and treasure lets you
+  CHOOSE one. Quirks would be a third vocabulary for the same slot.
+- **Perk tiles** — killed unbuilt. Territory perks (M3) now occupy the
+  run-long-passive slot and source it from exploration, which is the better
+  source: a passive you earned by walking somewhere beats one you drew.
+- **Scout tiles** — killed unbuilt. Their job was seeing farther; fog memory
+  (M2) and the shrine that doubles beacon range (M4) both do it, and both
+  are permanent rather than a one-shot.
+- **Pattern shapes** (lines, rings, four-colour pockets) — killed unbuilt.
+  Green's crowds and yellow's company are already geometry bonuses, measured
+  at 29-31% of those colours' worth. Explicit shapes would add a rules
+  paragraph to a game whose whole promise is seven rules and no glossary.

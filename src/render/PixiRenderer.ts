@@ -646,7 +646,14 @@ export class PixiRenderer implements Renderer {
  */
 function labelFor(cell: CellView): { text: string; faint: boolean } | null {
   if (cell.kind === 'landmark') {
-    const glyph = cell.landmark === 'cache' ? '+' : cell.landmark === 'site' ? '★' : '◆';
+    const glyph =
+      cell.landmark === 'cache'
+        ? '+'
+        : cell.landmark === 'site'
+          ? '★'
+          : cell.landmark === 'shrine'
+            ? '◈'
+            : '◆';
     return { text: glyph, faint: cell.claimed };
   }
   if (cell.ripe && cell.worth > 0) return { text: String(cell.worth), faint: false };

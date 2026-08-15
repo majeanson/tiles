@@ -467,6 +467,7 @@ export class Game {
             ]
           : []),
         `◆ is a TERRITORY: claiming it turns the ground within ${t.territoryRadius} hexes into a native field of its colour — permanently yours, and it glows in the colour it will grant.`,
+        '◈ is a SHRINE: reaching one switches a system on for your world, for good. They are rare, and SETTINGS lists which ones you have woken and what the next one gives.',
         'The line above your hand always names the nearest unclaimed destination and how many hexes out it sits.',
       ],
     };

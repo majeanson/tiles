@@ -13,7 +13,7 @@ passed, with its evidence.**
 | **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**                          |
 | **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | **PASSED (2026-08-15)**                         |
 | **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | open                                            |
-| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | open                                            |
+| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | **PASSED (2026-08-15)**                         |
 
 ## Sessions
 
@@ -965,3 +965,61 @@ one that does nothing), and its forfeit of both currencies.
 card, so the tile you get is "this colour, but rare". An alternative — let
 the player pick the colour — is a second tap on a third button, and this
 build prefers the terse version. Worth watching in play.
+
+---
+
+### Session 14 — M4: places, the atlas, and the queue emptied
+
+**Question:** can the unlock ledger become geography, and does the rest of
+the content queue earn its place — each item kept or killed with a reason?
+
+**Shrines: the unlock ledger, addressed as places.** 8% of destinations are
+shrines (◈). Reaching one switches a system on for the WORLD, permanently,
+from a fixed five-entry ledger: the treasure payout · a fourth draft card · a
+second stash slot · double rare-tile odds · double beacon range. Fixed order
+rather than random, so a world's progression is a story you can tell; short
+rather than endless, because five is a world's worth of reasons to go and
+look. The engine only marks a shrine claimed — WHICH system it grants is the
+shell's business, because an unlock outlives the run that found it and
+`src/engine/` may not know runs have a past. Unlocks become tuning in
+`applyUnlocks` at the edge, so the manual describes them automatically.
+
+**The atlas.** SETTINGS now carries the world: seed, runs, percent known,
+hexes seen, territories held, best, farthest — and the unlock ledger with the
+locked entries still readable, because a reason to explore has to be legible
+before it is earned.
+
+**The queue, emptied — one built, five killed, all in writing** (the full
+reasoning is in `ideas/endless-world.md`):
+
+- **Hazards: built, swept, DELETED the same session.** Unstable ground cost
+  +3 tiles and paid +2 worth. It reads as a decision and measures as a trap:
+  at 12% density the value-following policy died at 27 placements with 517
+  points against a 38,753 baseline; at 25% two more lines collapsed. The
+  cause is structural — the REWARD is on the preview number, the game's
+  central teaching signal and the one Gate A passed on, and the COST is not,
+  so every player who has learned to read the board is walked into
+  bankruptcy by having learned it. Deleted rather than parked at zero, per
+  the roadmap's contract.
+- **Hidden finds, tile quirks, perk tiles, scout tiles, pattern shapes:
+  killed unbuilt**, each because another system already occupies its slot
+  and does the job better — caches at 6-hex density, rarity, territory
+  perks, fog memory plus the beacon shrine, and the colour powers'
+  geometry respectively. Five paragraphs of reasons rather than five
+  half-built systems.
+
+**Gate F — PASSED.** Its condition: "Gate C passed with placeholder content
+only." That is a matter of record — Gate C was signed in Session 1 with four
+unnamed colours, no biomes, no specials, no perks and no unlock table. What
+this session adds is the evidence that the discipline held afterwards: every
+content system since (terrain, destinations, rarity, powers, biomes, quests,
+perks, treasure, shrines) shipped as numbers in `content/`, swept by the
+harness before it shipped, and one of them was deleted this session BECAUSE
+the sweep said so. Content stayed cheap to write and priced before sale,
+which is the whole point of the gate.
+
+**Verified:** 309 tests green (was 305): shrines remembered once and never
+beyond the ledger, walked-past shrines ignored, unlocks handed out in order,
+worlds written before shrines existed still load. Typecheck, lint, format,
+build clean; the 30-seed sweep with shrines in the mix is unchanged within
+noise (bank20 43.6k, chooser 39.2k, seeker 28.3k, rush 6.5k, 6 claims/run).

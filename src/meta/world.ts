@@ -27,6 +27,12 @@ export type WorldMemory = {
   readonly revealed: readonly HexKey[];
   /** Territory landmarks claimed for good. They greet you already yours. */
   readonly territories: readonly HexKey[];
+  /**
+   * Shrines reached, and therefore systems switched on for this world (M4).
+   * Stored as the hex so a shrine cannot be claimed twice, and mapped to what
+   * it grants by `UNLOCKS` — geography IS the unlock ledger.
+   */
+  readonly shrines: readonly HexKey[];
   /** What the world has seen. The atlas line reads these. */
   readonly runs: number;
   readonly bestPoints: number;
@@ -37,10 +43,33 @@ export const newWorld = (worldSeed: number): WorldMemory => ({
   worldSeed,
   revealed: [],
   territories: [],
+  shrines: [],
   runs: 0,
   bestPoints: 0,
   farthestReach: 0,
 });
+
+/**
+ * What the Nth shrine you reach switches on, in order (M4).
+ *
+ * The unlock ledger `DESIGN.md` has carried since the first design pass, now
+ * addressed as places rather than as a table: each entry is a system that
+ * exists and is off, and the way to turn it on is to walk to it. Order is
+ * fixed rather than random so a world's progression is a story you can tell
+ * someone, and short rather than endless — five shrines is a world's worth of
+ * reasons to go and look.
+ */
+export const UNLOCKS: readonly { readonly id: string; readonly label: string }[] = [
+  { id: 'treasure', label: 'The treasure payout — cash a big pocket for a rare tile' },
+  { id: 'draft', label: 'A fourth draft card' },
+  { id: 'hold', label: 'A second stash slot' },
+  { id: 'luck', label: 'Twice the rare-tile odds' },
+  { id: 'reach', label: 'Destinations glow from twice as far' },
+];
+
+/** The unlocks a world has earned, in ledger order. */
+export const unlockedBy = (world: WorldMemory): readonly string[] =>
+  UNLOCKS.slice(0, world.shrines.length).map((u) => u.id);
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -63,12 +92,16 @@ export function decodeWorld(raw: string | null): WorldMemory | null {
   const revealed = keys(parsed['revealed']);
   const territories = keys(parsed['territories']);
   if (revealed === null || territories === null) return null;
+  // Shrines arrived after the first worlds existed: an older world has none,
+  // which is true rather than corrupt.
+  const shrines = keys(parsed['shrines']) ?? [];
 
   const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
   return {
     worldSeed: parsed['worldSeed'],
     revealed,
     territories,
+    shrines,
     runs: num(parsed['runs']),
     bestPoints: num(parsed['bestPoints']),
     farthestReach: num(parsed['farthestReach']),
@@ -87,12 +120,16 @@ export const encodeWorld = (world: WorldMemory): string => JSON.stringify(world)
 export function rememberRun(world: WorldMemory, state: GameState): WorldMemory {
   const revealed = new Set(world.revealed);
   const territories = new Set(world.territories);
+  const shrines = new Set(world.shrines);
   let reach = 0;
 
   for (const [k, cell] of Object.entries(state.cells)) {
     revealed.add(k);
-    if (cell.kind === 'landmark' && cell.reward === 'territory' && cell.claimed) {
-      territories.add(k);
+    if (cell.kind === 'landmark' && cell.claimed) {
+      if (cell.reward === 'territory') territories.add(k);
+      // A shrine reached is a system switched on for good — but only up to
+      // the ledger's length, so a world cannot bank unlocks it has no use for.
+      if (cell.reward === 'shrine' && shrines.size < UNLOCKS.length) shrines.add(k);
     }
     if (cell.kind === 'tile' || cell.kind === 'stone') {
       reach = Math.max(reach, distance(parse(k), ORIGIN));
@@ -103,6 +140,7 @@ export function rememberRun(world: WorldMemory, state: GameState): WorldMemory {
     worldSeed: world.worldSeed,
     revealed: [...revealed],
     territories: [...territories],
+    shrines: [...shrines],
     runs: world.runs + 1,
     bestPoints: Math.max(world.bestPoints, state.points),
     farthestReach: Math.max(world.farthestReach, reach),

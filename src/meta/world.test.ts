@@ -4,7 +4,15 @@ import { key, neighbourKeys } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { destinationsWithin } from '@engine/world';
 import type { Cell, GameState } from '@engine/state';
-import { decodeWorld, encodeWorld, knownFraction, newWorld, rememberRun } from './world.js';
+import {
+  decodeWorld,
+  encodeWorld,
+  knownFraction,
+  newWorld,
+  rememberRun,
+  unlockedBy,
+  UNLOCKS,
+} from './world.js';
 
 /**
  * P4a: the world you keep. These pin the two promises — the map grows across
@@ -141,5 +149,50 @@ describe('a world already held', () => {
   it('is not carried into the bounded game', () => {
     const bounded = newRun(5, { ...ENDLESS_TUNING, world: 'bounded' }, ['9,9']);
     expect(bounded.claimed).toEqual([]);
+  });
+});
+
+describe('shrines and the unlock ledger (M4)', () => {
+  it('remembers a shrine reached, and never more than the ledger holds', () => {
+    const base = newRun(42, ENDLESS_TUNING);
+    const shrineAt = key(15, 3);
+    const state: GameState = {
+      ...base,
+      cells: {
+        ...base.cells,
+        [shrineAt]: { kind: 'landmark', reward: 'shrine', claimed: true },
+      },
+    };
+
+    const world = rememberRun(newWorld(42), state);
+    expect(world.shrines).toEqual([shrineAt]);
+    expect(unlockedBy(world)).toEqual([UNLOCKS[0]!.id]);
+
+    // The same shrine, reached again in a later run, is not a second unlock.
+    const twice = rememberRun(world, state);
+    expect(twice.shrines).toEqual([shrineAt]);
+  });
+
+  it('ignores a shrine that was only walked past', () => {
+    const base = newRun(42, ENDLESS_TUNING);
+    const state: GameState = {
+      ...base,
+      cells: {
+        ...base.cells,
+        [key(15, 3)]: { kind: 'landmark', reward: 'shrine', claimed: false },
+      },
+    };
+    expect(rememberRun(newWorld(42), state).shrines).toEqual([]);
+    expect(unlockedBy(newWorld(42))).toEqual([]);
+  });
+
+  it('hands out the ledger in order, and stops at its end', () => {
+    const many = { ...newWorld(1), shrines: Array.from({ length: 99 }, (_, i) => `${i},0`) };
+    expect(unlockedBy(many)).toEqual(UNLOCKS.map((u) => u.id));
+  });
+
+  it('loads a world written before shrines existed', () => {
+    const old = '{"worldSeed":5,"revealed":["0,0"],"territories":[],"runs":2}';
+    expect(decodeWorld(old)?.shrines).toEqual([]);
   });
 });

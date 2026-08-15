@@ -74,10 +74,12 @@ export function blockDestination(
   const r = br * size + Math.floor(spot * size);
   if (hexDistance(q, r) < size / 2) return null;
 
-  // 40% cache, 40% site, 20% territory — enough territories to matter, not so
-  // many that the plane is pre-conquered. Reward kinds ride the presence roll.
+  // 40% cache, 35% site, 17% territory, 8% shrine — caches carry survival so
+  // they lead, and shrines are rare because an unlock you meet every run is
+  // not an unlock. Reward kinds ride the presence roll.
   const kind = roll / t.destinationChance;
-  const reward: LandmarkReward = kind < 0.4 ? 'cache' : kind < 0.8 ? 'site' : 'territory';
+  const reward: LandmarkReward =
+    kind < 0.4 ? 'cache' : kind < 0.75 ? 'site' : kind < 0.92 ? 'territory' : 'shrine';
 
   const colour =
     reward === 'territory'
