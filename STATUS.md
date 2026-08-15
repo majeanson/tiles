@@ -4,7 +4,21 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-13** — Session 6: **P3b is built.** Destinations
+Last checkpoint: **2026-08-15** — **the game is ASHWAKE, and M1–M6 of
+`ROADMAP.md` are built.** Sessions 11–16 in one run: Gate B fixed
+structurally (a hard 260-placement clock, survival funded by caches, a cap on
+the size bonus — the tiles share of harvests fell from 94-98% to 41-64% for
+lines that harvest as they go), **Gate D passed** on the arc evidence, the
+remembered world (fog memory + territories that stay yours), the roguelite
+spine (territory perks, the treasure payout, zero unwired flags), shrines as
+the unlock ledger and the whole content queue emptied — one system deleted
+after its sweep said so — **Gate F passed**, **Gate E opened** with torchlit
+chosen and the four colours renamed MOSS · EMBER · ASH · TIDE, and the game
+made installable, offline, shareable and safe for a stranger's first minute.
+314 tests. **Gate B's own verdict and the stranger test are the two things
+code cannot produce — they lead the human follow-up.**
+
+Previous checkpoint: **2026-08-13** — Session 6: **P3b is built.** Destinations
 (cache / site / claimable territory, seeded by the world hash, drawn as
 beacons through unrevealed ground, claimed by touch) and rarity in the draft
 (magic = wild, unique = wild + double, luck accrued by tiles-harvests raising

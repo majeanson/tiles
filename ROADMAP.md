@@ -133,3 +133,53 @@ _Estimate: 2–3 sessions._
 
 Sessions estimated honestly: **11–18 from here.** The estimates are the only
 soft numbers in this file; the checkboxes are not.
+
+---
+
+## Where this stands, 2026-08-15
+
+M1–M6 are built, verified and deployed. What the checklist actually says now:
+
+- [x] **All six gates** — A passed (S10), C passed (S1), D passed (S11),
+      F passed (S14), E opened (S15). **B is the exception**: fixed
+      structurally and measured, but its condition names a human's twenty
+      logged pops, and the game now counts them on every end screen. Not
+      flipped by a machine on a human's behalf.
+- [x] **Zero unwired feature flags.** `pop.treasure` and `debug.overlay` were
+      wired in M3; the registry's `wired` field and its test remain for the
+      next flag declared before it is built.
+- [x] **Every `ideas/` file resolved.** `endless-world.md` carries the queue
+      with each item built-and-kept or killed-in-writing;
+      `persistent-world.md`'s P4a and P4b are built, P4c is built as shrines
+      and the atlas.
+- [ ] **`DESIGN.md` claims human-verified.** Gate A is; the rest is
+      harness-verified and honest about it.
+- [x] **A name, an icon, a direction, and it installs offline.** Ashwake,
+      torchlit, an inline mark, a service worker whose cache name is the
+      build.
+- [ ] **A stranger finished a run and chose to start another.** The one item
+      no amount of code produces.
+- [x] **Post-1.0 parking lot** — below.
+
+**v1.0 is deliberately untagged.** The roadmap's own definition of done
+requires the stranger test and Gate B's human verdict, and tagging without
+them would be the first cut corner in sixteen sessions. Everything else is
+ready: the tag is one command behind two conversations.
+
+## Post-1.0 parking lot
+
+- **Sound.** Marc chose a silent 1.0; the pop, the claim and the clock
+  running out are the three moments that most want a noise.
+- **A leaderboard.** Needs a backend, score validation and an abuse model —
+  all deliberately out of a no-backend 1.0.
+- **Shareable and multiple worlds.** `?world=` codes and save slots, both
+  deferred in the P4 decisions.
+- **Store wrappers.** Only if the web release finds players who want them.
+- **The points scale.** Good runs score tens of thousands; dividing the
+  points formula by a constant is a one-line change nobody has asked for yet.
+- **Storage compaction.** Revealed ground is stored as keys; a per-block
+  bitmap is written down in `ideas/persistent-world.md` for the day an atlas
+  reports a world past ~1MB.
+- **The bounded game.** Still shipped behind `?ff=-world.endless`, still
+  passing its own tests, and still the only thing in the build with no route
+  to it from the UI. Keep or delete after the stranger test.
