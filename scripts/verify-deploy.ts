@@ -85,6 +85,15 @@ async function checkAssets(base: string): Promise<void> {
 
   for (const path of assets) await headOk(base, path);
   console.log(`ok  index.html live and all ${assets.length} referenced bundles serve 200`);
+
+  // The install surface is part of the deploy now (M6). A missing manifest or
+  // service worker does not break the page, which is exactly why it would go
+  // unnoticed — the game would simply stop being installable and nobody would
+  // get an error. So it is verified like everything else.
+  for (const path of ['/manifest.webmanifest', '/sw.js', '/icon.svg', '/icon-maskable.svg']) {
+    await headOk(base, path);
+  }
+  console.log('ok  manifest, service worker and icons serve 200');
 }
 
 /**

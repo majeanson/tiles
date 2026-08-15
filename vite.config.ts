@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import { execSync } from 'node:child_process';
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
@@ -109,10 +109,39 @@ function assetManifest(): Plugin {
   };
 }
 
+/**
+ * Stamp the build into the service worker's cache name.
+ *
+ * `public/sw.js` ships verbatim, so its `__BUILD_SHA__` has to be replaced on
+ * the way out — a cache name that never changes is a phone that never sees a
+ * new build again, which is the single worst bug a service worker can have.
+ */
+function serviceWorkerStamp(sha: string): Plugin {
+  return {
+    name: 'ashwake:sw-stamp',
+    apply: 'build',
+    // `closeBundle`, not `generateBundle`: files in `public/` are COPIED to
+    // the output directory rather than passing through the bundle, so there
+    // is nothing to rewrite until the copy has happened. Getting this wrong
+    // fails silently — the worker ships with a literal `__BUILD_SHA__` in its
+    // cache name, which never changes, which means a phone that installs it
+    // never sees another build. Verified by the assertion below.
+    closeBundle() {
+      const file = fileURLToPath(new URL('./dist/sw.js', import.meta.url));
+      const source = readFileSync(file, 'utf8');
+      const stamped = source.replace('__BUILD_SHA__', sha.slice(0, 12));
+      if (stamped === source) {
+        throw new Error('sw.js has no __BUILD_SHA__ to stamp — the cache name would never change');
+      }
+      writeFileSync(file, stamped);
+    },
+  };
+}
+
 const sha = buildSha();
 
 export default defineConfig({
-  plugins: [versionStamp(sha), assetManifest()],
+  plugins: [versionStamp(sha), assetManifest(), serviceWorkerStamp(sha)],
   define: {
     __BUILD_SHA__: JSON.stringify(sha),
   },

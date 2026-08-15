@@ -1,0 +1,7 @@
+<!-- Maskable: the mark sits inside the 80% safe zone, so a launcher that
+     crops to a circle or a squircle never clips the hex. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" fill="#0a0806"/>
+  <path d="M32 18 47 26.5v17L32 52 17 43.5v-17z" fill="none" stroke="#c79a4b" stroke-width="3.5"/>
+  <circle cx="32" cy="35" r="5" fill="#f7e6be"/>
+</svg>

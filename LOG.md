@@ -1080,3 +1080,56 @@ wall-clearance tests still green under the direction that is now the default.
 two decisions in this whole roadmap that are purely Marc's taste, and both
 were made without him. Both are one line to change (`DEFAULT_THEME_ID`,
 `NAME`), and the alternatives are still in the build.
+
+---
+
+### Session 16 — M6: shipped to strangers
+
+**Question:** would someone who is not Marc, on their own phone, with no
+explanation, get through a run and want another?
+
+**Installable and offline.** A manifest, two SVG icons (one maskable, so a
+launcher that crops to a circle never clips the hex), and a service worker
+with the boring, correct strategy: navigations network-first so a player who
+is online always gets the build that just deployed, everything else
+cache-first because Vite fingerprints it. `/version.json` is never cached —
+it is the file that answers "which build is this", and a cached answer is a
+wrong answer. The cache name carries the build sha, so deploying evicts the
+old cache wholesale.
+
+The stamping is done in `closeBundle`, not `generateBundle`, and that
+distinction cost a build: files in `public/` are COPIED rather than passed
+through the bundle, so the first version shipped a worker whose cache name
+was the literal `__BUILD_SHA__` — a name that never changes, which is a
+phone that never sees another build. It now throws if there is nothing to
+stamp, because that failure is invisible and permanent.
+
+**A stranger's first minute.** A device with no world, no records and no
+saved run opens with the manual already up — once, ever, closed by the same
+tap as always. The alternative was a board of glowing hexes and no
+explanation, which is a puzzle rather than a game.
+
+**Share your wins.** The end screen offers SHARE THIS RUN: the score, how it
+ended, and a link carrying the seed. No backend and no account — a seed IS
+the record, which is what the engine's determinism has been for since
+Session 0. Web Share where it exists, clipboard where it does not, silence
+when the player cancels.
+
+**Polish and honesty.** The camera and help controls now get their
+accessible names from the GAME rather than only from the markup (a label
+that lives in one file and is required in another goes missing the first
+time the markup is rewritten — pinned by test). `verify-deploy` now proves
+the manifest, the worker and both icons serve 200, because a missing install
+surface breaks nothing visible and would therefore go unnoticed. The README
+is written for a human who has never seen the game, and states the privacy
+position plainly: no backend, no accounts, no analytics, nothing leaves the
+device.
+
+**Verified:** 314 tests green (was 310); typecheck, lint, format, build
+clean; `dist/` carries the manifest, both icons and a service worker whose
+cache name is this commit.
+
+**NOT verified, and this is the one thing the milestone cannot close: the
+stranger test.** `ROADMAP.md` asks for a person who is not Marc, on their own
+phone, unaided, finishing a run and starting another. No amount of code
+produces that evidence. It is the first item in the human follow-up.

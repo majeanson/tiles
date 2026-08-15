@@ -84,6 +84,12 @@ export type GameHooks = {
    */
   readonly debug?: boolean;
   /**
+   * True on a device that has never played. The game greets a stranger with
+   * the manual open rather than with a board they must guess at — once, ever,
+   * and the shell remembers that it happened.
+   */
+  readonly firstVisit?: boolean;
+  /**
    * Send this run somewhere — the share sheet, or the clipboard. Absent means
    * the button is not drawn, which is the honest state on a browser with no
    * way to share.
@@ -179,6 +185,18 @@ export class Game {
   start(): void {
     this.#mountGestures();
 
+    // Names for the controls that carry only a glyph. They are in the markup
+    // too, but a label that exists in one file and is required in another is
+    // a label that goes missing the first time the markup is rewritten — so
+    // the game states them, and a test holds it to that.
+    const label = (el: HTMLElement, text: string): void => {
+      el.setAttribute('aria-label', text);
+    };
+    label(this.#el.help, 'How to play');
+    label(this.#el.zoomIn, 'Zoom in');
+    label(this.#el.zoomOut, 'Zoom out');
+    label(this.#el.zoomFit, 'Show the whole world');
+
     this.#el.zoomIn.addEventListener('click', () => {
       this.#renderer.zoomBy(ZOOM_STEP);
       this.#syncCamera();
@@ -239,6 +257,12 @@ export class Game {
     this.#el.leave.addEventListener('click', () => {
       this.#dispatch({ type: 'LEAVE' });
     });
+
+    // A stranger's first minute: the manual, open, before the board is a
+    // puzzle they have to guess at. Once ever — the shell remembers — and it
+    // closes on the same tap as always, so it costs a returning player
+    // nothing and a new one one gesture.
+    if (this.#hooks.firstVisit === true) this.#el.helpPanel.hidden = false;
 
     this.#syncCamera();
     this.render();

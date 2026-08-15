@@ -194,11 +194,17 @@ function runKeeping(
     // Private mode. Every run is its own life; that is also a game.
   }
 
+  // A device that has never finished anything and has no world behind it is
+  // a stranger, and gets the manual open once. `runs` rather than a flag of
+  // its own: the world already knows whether this device has played.
+  const firstVisit = world.runs === 0 && world.revealed.length === 0 && saved === null;
+
   return {
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
     memory: world.revealed,
     debug: debugOn,
+    firstVisit,
 
     onChange: (state) => {
       try {
@@ -254,6 +260,31 @@ function runKeeping(
       url.searchParams.delete('seed');
       url.searchParams.delete('ff');
       location.href = url.toString();
+    },
+
+    /**
+     * Share the run: the score, how it ended, and a link that opens the exact
+     * same world and seed. No backend and no account — a seed IS the record,
+     * which is the whole reason the engine has been deterministic since
+     * Session 0. Falls back to the clipboard where there is no share sheet.
+     */
+    share: async (state) => {
+      const url = new URL(location.href);
+      url.searchParams.set('seed', String(state.rootSeed));
+      const text =
+        `${NAME}: ${state.points} pts in ${state.placements} placements` +
+        (state.death === 'spent' ? ' — expedition complete.' : '.') +
+        ' Beat my run:';
+
+      try {
+        if (typeof navigator.share === 'function') {
+          await navigator.share({ title: NAME, text, url: url.toString() });
+          return;
+        }
+        await navigator.clipboard.writeText(`${text} ${url.toString()}`);
+      } catch {
+        // Cancelled, or neither API exists. Nothing to say and nothing broken.
+      }
     },
   };
 }
@@ -620,6 +651,18 @@ async function main(): Promise<void> {
   // seed + tuning + this list.
   const held = seed === world.worldSeed ? world.territories : [];
   new Game(renderer, elements, seed, theme, tuning, keeper, held).start();
+
+  // Offline, after the game is already playable. A service worker that
+  // registers before the first frame is a service worker that can delay one;
+  // this one only ever makes the SECOND visit better, so it waits its turn.
+  // Dev never registers one — a cached bundle is the last thing you want
+  // while editing, and `import.meta.env.DEV` is compiled out of the build.
+  if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      // No offline play. Every other thing still works, so this is not worth
+      // a word on screen.
+    });
+  }
 
   // Art loads AFTER the first playable frame, never before it. Every slot is
   // empty today and the procedural surfaces are a complete board; a bitmap that

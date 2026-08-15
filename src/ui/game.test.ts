@@ -681,3 +681,63 @@ describe('the remembered world on screen', () => {
     expect(drawn.find((c) => c.key === onBoard)?.remembered).toBe(false);
   });
 });
+
+describe('a stranger arriving', () => {
+  it('opens the manual on a first visit, and not otherwise', () => {
+    const first = build(4, ENDLESS_TUNING, { firstVisit: true });
+    first.game.start();
+    expect(first.el.helpPanel.hidden).toBe(false);
+
+    const returning = build(4, ENDLESS_TUNING, { firstVisit: false });
+    returning.game.start();
+    expect(returning.el.helpPanel.hidden).toBe(true);
+  });
+
+  it('offers a share only when the shell can share, and sends the run', () => {
+    const bare = build(4, ENDLESS_TUNING, {
+      resume: { ...newRun(4, ENDLESS_TUNING), phase: 'ended', death: 'spent' },
+    });
+    bare.game.start();
+    expect(bare.el.end.querySelector('#end-share')).toBeNull();
+
+    let shared: GameState | null = null;
+    const sharing = build(4, ENDLESS_TUNING, {
+      resume: { ...newRun(4, ENDLESS_TUNING), phase: 'ended', death: 'spent', points: 120 },
+      share: (state) => {
+        shared = state;
+      },
+    });
+    sharing.game.start();
+    const button = sharing.el.end.querySelector('#end-share');
+    expect(button).not.toBeNull();
+    (button as HTMLButtonElement).click();
+    expect(shared).not.toBeNull();
+    expect(shared!.points).toBe(120);
+  });
+
+  it('names the run’s ending when the clock runs out', () => {
+    const spent: GameState = {
+      ...newRun(4, ENDLESS_TUNING),
+      phase: 'ended',
+      death: 'spent',
+      placements: ENDLESS_TUNING.runLength,
+    };
+    const ctx = build(4, ENDLESS_TUNING, { resume: spent });
+    ctx.game.start();
+    expect(ctx.el.end.textContent).toMatch(/expedition is over/i);
+  });
+
+  it('keeps every control reachable by name, for a screen reader', () => {
+    const ctx = build(4, ENDLESS_TUNING);
+    ctx.game.start();
+    for (const el of [ctx.el.help, ctx.el.zoomIn, ctx.el.zoomOut, ctx.el.zoomFit]) {
+      expect(el.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
+    }
+    for (const card of [...ctx.el.draft.children]) {
+      expect(card.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
+    }
+    for (const chip of [...ctx.el.colours.children]) {
+      expect(chip.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
+    }
+  });
+});
