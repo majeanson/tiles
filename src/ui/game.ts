@@ -677,9 +677,14 @@ export class Game {
 
   /** Zooming out below fit is meaningless, so those two buttons say so. */
   #syncCamera(): void {
-    const atFit = this.#renderer.zoomLevel() <= 1.001;
+    const zoom = this.#renderer.zoomLevel();
+    const atFit = zoom <= 1.001;
     this.#el.zoomOut.disabled = atFit;
     this.#el.zoomFit.disabled = atFit;
+    // The ceiling rises as the board grows, so it has to be asked for rather
+    // than assumed — a button that is dead at 4x on a small board is live
+    // again at 4x once the world is twice the size.
+    this.#el.zoomIn.disabled = zoom >= this.#renderer.zoomMax() - 0.001;
   }
 
   /**
@@ -1235,6 +1240,10 @@ export class Game {
       toBoardView(this.#state, this.#harvestAt, this.#spotlight, this.#hooks.memory ?? []),
     );
     this.#renderHud(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+    // The board just grew, which moved the zoom ceiling: a placement can make
+    // ZOOM IN live again after it had gone dead. Resyncing only on the camera
+    // buttons left that state a placement behind.
+    this.#syncCamera();
   }
 
   /**

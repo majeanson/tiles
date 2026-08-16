@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { disc, type Hex } from '@engine/hex';
 import type { Orientation } from '@theme/tokens';
-import { corners, fitLayout, hexAt, place, zoomLayout, type Layout } from './layout';
+import { corners, fitLayout, hexAt, place, zoomLayout, type Layout, zoomCeiling } from './layout';
 
 /**
  * The geometry, both ways up.
@@ -231,5 +231,53 @@ describe('the camera', () => {
 
   it('scales cell size linearly', () => {
     expect(zoomLayout(base, 2.5, 0, 0).size).toBeCloseTo(50);
+  });
+});
+
+describe('the zoom ceiling', () => {
+  /**
+   * Marc, on a phone (2026-08-15): "there is a point on mobile where the map
+   * grows and i cant zoom in to see numbers anymore, there is a max zoom in
+   * and its not enough."
+   *
+   * The cap was a flat 4× FIT, and fit shrinks as the world grows — so the
+   * bigger the board, the LESS the camera could lean in. These pin the fix:
+   * the ceiling is stated in pixels a hex, so it rises to meet the board.
+   */
+  const FLOOR = 4;
+  const MAX_PX = 34;
+
+  it('leaves a small board exactly as generous as it was', () => {
+    // A board fitted at 40px a hex is already comfortable; 4× is the old range.
+    expect(zoomCeiling(40, FLOOR, MAX_PX)).toBe(FLOOR);
+  });
+
+  it('RISES as the board grows, which is the whole bug', () => {
+    const small = zoomCeiling(40, FLOOR, MAX_PX);
+    const grown = zoomCeiling(5, FLOOR, MAX_PX);
+    expect(grown).toBeGreaterThan(small);
+  });
+
+  it('always reaches a hex you can read a number on', () => {
+    // The worth numbers are drawn from size 12 up, so every fitted size must
+    // be able to zoom past that — which is precisely what 4× failed to do.
+    for (const fitSize of [40, 20, 10, 5, 2, 0.5]) {
+      const reached = fitSize * zoomCeiling(fitSize, FLOOR, MAX_PX);
+      expect(reached).toBeGreaterThanOrEqual(MAX_PX);
+    }
+  });
+
+  it('reproduces the phone: a late run could not read its own board', () => {
+    // Reach 16 plus an 8-hex beacon horizon is ~49 hexes across a 390px
+    // screen, which fits at about 4.6px a hex.
+    const late = 4.6;
+    expect(late * FLOOR).toBeLessThan(20); // the old cap: numbers unreadable
+    expect(late * zoomCeiling(late, FLOOR, MAX_PX)).toBeCloseTo(MAX_PX);
+  });
+
+  it('states a floor rather than dividing by zero on an empty board', () => {
+    expect(zoomCeiling(0, FLOOR, MAX_PX)).toBe(FLOOR);
+    expect(zoomCeiling(-1, FLOOR, MAX_PX)).toBe(FLOOR);
+    expect(zoomCeiling(Number.NaN, FLOOR, MAX_PX)).toBe(FLOOR);
   });
 });

@@ -1420,3 +1420,32 @@ no stash section rather than a manual describing features it does not have.
 
 Still derived from live tuning, which was the point of writing it that way:
 the numbers in the folds are the same object the reducer pays with.
+
+**Addendum, same day — the zoom ceiling fell as the world grew**
+
+Marc, on a phone: _"there is a point on mobile where the map grows and i cant
+zoom in to see numbers anymore, there is a max zoom in and its not enough."_
+
+Real, and the maths says exactly why. `ZOOM_MAX` was **4 — a multiple of
+FIT** — and fit shrinks as the world grows. Early in a run the board fits at
+about 40px a hex and 4× is enormous. By reach 16, with the beacon horizon
+stretching the fitted extent another 8 hexes past the built ground, roughly 49
+hexes span a 390px screen: fit is ~4.6px a hex, and 4× of that is 18px. Worth
+numbers are drawn from size 12 up, so they were being rendered and could not
+be read. **The more board there was, the less the camera could lean in**,
+which is precisely backwards.
+
+Fixed by stating the ceiling in PIXELS rather than as a multiple of a moving
+target: `zoomCeiling(fitSize, floor, maxHexPx)` returns whatever zoom gets a
+hex to 34px of radius — about a thumb across, the size the layout was designed
+around — and never less than the old 4×, so a small board keeps the range it
+had. The ceiling now RISES to meet the board.
+
+Two follow-ons the fix needed. ZOOM IN is disabled at the ceiling, which means
+the UI has to ASK for the ceiling rather than assume a constant. And `render()`
+resyncs the camera buttons, because a placement can move the ceiling and the
+old code only resynced when a camera button was pressed — so the button would
+sit dead a placement longer than it should.
+
+The maths lives in `layout.ts` rather than the renderer so it is testable
+without a canvas; five tests pin it, including the phone's own numbers.

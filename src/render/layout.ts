@@ -171,3 +171,23 @@ export function fitLayout(
     orientation,
   };
 }
+
+/**
+ * The zoom ceiling for a board fitted at `fitSize` pixels a hex.
+ *
+ * Marc, on a phone: "there is a point on mobile where the map grows and i
+ * cant zoom in to see numbers anymore, there is a max zoom in and its not
+ * enough". The ceiling was a flat multiple of FIT, and fit shrinks as the
+ * world grows — so the more board there was, the less the camera could lean
+ * in, which is exactly backwards. Late runs fitted at ~5px a hex, and 4x of
+ * that is 18px: the worth numbers were being drawn and could not be read.
+ *
+ * So the ceiling is stated in PIXELS instead: zoom until a hex is `maxHexPx`,
+ * however big the world is. `floor` keeps the old generous range on a
+ * small board, which already fits at a comfortable size and should still be
+ * allowed to go closer than life-size.
+ */
+export function zoomCeiling(fitSize: number, floor: number, maxHexPx: number): number {
+  if (!(fitSize > 0)) return floor;
+  return Math.max(floor, maxHexPx / fitSize);
+}

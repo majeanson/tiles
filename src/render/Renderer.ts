@@ -101,6 +101,13 @@ export interface Renderer {
   resetCamera(): void;
   /** Current zoom, 1 = fit. For the buttons' disabled states. */
   zoomLevel(): number;
+
+  /**
+   * The current zoom ceiling. It RISES as the board grows, because the cap is
+   * stated in pixels-per-hex rather than as a multiple of a shrinking fit —
+   * so the UI has to ask rather than assume a constant.
+   */
+  zoomMax(): number;
   /**
    * Which cell is under a point, in CSS pixels relative to the host element.
    * The renderer owns the board's placement on screen, so it is the only thing

@@ -2,7 +2,7 @@ import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } 
 import { key, type HexKey } from '@engine/hex';
 import { fieldDots, hex, rgba, type Surface, type Theme } from '@theme/tokens';
 import { AssetBook } from './assets';
-import { corners, fitLayout, hexAt, place, zoomLayout, type Layout } from './layout';
+import { corners, fitLayout, hexAt, place, zoomCeiling, zoomLayout, type Layout } from './layout';
 import type { BoardView, CellView, Renderer } from './Renderer';
 import { SurfaceTextures } from './surfaces';
 
@@ -14,6 +14,25 @@ import { SurfaceTextures } from './surfaces';
  */
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
+
+/**
+ * How big a hex may be got to, in pixels of radius, however large the world
+ * has grown.
+ *
+ * The bug this fixes (Marc, on a phone, 2026-08-15: "there is a point on
+ * mobile where the map grows and i cant zoom in to see numbers anymore"):
+ * ZOOM_MAX was a multiple of FIT, and fit shrinks as the world grows. Early
+ * on, fit is ~40px a hex and 4x is enormous. By reach 16 — with the beacon
+ * horizon stretching the fitted extent another 8 hexes past that — fit is
+ * about 5px a hex, so the same 4x cap tops out around 18px and the worth
+ * numbers (drawn from size 12 up) are technically present and practically
+ * unreadable. The ceiling has to be absolute, not relative to a board that
+ * keeps getting bigger.
+ *
+ * 34px of radius is a hex about a thumb across, which is the size the whole
+ * layout was designed around in the first place.
+ */
+const HEX_PX_MAX = 34;
 
 /**
  * The board, drawn from a theme.
@@ -67,6 +86,8 @@ export class PixiRenderer implements Renderer {
    * 60Hz on a phone).
    */
   #zoom = 1;
+  /** The fitted hex size from the last draw — what the zoom ceiling is in. */
+  #fitSize = 0;
   #panX = 0;
   #panY = 0;
 
@@ -172,6 +193,7 @@ export class PixiRenderer implements Renderer {
       10,
       this.#theme.orientation,
     );
+    this.#fitSize = fit.size;
     const layout = zoomLayout(fit, this.#zoom, app.screen.width / 2, app.screen.height / 2);
     this.#layout = layout;
     if (layout.size <= 0) return;
@@ -185,8 +207,18 @@ export class PixiRenderer implements Renderer {
 
   // ---------------------------------------------------------------- camera
 
+  /**
+   * The zoom ceiling for the board as it stands: enough to get a hex to
+   * HEX_PX_MAX, and never less than the flat ZOOM_MAX a small board had.
+   * It RISES as the world grows, which is the whole point — a fixed multiple
+   * of a shrinking fit is a ceiling that falls.
+   */
+  #zoomMax(): number {
+    return zoomCeiling(this.#fitSize, ZOOM_MAX, HEX_PX_MAX);
+  }
+
   zoomBy(factor: number): void {
-    const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, this.#zoom * factor));
+    const next = Math.min(this.#zoomMax(), Math.max(ZOOM_MIN, this.#zoom * factor));
     if (next === this.#zoom) return;
 
     // Anchoring at the screen centre means the pan scales with the zoom —
@@ -218,6 +250,10 @@ export class PixiRenderer implements Renderer {
 
   zoomLevel(): number {
     return this.#zoom;
+  }
+
+  zoomMax(): number {
+    return this.#zoomMax();
   }
 
   /**

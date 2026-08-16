@@ -51,6 +51,11 @@ class StubRenderer implements Renderer {
   zoomLevel(): number {
     return this.zoom;
   }
+  /** A grown board raises the ceiling; the stub just states one. */
+  max = 4;
+  zoomMax(): number {
+    return this.max;
+  }
   destroy(): void {}
 
   get last(): BoardView {
