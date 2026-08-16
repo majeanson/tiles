@@ -352,6 +352,51 @@ export type Tuning = {
    * become purely the between-runs payout, revealed on the end screen, and
    * the HUD slot they held goes to LUCK, which is now the live currency.
    */
+  /**
+   * RELICS — the between-runs currency (Marc, 2026-08-15: "a new currency so
+   * you need to decide vs a good point game vs advancing roguelite").
+   *
+   * Deliberately NOT points. Points are the score you chase; relics are what
+   * buys permanent upgrades, and the two compete for the same pockets, so
+   * every ripe pocket asks whether this run is for the record book or for the
+   * next run. Three sources, all of them chosen by Marc:
+   *
+   *   `burnRelics` — per tile in a pocket you sacrifice. No tiles and no
+   *   score, which is what makes it a decision rather than a bonus.
+   *   `claimRelics` — per landmark reached for the first time. Exploring pays
+   *   the meta without asking you to give anything up.
+   *   `luckToRelics` — the fraction of UNSPENT luck banked when the run ends,
+   *   so hoarding the purse is a real alternative to spending it.
+   *
+   * Zeros = no meta economy, which is every game but the tiles-only one.
+   */
+  /**
+   * PERKS, bought with relics and carried into every world (Marc chose two
+   * of ten in the brainstorm, and parked the four big rule-breakers as
+   * "not convinced" — they stay in ideas/uniques.md, unbuilt).
+   *
+   * ROOTBOUND (`rootboundOnly`) — native ground counts DOUBLE and off-native
+   * ground pays nothing at all. Not a bonus: a rewrite of where you are
+   * allowed to build well, which makes reading the terrain before placing
+   * the whole game for that run.
+   *
+   * SECOND WIND (`secondWindTiles`, `secondWindChance`) — the first time the
+   * run would die broke, a coin is flipped: on `secondWindChance` you refill
+   * to `secondWindTiles` and carry on, otherwise you die anyway. Marc
+   * amended the guaranteed version to this himself, and the amendment is
+   * what makes it interesting — a floor tells you how much risk is correct,
+   * a coin flip only tells you whether you dared.
+   *
+   * Zeros and false = the perk is not owned, which is where every run starts.
+   */
+  readonly rootboundOnly: boolean;
+  readonly secondWindTiles: number;
+  readonly secondWindChance: number;
+
+  readonly burnRelics: number;
+  readonly claimRelics: number;
+  readonly luckToRelics: number;
+
   readonly hidePoints: boolean;
 
   readonly luckRerollCost: number;
@@ -468,6 +513,12 @@ export const TUNING: Tuning = {
 
   luckPerPop: 0,
   luckPerTile: 1,
+  rootboundOnly: false,
+  secondWindTiles: 0,
+  secondWindChance: 0,
+  burnRelics: 0,
+  claimRelics: 0,
+  luckToRelics: 0,
   hidePoints: false,
   luckRerollCost: 0,
   luckSteerCost: 0,
@@ -662,12 +713,15 @@ export const TILESONLY_TUNING: Tuning = {
 
   singlePayout: true,
   pointsPerPop: 0.35,
-  // Off: burning a pocket paid 3 luck a tile where popping it paid the same
-  // luck AND the tiles AND the score, so it was strictly dominated the moment
-  // luck went flat-per-pop, and Marc never once used it. Kept in the engine,
-  // priced at nothing, pending his open question of whether a burn should pay
-  // the between-runs currency instead.
+  // Burning pays RELICS now, not luck. That was the open question, and the
+  // answer arrived with the meta economy: a burn gives up the tiles keeping
+  // you alive AND the score, and buys the next run instead. Luck was the
+  // wrong price because popping paid luck too, so the sacrifice bought
+  // nothing the safe move did not.
   burnLuck: 0,
+  burnRelics: 2,
+  claimRelics: 3,
+  luckToRelics: 0.1,
   endReachBonus: 40,
   endClaimBonus: 60,
 

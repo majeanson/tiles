@@ -1348,3 +1348,48 @@ monotonically better on score.** It was noise and I called it a result.
 Open, and now downstream of the meta economy rather than this build: score
 still rewards waiting, so the timing decision is a survival decision and a
 shopping decision but not a scoring one.
+
+**Addendum, same day — the roguelite layer, and a currency that is not points**
+
+Marc answered four questions and the meta economy fell out of them.
+
+The important one was the currency. Asked how points should be spent, he
+refused the question: _"a new currency so you need to decide vs a good point
+game vs advancing roguelite."_ So **RELICS** exist, and they are deliberately
+not points. Points are the score a run is worth; relics buy the next run;
+both come out of the same pockets. That is a decision on every ripe pocket
+rather than a menu at the end.
+
+It also answered the burn question he had left open ("3 or 4, not too sure").
+Burning pays relics now: no tiles, no score, no luck — you give up the run to
+buy the ones after it. Option 4 turned out to need the shop to exist before it
+meant anything, which is why it could not be settled when he was asked.
+
+Three sources, all his: **burn** (2 a tile), **reaching somewhere new** (3,
+and the only one that costs no sacrifice), and **10% of unspent luck at
+death**, so hoarding the purse is a real alternative to spending it.
+
+The shop is on the end screen, and what it sells carries into every world —
+both his calls. Three deliberately BORING upgrades (deeper purse, keener eye,
+richer worlds), because they are the floor that makes run 20 unlike run 1 and
+they are boring so the perks can be strange.
+
+**The perks.** Asked to pick from a brainstorm of sixteen, he parked all four
+big rule-breakers — _"skip uniques for now im not convinced"_ — and took two
+of the cheap six, with an amendment of his own:
+
+- **ROOTBOUND** — native ground pays double, ground that is not yours pays
+  NOTHING. Where you may build well is decided by terrain before you draw.
+- **SECOND WIND** — _"4. with half chance to still die"_. He turned a
+  guaranteed floor into a coin flip, and the amendment is what makes it
+  interesting: a floor tells you how much risk is correct, a coin flip only
+  tells you whether you dared.
+
+One perk worn at a time until the second slot is bought (400 relics), which
+is what makes owning both a decision rather than an accumulation.
+
+`ideas/uniques.md` holds all sixteen, tiered, including the four parked ones
+and the four I argued against. Reference, not spec.
+
+372 tests. The prices are guesses and are meant to be: the shop cannot be
+balanced before anyone has spent anything in it.

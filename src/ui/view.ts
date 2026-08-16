@@ -211,6 +211,14 @@ export type HudView = {
   readonly luck: number;
   readonly spends: readonly SpendView[];
 
+  /**
+   * Relics carried out of this run so far, and whether burning is what pays
+   * them. The between-runs currency: shown on the end screen, and named on
+   * the burn button so the sacrifice says what it buys.
+   */
+  readonly relics: number;
+  readonly burnPaysRelics: boolean;
+
   /** Bounded only. The plane has no LEAVE, so the button has no reason to exist. */
   readonly showLeave: boolean;
 
@@ -373,7 +381,16 @@ export function toHudView(
     questPays: value.questPays,
     questLine: questLineFor(state),
     harvestTreasure: value.treasure,
-    harvestBurn: state.tuning.burnLuck > 0 ? value.count * state.tuning.burnLuck : 0,
+    // The sacrifice pays RELICS now: the between-runs currency, and the only
+    // thing on this screen that is not about staying alive.
+    harvestBurn:
+      state.tuning.burnRelics > 0
+        ? value.count * state.tuning.burnRelics
+        : state.tuning.burnLuck > 0
+          ? value.count * state.tuning.burnLuck
+          : 0,
+    burnPaysRelics: state.tuning.burnRelics > 0,
+    relics: state.relics,
     singlePayout: state.tuning.singlePayout,
 
     canHarvest: state.phase === 'placing' && value.count > 0,

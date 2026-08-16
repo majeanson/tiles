@@ -290,6 +290,8 @@ export function newRun(
     placements: 0,
     mapNumber: 1,
     luck: 0,
+    relics: 0,
+    usedSecondWind: false,
     cells: opened.cells,
     draft: opened.draft,
     selected: 0,
@@ -419,6 +421,7 @@ function place(state: GameState, hex: HexKey): GameState {
 
   let tiles = payPlacement(state.tiles, costOf(state.placements, t));
   let points = state.points;
+  let relics = state.relics;
   let quest: Quest | null = state.quest;
 
   if (t.world === 'endless') {
@@ -440,6 +443,11 @@ function place(state: GameState, hex: HexKey): GameState {
       const c = cells[n];
       if (c?.kind !== 'landmark' || c.claimed) continue;
       cells[n] = { ...c, claimed: true };
+
+      // Reaching anywhere new pays the meta a little, whatever it was: the
+      // exploring half of Marc's three relic sources, and the only one that
+      // asks you to give up nothing.
+      relics += t.claimRelics;
 
       if (c.reward === 'cache') tiles += t.cachePays;
       if (c.reward === 'site') {
@@ -480,6 +488,7 @@ function place(state: GameState, hex: HexKey): GameState {
     placements: state.placements + 1,
     tiles,
     points,
+    relics,
     quest,
     bias,
     draft,
@@ -494,8 +503,8 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   const t = state.tuning;
   const { keys, count, tiles, points, questPays, treasure } = harvestValue(state, at);
   if (keys.length === 0) return state;
-  // Burning is only a thing where the sacrifice exists.
-  if (choice === 'burn' && t.burnLuck <= 0) return state;
+  // Burning is only a thing where the sacrifice has a price — either one.
+  if (choice === 'burn' && t.burnLuck <= 0 && t.burnRelics <= 0) return state;
   // Treasure is refused rather than downgraded when the pocket is too small:
   // a button that quietly pays something else is worse than a button that
   // does nothing. The UI only offers it when `treasure` is non-null.
@@ -540,6 +549,10 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   const perPop =
     t.luckPerPop > 0 || t.luckPerTile !== 1 ? t.luckPerPop + count * t.luckPerTile : count;
   const luckGained = choice === 'burn' ? count * t.burnLuck : pops ? perPop : 0;
+  // The sacrifice, repriced: a burn gives up the tiles AND the score and pays
+  // the between-runs currency instead. That is the fork — is this run for the
+  // record book, or for the next run?
+  const relicsGained = choice === 'burn' ? count * t.burnRelics : 0;
 
   // A pocket cashed is a colour requested: the plane sends more of what you
   // just popped, so cashing a green pocket is how you get the green to build
@@ -573,6 +586,7 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
     // compounds — and burning one trades the tiles away for several times as
     // much of it.
     luck: Math.min(state.tuning.luckCap, Math.round(state.luck + luckGained)),
+    relics: state.relics + relicsGained,
     quest: collected ? null : state.quest,
     bias,
     log: {
@@ -668,8 +682,38 @@ function endIfStuck(state: GameState): GameState {
  */
 function ending(state: GameState, death: DeathCause): GameState {
   const t = state.tuning;
+
+  // SECOND WIND (Marc's perk, 2026-08-15, with his own amendment: "with half
+  // chance to still die"). A reprieve you might not get — the run refills
+  // instead of ending, once, and only if the coin says so. The gamble is the
+  // whole point: a guaranteed floor changes how much risk is correct, a coin
+  // flip changes whether you dare find out.
+  if (t.secondWindTiles > 0 && !state.usedSecondWind && death === 'broke') {
+    const [roll, luckStream] = rngNext(state.rng.loot);
+    const survived = roll < t.secondWindChance;
+    const next: GameState = {
+      ...state,
+      usedSecondWind: true,
+      rng: { ...state.rng, loot: luckStream },
+    };
+    if (survived) return { ...next, tiles: t.secondWindTiles };
+    // The coin was spent and lost. The run still ends, below.
+    return endingBonus(next, death);
+  }
+
+  return endingBonus(state, death);
+}
+
+/** The end-of-run payout, split out so Second Wind can reach it either way. */
+function endingBonus(state: GameState, death: DeathCause): GameState {
+  const t = state.tuning;
+  // Unspent luck is worth something on the way out — hoarding the purse is a
+  // real alternative to spending it, which is the third of Marc's three relic
+  // sources.
+  const banked = state.relics + Math.floor(state.luck * t.luckToRelics);
+
   if (t.endReachBonus <= 0 && t.endClaimBonus <= 0) {
-    return { ...state, phase: 'ended', death };
+    return { ...state, phase: 'ended', death, relics: banked };
   }
 
   let reach = 0;
@@ -684,6 +728,7 @@ function ending(state: GameState, death: DeathCause): GameState {
     ...state,
     phase: 'ended',
     death,
+    relics: banked,
     points: state.points + reach * t.endReachBonus + claims * t.endClaimBonus,
   };
 }

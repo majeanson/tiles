@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENDLESS_TUNING, TILESONLY_TUNING } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from './hex';
 import { canSpend, newRun, rarityOdds, reduce } from './reduce';
-import { harvestValue } from './rules';
+import { costOf, harvestValue, worthOf } from './rules';
 import type { Cell, GameState } from './state';
 
 /**
@@ -66,18 +66,32 @@ describe('one payout', () => {
 
 describe('burning a pocket', () => {
   /**
-   * Switched OFF in the tiles-only run after Marc played it (2026-08-15): he
-   * never used it once, and the reason is arithmetic rather than taste — a
-   * burn paid `burnLuck` a tile where popping the same pocket paid comparable
-   * luck AND the tiles AND the score, so it was strictly dominated from the
-   * moment luck went flat-per-pop. The mechanic stays in the engine, priced
-   * at nothing, pending the open question of whether a burn should pay the
-   * between-runs currency instead. These pin both halves of that.
+   * Repriced, twice. Burning paid LUCK until Marc played it and never once
+   * used it: a burn paid `burnLuck` a tile where popping the same pocket paid
+   * comparable luck AND the tiles AND the score, so it was strictly dominated
+   * the moment luck went flat-per-pop. It now pays RELICS — the between-runs
+   * currency — which is the version he asked for: give up the thing keeping
+   * you alive and the score, and buy the next run instead.
    */
-  it('is off in the tiles-only run — the price is zero, so the action is a no-op', () => {
+  it('pays RELICS and nothing else — no tiles, no score, no luck', () => {
     expect(T.burnLuck).toBe(0);
     const state = pocket(newRun(5, T), 6);
-    expect(reduce(state, { type: 'HARVEST', choice: 'burn', at: key(0, 0) })).toBe(state);
+    const burned = reduce(state, { type: 'HARVEST', choice: 'burn', at: key(0, 0) });
+
+    expect(burned.relics).toBe(6 * T.burnRelics);
+    expect(burned.tiles).toBe(state.tiles);
+    expect(burned.points).toBe(state.points);
+    expect(burned.luck).toBe(state.luck);
+    expect(burned.cells[key(0, 0)]?.kind).toBe('stone');
+  });
+
+  it('is the fork: the same pocket popped pays tiles and score, and no relics', () => {
+    const state = pocket(newRun(5, T), 6);
+    const popped = reduce(state, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
+
+    expect(popped.relics).toBe(0);
+    expect(popped.tiles).toBeGreaterThan(state.tiles);
+    expect(popped.points).toBeGreaterThan(state.points);
   });
 
   it('still works wherever a price is set, so the option can come back', () => {
@@ -228,5 +242,94 @@ describe('why you would ever pop early', () => {
     const state = pocket(newRun(5, ENDLESS), 5);
     const popped = reduce(state, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
     expect(popped.bias).toBeNull();
+  });
+});
+
+describe('the perks Marc picked', () => {
+  /**
+   * ROOTBOUND and SECOND WIND, chosen out of a brainstorm of sixteen. The
+   * four big rule-breakers he was not convinced by are in ideas/uniques.md,
+   * unbuilt — these are the two that exist.
+   */
+  const ROOTBOUND = { ...T, rootboundOnly: true };
+
+  it('rootbound: ground that is not yours pays NOTHING, however well packed', () => {
+    // A green tile among green neighbours, on ground native to nobody.
+    const cells: Record<HexKey, Cell> = {
+      [key(0, 0)]: { kind: 'tile', colour: 'green' },
+      [key(1, 0)]: { kind: 'tile', colour: 'green' },
+      [key(0, 1)]: { kind: 'tile', colour: 'green' },
+    };
+    const base: GameState = { ...newRun(5, T), cells };
+    const rooted: GameState = { ...newRun(5, ROOTBOUND), cells };
+
+    expect(worthOf(base.cells, key(0, 0), T)).toBeGreaterThan(0);
+    expect(worthOf(rooted.cells, key(0, 0), ROOTBOUND)).toBe(0);
+  });
+
+  it('rootbound: your own ground pays double', () => {
+    const cells: Record<HexKey, Cell> = {
+      [key(0, 0)]: { kind: 'tile', colour: 'green', onNative: true },
+      [key(1, 0)]: { kind: 'tile', colour: 'green', onNative: true },
+    };
+    const plain = worthOf(cells, key(0, 0), T);
+    const rooted = worthOf(cells, key(0, 0), ROOTBOUND);
+    expect(rooted).toBe(plain * 2);
+  });
+
+  it('second wind: a coin flip, not a floor — and only ever once', () => {
+    const WIND = { ...T, secondWindTiles: 20, secondWindChance: 0.5 };
+    // Exactly enough for one placement, and nothing ripe afterwards: the
+    // placement itself is what makes the run broke.
+    const dying: GameState = {
+      ...newRun(5, WIND),
+      tiles: costOf(0, WIND),
+      cells: { [key(0, 0)]: { kind: 'tile', colour: 'green' }, [key(1, 0)]: { kind: 'empty' } },
+    };
+
+    // Across many seeds the coin must land both ways, or it is not a coin.
+    const outcomes = new Set<boolean>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const ended = reduce(
+        { ...dying, rootSeed: seed, rng: newRun(seed, WIND).rng },
+        { type: 'PLACE', hex: key(1, 0) },
+      );
+      outcomes.add(ended.phase === 'ended');
+    }
+    expect(outcomes.has(true)).toBe(true);
+    expect(outcomes.has(false)).toBe(true);
+  });
+
+  it('second wind: spent whether the coin was won or lost', () => {
+    const WIND = { ...T, secondWindTiles: 20, secondWindChance: 1 };
+    const dying: GameState = {
+      ...newRun(5, WIND),
+      tiles: costOf(0, WIND),
+      cells: { [key(0, 0)]: { kind: 'tile', colour: 'green' }, [key(1, 0)]: { kind: 'empty' } },
+    };
+    const saved = reduce(dying, { type: 'PLACE', hex: key(1, 0) });
+    expect(saved.usedSecondWind).toBe(true);
+    expect(saved.tiles).toBe(20);
+  });
+
+  it('does not exist unless the perk is worn', () => {
+    expect(T.rootboundOnly).toBe(false);
+    expect(T.secondWindTiles).toBe(0);
+  });
+});
+
+describe('relics', () => {
+  it('are paid for reaching somewhere new, and are not points', () => {
+    expect(T.claimRelics).toBeGreaterThan(0);
+    expect(newRun(5, T).relics).toBe(0);
+  });
+
+  it('bank a share of unspent luck when the run ends', () => {
+    const base = pocket(newRun(5, T), 6, false);
+    const rich: GameState = { ...base, luck: 200 };
+    const ended = reduce(rich, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
+
+    expect(ended.phase).toBe('ended');
+    expect(ended.relics).toBe(Math.floor(ended.luck * T.luckToRelics));
   });
 });

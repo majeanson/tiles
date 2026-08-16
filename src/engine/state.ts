@@ -184,6 +184,18 @@ export type GameState = {
    */
   readonly luck: number;
 
+  /**
+   * RELICS: the between-runs currency, banked by sacrificing pockets,
+   * reaching landmarks and dying with luck still in the purse. Never spent
+   * inside a run — the engine only counts them, and the shell carries them
+   * out. Deliberately separate from points so that chasing a score and
+   * advancing the roguelite are different games played on the same board.
+   */
+  readonly relics: number;
+
+  /** Second Wind is once a run, spent whether the coin was won or lost. */
+  readonly usedSecondWind: boolean;
+
   readonly cells: Readonly<Record<HexKey, Cell>>;
 
   readonly draft: readonly Tile[];

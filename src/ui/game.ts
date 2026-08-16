@@ -12,6 +12,7 @@ import type {
 } from '@engine/state';
 import { destinationAt } from '@engine/world';
 import { bakeSurface } from '@render/bake';
+import { UPGRADES, buy, equip, levelOf, priceOf, slotsOf, type Progress } from '@meta/progress';
 import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import type { Theme } from '@theme/tokens';
@@ -89,6 +90,16 @@ export type GameHooks = {
   };
   /** Start a fresh run under the current settings. Wired to the end screen. */
   readonly newRun?: () => void;
+
+  /**
+   * The roguelite purse and shelf, read and written by the shell so the game
+   * loop never touches storage. Absent where there is no meta economy, which
+   * is what hides the whole shop rather than showing an empty one.
+   */
+  readonly shop?: {
+    read(): Progress;
+    write(progress: Progress): void;
+  };
   /**
    * Ground this world remembers from earlier runs (P4a) — drawn faint under
    * the board. Keys only; the terrain is re-derived from the world seed.
@@ -827,6 +838,16 @@ export class Game {
       ],
     };
 
+    const relics: { title: string; lines: string[] } = {
+      title: 'RELICS, AND THE NEXT RUN',
+      lines: [
+        `RELICS are not points. Points are the score a run is worth; relics are what buys the NEXT run, and both come out of the same pockets — so every ripe pocket asks which game you are playing.`,
+        `SACRIFICE a pocket and it pays ${t.burnRelics} relics a tile and nothing else: no tiles to live on, no score. You are giving up the run to buy the ones after it.`,
+        `Reaching somewhere new pays ${t.claimRelics} relics as well, for nothing — exploring is the half of the meta that costs you no sacrifice. And when a run ends, ${Math.round(t.luckToRelics * 100)}% of the luck still in your purse comes home with you, so hoarding luck is a real alternative to spending it.`,
+        `Spend relics on the screen that appears when a run ends. What you buy is permanent and follows you into every world: a deeper purse, keener odds, richer worlds — and PERKS, which change the rules rather than the numbers. You may wear one perk at a time until you buy the second slot.`,
+      ],
+    };
+
     const stash: { title: string; lines: string[] } = {
       title: 'THE STASH',
       lines: [
@@ -921,6 +942,7 @@ export class Game {
           ground,
           destinations,
           rarity,
+          ...(t.burnRelics > 0 ? [relics] : []),
           stash,
           yourWorld,
           reading,
@@ -1145,7 +1167,11 @@ export class Game {
     const burn = hud.canHarvest ? hud.harvestBurn : 0;
     this.#el.harvestBurn.hidden = burn <= 0;
     this.#el.harvestBurn.disabled = burn <= 0;
-    if (burn > 0) this.#el.harvestBurn.textContent = `BURN for +${burn} luck`;
+    if (burn > 0) {
+      this.#el.harvestBurn.textContent = hud.burnPaysRelics
+        ? `SACRIFICE for ${burn} relics`
+        : `BURN for +${burn} luck`;
+    }
     this.#el.harvestTiles.hidden = !hud.canHarvest;
     this.#el.harvestPoints.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;
@@ -1230,6 +1256,8 @@ export class Game {
 
     if (this.#recordLines.length > 1) parts.push(line('end-facts', this.#recordLines[1]!));
 
+    parts.push(...this.#shopParts());
+
     if (this.#hooks.newRun !== undefined) {
       const again = document.createElement('button');
       again.type = 'button';
@@ -1256,6 +1284,85 @@ export class Game {
     }
 
     this.#el.end.replaceChildren(...parts);
+  }
+
+  /**
+   * The between-runs shop, on the end screen because that is the moment the
+   * numbers mean something (Marc's call, 2026-08-15). Relics are the currency
+   * and they are NOT points: points are the score you chase, relics are what
+   * buys the next run, and a pocket spent on one is a pocket not spent on the
+   * other.
+   *
+   * Everything is listed, priced, whether or not it can be afforded — the
+   * shop is what gives a burnt pocket a reason, so its expensive half has to
+   * be visible from the first run. Empty entirely where there is no meta
+   * economy, which is every game but the tiles-only one.
+   */
+  #shopParts(): HTMLElement[] {
+    const shop = this.#hooks.shop;
+    if (shop === undefined) return [];
+    const progress = shop.read();
+    const slots = slotsOf(progress);
+
+    const head = document.createElement('p');
+    head.className = 'shop-purse';
+    head.textContent = `${progress.relics} RELICS`;
+
+    const rows = UPGRADES.map((upgrade) => {
+      const level = levelOf(progress, upgrade.id);
+      const price = priceOf(progress, upgrade);
+      const owned = level > 0;
+      const worn = progress.equipped.includes(upgrade.id);
+
+      const row = document.createElement('div');
+      row.className = 'shop-row';
+      if (worn) row.dataset['worn'] = 'true';
+
+      const name = document.createElement('span');
+      name.className = 'shop-name';
+      name.textContent =
+        upgrade.levels > 1 && owned ? `${upgrade.name} ${level}/${upgrade.levels}` : upgrade.name;
+
+      const note = document.createElement('span');
+      note.className = 'shop-note';
+      note.textContent = upgrade.note;
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'shop-buy';
+
+      // A perk already owned offers the only other thing it can do: be worn,
+      // or taken off to make room. With two perks and one slot that is the
+      // decision the slot upgrade exists to sell.
+      if (upgrade.perk && owned) {
+        button.textContent = worn ? 'WORN' : 'WEAR';
+        button.disabled = false;
+        button.addEventListener('click', () => {
+          shop.write(equip(shop.read(), upgrade.id));
+          this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+        });
+      } else if (price === null) {
+        button.textContent = 'DONE';
+        button.disabled = true;
+      } else {
+        button.textContent = String(price);
+        button.disabled = progress.relics < price;
+        button.addEventListener('click', () => {
+          shop.write(buy(shop.read(), upgrade));
+          this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+        });
+      }
+
+      row.append(name, note, button);
+      return row;
+    });
+
+    const slotLine = document.createElement('p');
+    slotLine.className = 'end-facts';
+    slotLine.textContent =
+      slots === 1 ? 'One perk may be worn at a time.' : `${slots} perks may be worn at a time.`;
+
+    return [head, ...rows, slotLine];
   }
 
   /**

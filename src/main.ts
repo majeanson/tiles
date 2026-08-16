@@ -18,6 +18,13 @@ import {
   type RecordBook,
 } from '@meta/records';
 import { ICON_DATA_URI, NAME } from '@meta/identity';
+import {
+  EMPTY_PROGRESS,
+  applyProgress,
+  decodeProgress,
+  encodeProgress,
+  type Progress,
+} from '@meta/progress';
 import { decodeRun, encodeRun } from '@meta/save';
 import {
   decodeWorld,
@@ -35,6 +42,7 @@ import { PixiRenderer } from '@render/PixiRenderer';
 import { applyTheme } from '@theme/apply';
 import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
 import type { Orientation, Theme } from '@theme/tokens';
+import type { GameState } from '@engine/state';
 import { Game, type Elements, type GameHooks } from '@ui/game';
 
 // v2, 2026-08-14: the endless world became the default. Any device that ever
@@ -57,6 +65,12 @@ const HEX_STORAGE_KEY = 'tiles.hex.v1';
 const RUN_STORAGE_KEY = 'tiles.run.v1';
 /** The world this device explores: seed, revealed ground, territories held. */
 const WORLD_STORAGE_KEY = 'tiles.world.v1';
+/**
+ * The roguelite purse and shelf. Deliberately NOT per world: Marc chose that
+ * upgrades carry across every world, so a new world is a fresh map and never
+ * a reset. Shrines stay per-world, so a world still has a story of its own.
+ */
+const PROGRESS_STORAGE_KEY = 'tiles.progress.v1';
 /**
  * The record book, per world — runs, best, and the harvest-choice tally that
  * Gate B is measured on. v2: v1 held bare numbers, this holds records.
@@ -134,6 +148,36 @@ function resolveThemeId(): string {
   } catch {
     return DEFAULT_THEME_ID;
   }
+}
+
+/**
+ * The roguelite progress, read fresh every time rather than cached.
+ *
+ * The shop is rendered on the end screen and buying redraws it, so a stale
+ * copy here would show a purse that had already been spent. Storage is cheap;
+ * a lie about how many relics you have is not.
+ */
+function readProgress(): Progress {
+  try {
+    return decodeProgress(localStorage.getItem(PROGRESS_STORAGE_KEY));
+  } catch {
+    return EMPTY_PROGRESS;
+  }
+}
+
+function writeProgress(progress: Progress): void {
+  try {
+    localStorage.setItem(PROGRESS_STORAGE_KEY, encodeProgress(progress));
+  } catch {
+    // Private mode. The run still plays; it just never compounds.
+  }
+}
+
+/** Bank what a finished run carried out, once, at the moment it ends. */
+function bankRelics(state: GameState): void {
+  if (state.relics <= 0) return;
+  const progress = readProgress();
+  writeProgress({ ...progress, relics: progress.relics + state.relics });
 }
 
 function rememberTheme(id: string): void {
@@ -216,6 +260,11 @@ function runKeeping(
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
     memory: world.revealed,
+
+    shop: {
+      read: readProgress,
+      write: writeProgress,
+    },
     debug: debugOn,
     firstVisit,
 
@@ -242,6 +291,11 @@ function runKeeping(
     },
 
     finish: (state) => {
+      // Relics bank before anything else reads the purse: the shop renders
+      // on this very screen, and a shop that opened before the run it is
+      // paid for had been counted would be showing yesterday's money.
+      if (askedSeed() === null) bankRelics(state);
+
       // The world remembers first: ground seen and territories held outlive
       // the run that found them, which is the whole of P4a. A replayed link
       // (`?seed=`) is somebody else's geography and must not touch it.
@@ -687,7 +741,13 @@ async function main(): Promise<void> {
     : isEnabled(features, 'world.endless')
       ? ENDLESS_TUNING
       : TUNING;
-  const tuning = applyUnlocks(base, features, seed === world.worldSeed ? unlockedBy(world) : []);
+  const unlocked = applyUnlocks(base, features, seed === world.worldSeed ? unlockedBy(world) : []);
+  // ...and then what the roguelite has bought, which is the last word: a
+  // deeper purse, keener odds, richer worlds and whichever perk is worn.
+  // A shared `?seed=` link is somebody else's run and plays the plain
+  // economy, because a replay scored under this device's upgrades would not
+  // be a replay of anything.
+  const tuning = askedSeed() === null ? applyProgress(unlocked, readProgress()) : unlocked;
   // Territories the world already holds arrive as plain data — the engine
   // still knows nothing about storage, and a replay is reproducible from
   // seed + tuning + this list.

@@ -221,7 +221,15 @@ function tallyWorth(
   // Native ground counts as one match — the endless world's rule 4 addendum.
   // Baked into the tile at placement, so worth never has to ask the terrain.
   // A heavy tile's ground match counts double like every other match it makes.
-  return worth + (onNative ? (rarity === 'unique' ? 2 : 1) : 0);
+  const native = onNative ? (rarity === 'unique' ? 2 : 1) : 0;
+
+  // ROOTBOUND (perk): native ground counts double, and ground that is not
+  // yours pays NOTHING — every match the tile made is voided. Not a bonus on
+  // top of the normal game but a different game: where you may build well is
+  // decided by the terrain before you draw a card.
+  if (t.rootboundOnly) return onNative ? (worth + native) * 2 : 0;
+
+  return worth + native;
 }
 
 /**
