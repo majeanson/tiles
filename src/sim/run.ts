@@ -30,7 +30,6 @@ export type RunResult = {
 
   readonly points: number;
   /** How deep the run got. Depth is the axis Gate C compares policies on. */
-  readonly mapNumber: number;
   /**
    * How far from home the run built, in hexes — the endless world's depth. On a
    * bounded map it is just the last map's used radius, and mostly noise.
@@ -70,7 +69,7 @@ export type RunOptions = {
  * move was a no-op no matter what it did to the state object.
  */
 const progress = (s: GameState): string =>
-  `${s.placements}/${s.mapNumber}/${s.log.harvests.length}/${s.points}/${s.tiles}`;
+  `${s.placements}/${s.log.harvests.length}/${s.points}/${s.tiles}`;
 
 function summarise(
   state: GameState,
@@ -106,7 +105,6 @@ function summarise(
     outcome,
     death: state.death,
     points: state.points,
-    mapNumber: state.mapNumber,
     reach,
     placements: state.placements,
     harvests: state.log.harvests.length,

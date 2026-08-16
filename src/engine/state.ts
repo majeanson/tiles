@@ -144,7 +144,6 @@ export type DeathCause = 'broke' | 'walled' | 'spent';
  * run's biggest number come near the end? — cannot be answered from a total.
  */
 export type HarvestRecord = {
-  readonly mapNumber: number;
   /** Placements made so far this run, which is the run's clock. */
   readonly at: number;
   readonly count: number;
@@ -175,7 +174,6 @@ export type GameState = {
 
   /** Total placements THIS RUN, never reset. The escalation dial. */
   readonly placements: number;
-  readonly mapNumber: number;
 
   /**
    * Tiles popped in TILES-harvests so far, capped at `tuning.luckCap`. Each
@@ -233,8 +231,6 @@ export type GameState = {
   readonly log: {
     readonly harvests: readonly HarvestRecord[];
     readonly popped: number;
-    /** Placements spent on maps already left behind — for cost-per-depth. */
-    readonly placementsAtMapStart: number;
     /** Bounties collected this run. The end screen counts them. */
     readonly questsDone: number;
   };
@@ -263,7 +259,6 @@ export type Action =
    * in tuning and a zero price means the shop does not exist — so every game
    * that never heard of luck ignores this action entirely.
    */
-  | { readonly type: 'SPEND'; readonly on: Spend; readonly colour?: Colour }
-  | { readonly type: 'LEAVE' };
+  | { readonly type: 'SPEND'; readonly on: Spend; readonly colour?: Colour };
 
 export type Spend = 'reroll' | 'steer' | 'forge';

@@ -47,14 +47,12 @@ export function decodeRun(raw: string | null): GameState | null {
   // still lose its own game; it cannot crash the loop.
   if (parsed['version'] !== 1) return null;
   if (parsed['phase'] !== 'placing' && parsed['phase'] !== 'ended') return null;
-  for (const key of ['tiles', 'points', 'placements', 'mapNumber', 'luck', 'rootSeed']) {
+  for (const key of ['tiles', 'points', 'placements', 'luck', 'relics', 'rootSeed']) {
     if (typeof parsed[key] !== 'number') return null;
   }
 
   const tuning = parsed['tuning'];
-  if (!isRecord(tuning) || (tuning['world'] !== 'bounded' && tuning['world'] !== 'endless')) {
-    return null;
-  }
+  if (!isRecord(tuning)) return null;
   for (const key of ['startingTiles', 'baseCost', 'costRisesEvery', 'draftWidth']) {
     if (typeof tuning[key] !== 'number') return null;
   }

@@ -41,6 +41,16 @@ export const EMPTY: Records = {
 
 export type RecordBook = Readonly<Record<string, Records>>;
 
+/**
+ * The one shelf the book keeps records on.
+ *
+ * Records used to be kept per WORLD KIND, back when there were two. There is
+ * one game now (2026-08-16), and the book keeps its keyed shape only so a
+ * device that already has records under 'endless' goes on reading them
+ * instead of starting again at zero.
+ */
+export const ONLY_WORLD = 'endless';
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -77,7 +87,9 @@ export const encodeRecords = (book: RecordBook): string => JSON.stringify(book);
 
 /** Fold one finished run into the book. Pure — the caller stores the result. */
 export function recordRun(book: RecordBook, state: GameState): RecordBook {
-  const world = state.tuning.world;
+  // One world now (2026-08-16), so one shelf. The book keeps its shape so a
+  // device that has records under the old keys still reads them.
+  const world = ONLY_WORLD;
   const before = book[world] ?? EMPTY;
 
   let tiles = 0;

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { COLOUR_MARK } from '@theme/tokens';
-import { ENDLESS_TUNING, type Tuning } from '@content/tuning';
+import { TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
@@ -93,7 +93,6 @@ function build(
     <button id="harvest-points"></button>
     <button id="harvest-treasure" hidden></button>
     <button id="harvest-burn" hidden></button>
-    <button id="leave"></button>
     <div id="spends" hidden></div>
     <p id="end" hidden></p>`;
 
@@ -115,7 +114,6 @@ function build(
     harvestPoints: pick<HTMLButtonElement>('harvest-points'),
     harvestTreasure: pick<HTMLButtonElement>('harvest-treasure'),
     harvestBurn: pick<HTMLButtonElement>('harvest-burn'),
-    leave: pick<HTMLButtonElement>('leave'),
     end: pick('end'),
     zoomIn: pick<HTMLButtonElement>('zoom-in'),
     zoomOut: pick<HTMLButtonElement>('zoom-out'),
@@ -155,10 +153,12 @@ describe('the game loop', () => {
   it('draws and fills the hud on start', () => {
     expect(ctx.renderer.views.length).toBeGreaterThan(0);
     expect(stat('tiles')).toBe(String(ctx.game.state.tiles));
-    expect(stat('points')).toBe('0');
-    expect(stat('map')).toBe('1');
+    // Score is off screen while a run is alive; LUCK holds that slot, and
+    // depth is REACH. The stash rides at the end of the draft row.
+    expect(stat('luck')).toBe('0');
+    expect(stat('map')).toBe('0');
     expect(stat('cost')).toBe('−1');
-    expect(ctx.el.draft.children).toHaveLength(ctx.game.state.draft.length);
+    expect(ctx.el.draft.children.length).toBeGreaterThanOrEqual(ctx.game.state.draft.length);
   });
 
   // The draft cards carry the theme's word for a colour, not the colour id. The
@@ -167,9 +167,9 @@ describe('the game loop', () => {
   // four blank buttons.
   it('names each draft card in the vocabulary of the active theme', () => {
     // The name span specifically — cards also carry BEST/MAGIC badges now.
-    const labels = [...ctx.el.draft.children].map(
-      (c) => c.querySelector('.tile-name')?.textContent ?? '',
-    );
+    const labels = [...ctx.el.draft.children]
+      .filter((c) => !c.classList.contains('hold'))
+      .map((c) => c.querySelector('.tile-name')?.textContent ?? '');
     expect(labels.every((l) => l.length > 0)).toBe(true);
 
     // Symbol AND name, three channels for one fact: a card says which colour
@@ -231,8 +231,6 @@ describe('the game loop', () => {
   it('keeps both payouts priced and disabled until something is ripe', () => {
     expect(ctx.el.harvestTiles.disabled).toBe(true);
     expect(ctx.el.harvestPoints.disabled).toBe(true);
-    expect(ctx.el.leave.disabled).toBe(true);
-    expect(ctx.el.leave.textContent).toMatch(/harvest/i);
   });
 
   it('marks exactly the draft card whose placement pays the most', () => {
@@ -248,38 +246,12 @@ describe('the game loop', () => {
     );
   });
 
-  it('runs a whole map: fill, harvest, then move on', () => {
-    for (let i = 0; i < 400; i++) {
-      const spot = ctx.renderer.last.cells.find((c) => c.legal);
-      if (spot === undefined) break;
-      ctx.renderer.nextHit = spot.key;
-      tap(ctx.el.board);
-    }
-
-    expect(ripeKeys(ctx.game.state.cells).length).toBeGreaterThan(0);
-    expect(ctx.el.harvestPoints.disabled).toBe(false);
-    expect(ctx.el.harvestPoints.textContent).toMatch(/Take \d+ pts/);
-    expect(ctx.el.harvestTiles.textContent).toMatch(/Take \d+ tiles/);
-
-    // Tiles, not points: a first map paid out entirely in points leaves nothing
-    // to place with, and the run ends there. The harness found the same thing —
-    // its always-points policy dies on map 1 every time.
-    ctx.el.harvestTiles.click();
-    expect(ctx.game.state.tiles).toBeGreaterThan(0);
-
-    // Harvesting is what unlocks the exit, and the label says so.
-    expect(ctx.el.leave.disabled).toBe(false);
-    ctx.el.leave.click();
-    expect(ctx.game.state.mapNumber).toBe(2);
-  });
-
   it('shows the epitaph and goes dead once the run ends', () => {
     // Spend the run down without ever banking tiles.
     for (let i = 0; i < 2000 && ctx.game.state.phase === 'placing'; i++) {
       const spot = ctx.renderer.last.cells.find((c) => c.legal);
       if (spot === undefined) {
-        if (!ctx.el.harvestPoints.disabled) ctx.el.harvestPoints.click();
-        else if (!ctx.el.leave.disabled) ctx.el.leave.click();
+        if (!ctx.el.harvestTiles.disabled) ctx.el.harvestTiles.click();
         else break;
         continue;
       }
@@ -291,7 +263,6 @@ describe('the game loop', () => {
     expect(ctx.el.end.hidden).toBe(false);
     expect(ctx.el.end.textContent).toMatch(/out of tiles/i);
     expect(ctx.el.harvestTiles.disabled).toBe(true);
-    expect(ctx.el.leave.disabled).toBe(true);
 
     // And the board stops accepting taps.
     const placements = ctx.game.state.placements;
@@ -305,7 +276,7 @@ describe('the endless world, under a thumb', () => {
   let ctx: ReturnType<typeof build>;
 
   beforeEach(() => {
-    ctx = build(7, ENDLESS_TUNING);
+    ctx = build(7, TUNING);
     ctx.game.start();
   });
 
@@ -322,7 +293,7 @@ describe('the endless world, under a thumb', () => {
     // Marc's phone showed a blank button between POP and TREASURE: the
     // single-payout branch hid the points button, and a line two statements
     // later un-hid it again the moment a pocket was ripe.
-    const single = build(7, { ...ENDLESS_TUNING, singlePayout: true });
+    const single = build(7, { ...TUNING, singlePayout: true });
     single.game.start();
     for (const n of neighbourKeys(0, 0)) {
       single.renderer.nextHit = n;
@@ -340,14 +311,13 @@ describe('the endless world, under a thumb', () => {
     // being positioned, painted over both (Marc's second screenshot).
     expect(ctx.el.controls.hidden).toBe(false);
 
-    const ended: GameState = { ...newRun(9, ENDLESS_TUNING), phase: 'ended', death: 'broke' };
-    const over = build(1, ENDLESS_TUNING, { resume: ended });
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    const over = build(1, TUNING, { resume: ended });
     over.game.start();
     expect(over.el.controls.hidden).toBe(true);
     expect(over.el.end.hidden).toBe(false);
   });
-  it('hides LEAVE and reports REACH instead of MAP', () => {
-    expect(ctx.el.leave.hidden).toBe(true);
+  it('reports REACH, the only depth there is', () => {
     const label = ctx.el.stats.querySelector('[data-stat="map"] .stat-label')?.textContent;
     expect(label).toBe('REACH');
   });
@@ -355,8 +325,9 @@ describe('the endless world, under a thumb', () => {
   it('prices the pocket, outlines it, and a tap on ripe asks rather than places', () => {
     ripenTheSeed();
 
-    // The buttons price the pocket without any tap — biggest is the default.
-    expect(ctx.el.harvestPoints.disabled).toBe(false);
+    // The button prices the pocket without any tap — biggest is the default.
+    expect(ctx.el.harvestTiles.disabled).toBe(false);
+    expect(ctx.el.harvestPoints.hidden).toBe(true);
     const targeted = ctx.renderer.last.cells.filter((c) => c.targeted).map((c) => c.key);
     expect(targeted).toContain(key(0, 0));
 
@@ -376,7 +347,7 @@ describe('the camera, and staying oriented', () => {
   let ctx: ReturnType<typeof build>;
 
   beforeEach(() => {
-    ctx = build(7, ENDLESS_TUNING);
+    ctx = build(7, TUNING);
     ctx.game.start();
   });
 
@@ -492,7 +463,7 @@ describe('the camera, and staying oriented', () => {
 
     // Every number is the run's own tuning rather than prose that can go stale.
     const numbers = folds.map((fold) => fold.textContent ?? '').join(' ');
-    expect(numbers).toContain(`+1 for every ${t.costRisesEvery} after`);
+    expect(numbers).toContain(`+1 for every ${t.costRisesEvery}`);
     expect(numbers).toContain(`${t.blueTideEvery} hexes from home`);
     expect(numbers).toContain(`past ${t.harvestSizeCap} tiles`);
     expect(numbers).toContain(`pop a pocket of ${t.questNeed}+`);
@@ -515,24 +486,6 @@ describe('the camera, and staying oriented', () => {
     const text = ctx.el.helpPanel.textContent ?? '';
     expect(text).toContain(`seed ${ctx.game.state.rootSeed}`);
     expect(text).toMatch(/In play: .*destinations/);
-  });
-
-  it('keeps the bounded manual to the bounded game', () => {
-    const bounded = build();
-    bounded.game.start();
-    bounded.el.help.click();
-
-    const tabs = [
-      ...bounded.el.helpPanel.querySelectorAll('button.help-tab'),
-    ] as HTMLButtonElement[];
-    // No HAND tab: no luck purse and no stash to explain.
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['PLAY', 'BOARD', 'AFTER', 'BUILD']);
-
-    const text = bounded.el.helpPanel.textContent ?? '';
-    expect(text).toContain('THE LOOP');
-    expect(text).toContain('MOVE ON');
-    expect(text).not.toContain('WHERE TO GO');
-    expect(text).not.toContain('THE STASH');
   });
 
   it('shows a chip per colour, and a held chip spotlights and explains', () => {
@@ -587,10 +540,10 @@ describe('the camera, and staying oriented', () => {
 
 describe('keeping the run, and ending it properly', () => {
   it('resumes a saved state instead of starting fresh', () => {
-    let saved: GameState = newRun(9, ENDLESS_TUNING);
+    let saved: GameState = newRun(9, TUNING);
     saved = reduce(saved, { type: 'PLACE', hex: key(1, 0) });
 
-    const ctx = build(1, ENDLESS_TUNING, { resume: saved });
+    const ctx = build(1, TUNING, { resume: saved });
     ctx.game.start();
     expect(ctx.game.state).toBe(saved);
     expect(ctx.game.state.placements).toBe(1);
@@ -598,7 +551,7 @@ describe('keeping the run, and ending it properly', () => {
 
   it('offers every change to the shell, so a crash costs one tap at most', () => {
     const kept: GameState[] = [];
-    const ctx = build(7, ENDLESS_TUNING, { onChange: (s) => kept.push(s) });
+    const ctx = build(7, TUNING, { onChange: (s) => kept.push(s) });
     ctx.game.start();
 
     ctx.renderer.nextHit = key(1, 0);
@@ -613,12 +566,11 @@ describe('keeping the run, and ending it properly', () => {
   });
 
   it('shows the arc, the best, and the way to go again', () => {
-    const ended: GameState = { ...newRun(9, ENDLESS_TUNING), phase: 'ended', death: 'broke' };
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
     let starts = 0;
-    const ctx = build(1, ENDLESS_TUNING, {
+    const ctx = build(1, TUNING, {
       resume: ended,
-      finish: (state) => {
-        expect(state.tuning.world).toBe('endless');
+      finish: () => {
         return { runs: 4, best: 999, isNewBest: false, pops: 30, tilesShare: 0.5 };
       },
       newRun: () => {
@@ -633,7 +585,7 @@ describe('keeping the run, and ending it properly', () => {
     expect(text).toMatch(/best 999 pts/);
     expect(text).toMatch(/placements/);
     // Gate B's tally, printed where the player will actually read it.
-    expect(text).toMatch(/across 4 runs: 30 harvests, 50% tiles \/ 50% pts/);
+    expect(text).not.toMatch(/% tiles/);
 
     const again = ctx.el.end.querySelector('#end-new-run');
     expect(again).not.toBeNull();
@@ -643,12 +595,12 @@ describe('keeping the run, and ending it properly', () => {
 
   it('celebrates a new best as one', () => {
     const ended: GameState = {
-      ...newRun(9, ENDLESS_TUNING),
+      ...newRun(9, TUNING),
       phase: 'ended',
       death: 'broke',
       points: 500,
     };
-    const ctx = build(1, ENDLESS_TUNING, {
+    const ctx = build(1, TUNING, {
       resume: ended,
       finish: () => ({ runs: 1, best: 500, isNewBest: true, pops: 0, tilesShare: null }),
     });
@@ -657,9 +609,9 @@ describe('keeping the run, and ending it properly', () => {
   });
 
   it('writes the record book exactly once per ended run', () => {
-    const ended: GameState = { ...newRun(9, ENDLESS_TUNING), phase: 'ended', death: 'broke' };
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
     let writes = 0;
-    const ctx = build(1, ENDLESS_TUNING, {
+    const ctx = build(1, TUNING, {
       resume: ended,
       finish: () => {
         writes++;
@@ -674,30 +626,14 @@ describe('keeping the run, and ending it properly', () => {
 });
 
 describe('the clock, the bounty, and the guide', () => {
-  it('shows LEFT counting the expedition down, and hides it where there is no clock', () => {
-    const ctx = build(7, ENDLESS_TUNING);
-    ctx.game.start();
-    const left = (): string =>
-      ctx.el.stats.querySelector('[data-stat="left"] .stat-value')?.textContent ?? '';
-    expect(left()).toBe(String(ENDLESS_TUNING.runLength));
-
-    ctx.renderer.nextHit = key(1, 0);
-    tap(ctx.el.board);
-    expect(left()).toBe(String(ENDLESS_TUNING.runLength - 1));
-
-    const bounded = build(4);
-    bounded.game.start();
-    expect(bounded.el.stats.querySelector('[data-stat="left"]')).toBeNull();
-  });
-
   it('marks the pts button when it would collect the bounty, and says so', () => {
     // A ripe pocket at the origin, with a bounty standing on it.
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     const cells: Record<string, Cell> = {};
     const pocket: string[] = [];
-    for (let i = 0; i < ENDLESS_TUNING.questNeed; i++) pocket.push(key(i, 0));
+    for (let i = 0; i < TUNING.questNeed; i++) pocket.push(key(i, 0));
     for (const k of pocket) cells[k] = { kind: 'tile', colour: 'green' };
-    for (let i = 0; i < ENDLESS_TUNING.questNeed; i++) {
+    for (let i = 0; i < TUNING.questNeed; i++) {
       for (const n of neighbourKeys(i, 0)) if (!pocket.includes(n)) cells[n] = { kind: 'stone' };
     }
     const ready: GameState = {
@@ -705,35 +641,35 @@ describe('the clock, the bounty, and the guide', () => {
       cells,
       quest: {
         at: key(2, 0),
-        need: ENDLESS_TUNING.questNeed,
-        radius: ENDLESS_TUNING.questRadius,
-        bonus: ENDLESS_TUNING.questBonus,
+        need: TUNING.questNeed,
+        radius: TUNING.questRadius,
+        bonus: TUNING.questBonus,
       },
     };
 
-    const ctx = build(1, ENDLESS_TUNING, { resume: ready });
+    const ctx = build(1, TUNING, { resume: ready });
     ctx.game.start();
-    expect(ctx.el.harvestPoints.textContent).toMatch(/★/);
-    expect(ctx.el.harvestPoints.classList.contains('bounty')).toBe(true);
+    expect(ctx.el.harvestTiles.textContent).toMatch(/★/);
+    expect(ctx.el.harvestTiles.classList.contains('bounty')).toBe(true);
     expect(ctx.el.hint.textContent).toMatch(/BOUNTY READY/);
 
-    // Taking it as points collects it; the button goes plain again.
-    ctx.el.harvestPoints.click();
+    // Popping it collects it; the button goes plain again.
+    ctx.el.harvestTiles.click();
     expect(ctx.game.state.log.questsDone).toBe(1);
-    expect(ctx.el.harvestPoints.classList.contains('bounty')).toBe(false);
+    expect(ctx.el.harvestTiles.classList.contains('bounty')).toBe(false);
   });
 
   it('warns about tiles by runway, not by a flat count', () => {
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     // Ten tiles at cost 1 is ten placements of runway: not a warning.
     const rich: GameState = { ...base, tiles: 10 };
-    const ctxRich = build(1, ENDLESS_TUNING, { resume: rich });
+    const ctxRich = build(1, TUNING, { resume: rich });
     ctxRich.game.start();
     expect(ctxRich.el.hint.textContent).not.toMatch(/Low on tiles/);
 
     // The same ten tiles deep into the run, when a placement costs five.
-    const late: GameState = { ...base, tiles: 10, placements: ENDLESS_TUNING.costGrace + 100 };
-    const ctxLate = build(1, ENDLESS_TUNING, { resume: late });
+    const late: GameState = { ...base, tiles: 10, placements: TUNING.costGrace + 100 };
+    const ctxLate = build(1, TUNING, { resume: late });
     ctxLate.game.start();
     expect(ctxLate.el.hint.textContent).toMatch(/Low on tiles/);
   });
@@ -741,11 +677,11 @@ describe('the clock, the bounty, and the guide', () => {
 
 describe('the remembered world on screen', () => {
   it('draws remembered ground faint, unplayable, and never twice', () => {
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     const onBoard = Object.keys(base.cells)[0]!;
     const remembered = key(20, -5);
 
-    const ctx = build(1, ENDLESS_TUNING, {
+    const ctx = build(1, TUNING, {
       resume: base,
       memory: [onBoard, remembered],
     });
@@ -766,25 +702,25 @@ describe('the remembered world on screen', () => {
 
 describe('a stranger arriving', () => {
   it('opens the manual on a first visit, and not otherwise', () => {
-    const first = build(4, ENDLESS_TUNING, { firstVisit: true });
+    const first = build(4, TUNING, { firstVisit: true });
     first.game.start();
     expect(first.el.helpPanel.hidden).toBe(false);
 
-    const returning = build(4, ENDLESS_TUNING, { firstVisit: false });
+    const returning = build(4, TUNING, { firstVisit: false });
     returning.game.start();
     expect(returning.el.helpPanel.hidden).toBe(true);
   });
 
   it('offers a share only when the shell can share, and sends the run', () => {
-    const bare = build(4, ENDLESS_TUNING, {
-      resume: { ...newRun(4, ENDLESS_TUNING), phase: 'ended', death: 'spent' },
+    const bare = build(4, TUNING, {
+      resume: { ...newRun(4, TUNING), phase: 'ended', death: 'spent' },
     });
     bare.game.start();
     expect(bare.el.end.querySelector('#end-share')).toBeNull();
 
     let shared: GameState | null = null;
-    const sharing = build(4, ENDLESS_TUNING, {
-      resume: { ...newRun(4, ENDLESS_TUNING), phase: 'ended', death: 'spent', points: 120 },
+    const sharing = build(4, TUNING, {
+      resume: { ...newRun(4, TUNING), phase: 'ended', death: 'spent', points: 120 },
       share: (state) => {
         shared = state;
       },
@@ -799,18 +735,18 @@ describe('a stranger arriving', () => {
 
   it('names the run’s ending when the clock runs out', () => {
     const spent: GameState = {
-      ...newRun(4, ENDLESS_TUNING),
+      ...newRun(4, TUNING),
       phase: 'ended',
       death: 'spent',
-      placements: ENDLESS_TUNING.runLength,
+      placements: TUNING.runLength,
     };
-    const ctx = build(4, ENDLESS_TUNING, { resume: spent });
+    const ctx = build(4, TUNING, { resume: spent });
     ctx.game.start();
     expect(ctx.el.end.textContent).toMatch(/expedition is over/i);
   });
 
   it('keeps every control reachable by name, for a screen reader', () => {
-    const ctx = build(4, ENDLESS_TUNING);
+    const ctx = build(4, TUNING);
     ctx.game.start();
     for (const el of [ctx.el.help, ctx.el.zoomIn, ctx.el.zoomOut, ctx.el.zoomFit]) {
       expect(el.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
@@ -826,7 +762,7 @@ describe('a stranger arriving', () => {
 
 describe('the curtain, and contextual help', () => {
   it('takes no gesture at all while the manual is open', () => {
-    const ctx = build(7, ENDLESS_TUNING);
+    const ctx = build(7, TUNING);
     ctx.game.start();
     ctx.el.help.click();
     expect(ctx.el.helpPanel.hidden).toBe(false);
@@ -851,9 +787,9 @@ describe('the curtain, and contextual help', () => {
   });
 
   it('explains a glyph you tap instead of doing nothing', () => {
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     const site = key(4, 0);
-    const ctx = build(1, ENDLESS_TUNING, {
+    const ctx = build(1, TUNING, {
       resume: {
         ...base,
         cells: { ...base.cells, [site]: { kind: 'landmark', reward: 'site', claimed: false } },
@@ -876,10 +812,10 @@ describe('the curtain, and contextual help', () => {
   });
 
   it('describes walls, stone and native ground in the direction’s words', () => {
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     const wall = key(6, 0);
     const stone = key(7, 0);
-    const ctx = build(1, ENDLESS_TUNING, {
+    const ctx = build(1, TUNING, {
       resume: {
         ...base,
         cells: { ...base.cells, [wall]: { kind: 'wall' }, [stone]: { kind: 'stone' } },
@@ -898,9 +834,9 @@ describe('the curtain, and contextual help', () => {
 
   it('announces a claim, and names what a shrine woke', () => {
     // A shrine one hex from a legal spot: placing beside it claims it.
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     const shrine = key(2, 0);
-    const ctx = build(1, ENDLESS_TUNING, {
+    const ctx = build(1, TUNING, {
       resume: {
         ...base,
         cells: { ...base.cells, [shrine]: { kind: 'landmark', reward: 'shrine', claimed: false } },
@@ -923,7 +859,7 @@ describe('the curtain, and contextual help', () => {
 describe('special tiles and what a pop did', () => {
   /** A ripe green pocket of `size`, with a magic tile in it, on a bare board. */
   const rarePocket = (size: number): GameState => {
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     const cells: Record<string, Cell> = {};
     const members = new Set<string>();
     for (let i = 0; i < size; i++) members.add(key(i, 0));
@@ -938,9 +874,9 @@ describe('special tiles and what a pop did', () => {
   it('explains a rare tile’s power when you tap it', () => {
     // Given an open neighbour so the tile is NOT ripe — a ripe one is a
     // pocket, and tapping it prices the pocket instead (covered below).
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     const spot = key(9, 9);
-    const ctx = build(1, ENDLESS_TUNING, {
+    const ctx = build(1, TUNING, {
       resume: {
         ...base,
         cells: {
@@ -959,7 +895,7 @@ describe('special tiles and what a pop did', () => {
   });
 
   it('prices a pocket you tap, and says where the numbers come from', () => {
-    const ctx = build(1, ENDLESS_TUNING, { resume: rarePocket(9) });
+    const ctx = build(1, TUNING, { resume: rarePocket(9) });
     ctx.game.start();
 
     ctx.renderer.nextHit = key(0, 0);
@@ -971,16 +907,8 @@ describe('special tiles and what a pop did', () => {
     expect(text).toMatch(/1 rare tile/);
   });
 
-  it('shows the arithmetic of a pop, both ways', () => {
-    const points = build(1, ENDLESS_TUNING, { resume: rarePocket(9) });
-    points.game.start();
-    points.renderer.nextHit = key(0, 0);
-    tap(points.el.board);
-    points.el.harvestPoints.click();
-    expect(points.el.toast.textContent).toMatch(/POPPED 9/);
-    expect(points.el.toast.textContent).toMatch(/pts = worth \d+ × pocket 9 × distance/);
-
-    const tiles = build(1, ENDLESS_TUNING, { resume: rarePocket(9) });
+  it('shows the arithmetic of a pop', () => {
+    const tiles = build(1, TUNING, { resume: rarePocket(9) });
     tiles.game.start();
     tiles.renderer.nextHit = key(0, 0);
     tap(tiles.el.board);
@@ -994,7 +922,7 @@ describe('special tiles and what a pop did', () => {
 describe('tiles you cannot spend', () => {
   /** A ripe pocket, with the purse and the clock set by hand. */
   const rich = (tiles: number, placements: number): GameState => {
-    const base = newRun(7, ENDLESS_TUNING);
+    const base = newRun(7, TUNING);
     const cells: Record<string, Cell> = {};
     const members = new Set<string>();
     for (let i = 0; i < 4; i++) members.add(key(i, 0));
@@ -1005,19 +933,8 @@ describe('tiles you cannot spend', () => {
     return { ...base, cells, tiles, placements };
   };
 
-  it('marks the tiles payout SPARE once the clock cannot spend it', () => {
-    // 202 tiles with 167 placements left at cost 1 — Marc's own screenshot.
-    const ctx = build(1, ENDLESS_TUNING, {
-      resume: rich(202, ENDLESS_TUNING.runLength - 167),
-    });
-    ctx.game.start();
-    expect(ctx.el.harvestTiles.textContent).toMatch(/SPARE/);
-    expect(ctx.el.harvestTiles.classList.contains('spare')).toBe(true);
-    expect(ctx.el.hint.textContent).toMatch(/more tiles than you can spend/i);
-  });
-
   it('says nothing of the sort while the purse still matters', () => {
-    const ctx = build(1, ENDLESS_TUNING, { resume: rich(30, 10) });
+    const ctx = build(1, TUNING, { resume: rich(30, 10) });
     ctx.game.start();
     expect(ctx.el.harvestTiles.textContent).not.toMatch(/SPARE/);
     expect(ctx.el.hint.textContent).not.toMatch(/more tiles than you can spend/i);

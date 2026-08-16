@@ -12,7 +12,7 @@ import type { Cell, GameState } from './state';
  * works is `sim.test.ts`'s question, not this file's.
  */
 
-const ENDLESS: Tuning = { ...TUNING, world: 'endless' };
+const ENDLESS: Tuning = { ...TUNING };
 
 const tile = (colour: 'green' | 'yellow' | 'red' | 'blue'): Cell => ({ kind: 'tile', colour });
 const STONE: Cell = { kind: 'stone' };
@@ -121,15 +121,17 @@ describe('local harvest', () => {
 });
 
 describe('what stops existing', () => {
-  it('has no LEAVE — the world is the map', () => {
+  it('has no LEAVE — the world is the map, and there is nothing to leave for', () => {
+    // LEAVE was deleted with the bounded world on 2026-08-16. What is worth
+    // pinning is the consequence: cashing a pocket does not hand you a fresh
+    // board, it just spends the ground you are standing on.
     const cells: Record<HexKey, Cell> = {};
     const [a1] = domino(cells, 0, 0);
-    let state = stateWith(cells);
-    state = reduce(state, { type: 'HARVEST', choice: 'tiles', at: a1 });
+    const state = stateWith(cells);
+    const after = reduce(state, { type: 'HARVEST', choice: 'tiles', at: a1 });
 
-    // Harvested, which is what unlocks LEAVE on a bounded map. Still a no-op.
-    expect(reduce(state, { type: 'LEAVE' })).toBe(state);
-    expect(state.mapNumber).toBe(1);
+    expect(after.cells[a1]?.kind).toBe('stone');
+    expect(Object.keys(after.cells).length).toBeGreaterThanOrEqual(Object.keys(state.cells).length);
   });
 
   it('still dies broke, and only broke', () => {

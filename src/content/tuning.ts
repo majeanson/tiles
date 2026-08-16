@@ -17,20 +17,6 @@
 
 export type Tuning = {
   /**
-   * Which world the run is played on.
-   *
-   * `bounded` — the shipped game: discs that grow with depth, LEAVE to go
-   * deeper, harvest pops every ripe tile at once, points multiply by map number.
-   *
-   * `endless` — the P1 prototype (`ideas/endless-world.md`): one unbounded
-   * plane grown outward from a seed tile at the origin. No LEAVE. Harvest pops
-   * one connected ripe cluster, and points multiply with the cluster's distance
-   * from home. Exists to answer one question — does local harvest make TIMING a
-   * real decision? — and the harness answers it via `--set world=endless`.
-   */
-  readonly world: 'bounded' | 'endless';
-
-  /**
    * Endless only: the points multiplier rises by 1 for every `distanceStep`
    * hexes a harvest happens from the origin. The continuous replacement for the
    * bounded game's map number — depth becomes distance, priced in placements,
@@ -45,7 +31,7 @@ export type Tuning = {
    *
    * `worldWalls` — fraction of revealed ground that is wall. Walls surround
    * (ripen things faster) but never match (pay less), and cannot be built on:
-   * the same economic trade `wallDensity` describes, on the plane.
+   * the trade every obstacle makes: cheaper to ripen against, worth nothing.
    *
    * Native fields: the plane is tiled into blocks of `fieldSize` hexes;
    * `fieldChance` of them are native to one colour. A tile placed on its own
@@ -413,15 +399,6 @@ export type Tuning = {
   readonly draftWidth: number;
 
   /**
-   * Map size, by depth. Radius 4 is 61 cells, which is the ~50 usable the design
-   * asks for and about as much as a phone in portrait can show without the hexes
-   * getting smaller than a thumb.
-   */
-  readonly mapBaseRadius: number;
-  readonly mapGrowsEvery: number;
-  readonly mapMaxRadius: number;
-
-  /**
    * Fraction of a map's cells that start as wall.
    *
    * Zero for now, because run one is the smallest game there is. It is a real
@@ -429,7 +406,6 @@ export type Tuning = {
    * pay LESS (they never match), so this is the lever that gives deeper map
    * types their character when unlock 5 lands.
    */
-  readonly wallDensity: number;
 
   /**
    * Whether a ripe tile still counts as a matching neighbour.
@@ -445,8 +421,16 @@ export type Tuning = {
   readonly ripeTilesMatch: boolean;
 };
 
-export const TUNING: Tuning = {
-  world: 'bounded',
+/**
+ * The zeroed skeleton: every system off, every personality flat.
+ *
+ * NOT a playable economy and never shipped — it is the baseline the one
+ * economy is layered on, and the fixture every rule test isolates against.
+ * A test that wants to prove "green crowds" has to start somewhere where
+ * green does not crowd, and building that by hand in nine files is how the
+ * fixtures drift apart.
+ */
+export const BARE_TUNING: Tuning = {
   distanceStep: 4,
 
   worldWalls: 0.06,
@@ -534,12 +518,6 @@ export const TUNING: Tuning = {
 
   draftWidth: 3,
 
-  mapBaseRadius: 4,
-  mapGrowsEvery: 3,
-  mapMaxRadius: 6,
-
-  wallDensity: 0,
-
   ripeTilesMatch: true,
 };
 
@@ -553,9 +531,8 @@ export const TUNING: Tuning = {
  * The destination and rarity numbers are FIRST VALUES, not claims: swept once
  * for "nothing stalls, nothing explodes" (Session 6) and awaiting a human.
  */
-export const ENDLESS_TUNING: Tuning = {
-  ...TUNING,
-  world: 'endless',
+const PLANE: Tuning = {
+  ...BARE_TUNING,
 
   // 2026-08-14, Marc: "time constrained, yet points become more important."
   // Swept at 40 seeds. The cost curve tightens 70 -> 50: the longest possible
@@ -685,8 +662,8 @@ export const COLOUR_WEIGHTS: readonly (readonly [Colour, number])[] = COLOURS.ma
  * - `burnLuck: 3` — a burned pocket pays three luck a tile instead of its
  *   tiles: sacrifice the run to draw better.
  */
-export const TILESONLY_TUNING: Tuning = {
-  ...ENDLESS_TUNING,
+export const TUNING: Tuning = {
+  ...PLANE,
 
   // Small and often is the LUCK line, big and late is the score line: a flat
   // 9 luck a pop against half a point per tile means three 4-pockets pay 33

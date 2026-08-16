@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING } from '@content/tuning';
+import { TUNING } from '@content/tuning';
 import { key, neighbourKeys } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { destinationsWithin } from '@engine/world';
@@ -24,7 +24,7 @@ import {
 describe('world memory', () => {
   it('accumulates revealed ground and claimed territories, never shrinking', () => {
     const world = newWorld(42);
-    let state = newRun(42, ENDLESS_TUNING);
+    let state = newRun(42, TUNING);
     state = reduce(state, { type: 'PLACE', hex: key(1, 0) });
 
     const after = rememberRun(world, state);
@@ -33,7 +33,7 @@ describe('world memory', () => {
     expect(after.farthestReach).toBeGreaterThanOrEqual(1);
 
     // A second, shorter run cannot un-remember the first one's ground.
-    const short = newRun(42, ENDLESS_TUNING);
+    const short = newRun(42, TUNING);
     const twice = rememberRun(after, short);
     expect(twice.runs).toBe(2);
     expect(twice.revealed.length).toBeGreaterThanOrEqual(after.revealed.length);
@@ -41,7 +41,7 @@ describe('world memory', () => {
   });
 
   it('remembers only territories that were actually claimed', () => {
-    const base = newRun(42, ENDLESS_TUNING);
+    const base = newRun(42, TUNING);
     const claimedAt = key(9, 9);
     const unclaimedAt = key(9, 12);
     const state: GameState = {
@@ -59,7 +59,7 @@ describe('world memory', () => {
   });
 
   it('round-trips, and refuses a broken world rather than half-loading it', () => {
-    const world = rememberRun(newWorld(7), newRun(7, ENDLESS_TUNING));
+    const world = rememberRun(newWorld(7), newRun(7, TUNING));
     expect(decodeWorld(encodeWorld(world))).toEqual(world);
 
     expect(decodeWorld(null)).toBeNull();
@@ -81,7 +81,7 @@ describe('a world already held', () => {
   /** A seed whose plane has a territory near enough to test with. */
   const territorySeed = (): { seed: number; at: string } => {
     for (let seed = 1; seed <= 400; seed++) {
-      for (const d of destinationsWithin(seed, 24, ENDLESS_TUNING)) {
+      for (const d of destinationsWithin(seed, 24, TUNING)) {
         if (d.reward === 'territory') return { seed, at: key(d.q, d.r) };
       }
     }
@@ -90,13 +90,13 @@ describe('a world already held', () => {
 
   it('hands back a claimed territory, unpaid and with its field live', () => {
     const { seed, at } = territorySeed();
-    const fresh = newRun(seed, ENDLESS_TUNING);
-    const held = newRun(seed, ENDLESS_TUNING, [at]);
+    const fresh = newRun(seed, TUNING);
+    const held = newRun(seed, TUNING, [at]);
 
     // Same seed, same everything except the standing claim — and the perk it
     // pays (P4b): a held territory starts the next run richer, capped.
     expect(held.claimed).toEqual([at]);
-    expect(held.tiles).toBe(fresh.tiles + ENDLESS_TUNING.territoryTiles);
+    expect(held.tiles).toBe(fresh.tiles + TUNING.territoryTiles);
     expect(held.points).toBe(fresh.points);
 
     // Walk the board out to the territory and check it arrives claimed —
@@ -145,16 +145,11 @@ describe('a world already held', () => {
     );
     expect(native.length).toBeGreaterThan(0);
   });
-
-  it('is not carried into the bounded game', () => {
-    const bounded = newRun(5, { ...ENDLESS_TUNING, world: 'bounded' }, ['9,9']);
-    expect(bounded.claimed).toEqual([]);
-  });
 });
 
 describe('shrines and the unlock ledger (M4)', () => {
   it('remembers a shrine reached, and never more than the ledger holds', () => {
-    const base = newRun(42, ENDLESS_TUNING);
+    const base = newRun(42, TUNING);
     const shrineAt = key(15, 3);
     const state: GameState = {
       ...base,
@@ -174,7 +169,7 @@ describe('shrines and the unlock ledger (M4)', () => {
   });
 
   it('ignores a shrine that was only walked past', () => {
-    const base = newRun(42, ENDLESS_TUNING);
+    const base = newRun(42, TUNING);
     const state: GameState = {
       ...base,
       cells: {

@@ -1,6 +1,6 @@
 import { COLOURS, type Colour } from '@content/tuning';
 import { distance, key, parse, type HexKey } from '@engine/hex';
-import { canLeave, canSpend, rarityOdds, spendCost } from '@engine/reduce';
+import { canSpend, rarityOdds, spendCost } from '@engine/reduce';
 import {
   canPlaceAt,
   canPlaceNow,
@@ -38,7 +38,6 @@ import type { BoardView, CellKind, CellView } from '@render/Renderer';
  * is the whole board and there is nothing to single out.
  */
 export function resolveHarvestTarget(state: GameState, asked: HexKey | null): HexKey | null {
-  if (state.tuning.world !== 'endless') return null;
   if (asked !== null && isRipe(state.cells, asked)) return asked;
 
   let best: HexKey[] | null = null;
@@ -154,7 +153,6 @@ export function toBoardView(
 function beaconsFor(
   state: GameState,
 ): { q: number; r: number; reward: LandmarkReward; colour: Colour | null }[] {
-  if (state.tuning.world !== 'endless') return [];
   const horizon = reachOf(state) + state.tuning.beaconHorizon;
   return destinationsWithin(state.rootSeed, horizon, state.tuning).filter(
     (d) => state.cells[key(d.q, d.r)] === undefined,
@@ -172,12 +170,7 @@ function beaconsFor(
 export type HudView = {
   readonly tiles: number;
   readonly points: number;
-  readonly mapNumber: number;
-  /**
-   * The third stat is depth, and depth means a different thing per world:
-   * MAP <n> on bounded maps, REACH <hexes from home> on the plane.
-   */
-  readonly depthLabel: string;
+  /** Depth is REACH: how far from home this run has built. */
   readonly depthValue: number;
   readonly cost: number;
   readonly placements: number;
@@ -218,9 +211,6 @@ export type HudView = {
    */
   readonly relics: number;
   readonly burnPaysRelics: boolean;
-
-  /** Bounded only. The plane has no LEAVE, so the button has no reason to exist. */
-  readonly showLeave: boolean;
 
   /**
    * `colour` is the engine's `Colour`, not a string: the chrome looks up the
@@ -286,8 +276,6 @@ export type HudView = {
   readonly singlePayout: boolean;
 
   readonly canHarvest: boolean;
-  readonly canLeave: boolean;
-  readonly leaveHint: string;
 
   /**
    * What to do right now, in one clause — the reorientation line. Always
@@ -335,19 +323,15 @@ export function toHudView(
   harvestAt: HexKey | null = null,
   spotlight: Colour | null = null,
 ): HudView {
-  const endless = state.tuning.world === 'endless';
   const target = resolveHarvestTarget(state, harvestAt);
-  const value = endless ? harvestValue(state, target ?? undefined) : harvestValue(state);
-  const leaving = canLeave(state);
+  const value = harvestValue(state, target ?? undefined);
   const best = bestDraftIndex(state);
   const colours = colourPotentials(state);
 
   return {
     tiles: state.tiles,
     points: state.points,
-    mapNumber: state.mapNumber,
-    depthLabel: endless ? 'REACH' : 'MAP',
-    depthValue: endless ? reachOf(state) : state.mapNumber,
+    depthValue: reachOf(state),
     cost: costOf(state.placements, state.tuning),
     placements: state.placements,
     left: placementsLeft(state),
@@ -356,8 +340,6 @@ export function toHudView(
     showPoints: !state.tuning.hidePoints,
     luck: state.luck,
     spends: spendsFor(state),
-
-    showLeave: !endless,
 
     draft: state.draft.map((tile, i) => ({
       id: tile.id,
@@ -394,8 +376,6 @@ export function toHudView(
     singlePayout: state.tuning.singlePayout,
 
     canHarvest: state.phase === 'placing' && value.count > 0,
-    canLeave: leaving,
-    leaveHint: leaving ? 'Move on' : 'Harvest here first',
 
     guide: guideFor(state),
     hint: hintFor(state),
@@ -580,7 +560,6 @@ function guideFor(state: GameState): string | null {
     // More tiles than the clock can spend: the survival button is dead and
     // saying so is the whole job of this line.
     if (tilesSpareIn(state)) return 'More tiles than you can spend — take PTS from here on';
-    if (state.tuning.world !== 'endless') return 'Ripe — harvest, or keep building it bigger';
     return single
       ? 'Pocket ready — tap it to price it, then POP or sacrifice it'
       : 'Pocket ready — tap it, then take tiles or pts';
@@ -626,8 +605,6 @@ const RUNWAY_ALARM = 6;
  * in the one unit the player already reads the board in: hexes out.
  */
 function hintFor(state: GameState): string | null {
-  if (state.tuning.world !== 'endless') return null;
-
   let best: { reward: LandmarkReward; dist: number } | null = null;
   const consider = (q: number, r: number, reward: LandmarkReward): void => {
     const dist = distance({ q, r }, { q: 0, r: 0 });
@@ -719,7 +696,7 @@ function epitaphFor(state: GameState): string {
     return `Walled in after ${state.placements} placements — nowhere left to build, nothing left to pop.`;
   }
   const cost = costOf(state.placements, state.tuning);
-  const where = state.tuning.world === 'endless' ? 'on the plane' : `on map ${state.mapNumber}`;
+  const where = 'on the plane';
   return (
     `Out of tiles ${where}, after ${state.placements} placements. ` +
     `They cost ${cost} each by the end.`

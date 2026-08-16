@@ -1488,3 +1488,48 @@ laid on an offset grid so a field reads as texture rather than graph paper.
 
 The colours already had distinct patterns on the tiles themselves — this
 closes the last place where hue was carrying meaning alone.
+
+**Addendum, 2026-08-16 — the bounded world is deleted**
+
+The second half of officialising the decisions, and much the larger half.
+`world: 'bounded' | 'endless'` is gone from `Tuning`, and with it:
+
+- `src/engine/map.ts` and the four tuning fields only it read
+  (`mapBaseRadius`, `mapGrowsEvery`, `mapMaxRadius`, `wallDensity`).
+- The `LEAVE` action, `canLeave`, the LEAVE button, and the rule that you may
+  only leave a map you have harvested.
+- `GameState.mapNumber`, `HarvestRecord.mapNumber` and
+  `log.placementsAtMapStart`. Depth is REACH and only REACH.
+- Every `world === 'endless'` fork: sixteen of them across the engine, the
+  view, the UI, the policies and the harness.
+
+Three constants became one. `TUNING` is now the game — the tiles-only economy
+— built in two named layers that are still worth reading separately, and
+`BARE_TUNING` is exported as the zeroed skeleton every rule test isolates
+against. That last one earned its place immediately: a dozen tests had been
+using the old bare `TUNING` as their baseline without saying so, and turning
+the default into a real economy made all of them fail at once.
+
+**Two real bugs fell out of the deletion**, which is the argument for doing it:
+
+- `harvestValue` branched on the world, so with the field gone it silently
+  took the bounded path and popped the WHOLE BOARD instead of one pocket. A
+  test that put two pockets on a board caught it. A `t.world` that returns
+  `undefined` compares false to `'endless'` — the type system caught the
+  field, not the meaning.
+- The bounty was gated on `choice === 'points'`, a button the single payout
+  had already removed. Bounties were **uncollectable** in the shipped game and
+  no test had noticed, because the test asserting they were NOT collected by
+  the tiles button was passing for the wrong reason. Now a bounty is collected
+  by the pop that scores it, and forfeited by a sacrifice, which scores
+  nothing.
+
+`sim.test.ts` was three suites guarding three economies; it is one suite
+guarding one. Everything asking about the tiles-or-points fork, the clock or
+the map number was deleted rather than adapted — a green test for a deleted
+rule is worse than no test. What survives: every policy's run ends by itself,
+random play dies early, opposite strategies reach comparable depth, packing
+pays, patience still pays (the known open shape, recorded so a change that
+flattens it is visible), and the luck shop beats hoarding.
+
+367 tests, down from 379 — twelve fewer because twelve rules stopped existing.

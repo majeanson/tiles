@@ -1,4 +1,4 @@
-import { COLOURS, ENDLESS_TUNING, type Colour, type Tuning } from '../src/content/tuning';
+import { COLOURS, TUNING, type Colour, type Tuning } from '../src/content/tuning';
 import { distance, parse } from '../src/engine/hex';
 import { newRun, reduce } from '../src/engine/reduce';
 import { stream, type RngStream } from '../src/engine/rng';
@@ -45,7 +45,7 @@ const blank = (): Tally => ({
 
 /** `--set key=value` overrides, same idea as sim.ts, so ideas can be A/B'd. */
 function tuningFromArgs(argv: readonly string[]): Tuning {
-  let t: Tuning = ENDLESS_TUNING;
+  let t: Tuning = TUNING;
   for (let i = 0; i < argv.length - 1; i++) {
     if (argv[i] !== '--set') continue;
     const setting = argv[i + 1]!;
@@ -53,8 +53,7 @@ function tuningFromArgs(argv: readonly string[]): Tuning {
     const name = setting.slice(0, eq) as keyof Tuning;
     const raw = setting.slice(eq + 1);
     if (!(name in t)) throw new Error(`no such tuning key "${name}"`);
-    const value: unknown =
-      typeof t[name] === 'boolean' ? raw === 'true' : name === 'world' ? raw : Number(raw);
+    const value: unknown = typeof t[name] === 'boolean' ? raw === 'true' : Number(raw);
     t = { ...t, [name]: value };
   }
   return t;

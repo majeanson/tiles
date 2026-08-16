@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TILESONLY_TUNING } from '@content/tuning';
+import { TUNING } from '@content/tuning';
 import {
   EMPTY_PROGRESS,
   UPGRADES,
@@ -101,8 +101,8 @@ describe('perks and slots', () => {
 
 describe('what the upgrades do to a run', () => {
   it('leaves the economy alone when nothing has been bought', () => {
-    expect(applyProgress(TILESONLY_TUNING, EMPTY_PROGRESS)).toEqual({
-      ...TILESONLY_TUNING,
+    expect(applyProgress(TUNING, EMPTY_PROGRESS)).toEqual({
+      ...TUNING,
       rootboundOnly: false,
       secondWindTiles: 0,
       secondWindChance: 0,
@@ -114,19 +114,19 @@ describe('what the upgrades do to a run', () => {
     progress = buy(progress, upgrade('tiles'));
     progress = buy(progress, upgrade('tiles'));
 
-    const t = applyProgress(TILESONLY_TUNING, progress);
-    expect(t.startingTiles).toBe(TILESONLY_TUNING.startingTiles + 10);
+    const t = applyProgress(TUNING, progress);
+    expect(t.startingTiles).toBe(TUNING.startingTiles + 10);
   });
 
   it('only switches a perk on when it is EQUIPPED, not merely owned', () => {
     let progress = buy(withRelics(1000), upgrade('rootbound'));
     progress = buy(progress, upgrade('secondwind'));
 
-    const worn = applyProgress(TILESONLY_TUNING, progress);
+    const worn = applyProgress(TUNING, progress);
     expect(worn.rootboundOnly).toBe(true);
     expect(worn.secondWindTiles).toBe(0);
 
-    const swapped = applyProgress(TILESONLY_TUNING, equip(progress, 'secondwind'));
+    const swapped = applyProgress(TUNING, equip(progress, 'secondwind'));
     expect(swapped.rootboundOnly).toBe(false);
     expect(swapped.secondWindChance).toBe(0.5);
   });

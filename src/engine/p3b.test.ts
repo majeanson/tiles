@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
+import { BARE_TUNING, TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from './hex';
 import { newRun, rarityOdds, reduce } from './reduce';
 import { distanceMultiplierAt, previewWorth, worthOf } from './rules';
@@ -15,7 +15,7 @@ import type { Cell, GameState, LandmarkReward } from './state';
  * those, not this file.
  */
 
-const ENDLESS = ENDLESS_TUNING;
+const ENDLESS = TUNING;
 
 /**
  * An endless run with rarity off and no walls, so the hand-built landmark
@@ -116,14 +116,17 @@ describe('rarity in the draft', () => {
     for (const tile of state.draft) expect(tile.rarity).toBe('magic');
   });
 
-  it('draws no rarity at all in the bounded game — same colours, untouched stream', () => {
-    const state = newRun(3, TUNING);
+  it('rolls no rarity, and spends no loot stream, where the odds are zero', () => {
+    // The stream staying put is what let the bounded game keep its exact
+    // sequences when rarity was added. It is still the contract: a system
+    // switched off must cost the run nothing, not even a cursor.
+    const state = newRun(3, { ...TUNING, magicChance: 0, uniqueChance: 0 });
     for (const tile of state.draft) expect(tile.rarity).toBe('common');
     expect(state.rng.loot.cursor).toBe(0);
   });
 
   it('lets a magic tile match every colour, both ways', () => {
-    const t = TUNING;
+    const t = BARE_TUNING;
     const a = key(0, 0);
     const b = key(1, 0);
     const cells: Record<HexKey, Cell> = {
@@ -135,7 +138,7 @@ describe('rarity in the draft', () => {
   });
 
   it('counts a unique tile double, both ways, and in the preview', () => {
-    const t = TUNING;
+    const t = BARE_TUNING;
     const a = key(0, 0);
     const b = key(1, 0);
     const cells: Record<HexKey, Cell> = {
@@ -165,14 +168,14 @@ describe('luck', () => {
     return { state: { ...state, cells }, at: a };
   }
 
-  it('accrues on tiles-harvests, not on points-harvests, and caps', () => {
+  it('accrues per pop, and caps', () => {
+    // Both buttons are the same instruction under the single payout, so both
+    // pay luck. What luck IS changed on 2026-08-15 (a purse, not a bar) but
+    // that it accrues on popping and stops at the cap has not.
     const { state, at } = pocket(newRun(5, CALM));
 
-    const asPoints = reduce(state, { type: 'HARVEST', choice: 'points', at });
-    expect(asPoints.luck).toBe(0);
-
     const asTiles = reduce(state, { type: 'HARVEST', choice: 'tiles', at });
-    expect(asTiles.luck).toBe(2);
+    expect(asTiles.luck).toBeGreaterThan(0);
 
     const capped = reduce(
       { ...state, luck: state.tuning.luckCap },
@@ -181,10 +184,15 @@ describe('luck', () => {
     expect(capped.luck).toBe(state.tuning.luckCap);
   });
 
-  it('raises the odds the draft actually rolls with', () => {
-    const base = rarityOdds(ENDLESS, 0);
-    const lucky = rarityOdds(ENDLESS, ENDLESS.luckCap);
+  it('raises the odds wherever luck is still priced into them', () => {
+    // The shipped economy buys odds with POINTS between runs and spends luck
+    // on the shop instead, so its per-pop rates are zero. The mechanism is
+    // still here for whatever wants it.
+    const scaling = { ...ENDLESS, luckMagicPerPop: 0.001, luckUniquePerPop: 0.0005 };
+    const base = rarityOdds(scaling, 0);
+    const lucky = rarityOdds(scaling, scaling.luckCap);
     expect(lucky.magic).toBeGreaterThan(base.magic);
     expect(lucky.unique).toBeGreaterThan(base.unique);
+    expect(rarityOdds(ENDLESS, 0)).toEqual(rarityOdds(ENDLESS, 500));
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING, TUNING, COLOURS, type Tuning } from '@content/tuning';
+import { TUNING, COLOURS, type Tuning } from '@content/tuning';
 import { disc, distance, key, neighbourKeys } from './hex';
 import { newRun, reduce } from './reduce';
 import { previewWorth, worthOf } from './rules';
@@ -11,7 +11,7 @@ import { destinationAt, destinationsWithin, terrainAt } from './world';
  * terrain makes the ECONOMY better is `pnpm sim`'s question.
  */
 
-const ENDLESS: Tuning = { ...TUNING, world: 'endless' };
+const ENDLESS: Tuning = { ...TUNING };
 
 describe('the terrain function', () => {
   it('is a pure lookup — same hex, same answer, in any order', () => {
@@ -51,7 +51,7 @@ describe('the terrain function', () => {
 });
 
 describe('destinations', () => {
-  const T = ENDLESS_TUNING;
+  const T = TUNING;
 
   it('agrees with itself: the per-hex answer is the enumeration, exactly', () => {
     const radius = 40;
@@ -84,9 +84,10 @@ describe('destinations', () => {
     expect([...rewards].sort()).toEqual(['cache', 'shrine', 'site', 'territory']);
   });
 
-  it('does not exist while the system is off — the bounded default', () => {
-    expect(destinationsWithin(9, 60, TUNING)).toEqual([]);
-    expect(destinationAt(9, 12, 12, TUNING)).toBeNull();
+  it('does not exist while the system is switched off', () => {
+    const none = { ...TUNING, destinationChance: 0 };
+    expect(destinationsWithin(9, 60, none)).toEqual([]);
+    expect(destinationAt(9, 12, 12, none)).toBeNull();
   });
 });
 
@@ -166,7 +167,9 @@ describe('walls on the plane', () => {
       cells[k] = i < 3 ? { kind: 'wall' } : { kind: 'tile', colour: 'green' };
     });
 
-    const worth = worthOf(cells, centre, state.tuning);
-    expect(worth).toBe(3);
+    // Three matching neighbours, plus green's crowd bonus for the two past the
+    // first. The walls contribute nothing, which is the claim being made.
+    const t = state.tuning;
+    expect(worthOf(cells, centre, t)).toBe(3 + 2 * t.greenCrowdBonus);
   });
 });

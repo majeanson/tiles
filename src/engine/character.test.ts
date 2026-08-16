@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
+import { BARE_TUNING, TUNING, type Tuning } from '@content/tuning';
 import { disc, key, neighbourKeys } from './hex';
 import { newRun, reduce, startingPerk } from './reduce';
 import { previewWorth, treasureFor, worthOf } from './rules';
@@ -14,9 +14,9 @@ import type { Cell, GameState } from './state';
  * FEEL like a decision is the phone's question, written in LOG.md.
  */
 
-/** The personalities alone, on the bounded base so nothing else interferes. */
+/** The personalities alone, on the bare skeleton so nothing else interferes. */
 const CHAR: Tuning = {
-  ...TUNING,
+  ...BARE_TUNING,
   greenCrowdBonus: 1,
   yellowCompanyBonus: 1,
   redAshMatches: true,
@@ -34,7 +34,7 @@ describe('colour personalities', () => {
       .forEach((k) => (cells[k] = tile('green')));
 
     expect(worthOf(cells, centre, CHAR)).toBe(3 + 2);
-    expect(worthOf(cells, centre, TUNING)).toBe(3);
+    expect(worthOf(cells, centre, BARE_TUNING)).toBe(3);
   });
 
   it('yellow company: +1 per different colour among the neighbours', () => {
@@ -47,7 +47,7 @@ describe('colour personalities', () => {
 
     // No matches at all — three strangers — and still worth three.
     expect(worthOf(cells, centre, CHAR)).toBe(3);
-    expect(worthOf(cells, centre, TUNING)).toBe(0);
+    expect(worthOf(cells, centre, BARE_TUNING)).toBe(0);
 
     // A yellow friend joins: one real match on top of the company.
     cells[around[3]!] = tile('yellow');
@@ -62,7 +62,7 @@ describe('colour personalities', () => {
     cells[around[1]!] = { kind: 'stone' };
 
     expect(worthOf(cells, centre, CHAR)).toBe(2);
-    expect(worthOf(cells, centre, TUNING)).toBe(0);
+    expect(worthOf(cells, centre, BARE_TUNING)).toBe(0);
 
     cells[centre] = tile('blue');
     expect(worthOf(cells, centre, CHAR)).toBe(0);
@@ -98,7 +98,7 @@ describe('colour personalities', () => {
 
     expect(worthOf(cells, far, CHAR)).toBe(2);
     expect(worthOf(cells, key(0, 0), CHAR)).toBe(0);
-    expect(worthOf(cells, far, TUNING)).toBe(0);
+    expect(worthOf(cells, far, BARE_TUNING)).toBe(0);
   });
 
   it('promises exactly what it pays, for every personality', () => {
@@ -123,17 +123,17 @@ describe('colour personalities', () => {
 describe('biomes', () => {
   it('is a pure lookup, and off in the bounded game', () => {
     for (const h of disc(30)) {
-      expect(biomeAt(5, h.q, h.r, ENDLESS_TUNING)).toBe(biomeAt(5, h.q, h.r, ENDLESS_TUNING));
-      expect(biomeAt(5, h.q, h.r, TUNING)).toBeNull();
+      expect(biomeAt(5, h.q, h.r, TUNING)).toBe(biomeAt(5, h.q, h.r, TUNING));
+      expect(biomeAt(5, h.q, h.r, BARE_TUNING)).toBeNull();
     }
   });
 
   it('colours every field inside a biome with the biome colour', () => {
     let checked = 0;
     for (const h of disc(60)) {
-      const biome = biomeAt(9, h.q, h.r, ENDLESS_TUNING);
+      const biome = biomeAt(9, h.q, h.r, TUNING);
       if (biome === null) continue;
-      const ground = terrainAt(9, h.q, h.r, ENDLESS_TUNING);
+      const ground = terrainAt(9, h.q, h.r, TUNING);
       if (ground.native === null) continue;
       expect(ground.native).toBe(biome);
       checked++;
@@ -147,7 +147,7 @@ describe('biomes', () => {
     let inBiome = 0;
     const all = disc(60);
     for (const h of all) {
-      const biome = biomeAt(3, h.q, h.r, ENDLESS_TUNING);
+      const biome = biomeAt(3, h.q, h.r, TUNING);
       if (biome !== null) {
         inBiome++;
         seen.add(biome);
@@ -160,7 +160,7 @@ describe('biomes', () => {
 
 describe('the hold slot', () => {
   it('takes the selected card into an empty stash, and the draft shrinks', () => {
-    const state = newRun(4, ENDLESS_TUNING);
+    const state = newRun(4, TUNING);
     const first = state.draft[0]!;
 
     const held = reduce(state, { type: 'HOLD' });
@@ -170,7 +170,7 @@ describe('the hold slot', () => {
   });
 
   it('trades with a full stash in place', () => {
-    const state = reduce(newRun(4, ENDLESS_TUNING), { type: 'HOLD' });
+    const state = reduce(newRun(4, TUNING), { type: 'HOLD' });
     const stashed = state.held!;
     const facing = state.draft[0]!;
 
@@ -181,7 +181,7 @@ describe('the hold slot', () => {
   });
 
   it('keeps the stash through a placement and its reroll', () => {
-    const state = reduce(newRun(4, ENDLESS_TUNING), { type: 'HOLD' });
+    const state = reduce(newRun(4, TUNING), { type: 'HOLD' });
     const stashed = state.held!;
 
     const placed = reduce(state, { type: 'PLACE', hex: key(1, 0) });
@@ -191,7 +191,7 @@ describe('the hold slot', () => {
   });
 
   it('does not exist in the bounded game', () => {
-    const state = newRun(4, TUNING);
+    const state = newRun(4, BARE_TUNING);
     expect(reduce(state, { type: 'HOLD' })).toBe(state);
   });
 });
@@ -202,7 +202,7 @@ describe('the hold slot', () => {
  */
 describe('territory perks', () => {
   it('pays per territory, capped, and nothing when switched off', () => {
-    const t = ENDLESS_TUNING;
+    const t = TUNING;
     expect(startingPerk(t, 0)).toBe(0);
     expect(startingPerk(t, 2)).toBe(2 * t.territoryTiles);
     expect(startingPerk(t, 99)).toBe(t.territoryTilesCap);
@@ -210,14 +210,14 @@ describe('territory perks', () => {
   });
 
   it('reaches the purse a run actually starts with', () => {
-    const plain = newRun(3, ENDLESS_TUNING);
-    const held = newRun(3, ENDLESS_TUNING, ['9,9', '12,4']);
-    expect(held.tiles - plain.tiles).toBe(startingPerk(ENDLESS_TUNING, 2));
+    const plain = newRun(3, TUNING);
+    const held = newRun(3, TUNING, ['9,9', '12,4']);
+    expect(held.tiles - plain.tiles).toBe(startingPerk(TUNING, 2));
   });
 });
 
 describe('the treasure payout', () => {
-  const T = { ...ENDLESS_TUNING, worldWalls: 0 };
+  const T = { ...TUNING, worldWalls: 0 };
 
   /** A ripe green row of `size`, walled in stone, on a bare board. */
   const pocket = (state: GameState, size: number): GameState => {
@@ -228,6 +228,11 @@ describe('the treasure payout', () => {
     for (let i = 0; i < size; i++) {
       for (const n of neighbourKeys(i, 0)) if (!members.has(n)) cells[n] = { kind: 'stone' };
     }
+    // Open ground two rows out: it touches the stone rim and no member, so the
+    // pocket stays ripe AND the run stays alive. Without it the pop is also
+    // the end of the expedition, and the ending bonus lands on the points this
+    // test is asserting are untouched.
+    cells[key(2, 2)] = { kind: 'empty' };
     return { ...state, cells };
   };
 

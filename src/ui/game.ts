@@ -65,7 +65,6 @@ export type Elements = {
   readonly harvestBurn: HTMLButtonElement;
   readonly spends: HTMLElement;
   readonly controls: HTMLElement;
-  readonly leave: HTMLButtonElement;
   readonly end: HTMLElement;
   readonly zoomIn: HTMLButtonElement;
   readonly zoomOut: HTMLButtonElement;
@@ -310,9 +309,6 @@ export class Game {
     this.#el.harvestBurn.addEventListener('click', () => {
       this.#harvest('burn');
     });
-    this.#el.leave.addEventListener('click', () => {
-      this.#dispatch({ type: 'LEAVE' });
-    });
 
     // The shop's buttons are rebuilt every frame, so the listener lives on
     // the row and reads what was tapped. One listener, any number of prices.
@@ -444,7 +440,7 @@ export class Game {
     // On the plane a tap on a ripe tile is a QUESTION — "what is this pocket
     // worth?" — not a placement. The harvest buttons re-price to that pocket
     // and the board outlines it. Everywhere else a tap stays a placement.
-    if (this.#state.tuning.world === 'endless' && isRipe(this.#state.cells, hex)) {
+    if (isRipe(this.#state.cells, hex)) {
       this.#harvestAt = hex;
       // Tapping a pocket is a question; this is the whole answer, including
       // where the numbers on the buttons come from.
@@ -784,7 +780,6 @@ export class Game {
 
   #helpSections(): HelpTab[] {
     const t = this.#state.tuning;
-    const endless = t.world === 'endless';
     const name = (c: Colour): string => this.#theme.terrainNames[c];
 
     // Every number below is read from the run's OWN tuning — the same object
@@ -804,9 +799,7 @@ export class Game {
               : 'Tiles keep you going; points are the score. You take one or the other, never both.',
           ],
           detail: [
-            endless
-              ? `You start with ${t.startingTiles} tiles on one endless plane. Every placement spends tiles, every pocket hands some back, and a good or lucky run simply goes farther.`
-              : `You start with ${t.startingTiles} tiles. Harvest a map, move on, and deeper maps pay harder.`,
+            `You start with ${t.startingTiles} tiles on one endless plane. Every placement spends tiles, every pocket hands some back, and a good or lucky run simply goes farther.`,
             t.runLength > 0
               ? `The expedition is ${t.runLength} placements long whether or not you spend your tiles — so tiles you never place are wasted.`
               : 'There is no clock. The purse is the whole limit, and the run ends when you cannot afford a placement.',
@@ -841,9 +834,7 @@ export class Game {
         {
           title: 'POPPING',
           lines: [
-            endless
-              ? 'Tap any ripe tile to price its pocket — the board outlines it and the buttons show what it pays. The biggest pocket is priced by default.'
-              : 'Harvesting pops every ripe tile on the map at once.',
+            'Tap any ripe tile to price its pocket — the board outlines it and the buttons show what it pays. The biggest pocket is priced by default.',
             'Popped tiles turn to STONE: still surrounds, never matches. Every pop makes that ground poorer, which is the pressure to keep moving.',
             t.runLength > 0
               ? 'Wait too long and the expedition ends around your unfinished pocket.'
@@ -851,9 +842,7 @@ export class Game {
           ],
           detail: [
             `A pop pays ${t.tilesPerPop} tile per popped tile, plus 1 more per ${t.worthPerExtraTile} worth.`,
-            endless
-              ? `It scores the pocket’s summed worth × its size bonus × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`
-              : 'It scores summed worth × size bonus × the map number.',
+            `It scores the pocket’s summed worth × its size bonus × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`,
             ...(t.harvestSizeCap > 0
               ? [
                   `The size bonus stops growing past ${t.harvestSizeCap} tiles — a bigger pocket pays more worth but no more multiplier.`,
@@ -899,50 +888,44 @@ export class Game {
               },
             ]
           : []),
-        ...(endless
-          ? [
-              {
-                title: 'THE GROUND',
-                lines: [
-                  'Dotted ground is a NATIVE FIELD — a tile of that colour placed there gains a match.',
-                  'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
-                ],
-                detail: [
-                  'Whole regions of one colour’s dots are BIOMES. Chasing a colour means walking to where it grows.',
-                  'The plane only exists where you have grown it. Every placement reveals the ground around itself.',
-                ],
-              },
-              {
-                title: 'WHERE TO GO',
-                lines: [
-                  'The glows beyond your ground are destinations, shining through land you have not reached. Touch one with a tile to claim it. Each pays once.',
-                  `+ CACHE — ${t.cachePays} tiles on the spot.`,
-                  `★ SITE — points, and it opens a bounty.`,
-                  `◆ TERRITORY — turns the ground around it into your field, for good.`,
-                  '◈ SHRINE — switches a system on for your world, permanently.',
-                ],
-                detail: [
-                  `A site pays ${t.sitePays} pts × the distance multiplier at its hex.`,
-                  ...(t.questNeed > 0
-                    ? [
-                        `Its bounty: pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it and take it as PTS for ×${t.questBonus}. Take it as tiles and the bounty stays standing. One at a time.`,
-                      ]
-                    : []),
-                  `A territory’s field reaches ${t.territoryRadius} hexes, and it glows in the colour it will grant.`,
-                  'Caches and sites re-arm every run, so ground you know stays worth walking.',
-                  'The line above your hand always names the nearest unclaimed destination and how far out it sits.',
-                ],
-              },
-            ]
-          : []),
+        {
+          title: 'THE GROUND',
+          lines: [
+            'Dotted ground is a NATIVE FIELD — a tile of that colour placed there gains a match.',
+            'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
+          ],
+          detail: [
+            'Whole regions of one colour’s dots are BIOMES. Chasing a colour means walking to where it grows.',
+            'The plane only exists where you have grown it. Every placement reveals the ground around itself.',
+          ],
+        },
+        {
+          title: 'WHERE TO GO',
+          lines: [
+            'The glows beyond your ground are destinations, shining through land you have not reached. Touch one with a tile to claim it. Each pays once.',
+            `+ CACHE — ${t.cachePays} tiles on the spot.`,
+            `★ SITE — points, and it opens a bounty.`,
+            `◆ TERRITORY — turns the ground around it into your field, for good.`,
+            '◈ SHRINE — switches a system on for your world, permanently.',
+          ],
+          detail: [
+            `A site pays ${t.sitePays} pts × the distance multiplier at its hex.`,
+            ...(t.questNeed > 0
+              ? [
+                  `Its bounty: pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it and take it as PTS for ×${t.questBonus}. Take it as tiles and the bounty stays standing. One at a time.`,
+                ]
+              : []),
+            `A territory’s field reaches ${t.territoryRadius} hexes, and it glows in the colour it will grant.`,
+            'Caches and sites re-arm every run, so ground you know stays worth walking.',
+            'The line above your hand always names the nearest unclaimed destination and how far out it sits.',
+          ],
+        },
         {
           title: 'READING THE SCREEN',
           lines: [
-            endless
-              ? t.hidePoints
-                ? 'TILES keeps you alive · LUCK is what pops pay and the shop spends · REACH is how far you have built · COST is the next placement.'
-                : 'TILES keeps you alive · POINTS is your score · REACH is how far you have built · COST is the next placement.'
-              : 'TILES is your life · POINTS is your score · MAP is how deep you are · COST is the next placement.',
+            t.hidePoints
+              ? 'TILES keeps you alive · LUCK is what pops pay and the shop spends · REACH is how far you have built · COST is the next placement.'
+              : 'TILES keeps you alive · POINTS is your score · REACH is how far you have built · COST is the next placement.',
             'Zoom with + and −, pinch, or drag to pan. FIT shows everything.',
           ],
           detail: [
@@ -1043,13 +1026,7 @@ export class Game {
           title: 'HOW IT ENDS',
           lines: [
             'Out of tiles with nothing ripe to cash: broke. Walking to caches is how you avoid it.',
-            ...(endless
-              ? [
-                  'A frontier that is all wall with nothing left to pop: walled in. Rare, and worth avoiding on the way past.',
-                ]
-              : [
-                  'Once you have harvested a map you may MOVE ON. Deeper maps multiply points harder.',
-                ]),
+            'A frontier that is all wall with nothing left to pop: walled in. Rare, and worth avoiding on the way past.',
             ...(t.runLength > 0
               ? [
                   'LEFT reaches zero: the expedition is over. Anything already ripe can still be cashed.',
@@ -1057,25 +1034,21 @@ export class Game {
               : []),
           ],
         },
-        ...(endless
-          ? [
-              {
-                title: 'YOUR WORLD',
-                lines: [
-                  'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs.',
-                  'Territories you claim are yours for good and greet you already claimed.',
-                ],
-                detail: [
-                  ...(t.territoryTiles > 0
-                    ? [
-                        `Each territory held starts every later run with +${t.territoryTiles} tiles, up to +${t.territoryTilesCap}.`,
-                      ]
-                    : []),
-                  'SETTINGS shows what your world has seen, and can abandon it for a fresh one.',
-                ],
-              },
-            ]
-          : []),
+        {
+          title: 'YOUR WORLD',
+          lines: [
+            'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs.',
+            'Territories you claim are yours for good and greet you already claimed.',
+          ],
+          detail: [
+            ...(t.territoryTiles > 0
+              ? [
+                  `Each territory held starts every later run with +${t.territoryTiles} tiles, up to +${t.territoryTilesCap}.`,
+                ]
+              : []),
+            'SETTINGS shows what your world has seen, and can abandon it for a fresh one.',
+          ],
+        },
       ],
     };
 
@@ -1100,9 +1073,7 @@ export class Game {
         {
           title: 'THIS BUILD',
           lines: [
-            endless
-              ? `One endless plane, grown from seed ${this.#state.rootSeed}. Same seed, same world — share the number to share the run.`
-              : `Bounded maps, seed ${this.#state.rootSeed}.`,
+            `One endless plane, grown from seed ${this.#state.rootSeed}. Same seed, same world — share the number to share the run.`,
             systems.length > 0
               ? `In play: ${systems.join(' · ')}.`
               : 'In play: nothing. This is the smallest game there is.',
@@ -1120,7 +1091,7 @@ export class Game {
       ],
     };
 
-    const tabs = endless ? [play, board, hand, after, build] : [play, board, after, build];
+    const tabs = [play, board, hand, after, build];
     return tabs.filter((tab) => tab.sections.length > 0);
   }
 
@@ -1297,7 +1268,7 @@ export class Game {
                 ? ` — ${spot.bonus} from its power (${POWER_NAMES[spot.colour]})`
                 : '') +
               (spot.ripeCount > 0 ? ` · ${spot.ripeWorth} of it ripe now` : '') +
-              ` · pts when popped = worth × pocket size × ${hud.showLeave ? 'map' : 'distance'}`) +
+              ` · pts when popped = worth × pocket size × distance`) +
           this.#powerOf(spot.colour);
     const parts = [spotLine ?? hud.guide, hud.questLine ?? hud.hint, hud.odds];
     if (this.#hooks.debug === true) parts.push(this.#debugLine());
@@ -1366,10 +1337,6 @@ export class Game {
       this.#el.harvestTreasure.textContent = `Take a ${treasure.toUpperCase()} tile`;
     }
 
-    this.#el.leave.hidden = !hud.showLeave;
-    this.#el.leave.textContent = hud.leaveHint;
-    this.#el.leave.disabled = !hud.canLeave;
-
     this.#el.end.hidden = !hud.ended;
     // A finished run has no hand to play and no luck to spend, and leaving
     // those controls on screen did worse than confuse: the end screen is long
@@ -1425,10 +1392,7 @@ export class Game {
 
     const s = hud.summary;
     if (s !== null) {
-      const facts: string[] = [
-        `${hud.depthLabel.toLowerCase()} ${hud.depthValue}`,
-        `${hud.placements} placements`,
-      ];
+      const facts: string[] = [`reach ${hud.depthValue}`, `${hud.placements} placements`];
       if (s.harvests > 0) {
         facts.push(
           hud.singlePayout
@@ -1579,7 +1543,7 @@ export class Game {
       hud.showPoints
         ? ({ id: 'points', label: 'POINTS', value: String(hud.points) } satisfies Stat)
         : ({ id: 'luck', label: 'LUCK', value: String(hud.luck) } satisfies Stat),
-      { id: 'map', label: hud.depthLabel, value: String(hud.depthValue) },
+      { id: 'map', label: 'REACH', value: String(hud.depthValue) },
       { id: 'cost', label: 'COST', value: `−${hud.cost}` },
       // The clock, where there is one. Last on the row because it is the
       // number you check rather than the number you watch — but on screen

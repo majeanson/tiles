@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
+import { TUNING, type Tuning } from '@content/tuning';
 import { key } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { legalPlacements, ripeKeys } from '@engine/rules';
@@ -15,7 +15,8 @@ import { toBoardView, toHudView } from './view';
  */
 
 const tuned = (over: Partial<Tuning>): Tuning => ({ ...TUNING, ...over });
-const TINY = tuned({ mapBaseRadius: 1, mapMaxRadius: 1 });
+/** No terrain in the way, so a view test is about the view. */
+const TINY = tuned({ worldWalls: 0, destinationChance: 0 });
 
 function fill(state: GameState): GameState {
   let s = state;
@@ -29,7 +30,7 @@ function fill(state: GameState): GameState {
 
 describe('the board view', () => {
   it('shows every cell of the map exactly once', () => {
-    const s = newRun(1);
+    const s = newRun(1, TINY);
     const view = toBoardView(s);
     expect(view.cells).toHaveLength(Object.keys(s.cells).length);
     expect(new Set(view.cells.map((c) => c.key)).size).toBe(view.cells.length);
@@ -89,11 +90,12 @@ describe('the board view', () => {
     expect(ripe.every((c) => c.kind === 'tile' && c.colour !== null)).toBe(true);
   });
 
-  it('reports stone as stone, so the player can see why a map is spent', () => {
-    const spent = reduce(fill(newRun(11, TINY)), { type: 'HARVEST', choice: 'points' });
-    const kinds = toBoardView(spent).cells.map((c) => c.kind);
-    expect(kinds).toContain('stone');
-    expect(kinds).not.toContain('tile');
+  it('reports stone as stone, so the player can see their own wake', () => {
+    const full = fill(newRun(11, TINY));
+    const at = ripeKeys(full.cells)[0];
+    if (at === undefined) throw new Error('nothing ripened');
+    const spent = reduce(full, { type: 'HARVEST', choice: 'tiles', at });
+    expect(toBoardView(spent).cells.map((c) => c.kind)).toContain('stone');
   });
 });
 
@@ -103,36 +105,7 @@ describe('the hud', () => {
     const hud = toHudView(s);
     expect(hud.tiles).toBe(s.tiles);
     expect(hud.points).toBe(s.points);
-    expect(hud.mapNumber).toBe(s.mapNumber);
     expect(hud.placements).toBe(1);
-  });
-
-  // Both payouts are on screen at all times: the choice is only a choice if you
-  // can see what you are giving up.
-  it('prices both payouts before either is taken', () => {
-    const full = fill(newRun(11, TINY));
-    const hud = toHudView(full);
-    expect(hud.canHarvest).toBe(true);
-    expect(hud.harvestTiles).toBeGreaterThan(0);
-    expect(hud.harvestPoints).toBeGreaterThan(0);
-
-    expect(reduce(full, { type: 'HARVEST', choice: 'tiles' }).tiles).toBe(
-      full.tiles + hud.harvestTiles,
-    );
-    expect(reduce(full, { type: 'HARVEST', choice: 'points' }).points).toBe(
-      full.points + hud.harvestPoints,
-    );
-  });
-
-  // A dead control teaches nothing. This one states the rule at the only moment
-  // the player cares about it.
-  it('explains why leaving is refused instead of just greying out', () => {
-    const fresh = toHudView(newRun(21, TINY));
-    expect(fresh.canLeave).toBe(false);
-    expect(fresh.leaveHint).toMatch(/harvest/i);
-
-    const cashed = toHudView(reduce(fill(newRun(21, TINY)), { type: 'HARVEST', choice: 'points' }));
-    expect(cashed.canLeave).toBe(true);
   });
 
   // Gate D: the end screen names the cause of death in one sentence.
@@ -141,10 +114,8 @@ describe('the hud', () => {
     expect(alive.ended).toBe(false);
     expect(alive.epitaph).toBeNull();
 
-    const dead = reduce(fill(newRun(11, tuned({ ...TINY, startingTiles: 6 }))), {
-      type: 'HARVEST',
-      choice: 'points',
-    });
+    const broke = fill({ ...newRun(11, TINY), tiles: 2 });
+    const dead = broke;
     const hud = toHudView(dead);
     expect(hud.ended).toBe(true);
     expect(hud.epitaph).toMatch(/out of tiles/i);
@@ -163,8 +134,8 @@ describe('destinations and rarity in the view', () => {
   // once rather than assumed, so the assertions below are about the VIEW.
   const seeded = (): { seed: number; state: GameState } => {
     for (let seed = 1; seed <= 200; seed++) {
-      if (destinationsWithin(seed, ENDLESS_TUNING.beaconHorizon, ENDLESS_TUNING).length > 0) {
-        return { seed, state: newRun(seed, ENDLESS_TUNING) };
+      if (destinationsWithin(seed, TUNING.beaconHorizon, TUNING).length > 0) {
+        return { seed, state: newRun(seed, TUNING) };
       }
     }
     throw new Error('no seed with a close destination in 200 tries');
@@ -172,8 +143,8 @@ describe('destinations and rarity in the view', () => {
 
   it('draws unrevealed destinations as beacons, and only those', () => {
     const { seed, state } = seeded();
-    const horizon = ENDLESS_TUNING.beaconHorizon;
-    const expected = destinationsWithin(seed, horizon, ENDLESS_TUNING)
+    const horizon = TUNING.beaconHorizon;
+    const expected = destinationsWithin(seed, horizon, TUNING)
       .map((d) => key(d.q, d.r))
       .sort();
 
@@ -190,9 +161,9 @@ describe('destinations and rarity in the view', () => {
     expect(hud.hint).toMatch(/glows \d+ out/);
   });
 
-  it('shows the odds on the plane and nothing in the bounded game', () => {
-    expect(toHudView(newRun(1, ENDLESS_TUNING)).odds).toMatch(/magic .+ unique/);
-    expect(toHudView(newRun(1)).odds).toBeNull();
-    expect(toHudView(newRun(1)).hint).toBeNull();
+  it('shows the odds, and says nothing where there is no rarity to have', () => {
+    expect(toHudView(newRun(1, TUNING)).odds).toMatch(/magic .+ unique/);
+    const plain = tuned({ magicChance: 0, uniqueChance: 0 });
+    expect(toHudView(newRun(1, plain)).odds).toBeNull();
   });
 });

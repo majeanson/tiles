@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING } from '@content/tuning';
+import { TUNING } from '@content/tuning';
 import { key } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { decodeRun, encodeRun } from './save.js';
@@ -13,7 +13,7 @@ import { decodeRun, encodeRun } from './save.js';
 
 describe('keeping a run', () => {
   it('round-trips a live run exactly, and the reducer continues it', () => {
-    let state = newRun(9, ENDLESS_TUNING);
+    let state = newRun(9, TUNING);
     state = reduce(state, { type: 'PLACE', hex: key(1, 0) });
     state = reduce(state, { type: 'HOLD' });
 
@@ -52,7 +52,7 @@ describe('keeping a run', () => {
     for (const mangle of [
       ['"phase":"placing"', '"phase":"paused"'],
       ['"tiles":30', '"tiles":"lots"'],
-      ['"world":"bounded"', '"world":"round"'],
+      ['"relics":0', '"relics":"many"'],
     ] as const) {
       const raw = encodeRun(state).replace(mangle[0], mangle[1]);
       expect(raw).not.toBe(encodeRun(state)); // the mangle found its target

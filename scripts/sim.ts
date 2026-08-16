@@ -1,4 +1,4 @@
-import { ENDLESS_TUNING, TILESONLY_TUNING, TUNING, type Tuning } from '../src/content/tuning';
+import { TUNING, type Tuning } from '../src/content/tuning';
 import { POLICIES, policyByName } from '../src/sim/policy';
 import { summarise, table } from '../src/sim/report';
 import { playMany } from '../src/sim/run';
@@ -46,28 +46,19 @@ function withSetting(tuning: Tuning, setting: string): Tuning {
     return { ...tuning, [name]: raw === 'true' };
   }
 
-  // The one string-valued dial. A typo here would silently run the WRONG
-  // ECONOMY for a whole sweep, which is worse than a crash, so it validates.
-  if (name === 'world') {
-    if (raw !== 'bounded' && raw !== 'endless') throw new Error(`world wants bounded or endless`);
-    return { ...tuning, world: raw };
-  }
-
   const value = Number(raw);
   if (!Number.isFinite(value)) throw new Error(`${name} wants a number, got "${raw}"`);
   return { ...tuning, [name]: value };
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  // `--endless` swaps the BASE the --set overrides then apply to, so it is
-  // read before the loop rather than in it.
-  const endless = argv.includes('--endless');
-  const tilesonly = argv.includes('--tilesonly');
+  // There is one economy now (2026-08-16), so there is no base to select —
+  // `--set` overrides apply to it directly.
   const args: Args = {
     seeds: 200,
     policies: [],
-    tuning: tilesonly ? TILESONLY_TUNING : endless ? ENDLESS_TUNING : TUNING,
-    changed: tilesonly ? ['--tilesonly'] : endless ? ['--endless'] : [],
+    tuning: TUNING,
+    changed: [],
   };
 
   for (let i = 0; i < argv.length; i++) {

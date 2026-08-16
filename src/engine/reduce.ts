@@ -1,6 +1,5 @@
 import { COLOUR_WEIGHTS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from './hex';
-import { generateMap } from './map';
 import { rngNext, rngWeighted, streamsFrom, type RngStream, type RngStreams } from './rng';
 import {
   canAfford,
@@ -122,28 +121,6 @@ function tileCell(colour: Colour, onNative: boolean, rarity: Rarity): Cell {
   if (onNative) cell.onNative = true;
   if (rarity !== 'common') cell.rarity = rarity;
   return cell;
-}
-
-/**
- * Lay out a map and drop the run's first tile in the middle of it.
- *
- * The seed tile is free. Rule 2 needs something to touch, and charging for the
- * privilege of being allowed to start would make arriving on a deep map with a
- * thin budget a death sentence rather than a gamble.
- */
-function openMap(
-  rng: RngStreams,
-  mapNumber: number,
-  t: Tuning,
-  luck: number,
-): { cells: Record<HexKey, Cell>; draft: Tile[]; rng: RngStreams } {
-  const [cells, region] = generateMap(rng.region, mapNumber, t);
-
-  const seeded = rollTile(rng.tiles, rng.loot, t, luck);
-  cells[key(0, 0)] = tileCell(seeded.tile.colour, false, seeded.tile.rarity);
-
-  const { draft, tiles, loot } = rollDraft(seeded.tiles, seeded.loot, t, luck);
-  return { cells, draft, rng: { ...rng, region, tiles, loot } };
 }
 
 /**
@@ -271,10 +248,7 @@ export function newRun(
   claimed: readonly HexKey[] = [],
 ): GameState {
   const streams = streamsFrom(rootSeed);
-  const opened =
-    tuning.world === 'endless'
-      ? openWorld(rootSeed, streams, tuning, claimed)
-      : openMap(streams, 1, tuning, 0);
+  const opened = openWorld(rootSeed, streams, tuning, claimed);
 
   return {
     version: 1,
@@ -288,7 +262,6 @@ export function newRun(
     tiles: tuning.startingTiles + startingPerk(tuning, claimed.length),
     points: 0,
     placements: 0,
-    mapNumber: 1,
     luck: 0,
     relics: 0,
     usedSecondWind: false,
@@ -298,8 +271,8 @@ export function newRun(
     held: null,
     quest: null,
     bias: null,
-    claimed: tuning.world === 'endless' ? claimed : [],
-    log: { harvests: [], popped: 0, placementsAtMapStart: 0, questsDone: 0 },
+    claimed,
+    log: { harvests: [], popped: 0, questsDone: 0 },
   };
 }
 
@@ -315,8 +288,6 @@ export function reduce(state: GameState, action: Action): GameState {
       return hold(state);
     case 'SPEND':
       return spendLuck(state, action.on, action.colour);
-    case 'LEAVE':
-      return leave(state);
   }
 }
 
@@ -424,8 +395,8 @@ function place(state: GameState, hex: HexKey): GameState {
   let relics = state.relics;
   let quest: Quest | null = state.quest;
 
-  if (t.world === 'endless') {
-    // The endless plane grows under your feet: placing a tile reveals the
+  {
+    // The plane grows under your feet: placing a tile reveals the
     // ground around it, which keeps the invariant that no tile ever borders an
     // absent cell. What it reveals is the terrain function's answer — walls
     // and landmarks included, which is how the plane gets to say no and where.
@@ -510,10 +481,13 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   // does nothing. The UI only offers it when `treasure` is non-null.
   if (choice === 'treasure' && treasure === null) return state;
 
-  // The bounty is collected by PRESSING POINTS on a qualifying pocket — its
-  // multiplier is already inside `points`. Taking the same pocket as tiles
-  // leaves the bounty standing, which is the decision it exists to create.
-  const collected = questPays && choice === 'points';
+  // The bounty is collected by the pop that SCORES the pocket — its multiplier
+  // is already inside `points`. Under the two-payout economy that meant
+  // pressing POINTS specifically, and taking the same pocket as tiles left the
+  // bounty standing; under the single payout every pop scores, so every pop on
+  // a qualifying pocket collects it. Gating on the button rather than on the
+  // scoring was what left bounties uncollectable when the fork was removed.
+  const collected = questPays && (t.singlePayout ? choice !== 'burn' : choice === 'points');
 
   // Popped tiles become stone: still surrounding, no longer matching. On a
   // bounded map that is the reason to leave; on the endless plane it is the
@@ -596,7 +570,6 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
       harvests: [
         ...state.log.harvests,
         {
-          mapNumber: state.mapNumber,
           at: state.placements,
           count,
           choice,
@@ -605,37 +578,6 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
         },
       ],
     },
-  });
-}
-
-/**
- * You may leave a map once you have harvested on it.
- *
- * Without that condition leaving is free and unlimited, and the map multiplier
- * becomes free with it: skip to map 40 touching nothing, then farm at 40x. The
- * condition prices depth in the only currency the game has — you must build
- * something up to ripeness and cash it in before you are allowed to move on —
- * and it does so as one sentence rather than as another number to tune.
- */
-export const canLeave = (state: GameState): boolean =>
-  state.tuning.world !== 'endless' &&
-  state.phase === 'placing' &&
-  state.log.harvests.some((h) => h.mapNumber === state.mapNumber);
-
-function leave(state: GameState): GameState {
-  if (!canLeave(state)) return state;
-
-  const mapNumber = state.mapNumber + 1;
-  const opened = openMap(state.rng, mapNumber, state.tuning, state.luck);
-
-  return endIfStuck({
-    ...state,
-    mapNumber,
-    cells: opened.cells,
-    draft: opened.draft,
-    selected: 0,
-    rng: opened.rng,
-    log: { ...state.log, placementsAtMapStart: state.placements },
   });
 }
 
@@ -650,13 +592,8 @@ function leave(state: GameState): GameState {
  * any price no matter how rich you are.
  */
 function endIfStuck(state: GameState): GameState {
-  const t = state.tuning;
   const solvent = canAfford(state.tiles);
   const timeUp = outOfTime(state);
-
-  // The bounded game has no clock and can only die broke, so money alone
-  // settles it there.
-  if (solvent && !timeUp && t.world !== 'endless') return state;
 
   // Whatever ended the run — money or the clock — you always get to cash what
   // is already ripe. Dying with a finished pocket unpopped because the timer

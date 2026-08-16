@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING } from '@content/tuning';
+import { TUNING } from '@content/tuning';
 import { newRun } from '@engine/reduce';
 import type { GameState, HarvestRecord } from '@engine/state';
 import { decodeRecords, encodeRecords, gateB, gateD, recordRun, EMPTY } from './records.js';
@@ -11,7 +11,6 @@ import { decodeRecords, encodeRecords, gateB, gateD, recordRun, EMPTY } from './
  */
 
 const harvest = (choice: 'tiles' | 'points', points: number, at: number): HarvestRecord => ({
-  mapNumber: 1,
   at,
   count: 4,
   choice,
@@ -20,11 +19,11 @@ const harvest = (choice: 'tiles' | 'points', points: number, at: number): Harves
 });
 
 const ran = (harvests: HarvestRecord[], placements = 100, points = 0): GameState => ({
-  ...newRun(1, ENDLESS_TUNING),
+  ...newRun(1, TUNING),
   phase: 'ended',
   placements,
   points,
-  log: { harvests, popped: 0, placementsAtMapStart: 0, questsDone: 0 },
+  log: { harvests, popped: 0, questsDone: 0 },
 });
 
 describe('the record book', () => {

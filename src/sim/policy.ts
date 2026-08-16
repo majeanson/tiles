@@ -1,6 +1,6 @@
 import { COLOURS, type Colour } from '@content/tuning';
 import { distance, key, parse, type HexKey } from '@engine/hex';
-import { canLeave, canSpend } from '@engine/reduce';
+import { canSpend } from '@engine/reduce';
 import { rngInt, rngPick, type RngStream } from '@engine/rng';
 import {
   canPlaceNow,
@@ -84,23 +84,16 @@ function bestPlacement(state: GameState): Move | null {
  * own price, and WHICH pocket is part of the decision — so each gets a move.
  */
 function harvestMoves(state: GameState, choice: 'tiles' | 'points'): Move[] {
-  if (state.tuning.world !== 'endless') {
-    return ripeKeys(state.cells).length > 0 ? [[{ type: 'HARVEST', choice }]] : [];
-  }
   return ripeClusters(state.cells).map((pocket) => [{ type: 'HARVEST', choice, at: pocket[0]! }]);
 }
 
 /** How big the biggest single harvest available is. Zero when nothing is ripe. */
 function biggestHarvestSize(state: GameState): number {
-  if (state.tuning.world !== 'endless') return ripeKeys(state.cells).length;
   return ripeClusters(state.cells).reduce((n, pocket) => Math.max(n, pocket.length), 0);
 }
 
 /** The biggest harvest available: the whole board, or the largest pocket. */
 function biggestHarvest(state: GameState, choice: 'tiles' | 'points'): Move | null {
-  if (state.tuning.world !== 'endless') {
-    return ripeKeys(state.cells).length > 0 ? [{ type: 'HARVEST', choice }] : null;
-  }
   let best: HexKey[] | null = null;
   for (const pocket of ripeClusters(state.cells)) {
     if (best === null || pocket.length > best.length) best = pocket;
@@ -110,9 +103,6 @@ function biggestHarvest(state: GameState, choice: 'tiles' | 'points'): Move | nu
 
 /** The smallest harvest available — what you cash when protecting a big one. */
 function smallestHarvest(state: GameState, choice: 'tiles' | 'points'): Move | null {
-  if (state.tuning.world !== 'endless') {
-    return ripeKeys(state.cells).length > 0 ? [{ type: 'HARVEST', choice }] : null;
-  }
   let least: HexKey[] | null = null;
   for (const pocket of ripeClusters(state.cells)) {
     if (least === null || pocket.length < least.length) least = pocket;
@@ -170,7 +160,6 @@ export const randomLegal: Policy = {
   decide(state, stream) {
     const moves: Move[] = options(state).map((o) => placeMove(o.index, o.hex));
     moves.push(...harvestMoves(state, 'tiles'), ...harvestMoves(state, 'points'));
-    if (canLeave(state)) moves.push([{ type: 'LEAVE' }]);
     if (moves.length === 0) return [[], stream];
     return rngPick(stream, moves);
   },
@@ -191,7 +180,7 @@ export const farm: Policy = {
     if (place !== null) return [place, stream];
     const cash = biggestHarvest(state, cashChoice(state, 8));
     if (cash !== null) return [cash, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 };
 
@@ -204,9 +193,9 @@ export const farm: Policy = {
  */
 export const rush: Policy = {
   name: 'rush',
-  note: 'Chases the multiplier first: leaves at once on bounded maps, sprints outward then farms on the plane.',
+  note: 'Chases the multiplier first: sprints outward, then stops and farms where it landed.',
   decide(state, stream) {
-    if (state.tuning.world === 'endless') {
+    {
       // The beeline probe from ideas/endless-world.md: walk three multiplier
       // steps out, THEN build. A pure beeline can never ripen anything — an arm
       // encloses nothing — so the sprint has to stop somewhere to pay at all.
@@ -219,7 +208,6 @@ export const rush: Policy = {
       return [biggestHarvest(state, cashChoice(state, 4)) ?? [], stream];
     }
 
-    if (canLeave(state)) return [[{ type: 'LEAVE' }], stream];
     if (ripeKeys(state.cells).length > 0) {
       return [[{ type: 'HARVEST', choice: cashChoice(state, 4) }], stream];
     }
@@ -244,7 +232,7 @@ export const hoard: Policy = {
     if (place !== null) return [place, stream];
     const cash = biggestHarvest(state, 'points');
     if (cash !== null) return [cash, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 };
 
@@ -265,7 +253,7 @@ export const trickle: Policy = {
     if (place !== null) return [place, stream];
     const cash = biggestHarvest(state, cashChoice(state, 8));
     if (cash !== null) return [cash, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 };
 
@@ -289,7 +277,7 @@ const bankAt = (threshold: number): Policy => ({
     if (place !== null) return [place, stream];
     const cash = smallestHarvest(state, 'tiles');
     if (cash !== null) return [cash, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 });
 
@@ -315,7 +303,7 @@ function dominantColour(state: GameState): Colour {
  * it can still afford a forge afterwards, and forges the card it is about to
  * place. If it does not beat bank20, the prices are wrong.
  */
-const spender: Policy = {
+export const spender: Policy = {
   name: 'spender',
   note: 'Plays bank20 and spends luck as it earns it: a hand of its best colour, and a forged card to place.',
   decide(state, stream) {
@@ -342,7 +330,7 @@ const spender: Policy = {
 
     const cash = smallestHarvest(state, 'tiles');
     if (cash !== null) return [cash, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 };
 
@@ -359,7 +347,6 @@ export const bank80 = bankAt(80);
  * What a destination-aware policy walks toward. Null when the system is off.
  */
 function nearestDestination(state: GameState): { q: number; r: number } | null {
-  if (state.tuning.world !== 'endless') return null;
   const horizon = reachOf(state) + state.tuning.beaconHorizon;
 
   let best: { q: number; r: number; dist: number } | null = null;
@@ -416,7 +403,7 @@ export const seeker: Policy = {
     if (place !== null) return [place, stream];
     const cash = smallestHarvest(state, 'tiles');
     if (cash !== null) return [cash, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 };
 
@@ -463,12 +450,7 @@ export const chooser: Policy = {
 
     const cash = (): Move | null => {
       let best: { move: Move; value: number } | null = null;
-      const pockets =
-        t.world === 'endless'
-          ? ripeClusters(state.cells).map((p) => p[0]!)
-          : ripeKeys(state.cells).length > 0
-            ? [undefined]
-            : [];
+      const pockets = ripeClusters(state.cells).map((p) => p[0]!);
 
       for (const at of pockets) {
         const value = harvestValue(state, at);
@@ -497,7 +479,7 @@ export const chooser: Policy = {
     if (place !== null) return [place, stream];
     const move = cash();
     if (move !== null) return [move, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 };
 
@@ -514,7 +496,7 @@ export const survivor: Policy = {
     if (place !== null) return [place, stream];
     const cash = biggestHarvest(state, 'tiles');
     if (cash !== null) return [cash, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 };
 
@@ -536,7 +518,7 @@ export const blind: Policy = {
     }
     const cash = biggestHarvest(state, cashChoice(state, 8));
     if (cash !== null) return [cash, stream];
-    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+    return [[], stream];
   },
 };
 

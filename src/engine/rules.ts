@@ -267,14 +267,12 @@ export const distanceMultiplierAt = (k: HexKey, t: Tuning): number =>
 /**
  * The points multiplier a harvest of exactly these tiles earns.
  *
- * Bounded world: the map number, stepped by LEAVE — depth is paid for by rule 7.
- * Endless world: how far from home the pocket sits, `1 + floor(mean distance /
- * distanceStep)` — depth is paid for by every placement of the journey out. The
- * mean rather than the farthest tile, so a long cluster cannot borrow its tip's
- * multiplier for its whole body.
+ * How far from home the pocket sits: `1 + floor(mean distance / distanceStep)`.
+ * Depth is paid for by every placement of the journey out. The MEAN rather than
+ * the farthest tile, so a long cluster cannot borrow its tip's multiplier for
+ * its whole body.
  */
 export function harvestMultiplier(state: GameState, pops: readonly HexKey[]): number {
-  if (state.tuning.world !== 'endless') return state.mapNumber;
   if (pops.length === 0) return 1;
   const sum = pops.reduce((n, k) => n + distance(parse(k), ORIGIN), 0);
   return 1 + Math.floor(sum / pops.length / state.tuning.distanceStep);
@@ -322,12 +320,10 @@ export function harvestValue(
   treasure: Rarity | null;
 } {
   const t = state.tuning;
-  const pops =
-    t.world === 'endless'
-      ? at === undefined
-        ? []
-        : ripeClusterAt(state.cells, at)
-      : ripeKeys(state.cells);
+  // A harvest is always LOCAL: one connected pocket, named by `at`. No target
+  // means no harvest — which is a rule rather than an edge case, because
+  // which pocket you cash is half the decision.
+  const pops = at === undefined ? [] : ripeClusterAt(state.cells, at);
   let tiles = 0;
   let sumWorth = 0;
   for (const k of pops) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING, TUNING, type Tuning } from '@content/tuning';
+import { TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from './hex';
 import { newRun, reduce } from './reduce';
 import { harvestValue } from './rules';
@@ -12,7 +12,7 @@ import type { Cell, GameState } from './state';
  * second one that killed v1.
  */
 
-const QUEST: Tuning = { ...ENDLESS_TUNING, worldWalls: 0, magicChance: 0, uniqueChance: 0 };
+const QUEST: Tuning = { ...TUNING, worldWalls: 0, magicChance: 0, uniqueChance: 0 };
 
 /**
  * A ripe pocket of `size` green tiles in a row, walled in stone — built on a
@@ -35,6 +35,10 @@ function pocketAt(
       if (!members.has(n)) cells[n] = { kind: 'stone' };
     }
   }
+  // Open ground clear of the pocket, so cashing it is a harvest rather than
+  // also the end of the expedition — the ending bonus would otherwise land on
+  // top of every score these tests assert.
+  cells[key(q + 2, r + 2)] = { kind: 'empty' };
   return { state: { ...state, cells }, at: key(q, r) };
 }
 
@@ -82,20 +86,38 @@ describe('the bounty', () => {
     expect(priced.points).toBe(plain.points * QUEST.questBonus);
 
     const after = reduce(state, { type: 'HARVEST', choice: 'points', at });
-    expect(after.points).toBe(priced.points);
+    expect(after.points).toBe(Math.floor(priced.points * QUEST.pointsPerPop));
     expect(after.quest).toBeNull();
     expect(after.log.questsDone).toBe(1);
   });
 
-  it('is NOT collected by taking the same pocket as tiles — the decision', () => {
+  /**
+   * This used to be the decision the bounty existed to create: taking a
+   * qualifying pocket as TILES left the bounty standing, so you chose between
+   * survival and the multiplier. The single payout removed the fork — every
+   * pop pays tiles and scores — so the bounty now rides on the pop, and what
+   * is left to pin is that a SACRIFICE still forfeits it. Cashing a pocket for
+   * relics scores nothing, so there is nothing for the multiplier to multiply.
+   */
+  it('is forfeited by sacrificing the pocket, which scores nothing', () => {
     const site = key(3, 0);
     const { state, at } = pocketAt(withQuest(site), 1, 0, QUEST.questNeed);
 
-    const after = reduce(state, { type: 'HARVEST', choice: 'tiles', at });
-    expect(after.quest).not.toBeNull();
-    expect(after.log.questsDone).toBe(0);
-    // And the tiles paid are exactly the ordinary tiles — no double dip.
-    expect(after.tiles - state.tiles).toBe(harvestValue(state, at).tiles);
+    const burned = reduce(state, { type: 'HARVEST', choice: 'burn', at });
+    expect(burned.quest).not.toBeNull();
+    expect(burned.log.questsDone).toBe(0);
+    expect(burned.points).toBe(state.points);
+  });
+
+  it('is collected by the pop that scores it, whichever name was pressed', () => {
+    const site = key(3, 0);
+    const { state, at } = pocketAt(withQuest(site), 1, 0, QUEST.questNeed);
+
+    const popped = reduce(state, { type: 'HARVEST', choice: 'tiles', at });
+    expect(popped.quest).toBeNull();
+    expect(popped.log.questsDone).toBe(1);
+    // And it still pays the tiles a pop always pays — the bounty is on top.
+    expect(popped.tiles - state.tiles).toBe(harvestValue(state, at).tiles);
   });
 
   it('refuses a pocket that is too small or too far', () => {
@@ -107,9 +129,9 @@ describe('the bounty', () => {
     expect(harvestValue(far.state, far.at).questPays).toBe(false);
   });
 
-  it('does not exist in the bounded game', () => {
+  it('starts every run with no bounty standing — a site has to open one', () => {
     const state = newRun(5, TUNING);
     expect(state.quest).toBeNull();
-    expect(TUNING.questNeed).toBe(0);
+    expect(TUNING.questNeed).toBeGreaterThan(0);
   });
 });

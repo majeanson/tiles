@@ -1,4 +1,4 @@
-import { TILESONLY_TUNING, type Tuning } from '@content/tuning';
+import { TUNING, type Tuning } from '@content/tuning';
 import {
   decodeFeatures,
   encodeFeatures,
@@ -15,6 +15,7 @@ import {
   gateB,
   recordRun,
   EMPTY as EMPTY_RECORDS,
+  ONLY_WORLD,
   type RecordBook,
 } from '@meta/records';
 import { ICON_DATA_URI, NAME } from '@meta/identity';
@@ -284,7 +285,7 @@ function runKeeping(
       // occur: waiting for the end of the expedition meant the atlas said
       // "0 of 5 found" while the popup was still announcing a shrine, and it
       // meant closing the tab lost a claim outright.
-      if (state.tuning.world === 'endless' && askedSeed() === null) {
+      if (askedSeed() === null) {
         current = mergeRun(current, state);
         saveWorld(current);
       }
@@ -299,7 +300,7 @@ function runKeeping(
       // The world remembers first: ground seen and territories held outlive
       // the run that found them, which is the whole of P4a. A replayed link
       // (`?seed=`) is somebody else's geography and must not touch it.
-      if (state.tuning.world === 'endless' && askedSeed() === null) {
+      if (askedSeed() === null) {
         current = rememberRun(current, state);
         saveWorld(current);
       }
@@ -310,10 +311,7 @@ function runKeeping(
       } catch {
         book = {};
       }
-      // Records are kept per WORLD KIND (endless / bounded), which is a
-      // different thing from `world`, the plane this device explores.
-      const kind = state.tuning.world;
-      const before = book[kind] ?? EMPTY_RECORDS;
+      const before = book[ONLY_WORLD] ?? EMPTY_RECORDS;
       const after = recordRun(book, state);
       try {
         localStorage.setItem(BEST_STORAGE_KEY, encodeRecords(after));
@@ -321,7 +319,7 @@ function runKeeping(
         // A record that cannot be written is still a run that happened.
       }
 
-      const now = after[kind] ?? EMPTY_RECORDS;
+      const now = after[ONLY_WORLD] ?? EMPTY_RECORDS;
       const gate = gateB(now);
       return {
         runs: now.runs,
@@ -683,7 +681,6 @@ async function main(): Promise<void> {
     harvestBurn: required<HTMLButtonElement>('harvest-burn'),
     spends: required('spends'),
     controls: required('controls'),
-    leave: required<HTMLButtonElement>('leave'),
     end: required('end'),
     zoomIn: required<HTMLButtonElement>('zoom-in'),
     zoomOut: required<HTMLButtonElement>('zoom-out'),
@@ -742,7 +739,7 @@ async function main(): Promise<void> {
   // asked for the roguelite on top; the flag that used to gate it is gone, so
   // a shared seed opens the game its sender was playing rather than whatever
   // the receiver happened to have switched on.
-  const base = TILESONLY_TUNING;
+  const base = TUNING;
   const unlocked = applyUnlocks(base, seed === world.worldSeed ? unlockedBy(world) : []);
   // ...and then what the roguelite has bought, which is the last word: a
   // deeper purse, keener odds, richer worlds and whichever perk is worn.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TUNING, type Tuning } from '@content/tuning';
+import { BARE_TUNING, type Tuning } from '@content/tuning';
 import { disc, key } from './hex';
 import { newRun } from './reduce';
 import {
@@ -44,8 +44,8 @@ const STONE: Cell = { kind: 'stone' };
 const WALL: Cell = { kind: 'wall' };
 const SIX = <T>(c: T) => [c, c, c, c, c, c] as const;
 
-const T = TUNING;
-const tuned = (over: Partial<Tuning>): Tuning => ({ ...TUNING, ...over });
+const T = BARE_TUNING;
+const tuned = (over: Partial<Tuning>): Tuning => ({ ...BARE_TUNING, ...over });
 
 describe('cost', () => {
   it('starts at base and rises with every tile ever placed', () => {
@@ -209,11 +209,16 @@ describe('placement preview', () => {
   });
 });
 
+/**
+ * A harvest is LOCAL: it takes the connected ripe pocket you name. Naming one
+ * used to be optional, back when a bounded harvest popped the whole board —
+ * that went with the bounded world on 2026-08-16, so every price here asks
+ * about a specific pocket.
+ */
 describe('harvest value', () => {
-  const stateWith = (cells: Record<string, Cell>, mapNumber = 1): GameState => ({
-    ...newRun(1),
+  const stateWith = (cells: Record<string, Cell>): GameState => ({
+    ...newRun(1, BARE_TUNING),
     cells,
-    mapNumber,
   });
 
   /** Empty rim, so only the centre ripens: one pop, worth 6. */
@@ -222,7 +227,7 @@ describe('harvest value', () => {
   const SEVEN = ring(tile('green'), SIX(tile('green')));
 
   it('pays one pop what the rules say', () => {
-    const one = harvestValue(stateWith(ONE));
+    const one = harvestValue(stateWith(ONE), key(0, 0));
     expect(one.count).toBe(1);
     expect(one.tiles).toBe(T.tilesPerPop + Math.floor(6 / T.worthPerExtraTile));
     expect(one.points).toBe(6 * 1 * 1);
@@ -232,16 +237,12 @@ describe('harvest value', () => {
   // different curves, so which one wins moves with harvest size. Seven times the
   // pops pays about four times the tiles but nearly thirty times the points.
   it('pays tiles linearly and points quadratically in harvest size', () => {
-    const one = harvestValue(stateWith(ONE));
-    const many = harvestValue(stateWith(SEVEN));
+    const one = harvestValue(stateWith(ONE), key(0, 0));
+    const many = harvestValue(stateWith(SEVEN), key(0, 0));
 
     expect(many.count).toBe(7);
     expect(many.tiles / one.tiles).toBeLessThan(many.count);
     expect(many.points / one.points).toBeGreaterThan(many.count);
-  });
-
-  it('scales points with the map number', () => {
-    expect(harvestValue(stateWith(ONE, 3)).points).toBe(harvestValue(stateWith(ONE, 1)).points * 3);
   });
 
   it('pays nothing when nothing is ripe', () => {

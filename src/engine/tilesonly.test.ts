@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENDLESS_TUNING, TILESONLY_TUNING } from '@content/tuning';
+import { TUNING } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from './hex';
 import { canSpend, newRun, rarityOdds, reduce } from './reduce';
 import { costOf, harvestValue, worthOf } from './rules';
@@ -12,8 +12,9 @@ import type { Cell, GameState } from './state';
  * for a phone, and the flag exists so both can be played back to back.
  */
 
-const T = { ...TILESONLY_TUNING, worldWalls: 0, magicChance: 0, uniqueChance: 0 };
-const ENDLESS = { ...ENDLESS_TUNING, worldWalls: 0 };
+const T = { ...TUNING, worldWalls: 0, magicChance: 0, uniqueChance: 0 };
+/** The same economy with one system switched off, per test. */
+const without = (over: Partial<typeof TUNING>) => ({ ...T, ...over });
 
 /**
  * A ripe green row of `size` on a bare board, walled in stone.
@@ -55,8 +56,9 @@ describe('one payout', () => {
     expect(same.points).toBe(popped.points);
   });
 
-  it('still forks in the shipped endless game', () => {
-    const state = pocket(newRun(5, ENDLESS), 6);
+  it('still forks where the single payout is switched off', () => {
+    const forked = without({ singlePayout: false, pointsPerPop: 0 });
+    const state = pocket(newRun(5, forked), 6);
     const asTiles = reduce(state, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
     const asPoints = reduce(state, { type: 'HARVEST', choice: 'points', at: key(0, 0) });
     expect(asTiles.points).toBe(0);
@@ -106,7 +108,7 @@ describe('burning a pocket', () => {
   });
 
   it('does not exist where the sacrifice is switched off', () => {
-    const state = pocket(newRun(5, ENDLESS), 6);
+    const state = pocket(newRun(5, without({ burnRelics: 0, burnLuck: 0 })), 6);
     expect(reduce(state, { type: 'HARVEST', choice: 'burn', at: key(0, 0) })).toBe(state);
   });
 });
@@ -161,8 +163,9 @@ describe('luck as a purse', () => {
     expect(canSpend(broke, 'reroll')).toBe(false);
   });
 
-  it('has no shop at all in the shipped endless game', () => {
-    const state: GameState = { ...newRun(5, ENDLESS), luck: 500 };
+  it('has no shop at all where the prices are zero', () => {
+    const shopless = without({ luckRerollCost: 0, luckSteerCost: 0, luckForgeCost: 0 });
+    const state: GameState = { ...newRun(5, shopless), luck: 500 };
     expect(reduce(state, { type: 'SPEND', on: 'reroll' })).toBe(state);
     expect(canSpend(state, 'forge')).toBe(false);
   });
@@ -191,10 +194,11 @@ describe('the run itself', () => {
   });
 
   it('adds nothing at the end where the bonus is switched off', () => {
-    const base = pocket(newRun(5, ENDLESS), 6, false);
-    const ended = reduce(base, { type: 'HARVEST', choice: 'points', at: key(0, 0) });
+    const flat = without({ endReachBonus: 0, endClaimBonus: 0 });
+    const base = pocket(newRun(5, flat), 6, false);
+    const ended = reduce(base, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
     expect(ended.phase).toBe('ended');
-    expect(ended.points).toBe(harvestValue(base, key(0, 0)).points);
+    expect(ended.points).toBe(Math.floor(harvestValue(base, key(0, 0)).points * flat.pointsPerPop));
   });
 });
 
@@ -238,8 +242,9 @@ describe('why you would ever pop early', () => {
     expect(after.bias === null || after.bias.left === T.colourBiasDraws - drawn).toBe(true);
   });
 
-  it('does not steer at all in the shipped endless game', () => {
-    const state = pocket(newRun(5, ENDLESS), 5);
+  it('does not steer where the bias is switched off', () => {
+    const straight = without({ colourBiasDraws: 0 });
+    const state = pocket(newRun(5, straight), 5);
     const popped = reduce(state, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
     expect(popped.bias).toBeNull();
   });
