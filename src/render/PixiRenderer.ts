@@ -344,14 +344,6 @@ export class PixiRenderer implements Renderer {
         return cell.beacon ? { ...base, alpha: 0.55 } : base;
       }
       case 'empty': {
-        // Ghosted where the tile you are holding would actually be WORTH
-        // something — not on every legal cell, which is most of the board and
-        // would read as noise. "Matching pays nothing directly; it sets the
-        // worth of the eventual pop" is the design's central claim, and this is
-        // that claim painted: the cells that light up are the ones where the
-        // thing in your hand does work. The number beside it says how much.
-        if (cell.legal && cell.preview !== null && cell.preview > 0) return theme.ghost;
-
         // Native ground shows as a whisper of its colour — dots faint enough to
         // read as terrain, not as a tile. Derived entirely from tokens the theme
         // already has, so repainting the direction repaints the fields with it;
@@ -394,6 +386,7 @@ export class PixiRenderer implements Renderer {
   }
 
   #drawCell(cell: CellView, layout: Layout): Container {
+    const theme = this.#theme;
     const group = new Container();
     const { x, y } = place(cell, layout);
     const surface = this.#surfaceFor(cell);
@@ -426,6 +419,36 @@ export class PixiRenderer implements Renderer {
         sprite.tint = mix(this.#theme.board.background, 0xffffff, Math.min(1, cell.light * lift));
       }
       group.addChild(sprite);
+    }
+
+    /**
+     * The ghost: where the tile in your hand would be worth something.
+     *
+     * Drawn OVER the ground rather than instead of it (Marc, 2026-08-16: "when
+     * were hovering a red, we cant see the red terrain underneath"). It used to
+     * replace the surface, which meant the native field — the colour and the
+     * symbol saying whose ground this is — vanished at exactly the moment you
+     * were deciding whether to use it. The ghost was hiding the reason for its
+     * own number.
+     *
+     * Not tinted by the torch: it marks where you may act, and a legal cell is
+     * by definition next to what you have just built, so it is never far enough
+     * out for full strength to look wrong.
+     */
+    if (cell.legal && cell.preview !== null && cell.preview > 0 && !cell.remembered) {
+      const ghost = this.#assets.get(theme.ghost.asset);
+      const ghostTexture =
+        ghost ?? this.#surfaces.get(theme.ghost, layout.size, layout.orientation);
+      if (ghostTexture !== null) {
+        const over = new Sprite(ghostTexture);
+        over.anchor.set(0.5);
+        over.position.set(x, y);
+        const wide = layout.orientation === 'pointy' ? Math.sqrt(3) : 2;
+        const tall = layout.orientation === 'pointy' ? 2 : Math.sqrt(3);
+        over.setSize(layout.size * wide, layout.size * tall);
+        over.alpha = theme.ghost.alpha;
+        group.addChild(over);
+      }
     }
 
     // Contours: a hex that sits higher than the board's floor gets a light

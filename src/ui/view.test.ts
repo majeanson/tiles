@@ -261,3 +261,50 @@ describe('a run saved before the torch existed', () => {
     expect(() => toBoardView(raw as unknown as GameState)).not.toThrow();
   });
 });
+
+describe('what a previewed cell still says about itself', () => {
+  /**
+   * Marc, 2026-08-16: "when were hovering a red, we cant see the red terrain
+   * underneath." The ghost surface REPLACED the ground, so the native field —
+   * the colour and the symbol saying whose ground this is — vanished at
+   * exactly the moment you were deciding whether to use it. The ghost was
+   * hiding the reason for its own number.
+   *
+   * The fix is in the renderer, which draws the ghost over the ground rather
+   * than instead of it, and whether that reads is a phone question. What is
+   * checkable here is the contract underneath it: a cell being previewed must
+   * still REPORT its native colour, or there would be nothing for the renderer
+   * to draw through.
+   */
+  it('keeps its native colour while the preview is on it', () => {
+    // Grow past the clearing: the origin and its ring are forced open ground,
+    // so a fresh run has no native field revealed to preview onto yet.
+    const state = fill(newRun(5, tuned({ worldWalls: 0, fieldChance: 1, fieldSize: 2 })));
+    const view = toBoardView(state);
+
+    const previewed = view.cells.filter((c) => c.legal && c.preview !== null && c.preview > 0);
+    const native = view.cells.filter((c) => c.kind === 'empty' && c.native !== null);
+    expect(native.length).toBeGreaterThan(0);
+
+    // Every previewed cell still carries whatever the ground under it is.
+    for (const cell of previewed) {
+      expect(cell).toHaveProperty('native');
+      expect(cell.kind).toBe('empty');
+    }
+  });
+
+  it('reports preview and native on the same cell, so both can be drawn', () => {
+    // The case Marc hit: ground native to a colour, with a tile in hand that
+    // pays there. Both facts have to survive to the renderer at once.
+    // Grow past the clearing: the origin and its ring are forced open ground,
+    // so a fresh run has no native field revealed to preview onto yet.
+    const state = fill(newRun(5, tuned({ worldWalls: 0, fieldChance: 1, fieldSize: 2 })));
+    const both = toBoardView(state).cells.filter(
+      (c) => c.native !== null && c.preview !== null && c.preview > 0,
+    );
+    for (const cell of both) {
+      expect(cell.native).not.toBeNull();
+      expect(cell.preview).toBeGreaterThan(0);
+    }
+  });
+});

@@ -1620,3 +1620,23 @@ lint caught me putting it in the wrong file, which is the rule doing its job.
 
 **The standing rule from here:** anything added to `GameState` joins that fill
 block in the same commit.
+
+**Addendum, same day — the ghost was hiding the reason for its own number**
+
+Marc: _"when were hovering a red, we cant see the red terrain underneath."_
+
+The preview ghost REPLACED the ground surface rather than sitting on it. So
+the moment a cell became worth placing on, its native field — the colour and,
+since this morning, the symbol saying whose ground it is — disappeared. The
+ghost was covering the exact fact that explains its own number: place a red
+tile on red ground and it gains a match, which is _why_ the preview says what
+it says, and the highlight was hiding it.
+
+Now the ghost is a second sprite drawn over the ground at its own 30% alpha,
+so the field reads through it. Deliberately not tinted by the torch: it marks
+where you may act, and a legal cell is by definition beside what you just
+built, so it is never far enough out for full strength to look wrong.
+
+Whether it READS is a phone question. What the tests pin is the contract
+underneath — a previewed cell still reports its native colour, so there is
+something for the renderer to draw through.
