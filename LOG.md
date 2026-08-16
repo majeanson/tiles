@@ -1449,3 +1449,42 @@ sit dead a placement longer than it should.
 
 The maths lives in `layout.ts` rather than the renderer so it is testable
 without a canvas; five tests pin it, including the phone's own numbers.
+
+**Addendum, 2026-08-16 — three bugs off Marc's screenshots, and a symbol per colour**
+
+Two photographs of a real run, and three things wrong in them.
+
+**A blank button.** Between POP and TREASURE sat an empty box. The
+single-payout branch hid the points button and a line two statements later
+un-hid it (`harvestPoints.hidden = !hud.canHarvest`) the moment a pocket was
+ripe. The fix is one condition; the lesson is that a branch which hides
+something must own the unconditional line that shows it again.
+
+**The end screen was drawn over the board.** The hand and the luck row stayed
+live under a finished run, and now that the end screen carries the shop the
+page grew past the viewport — and `#board`, being positioned, paints above
+its static siblings. Dead controls now come off the screen when the run ends,
+`#end` scrolls in its own box and takes the room they gave back, and `#board`
+clips whatever the canvas happens to be sized at mid-relayout.
+
+**Text describing a game nobody is playing.** The guide line still said "tap
+it, then take tiles or pts", and the end screen still reported "19 tiles /
+1 pts taken" and "89% tiles / 11% pts" — Gate B's own measurement of a fork
+that `singlePayout` removed. All three now speak the single payout, and the
+end screen counts pockets popped and relics carried out instead.
+
+**And Marc's own improvement:** _"instead of dots we could have a symbol per
+color and this symbol could repeat so its coilor + symbol, good for all
+humans."_ Native ground was hue alone, and roughly one man in twelve cannot
+read the green/red half of that. There is now one shape per colour —
+▲ moss, ◆ ember, ■ ash, ● tide — repeating across the ground it belongs to,
+and printed on the colour chips and the draft cards as well.
+
+Fixed rather than themed, because a symbol language that changes with the art
+direction is a language nobody learns; a test names all four explicitly so a
+later direction cannot quietly reassign them. Shapes over letters because a
+silhouette survives three pixels where a glyph does not, and the texture is
+laid on an offset grid so a field reads as texture rather than graph paper.
+
+The colours already had distinct patterns on the tiles themselves — this
+closes the last place where hue was carrying meaning alone.

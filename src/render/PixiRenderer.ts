@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from 'pixi.js';
 import { key, type HexKey } from '@engine/hex';
-import { fieldDots, hex, rgba, type Surface, type Theme } from '@theme/tokens';
+import { COLOUR_GLYPH, fieldDots, hex, rgba, type Surface, type Theme } from '@theme/tokens';
 import { AssetBook } from './assets';
 import { corners, fitLayout, hexAt, place, zoomCeiling, zoomLayout, type Layout } from './layout';
 import type { BoardView, CellView, Renderer } from './Renderer';
@@ -355,15 +355,22 @@ export class PixiRenderer implements Renderer {
           // and the dark ones disappear. Slightly larger and tighter than
           // before, too: at phone scale a 1.1px dot on a 7px pitch is a
           // texture you have to hunt for.
+          // A SHAPE rather than a dot, one per colour, so which field this is
+          // survives being read by someone who cannot tell the hues apart —
+          // and reads faster for everyone else, because a silhouette is
+          // recognised before a colour is judged. Slightly larger and more
+          // spaced than the dots were: a symbol has to be big enough to have
+          // a shape at all, which a 1.4px dot did not.
           const dots = fieldDots(theme, cell.native);
           return {
             ...theme.empty,
             pattern: {
-              kind: 'dots',
+              kind: 'glyphs',
+              shape: COLOUR_GLYPH[cell.native],
               ink: dots.ink,
               alpha: dots.alpha,
-              radius: 1.4,
-              pitch: 6,
+              size: 2.1,
+              pitch: 9,
             },
           };
         }

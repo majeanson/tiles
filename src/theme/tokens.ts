@@ -114,6 +114,27 @@ export type Pattern =
       /** Centre-to-centre spacing of the dot grid. */
       readonly pitch: number;
     }
+  /**
+   * A repeating SHAPE rather than a repeating dot (Marc, 2026-08-16: "instead
+   * of dots we could have a symbol per color and this symbol could repeat so
+   * its coilor + symbol, good for all humans").
+   *
+   * Colour alone carries the meaning of native ground, and roughly one man in
+   * twelve cannot read the green/red half of it. Four hard-edged shapes stay
+   * apart at three pixels where four hues do not, and they cost nothing to
+   * anyone who can see the hues — the colour is still there, the shape is a
+   * second channel saying the same thing.
+   */
+  | {
+      readonly kind: 'glyphs';
+      readonly shape: GlyphShape;
+      readonly ink: Rgb;
+      readonly alpha: number;
+      /** Half-extent of one symbol, in texture pixels. */
+      readonly size: number;
+      /** Centre-to-centre spacing of the grid. */
+      readonly pitch: number;
+    }
   | {
       readonly kind: 'bands';
       readonly angleDeg: number;
@@ -121,6 +142,13 @@ export type Pattern =
       readonly b: Rgb;
       readonly width: number;
     };
+
+/**
+ * The four shapes, chosen for how well they survive being small: a filled
+ * circle, a triangle, a square and a diamond differ in silhouette rather than
+ * in detail, so they stay apart at the size a native field is drawn.
+ */
+export type GlyphShape = 'circle' | 'triangle' | 'square' | 'diamond';
 
 export const NO_PATTERN: Pattern = { kind: 'none' };
 
@@ -339,6 +367,29 @@ function vivid(c: Rgb): Rgb {
  * makes the FINAL lift the same for every colour. Bright fields stop
  * shouting, dark fields become readable, and all four still say their name.
  */
+/**
+ * One colour's symbol, everywhere it appears.
+ *
+ * The point is that it is the SAME shape on the ground, on the chip and in
+ * the hand: a symbol that means green in one place and nothing in another is
+ * decoration. Fixed rather than themed, because a symbol language that
+ * changes with the art direction is a language nobody learns.
+ */
+export const COLOUR_GLYPH: Readonly<Record<Colour, GlyphShape>> = {
+  green: 'triangle',
+  yellow: 'diamond',
+  red: 'square',
+  blue: 'circle',
+};
+
+/** The same four as characters, for the places that draw text rather than textures. */
+export const COLOUR_MARK: Readonly<Record<Colour, string>> = {
+  green: '▲',
+  yellow: '◆',
+  red: '■',
+  blue: '●',
+};
+
 export function fieldDots(theme: Theme, colour: Colour): { ink: Rgb; alpha: number } {
   const ground = luma(theme.empty.fill);
 

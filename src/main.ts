@@ -683,6 +683,7 @@ async function main(): Promise<void> {
     harvestTreasure: required<HTMLButtonElement>('harvest-treasure'),
     harvestBurn: required<HTMLButtonElement>('harvest-burn'),
     spends: required('spends'),
+    controls: required('controls'),
     leave: required<HTMLButtonElement>('leave'),
     end: required('end'),
     zoomIn: required<HTMLButtonElement>('zoom-in'),

@@ -730,3 +730,19 @@ button.help-tab[data-on='true'] {
   font-size: 0.92em;
   opacity: 0.85;
 }
+
+/* The end screen is a SCREEN now that it carries the shop, so it scrolls in
+   its own box and takes the room the hand gave back. Without this the page
+   grew past the viewport and the board — which is positioned, and therefore
+   paints above its static siblings — spilled over the controls below it. */
+#end:not([hidden]) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* A board that has stopped mattering should never paint outside its box,
+   whatever the canvas happens to be sized at when the layout changes. */
+#board {
+  overflow: hidden;
+}

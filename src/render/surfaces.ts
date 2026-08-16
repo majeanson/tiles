@@ -65,8 +65,14 @@ export class SurfaceTextures {
   }
 }
 
-/** Everything that changes the pixels, and nothing that does not. */
-function surfaceKey(s: Surface): string {
+/**
+ * Everything that changes the pixels, and nothing that does not.
+ *
+ * Exported for its test: a key that forgets a field would quietly hand two
+ * different surfaces the same cached texture, which looks like a rendering
+ * bug and is actually a one-character omission here.
+ */
+export function surfaceKey(s: Surface): string {
   return [s.fill, s.fillTo ?? 'x', s.inset, s.alpha, patternKey(s.pattern)].join('|');
 }
 
@@ -78,6 +84,8 @@ function patternKey(p: Pattern): string {
       return `h${p.angleDeg},${p.ink},${p.alpha},${p.bar},${p.gap}`;
     case 'dots':
       return `d${p.ink},${p.alpha},${p.radius},${p.pitch}`;
+    case 'glyphs':
+      return `g${p.shape},${p.ink},${p.alpha},${p.size},${p.pitch}`;
     case 'bands':
       return `b${p.angleDeg},${p.a},${p.b},${p.width}`;
   }

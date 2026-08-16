@@ -15,7 +15,7 @@ import { bakeSurface } from '@render/bake';
 import { UPGRADES, buy, equip, levelOf, priceOf, slotsOf, type Progress } from '@meta/progress';
 import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
-import type { Theme } from '@theme/tokens';
+import { COLOUR_MARK, type Theme } from '@theme/tokens';
 import { NAME, TAGLINE } from '@meta/identity';
 import { toBoardView, toHudView, type HudView } from './view';
 
@@ -64,6 +64,7 @@ export type Elements = {
   /** The sacrifice: pop for luck instead of tiles. Only where it exists. */
   readonly harvestBurn: HTMLButtonElement;
   readonly spends: HTMLElement;
+  readonly controls: HTMLElement;
   readonly leave: HTMLButtonElement;
   readonly end: HTMLElement;
   readonly zoomIn: HTMLButtonElement;
@@ -1348,9 +1349,12 @@ export class Game {
         : `BURN for +${burn} luck`;
     }
     this.#el.harvestTiles.hidden = !hud.canHarvest;
-    this.#el.harvestPoints.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;
-    this.#el.harvestPoints.disabled = !hud.canHarvest;
+    // The points button is GONE under the single payout, not merely empty —
+    // this line un-hid it a moment after the branch above hid it, and an
+    // empty button between POP and TREASURE is what Marc's phone showed.
+    this.#el.harvestPoints.hidden = hud.singlePayout || !hud.canHarvest;
+    this.#el.harvestPoints.disabled = hud.singlePayout || !hud.canHarvest;
 
     // The third payout appears only for a pocket big enough to earn it, and
     // says which rare tile it hands over — the whole point is choosing a
@@ -1366,6 +1370,12 @@ export class Game {
     this.#el.leave.textContent = hud.leaveHint;
     this.#el.leave.disabled = !hud.canLeave;
 
+    this.#el.end.hidden = !hud.ended;
+    // A finished run has no hand to play and no luck to spend, and leaving
+    // those controls on screen did worse than confuse: the end screen is long
+    // now that it carries the shop, and the live controls ended up drawn over
+    // the board itself (Marc's second screenshot). Dead controls come off.
+    this.#el.controls.hidden = hud.ended;
     this.#el.end.hidden = !hud.ended;
     if (hud.ended) this.#renderEnd(hud);
   }
@@ -1385,9 +1395,11 @@ export class Game {
         this.#recordLines.push(
           book.isNewBest ? `NEW BEST — ${book.best} pts` : `best ${book.best} pts`,
         );
-        // Gate B's own measurement, printed. A player who can see they take
-        // tiles nine times in ten is a player who might take points.
-        if (book.tilesShare !== null) {
+        // Gate B's own measurement, printed — but only where the fork it
+        // measures still exists. Under the single payout every pop is both
+        // payouts, so '89% tiles / 11% pts' was reporting on a decision the
+        // game had stopped asking (Marc's end screen).
+        if (book.tilesShare !== null && !hud.singlePayout) {
           const tiles = Math.round(book.tilesShare * 100);
           this.#recordLines.push(
             `across ${book.runs} run${book.runs === 1 ? '' : 's'}: ` +
@@ -1417,7 +1429,13 @@ export class Game {
         `${hud.depthLabel.toLowerCase()} ${hud.depthValue}`,
         `${hud.placements} placements`,
       ];
-      if (s.harvests > 0) facts.push(`${s.tilesTaken} tiles / ${s.pointsTaken} pts taken`);
+      if (s.harvests > 0) {
+        facts.push(
+          hud.singlePayout
+            ? `${s.harvests} pocket${s.harvests === 1 ? '' : 's'} popped`
+            : `${s.tilesTaken} tiles / ${s.pointsTaken} pts taken`,
+        );
+      }
       if (s.biggestHarvest > 0) {
         facts.push(
           `biggest pop ${s.biggestHarvest} pts at ${Math.round(s.biggestAt * 100)}% of the run`,
@@ -1426,6 +1444,7 @@ export class Game {
       if (s.claims > 0) facts.push(`${s.claims} destination${s.claims === 1 ? '' : 's'} reached`);
       if (s.quests > 0) facts.push(`${s.quests} quest${s.quests === 1 ? '' : 's'} done`);
       if (s.luck > 0) facts.push(`luck ${s.luck}`);
+      if (hud.relics > 0) facts.push(`${hud.relics} relics carried out`);
       parts.push(line('end-facts', facts.join(' · ')));
     }
 
@@ -1624,7 +1643,10 @@ export class Game {
 
         const label = document.createElement('span');
         label.className = 'tile-name';
-        label.textContent = name;
+        // Name, colour AND symbol: three channels for one fact, so no single
+        // one of them has to carry it. The symbol is the one that survives
+        // colour blindness and a glance.
+        label.textContent = `${COLOUR_MARK[tile.colour]} ${name}`;
         button.append(label);
 
         // Rarity is written on the card, not just hinted: MAGIC matches every
@@ -1715,7 +1737,7 @@ export class Game {
         const active = hud.spotlight?.colour === c.colour;
         chip.setAttribute('aria-pressed', String(active));
         const name = this.#theme.terrainNames[c.colour];
-        chip.textContent = `${name} ${c.worth}`;
+        chip.textContent = `${COLOUR_MARK[c.colour]} ${name} ${c.worth}`;
         chip.setAttribute(
           'aria-label',
           `${name}: ${c.count} tiles standing, total worth ${c.worth}`,

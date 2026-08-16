@@ -138,6 +138,57 @@ function patternTile(pattern: Pattern): PatternTile | null {
       return { canvas };
     }
 
+    /**
+     * A repeating symbol: the second channel that says which colour this
+     * ground belongs to without depending on hue. Drawn as flat silhouettes
+     * with no stroke and no detail, because at the size a field is painted
+     * only the outline survives — and the outline is the whole information.
+     *
+     * The grid is offset row by row (the odd row starts half a pitch over),
+     * so a field reads as a texture rather than as graph paper.
+     */
+    case 'glyphs': {
+      const pitch = Math.max(4, Math.round(pattern.pitch * OVERSAMPLE));
+      const size = Math.max(1, pattern.size * OVERSAMPLE);
+      const canvas = tileCanvas(pitch * 2, pitch * 2);
+      const ctx = canvas.getContext('2d');
+      if (ctx === null) return null;
+      ctx.fillStyle = rgba(pattern.ink, pattern.alpha);
+
+      const draw = (cx: number, cy: number): void => {
+        ctx.beginPath();
+        switch (pattern.shape) {
+          case 'circle':
+            ctx.arc(cx, cy, size, 0, Math.PI * 2);
+            break;
+          case 'square':
+            ctx.rect(cx - size, cy - size, size * 2, size * 2);
+            break;
+          case 'triangle':
+            ctx.moveTo(cx, cy - size);
+            ctx.lineTo(cx + size, cy + size);
+            ctx.lineTo(cx - size, cy + size);
+            ctx.closePath();
+            break;
+          case 'diamond':
+            ctx.moveTo(cx, cy - size);
+            ctx.lineTo(cx + size, cy);
+            ctx.lineTo(cx, cy + size);
+            ctx.lineTo(cx - size, cy);
+            ctx.closePath();
+            break;
+        }
+        ctx.fill();
+      };
+
+      draw(pitch / 2, pitch / 2);
+      draw(pitch + pitch / 2, pitch / 2);
+      draw(0, pitch + pitch / 2);
+      draw(pitch, pitch + pitch / 2);
+      draw(pitch * 2, pitch + pitch / 2);
+      return { canvas };
+    }
+
     case 'bands': {
       const width = Math.max(1, Math.round(pattern.width * OVERSAMPLE));
       const canvas = tileCanvas(width * 2, width * 2);

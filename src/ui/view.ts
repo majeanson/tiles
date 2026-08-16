@@ -568,10 +568,11 @@ function guideFor(state: GameState): string | null {
   if (state.phase !== 'placing') return null;
 
   const ripe = ripeKeys(state.cells).length > 0;
+  const single = state.tuning.singlePayout;
   if (runwayOf(state) <= RUNWAY_ALARM) {
-    return ripe
-      ? 'Low on tiles — cash a pocket as tiles'
-      : 'Low on tiles — ripen something to cash in';
+    if (ripe)
+      return single ? 'Low on tiles — POP a pocket now' : 'Low on tiles — cash a pocket as tiles';
+    return 'Low on tiles — ripen something to cash in';
   }
   if (ripe) {
     const value = harvestValue(state, resolveHarvestTarget(state, null) ?? undefined);
@@ -579,9 +580,10 @@ function guideFor(state: GameState): string | null {
     // More tiles than the clock can spend: the survival button is dead and
     // saying so is the whole job of this line.
     if (tilesSpareIn(state)) return 'More tiles than you can spend — take PTS from here on';
-    return state.tuning.world === 'endless'
-      ? 'Pocket ready — tap it, then take tiles or pts'
-      : 'Ripe — harvest, or keep building it bigger';
+    if (state.tuning.world !== 'endless') return 'Ripe — harvest, or keep building it bigger';
+    return single
+      ? 'Pocket ready — tap it to price it, then POP or sacrifice it'
+      : 'Pocket ready — tap it, then take tiles or pts';
   }
   return 'Place tiles — surround one on all six sides to ripen it';
 }

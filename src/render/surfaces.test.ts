@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { THEMES } from '@theme/index';
-import { surface } from '@theme/tokens';
+import { surface, type Surface } from '@theme/tokens';
 import { bakeSurface } from './bake';
-import { SurfaceTextures } from './surfaces';
+import { surfaceKey, SurfaceTextures } from './surfaces';
 
 /**
  * The baker, where it fails.
@@ -57,5 +57,38 @@ describe('SurfaceTextures', () => {
       textures.evictExcept(23, 'flat');
       textures.destroy();
     }).not.toThrow();
+  });
+});
+
+describe('the colour symbols', () => {
+  /**
+   * The glyph pattern is a new texture kind, and the cache keys every texture
+   * by what changes its pixels. A key that ignored the SHAPE would hand every
+   * colour whichever symbol happened to be baked first — four fields that all
+   * said the same thing, which is worse than the dots it replaced.
+   *
+   * happy-dom has no 2D context, so the shapes themselves are a phone
+   * question. This pins the part that can silently be wrong everywhere.
+   */
+  const field = (shape: 'circle' | 'triangle' | 'square' | 'diamond'): Surface =>
+    surface(0x101010, {
+      pattern: { kind: 'glyphs', shape, ink: 0xffffff, alpha: 0.4, size: 2.1, pitch: 9 },
+    });
+
+  it('caches each shape separately, so no two colours share a texture', () => {
+    const keys = new Set(
+      (['circle', 'triangle', 'square', 'diamond'] as const).map((shape) =>
+        surfaceKey(field(shape)),
+      ),
+    );
+    expect(keys.size).toBe(4);
+  });
+
+  it('still shares a texture between two fields that really are identical', () => {
+    expect(surfaceKey(field('triangle'))).toBe(surfaceKey(field('triangle')));
+  });
+
+  it('degrades to the flat fill where there is no canvas, like every pattern', () => {
+    expect(bakeSurface(field('square'), 24, 'pointy')).toBeNull();
   });
 });

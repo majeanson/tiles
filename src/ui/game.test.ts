@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
+import { COLOUR_MARK } from '@theme/tokens';
 import { ENDLESS_TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
@@ -87,7 +88,7 @@ function build(
     </div>
     <div id="colours"></div>
     <p id="hint" hidden></p>
-    <div id="draft"></div>
+    <div id="controls"><div id="draft"></div></div>
     <button id="harvest-tiles"></button>
     <button id="harvest-points"></button>
     <button id="harvest-treasure" hidden></button>
@@ -109,6 +110,7 @@ function build(
     colours: pick('colours'),
     draft: pick('draft'),
     spends: pick('spends'),
+    controls: pick('controls'),
     harvestTiles: pick<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: pick<HTMLButtonElement>('harvest-points'),
     harvestTreasure: pick<HTMLButtonElement>('harvest-treasure'),
@@ -166,10 +168,16 @@ describe('the game loop', () => {
   it('names each draft card in the vocabulary of the active theme', () => {
     // The name span specifically — cards also carry BEST/MAGIC badges now.
     const labels = [...ctx.el.draft.children].map(
-      (c) => c.querySelector('.tile-name')?.textContent,
+      (c) => c.querySelector('.tile-name')?.textContent ?? '',
     );
-    expect(labels.every((l) => typeof l === 'string' && l.length > 0)).toBe(true);
-    expect(labels.map((l) => l?.toLowerCase())).toEqual(ctx.game.state.draft.map((t) => t.colour));
+    expect(labels.every((l) => l.length > 0)).toBe(true);
+
+    // Symbol AND name, three channels for one fact: a card says which colour
+    // it is by hue, by word and by shape, so no single channel has to carry
+    // it — which is the point for anyone who cannot separate two of the hues.
+    const colours = ctx.game.state.draft.map((t) => t.colour);
+    expect(labels.map((l) => l.split(' ')[1]?.toLowerCase())).toEqual(colours);
+    expect(labels.map((l) => l.split(' ')[0])).toEqual(colours.map((c) => COLOUR_MARK[c]));
   });
 
   it('places a tile where the tap landed', () => {
@@ -310,6 +318,34 @@ describe('the endless world, under a thumb', () => {
     expect(ripeKeys(ctx.game.state.cells)).toContain(key(0, 0));
   };
 
+  it('never leaves an empty payout button where the fork was removed', () => {
+    // Marc's phone showed a blank button between POP and TREASURE: the
+    // single-payout branch hid the points button, and a line two statements
+    // later un-hid it again the moment a pocket was ripe.
+    const single = build(7, { ...ENDLESS_TUNING, singlePayout: true });
+    single.game.start();
+    for (const n of neighbourKeys(0, 0)) {
+      single.renderer.nextHit = n;
+      tap(single.el.board);
+    }
+
+    expect(single.el.harvestTiles.hidden).toBe(false);
+    expect(single.el.harvestTiles.textContent).toContain('POP');
+    expect(single.el.harvestPoints.hidden).toBe(true);
+  });
+
+  it('takes the dead controls off the screen when the run ends', () => {
+    // The end screen carries the shop now, so leaving a live hand and a live
+    // luck row under it pushed the page past the viewport — and the board,
+    // being positioned, painted over both (Marc's second screenshot).
+    expect(ctx.el.controls.hidden).toBe(false);
+
+    const ended: GameState = { ...newRun(9, ENDLESS_TUNING), phase: 'ended', death: 'broke' };
+    const over = build(1, ENDLESS_TUNING, { resume: ended });
+    over.game.start();
+    expect(over.el.controls.hidden).toBe(true);
+    expect(over.el.end.hidden).toBe(false);
+  });
   it('hides LEAVE and reports REACH instead of MAP', () => {
     expect(ctx.el.leave.hidden).toBe(true);
     const label = ctx.el.stats.querySelector('[data-stat="map"] .stat-label')?.textContent;
