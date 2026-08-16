@@ -665,3 +665,68 @@ button.spare {
 .shop-row[data-worn='true'] .shop-name {
   color: var(--accent, #d7b45a);
 }
+
+/* The manual's tab bar. It sticks to the top of the scrolling panel because
+   the panel is long and a tab bar you have to scroll back up to find is a
+   tab bar nobody uses twice. */
+.help-tabs {
+  position: sticky;
+  top: -16px;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+  margin: 0 -16px 12px;
+  padding: 10px 16px;
+  background: var(--panel, #1e222b);
+  border-bottom: 1px solid var(--panel-edge, #3a4150);
+}
+
+button.help-tab {
+  min-height: 34px;
+  padding: 0 6px;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+/* The tab you are reading, in the direction's one signature colour. */
+button.help-tab[data-on='true'] {
+  border-color: var(--accent, #d7b45a);
+  color: var(--accent, #d7b45a);
+  opacity: 1;
+}
+
+/* The arithmetic, folded away. Short by default, complete on demand — the
+   manual should be readable in a minute and answerable in ten. */
+#help-panel .help-more {
+  margin: -4px 0 14px;
+}
+
+#help-panel .help-more > summary {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 3px;
+  color: var(--ink-dim, #c3c9d6);
+  font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 9px;
+  letter-spacing: var(--label-tracking, 0.08em);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+#help-panel .help-more[open] > summary {
+  margin-bottom: 8px;
+  border-color: var(--accent, #d7b45a);
+  color: var(--accent, #d7b45a);
+  opacity: 1;
+}
+
+/* Folded numbers read as a footnote to the lines above them, not as more
+   manual: indented, quieter, and visibly attached to their section. */
+#help-panel .help-more > p {
+  margin: 0 0 6px 10px;
+  padding-left: 8px;
+  border-left: 1px solid var(--panel-edge, #3a4150);
+  font-size: 0.92em;
+  opacity: 0.85;
+}

@@ -33,6 +33,24 @@ import { toBoardView, toHudView, type HudView } from './view';
  * `applyTheme`, so the chrome and the canvas cannot drift apart.
  */
 
+/**
+ * One block of the manual: what a thing IS, in a line or two, with every
+ * formula and threshold in `detail` behind a toggle. The split is the whole
+ * design — short by default, complete on demand.
+ */
+type HelpSection = {
+  readonly title: string;
+  readonly lines: readonly string[];
+  readonly detail?: readonly string[];
+};
+
+/** A tab of the manual. Tabs are ordered as a run meets them. */
+type HelpTab = {
+  readonly id: string;
+  readonly label: string;
+  readonly sections: readonly HelpSection[];
+};
+
 export type Elements = {
   readonly board: HTMLElement;
   readonly stats: HTMLElement;
@@ -266,23 +284,7 @@ export class Game {
     tagline.className = 'flag-note';
     tagline.textContent = TAGLINE;
 
-    this.#el.helpManual.replaceChildren(
-      title,
-      tagline,
-      ...this.#helpSections().flatMap(({ title, lines }) => {
-        const heading = document.createElement('p');
-        heading.className = 'help-title';
-        heading.textContent = title;
-        return [
-          heading,
-          ...lines.map((line) => {
-            const p = document.createElement('p');
-            p.textContent = line;
-            return p;
-          }),
-        ];
-      }),
-    );
+    this.#el.helpManual.replaceChildren(title, tagline, ...this.#buildManual());
     this.#el.help.addEventListener('click', () => {
       this.#el.helpPanel.hidden = !this.#el.helpPanel.hidden;
     });
@@ -686,270 +688,434 @@ export class Game {
    * pays with — so a balance change rewrites the manual by itself and the
    * text can never describe an economy that is not the one being played.
    */
-  #helpSections(): { title: string; lines: string[] }[] {
+  /**
+   * The manual, as tabs (Marc, 2026-08-15: "rework the help with sections,
+   * tabs, etc. and rework to be concise and precise. if extra calculations
+   * are wanted, toggle to expand").
+   *
+   * The old manual was fourteen sections of paragraphs — everything true and
+   * nothing findable. Two rules replace it. Each section says what a thing IS
+   * in a line or two; every formula, price and threshold moves behind a
+   * NUMBERS toggle, so the manual is short by default and complete on demand.
+   *
+   * The panel closes on any tap, which is right for prose and wrong for a
+   * control — so the tabs and the toggles swallow their own taps, the same
+   * way the settings rows already do.
+   */
+  #buildManual(): HTMLElement[] {
+    const tabs = this.#helpSections();
+    const bar = document.createElement('div');
+    bar.className = 'help-tabs';
+
+    const panels = tabs.map((tab, index) => {
+      const panel = document.createElement('div');
+      panel.className = 'help-panel-body';
+      panel.hidden = index !== 0;
+      panel.replaceChildren(...tab.sections.flatMap((section) => this.#helpSection(section)));
+      return panel;
+    });
+
+    const buttons = tabs.map((tab, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'help-tab';
+      button.textContent = tab.label;
+      if (index === 0) button.dataset['on'] = 'true';
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        for (const [i, panel] of panels.entries()) panel.hidden = i !== index;
+        for (const [i, other] of buttons.entries()) {
+          if (i === index) other.dataset['on'] = 'true';
+          else delete other.dataset['on'];
+        }
+      });
+      return button;
+    });
+
+    bar.replaceChildren(...buttons);
+    return [bar, ...panels];
+  }
+
+  /** One section: a heading, its short lines, and its numbers folded away. */
+  #helpSection(section: HelpSection): HTMLElement[] {
+    const heading = document.createElement('p');
+    heading.className = 'help-title';
+    heading.textContent = section.title;
+
+    const lines = section.lines.map((line) => {
+      const p = document.createElement('p');
+      p.textContent = line;
+      return p;
+    });
+
+    if (section.detail === undefined || section.detail.length === 0) {
+      return [heading, ...lines];
+    }
+
+    const fold = document.createElement('details');
+    fold.className = 'help-more';
+    const summary = document.createElement('summary');
+    summary.textContent = 'NUMBERS';
+    // A summary that let its tap through would open the fold and close the
+    // panel in the same gesture, which reads as the button not working.
+    summary.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+    fold.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+    fold.replaceChildren(
+      summary,
+      ...section.detail.map((line) => {
+        const p = document.createElement('p');
+        p.textContent = line;
+        return p;
+      }),
+    );
+
+    return [heading, ...lines, fold];
+  }
+
+  #helpSections(): HelpTab[] {
     const t = this.#state.tuning;
     const endless = t.world === 'endless';
+    const name = (c: Colour): string => this.#theme.terrainNames[c];
 
-    const loop: { title: string; lines: string[] } = {
-      title: 'THE LOOP',
-      lines: [
-        endless
-          ? t.singlePayout
-            ? `One endless plane and one purse. You start with ${t.startingTiles} tiles, every placement spends them, and every pocket you pop hands some back — so a good or lucky run simply goes farther. When you cannot afford a placement, the expedition is over.`
-            : `One endless plane, and one expedition of ${t.runLength} placements. Place tiles, surround them to ripen them, pop ripe pockets for tiles or points, and push outward — farther pays more.`
-          : 'Place tiles, surround them to ripen them, harvest for tiles or points, and move on to deeper, better-paying maps. The run ends when you run out of tiles.',
+    // Every number below is read from the run's OWN tuning — the same object
+    // the reducer pays with — so a balance change rewrites the manual by
+    // itself and the text can never describe an economy nobody is playing.
+
+    const play: HelpTab = {
+      id: 'play',
+      label: 'PLAY',
+      sections: [
+        {
+          title: 'THE LOOP',
+          lines: [
+            'Place tiles. Surround them on all six sides to ripen them. Pop them for tiles. Go farther.',
+            t.singlePayout
+              ? 'Tiles are the only thing keeping you alive. Popping always pays tiles and scores at the same time — so what you decide is WHEN and WHERE, never which button.'
+              : 'Tiles keep you going; points are the score. You take one or the other, never both.',
+          ],
+          detail: [
+            endless
+              ? `You start with ${t.startingTiles} tiles on one endless plane. Every placement spends tiles, every pocket hands some back, and a good or lucky run simply goes farther.`
+              : `You start with ${t.startingTiles} tiles. Harvest a map, move on, and deeper maps pay harder.`,
+            t.runLength > 0
+              ? `The expedition is ${t.runLength} placements long whether or not you spend your tiles — so tiles you never place are wasted.`
+              : 'There is no clock. The purse is the whole limit, and the run ends when you cannot afford a placement.',
+          ],
+        },
+        {
+          title: 'PLACING',
+          lines: [
+            'Tap a card, then tap a hex with a glowing edge. A tile must touch something already built.',
+            'The faint number on an empty hex is exactly what the selected tile will be worth there. A promise, not an estimate.',
+          ],
+          detail: [
+            t.costGrace > 0
+              ? `A placement costs ${t.baseCost} tiles for the first ${t.costGrace}, then +1 for every ${t.costRisesEvery} after.`
+              : `A placement costs ${t.baseCost} tiles, +1 for every ${t.costRisesEvery} you have ever placed this run.`,
+            'The cost never comes back down. That is the clock that ends every run.',
+            'BEST marks the card whose strongest placement pays most right now. Advice, not an order.',
+          ],
+        },
+        {
+          title: 'RIPE AND WORTH',
+          lines: [
+            'A tile touched on all six sides is RIPE. Walls, stone, ground off the map and other tiles all count as touching.',
+            'WORTH is how many of its neighbours match it. The bright number on a ripe tile is its worth.',
+          ],
+          detail: [
+            'Same colour matches. Stone and walls surround but never match — they help you ripen and pay you nothing.',
+            'Dotted ground native to a tile’s own colour counts as one extra match.',
+            'One tile can raise the worth of up to six neighbours at once. That is the whole craft.',
+          ],
+        },
+        {
+          title: 'POPPING',
+          lines: [
+            endless
+              ? 'Tap any ripe tile to price its pocket — the board outlines it and the buttons show what it pays. The biggest pocket is priced by default.'
+              : 'Harvesting pops every ripe tile on the map at once.',
+            'Popped tiles turn to STONE: still surrounds, never matches. Every pop makes that ground poorer, which is the pressure to keep moving.',
+            t.runLength > 0
+              ? 'Wait too long and the expedition ends around your unfinished pocket.'
+              : 'Wait too long and you can die broke with a fortune still in the ground.',
+          ],
+          detail: [
+            `A pop pays ${t.tilesPerPop} tile per popped tile, plus 1 more per ${t.worthPerExtraTile} worth.`,
+            endless
+              ? `It scores the pocket’s summed worth × its size bonus × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`
+              : 'It scores summed worth × size bonus × the map number.',
+            ...(t.harvestSizeCap > 0
+              ? [
+                  `The size bonus stops growing past ${t.harvestSizeCap} tiles — a bigger pocket pays more worth but no more multiplier.`,
+                ]
+              : []),
+            ...(t.treasureNeed > 0
+              ? [
+                  `A pocket of ${t.treasureNeed}+ can be cashed as TREASURE instead: a magic tile into your stash, or a unique one from ${t.treasureUnique}+. You give up the tiles and the score to choose a power instead of waiting for one.`,
+                ]
+              : []),
+          ],
+        },
+      ],
+    };
+
+    const colourPowers =
+      t.greenCrowdBonus + t.yellowCompanyBonus + t.blueTideEvery > 0 || t.redAshMatches;
+
+    const board: HelpTab = {
+      id: 'board',
+      label: 'BOARD',
+      sections: [
+        ...(colourPowers
+          ? [
+              {
+                title: 'THE COLOURS',
+                lines: [
+                  `${name('green')} — crowds. Wants to be one big mob of its own colour.`,
+                  `${name('yellow')} — company. Scores in messy mixed ground where nothing else matches.`,
+                  `${name('red')} — ash. Builds along the spent, popped land everyone else abandons.`,
+                  `${name('blue')} — tide. Worth little at home, a lot on the frontier.`,
+                ],
+                detail: [
+                  `${name('green')}: +${t.greenCrowdBonus} worth per neighbour of its own colour past the first.`,
+                  t.yellowCompanyAll
+                    ? `${name('yellow')}: +${t.yellowCompanyBonus} worth per differently-coloured neighbour.`
+                    : `${name('yellow')}: +${t.yellowCompanyBonus} worth per DIFFERENT colour touching it.`,
+                  t.redAshWalls
+                    ? `${name('red')}: stone and walls both count as matches for it.`
+                    : `${name('red')}: stone counts as a match for it.`,
+                  `${name('blue')}: +1 worth per ${t.blueTideEvery} hexes from home.`,
+                ],
+              },
+            ]
+          : []),
         ...(endless
           ? [
-              t.singlePayout
-                ? 'Tiles are the only thing keeping you alive, so popping is never a dilemma — it always pays tiles, and it scores at the same time. What you decide is WHEN to pop, WHERE, and whether a pocket is worth burning instead.'
-                : 'Tiles keep you going; points are the score. The expedition ends whether or not you spent your tiles — so tiles you never use are wasted, and a pocket you never cash is a fortune left in the ground.',
+              {
+                title: 'THE GROUND',
+                lines: [
+                  'Dotted ground is a NATIVE FIELD — a tile of that colour placed there gains a match.',
+                  'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
+                ],
+                detail: [
+                  'Whole regions of one colour’s dots are BIOMES. Chasing a colour means walking to where it grows.',
+                  'The plane only exists where you have grown it. Every placement reveals the ground around itself.',
+                ],
+              },
+              {
+                title: 'WHERE TO GO',
+                lines: [
+                  'The glows beyond your ground are destinations, shining through land you have not reached. Touch one with a tile to claim it. Each pays once.',
+                  `+ CACHE — ${t.cachePays} tiles on the spot.`,
+                  `★ SITE — points, and it opens a bounty.`,
+                  `◆ TERRITORY — turns the ground around it into your field, for good.`,
+                  '◈ SHRINE — switches a system on for your world, permanently.',
+                ],
+                detail: [
+                  `A site pays ${t.sitePays} pts × the distance multiplier at its hex.`,
+                  ...(t.questNeed > 0
+                    ? [
+                        `Its bounty: pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it and take it as PTS for ×${t.questBonus}. Take it as tiles and the bounty stays standing. One at a time.`,
+                      ]
+                    : []),
+                  `A territory’s field reaches ${t.territoryRadius} hexes, and it glows in the colour it will grant.`,
+                  'Caches and sites re-arm every run, so ground you know stays worth walking.',
+                  'The line above your hand always names the nearest unclaimed destination and how far out it sits.',
+                ],
+              },
             ]
           : []),
+        {
+          title: 'READING THE SCREEN',
+          lines: [
+            endless
+              ? t.hidePoints
+                ? 'TILES keeps you alive · LUCK is what pops pay and the shop spends · REACH is how far you have built · COST is the next placement.'
+                : 'TILES keeps you alive · POINTS is your score · REACH is how far you have built · COST is the next placement.'
+              : 'TILES is your life · POINTS is your score · MAP is how deep you are · COST is the next placement.',
+            'Zoom with + and −, pinch, or drag to pan. FIT shows everything.',
+          ],
+          detail: [
+            ...(t.hidePoints
+              ? [
+                  'Your SCORE is deliberately off screen while you play. It is what the run is worth when it ends, not a number to play against.',
+                ]
+              : []),
+            'The line above your hand reads: what to do now · the nearest destination · your odds.',
+            'Worth numbers on tiles appear as you zoom in. Tapping any symbol on the map explains it where it sits.',
+          ],
+        },
       ],
     };
 
-    const placing: { title: string; lines: string[] } = {
-      title: 'PLACING',
-      lines: [
-        'Tap a card to pick it up, then tap any hex with a glowing edge. A tile must touch something already built.',
-        t.costGrace > 0
-          ? `Placing costs tiles: ${t.baseCost} for your first ${t.costGrace} placements, then +1 for every ${t.costRisesEvery} after that. The cost NEVER comes back down, so the back half of an expedition is the expensive half.`
-          : `Placing costs tiles: ${t.baseCost} to start, +1 for every ${t.costRisesEvery} tiles you have ever placed this run. The cost NEVER resets — this is the clock that ends every run.`,
-        'The faint number on an empty hex is exactly what the selected tile will be worth there. It is a promise, not an estimate.',
-        'BEST marks the card whose strongest placement pays the most right now. Advice, not an order.',
-      ],
-    };
-
-    const ripe: { title: string; lines: string[] } = {
-      title: 'RIPE AND WORTH',
-      lines: [
-        'A tile touched on ALL SIX sides is ripe — ready to pop. Walls, stone and other tiles all count as touching.',
-        'Worth = how many neighbours MATCH the tile (same colour). Stone and walls surround but never match. Native ground (dots in the tile’s own colour) counts as one extra match.',
-        'The bright number on a ripe tile is its worth. Placing one tile can raise the worth of up to six neighbours at once — that is the whole craft.',
-      ],
-    };
-
-    const harvest: { title: string; lines: string[] } = {
-      title: 'HARVEST',
-      lines: [
-        endless
-          ? 'A pocket is a connected group of ripe tiles. Tap any ripe tile to price its pocket — the board outlines it and the two buttons show what popping it pays. The biggest pocket is priced by default.'
-          : 'Harvest pops EVERY ripe tile on the map at once.',
-        t.singlePayout
-          ? `POP pays ${t.tilesPerPop} tile per popped tile, +1 more per ${t.worthPerExtraTile} worth — and scores at the same time, from the pocket's worth, its size and how far from home it sat. One button, both results.`
-          : `Take tiles: ${t.tilesPerPop} per popped tile, +1 more per ${t.worthPerExtraTile} worth. Linear and safe — this is how you keep placing.`,
-        ...(t.burnLuck > 0
-          ? [
-              `BURN instead: the pocket pays no tiles and no points, only ${t.burnLuck} luck per tile in it — better odds of magic and unique for the rest of the run. Sacrificing the thing keeping you alive is the whole price.`,
-            ]
-          : []),
-        endless
-          ? `Take pts: the pocket’s summed worth × its size bonus × the distance multiplier. Bigger pockets pay disproportionately more, and the multiplier rises by 1 for every ${t.distanceStep} hexes the pocket sits from home. Score lives out there.`
-          : 'Take pts: summed worth × size bonus × the map number. Bigger harvests and deeper maps pay disproportionately more.',
-        ...(t.harvestSizeCap > 0
-          ? [
-              `The size bonus stops growing past ${t.harvestSizeCap} tiles. A bigger pocket than that still pays more worth, but no more multiplier — so cashing at about ${t.harvestSizeCap} and starting another beats hoarding one monster.`,
-            ]
-          : []),
-        ...(t.treasureNeed > 0
-          ? [
-              `Take a rare tile: a pocket of ${t.treasureNeed}+ can be cashed as TREASURE instead — a magic tile straight into your stash, or a unique one from ${t.treasureUnique}+. You give up both the tiles and the points to do it, which is the price of choosing a power instead of waiting for one.`,
-            ]
-          : []),
-        `You take ONE of the ${t.treasureNeed > 0 ? 'three' : 'two'}, never more. Small pockets favour tiles; big far ones favour points. When to stop growing a pocket and cash it is the whole game.`,
-        ...(t.runLength > 0
-          ? [
-              'Watch LEFT: tiles are only worth what you can still spend. Early, a tiles-harvest buys a lot of expedition. Late, it buys nothing — and points are all that is left to take.',
-            ]
-          : []),
-        'Popped tiles turn to STONE. Stone still surrounds (helps ripen) but never matches (pays nothing) — every harvest makes that ground cheaper, which is the pressure to keep moving.',
-        t.runLength > 0
-          ? 'Wait too long and the expedition ends around your unfinished pocket. Greed costs.'
-          : 'Wait too long and you can die with a fortune unpopped. Greed has a cliff.',
-      ],
-    };
-
-    // The manual speaks the DIRECTION's words for the colours, because the
-    // cards, the chips and the lens all do — a manual that says GREEN beside
-    // a card that says MOSS is a manual for a different game.
-    const name = (c: Colour): string => this.#theme.terrainNames[c];
-    const colours: { title: string; lines: string[] } = {
-      title: 'THE COLOURS',
-      lines: [
-        `${name('green')} — crowds. +${t.greenCrowdBonus} worth for every neighbour of its own colour past the first. It wants to be one big mob: commit to a single-colour pocket and it snowballs.`,
-        t.yellowCompanyAll
-          ? `${name('yellow')} — company. +${t.yellowCompanyBonus} worth for every differently-coloured neighbour. It scores in messy mixed ground where nothing else matches — the glue tile.`
-          : `${name('yellow')} — company. +${t.yellowCompanyBonus} worth for every DIFFERENT colour touching it. It scores in messy mixed ground where nothing else matches — the glue tile.`,
-        t.redAshWalls
-          ? `${name('red')} — ash. Stone and walls count as matches for it. Spent land and blocked land are its soil: build it where nothing else pays.`
-          : `${name('red')} — ash. Stone counts as a match for it. Your spent, popped land is its soil: build it along the wake everyone else abandons.`,
-        `${name('blue')} — tide. +1 worth for every ${t.blueTideEvery} hexes from home. Worth little in the clearing, a lot on the frontier — the colour you carry outward.`,
-      ],
-    };
-
-    const ground: { title: string; lines: string[] } = {
-      title: 'THE GROUND',
-      lines: [
-        'Plain ground takes any tile. Dotted ground is a NATIVE FIELD: a tile of that colour placed there counts the ground as one extra match.',
-        'Whole regions of same-coloured dots are BIOMES — one colour’s country. Chasing a colour strategy means walking to where that colour grows.',
-        'Walls cannot be built on. They surround (help ripen) but never match — and a frontier that is all wall can end a run.',
-        'The plane only exists where you have grown it. Every placement reveals the ground around itself.',
-      ],
-    };
-
-    const destinations: { title: string; lines: string[] } = {
-      title: 'DESTINATIONS',
-      lines: [
-        'The glows beyond your ground are destinations. They shine through undiscovered land — build your chain out and TOUCH one with a tile to claim it. Each pays once.',
-        `+ is a CACHE: ${t.cachePays} tiles on the spot. Caches are how an expedition funds itself — walking to them is meant to keep you alive, so that your harvests can be about scoring instead of surviving.`,
-        `★ is a SITE: ${t.sitePays} pts × the distance multiplier at its hex, and it opens a BOUNTY.`,
-        ...(t.questNeed > 0
-          ? [
-              `A bounty asks for one thing: pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of that site, and take it as PTS — that harvest pays ×${t.questBonus}. Take it as tiles and the bounty stays standing. One bounty at a time; the line above your hand names it, and the pts button wears a ★ when the pocket you have selected would collect it.`,
-            ]
-          : []),
-        `◆ is a TERRITORY: claiming it turns the ground within ${t.territoryRadius} hexes into a native field of its colour — permanently yours, and it glows in the colour it will grant.`,
-        '◈ is a SHRINE: reaching one switches a system on for your world, for good. They are rare, and SETTINGS lists which ones you have woken and what the next one gives.',
-        'The line above your hand always names the nearest unclaimed destination and how many hexes out it sits.',
-      ],
-    };
-
-    const rarity: { title: string; lines: string[] } = {
-      title: 'RARE TILES AND LUCK',
-      lines: [
-        'Every drawn tile can roll MAGIC or UNIQUE — the card says so, and rare tiles keep an accent edge on the board.',
-        'MAGIC is wild: it matches EVERY neighbouring tile, whatever the colour, and they match it back.',
-        'UNIQUE is wild and heavy: every match it is part of counts DOUBLE, for both sides — ground included.',
-        t.luckRerollCost > 0
-          ? `LUCK is a purse, not a bar. Every pop pays about ${t.luckPerPop} luck flat, plus a little per tile — so many small pops earn far more luck than one monster does, while the monster wins on tiles. Luck buys nothing by itself; you SPEND it, on the row under your hand.`
-          : t.luckPerPop > 0
-            ? `Luck: every pop raises your odds (shown above your hand) by about ${t.luckPerPop}, plus a little per tile in it — so MANY SMALL POPS buy better draws than one monster does, while the monster wins on tiles and score.`
-            : `Luck: every tile popped in a TILES-harvest raises your odds (shown in the line above your hand), up to a cap. Cashing big pockets as survival is what buys better draws — the two currencies feed each other.`,
+    const hand: HelpTab = {
+      id: 'hand',
+      label: 'HAND',
+      sections: [
+        {
+          title: 'RARE TILES',
+          lines: [
+            'MAGIC is wild: it matches every neighbour whatever the colour, and they match it back.',
+            'UNIQUE is wild and heavy: every match it makes counts DOUBLE, for both sides.',
+          ],
+          detail: [
+            'The card says which it is, and rare tiles keep an accent edge once placed.',
+            'A unique’s ground match counts double too.',
+          ],
+        },
         ...(t.luckRerollCost > 0
           ? [
-              `REDRAW (${t.luckRerollCost}) throws this hand away for a new one. A colour's name (${t.luckSteerCost}) draws a new hand leaning that way and keeps the next ${t.colourBiasDraws} draws leaning with it — that is how you go and get the colour a pocket needs. FORGE (${t.luckForgeCost}) turns the selected card UNIQUE outright, which is the only way to have a rare exactly when you want one.`,
-              `So popping early is never about the odds now — it is about affording the thing you need next. A pocket cashed small is a hand of the right colour; a pocket grown fat is tiles to live on. That is the whole decision.`,
-            ]
-          : t.colourBiasDraws > 0
-            ? [
-                `And a pop STEERS the draft: the next ${t.colourBiasDraws} tiles you draw lean toward the colour you just popped. Cashing a pocket is how you ask for more of what built it.`,
-              ]
-            : []),
-      ],
-    };
-
-    const relics: { title: string; lines: string[] } = {
-      title: 'RELICS, AND THE NEXT RUN',
-      lines: [
-        `RELICS are not points. Points are the score a run is worth; relics are what buys the NEXT run, and both come out of the same pockets — so every ripe pocket asks which game you are playing.`,
-        `SACRIFICE a pocket and it pays ${t.burnRelics} relics a tile and nothing else: no tiles to live on, no score. You are giving up the run to buy the ones after it.`,
-        `Reaching somewhere new pays ${t.claimRelics} relics as well, for nothing — exploring is the half of the meta that costs you no sacrifice. And when a run ends, ${Math.round(t.luckToRelics * 100)}% of the luck still in your purse comes home with you, so hoarding luck is a real alternative to spending it.`,
-        `Spend relics on the screen that appears when a run ends. What you buy is permanent and follows you into every world: a deeper purse, keener odds, richer worlds — and PERKS, which change the rules rather than the numbers. You may wear one perk at a time until you buy the second slot.`,
-      ],
-    };
-
-    const stash: { title: string; lines: string[] } = {
-      title: 'THE STASH',
-      lines: [
-        'The dashed HOLD card keeps one tile for later. Tap it to stash your selected card; tap again to trade the stashed tile back into your hand.',
-        'Held tiles survive rerolls — save a rare tile, or the right colour, for the moment it is actually worth something.',
-      ],
-    };
-
-    const reading: { title: string; lines: string[] } = {
-      title: 'READING THE SCREEN',
-      lines: [
-        endless
-          ? t.hidePoints
-            ? 'TILES is what you place with — it is the only thing keeping the run alive. LUCK is what pops pay you, and what the shop under your hand spends. REACH is how far from home you have built. COST is what the next placement takes. Your SCORE is deliberately not on screen: it is what the run is worth when it ends, not a number to play against.'
-            : 'TILES is what you place with. POINTS is your score. REACH is how far from home you have built. COST is what the next placement takes. LEFT is how many placements the expedition has still to give.'
-          : 'TILES is your life — it is the number that ends the run. POINTS is your score. MAP is how deep you are. COST is what the next placement takes.',
-        'The line above your hand reads: what to do now · the nearest destination · your current odds.',
-        'Zoom with + and −, pinch works too, drag to pan, FIT shows everything. Worth numbers appear as you zoom in.',
-      ],
-    };
-
-    const end: { title: string; lines: string[] } = {
-      title: 'HOW IT ENDS',
-      lines: [
-        ...(t.runLength > 0
-          ? [
-              `LEFT reaches zero: the expedition is over. You may still cash anything already ripe — what the clock takes is the pockets you never finished.`,
+              {
+                title: 'LUCK IS A PURSE',
+                lines: [
+                  'Luck buys nothing by itself. You spend it, on the row under your hand.',
+                  `Every pop pays about ${t.luckPerPop} luck flat plus a little per tile — so many small pops earn far more luck than one monster, while the monster wins on tiles.`,
+                  'So popping early is about affording what you need next, not about odds.',
+                ],
+                detail: [
+                  `REDRAW (${t.luckRerollCost}) — throw this hand away for a new one.`,
+                  `A COLOUR’S NAME (${t.luckSteerCost}) — draw a new hand leaning that way, and keep the next ${t.colourBiasDraws} draws leaning with it. How you go and get the colour a pocket needs.`,
+                  `FORGE (${t.luckForgeCost}) — turn the selected card UNIQUE. The only way to have a rare exactly when you want one.`,
+                ],
+              },
             ]
           : []),
-        'Out of tiles with nothing ripe to cash: broke. Walking to caches is how you avoid this.',
-        ...(endless
+        ...(t.holdSlots > 0
           ? [
-              'A frontier that is all wall with nothing left to pop: walled in. Rare, and worth avoiding on the way past.',
+              {
+                title: 'THE STASH',
+                lines: [
+                  'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap again to trade it back.',
+                ],
+                detail: [
+                  'Held tiles survive rerolls — save a rare tile, or the right colour, for the moment it is worth something.',
+                ],
+              },
             ]
-          : [
-              'Once you have harvested on a map you may MOVE ON — deeper maps multiply points harder.',
-            ]),
-        'Tap anywhere to close this.',
+          : []),
       ],
     };
 
-    // "What this game is", derived rather than written: the world, the
-    // economy and the list of systems in play all come from the run's own
-    // tuning, so this section re-describes itself after every balance or
-    // flag change. The decisions behind the switches live in SETTINGS below.
+    const after: HelpTab = {
+      id: 'after',
+      label: 'AFTER',
+      sections: [
+        ...(t.burnRelics > 0
+          ? [
+              {
+                title: 'RELICS',
+                lines: [
+                  'Relics are not points. Points are what a run is worth; relics buy the NEXT run.',
+                  'Both come out of the same pockets, so every ripe pocket asks which game you are playing.',
+                  'SACRIFICE a pocket and it pays relics and nothing else — no tiles to live on, no score.',
+                ],
+                detail: [
+                  `A sacrifice pays ${t.burnRelics} relics per tile in the pocket.`,
+                  `Reaching somewhere new pays ${t.claimRelics}, for nothing — the half of the meta that costs no sacrifice.`,
+                  `When a run ends, ${Math.round(t.luckToRelics * 100)}% of the luck still in your purse comes home, so hoarding luck is a real alternative to spending it.`,
+                ],
+              },
+              {
+                title: 'THE SHOP',
+                lines: [
+                  'Spend relics on the screen that appears when a run ends. Everything you buy is permanent and follows you into every world.',
+                  'PERKS change the rules rather than the numbers. You may wear one at a time until you buy the second slot.',
+                ],
+                detail: [
+                  'DEEPER PURSE, KEENER EYE and RICHER WORLDS are the steady floor: more starting tiles, better odds, more out there to find.',
+                  'ROOTBOUND makes your own ground pay double and everything else pay nothing.',
+                  'SECOND WIND flips a coin the first time a run would end broke. Half the time you carry on. Half the time you do not.',
+                ],
+              },
+            ]
+          : []),
+        {
+          title: 'HOW IT ENDS',
+          lines: [
+            'Out of tiles with nothing ripe to cash: broke. Walking to caches is how you avoid it.',
+            ...(endless
+              ? [
+                  'A frontier that is all wall with nothing left to pop: walled in. Rare, and worth avoiding on the way past.',
+                ]
+              : [
+                  'Once you have harvested a map you may MOVE ON. Deeper maps multiply points harder.',
+                ]),
+            ...(t.runLength > 0
+              ? [
+                  'LEFT reaches zero: the expedition is over. Anything already ripe can still be cashed.',
+                ]
+              : []),
+          ],
+        },
+        ...(endless
+          ? [
+              {
+                title: 'YOUR WORLD',
+                lines: [
+                  'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs.',
+                  'Territories you claim are yours for good and greet you already claimed.',
+                ],
+                detail: [
+                  ...(t.territoryTiles > 0
+                    ? [
+                        `Each territory held starts every later run with +${t.territoryTiles} tiles, up to +${t.territoryTilesCap}.`,
+                      ]
+                    : []),
+                  'SETTINGS shows what your world has seen, and can abandon it for a fresh one.',
+                ],
+              },
+            ]
+          : []),
+      ],
+    };
+
+    // "What this game is", derived rather than written: the systems list comes
+    // from the run's own tuning, so it re-describes itself after every balance
+    // or flag change. The decisions behind the switches live in SETTINGS.
     const systems: string[] = [];
     if (t.destinationEvery > 0) systems.push('destinations');
     if (t.biomeEvery > 0) systems.push('biomes');
-    if (t.magicChance + t.uniqueChance > 0) systems.push('rare tiles + luck');
+    if (t.magicChance + t.uniqueChance > 0) systems.push('rare tiles');
+    if (t.luckRerollCost > 0) systems.push('the luck purse');
+    if (t.burnRelics > 0) systems.push('relics + the shop');
     if (t.greenCrowdBonus + t.yellowCompanyBonus + t.blueTideEvery > 0 || t.redAshMatches) {
       systems.push('colour personalities');
     }
     if (t.holdSlots > 0) systems.push('the stash');
 
-    const yourWorld: { title: string; lines: string[] } = {
-      title: 'YOUR WORLD',
-      lines: [
-        'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs — a map you are filling in, expedition by expedition.',
-        t.territoryTiles > 0
-          ? `Territories you claim (◆) are yours for good: they greet you already claimed, with their field live, and each one starts every later run with +${t.territoryTiles} tiles (up to +${t.territoryTilesCap}). Conquest compounds; it just cannot buy past the clock.`
-          : 'Territories you claim (◆) are yours for good: they greet you already claimed, with their field live, and they never pay twice.',
-        'Caches and sites re-arm every run, so ground you know is still worth walking. What changes between runs is you knowing where to walk.',
-        'SETTINGS shows what your world has seen, and can abandon it for a fresh one if you ever want a stranger’s plane again.',
+    const build: HelpTab = {
+      id: 'build',
+      label: 'BUILD',
+      sections: [
+        {
+          title: 'THIS BUILD',
+          lines: [
+            endless
+              ? `One endless plane, grown from seed ${this.#state.rootSeed}. Same seed, same world — share the number to share the run.`
+              : `Bounded maps, seed ${this.#state.rootSeed}.`,
+            systems.length > 0
+              ? `In play: ${systems.join(' · ')}.`
+              : 'In play: nothing. This is the smallest game there is.',
+          ],
+          detail: [
+            `Start with ${t.startingTiles} tiles · a placement costs ${t.baseCost}` +
+              (t.costGrace > 0 ? ` for ${t.costGrace} placements, then` : ',') +
+              ` +1 per ${t.costRisesEvery} placed` +
+              (t.runLength > 0 ? ` · ${t.runLength} placements to the expedition` : '') +
+              ` · ${t.draftWidth}-card draft${t.holdSlots > 0 ? ' plus the stash' : ''}.`,
+            'SETTINGS below switches every system and carries the decision that set each default.',
+            'The stamp at the bottom of the screen names the exact code this page is running.',
+          ],
+        },
       ],
     };
 
-    const build: { title: string; lines: string[] } = {
-      title: 'THIS BUILD',
-      lines: [
-        endless
-          ? `World: one endless plane, grown from seed ${this.#state.rootSeed}. Same seed, same world — share the number to share the run.`
-          : `World: bounded maps, seed ${this.#state.rootSeed}.`,
-        `Economy: start with ${t.startingTiles} tiles · a placement costs ${t.baseCost}` +
-          (t.costGrace > 0 ? ` for ${t.costGrace} placements, then` : ',') +
-          ` +1 per ${t.costRisesEvery} placed` +
-          (t.runLength > 0 ? ` · ${t.runLength} placements to the expedition` : '') +
-          ` · ${t.draftWidth}-card draft${t.holdSlots > 0 ? ' plus the stash' : ''}.`,
-        systems.length > 0
-          ? `Systems in play: ${systems.join(' · ')}. Each is detailed above.`
-          : 'Systems in play: none — this is the smallest game there is.',
-        'SETTINGS below switches every system and carries the decision that set each default. The stamp at the bottom of the screen names the exact code this page is running.',
-      ],
-    };
-
-    return endless
-      ? [
-          loop,
-          placing,
-          ripe,
-          harvest,
-          colours,
-          ground,
-          destinations,
-          rarity,
-          ...(t.burnRelics > 0 ? [relics] : []),
-          stash,
-          yourWorld,
-          reading,
-          end,
-          build,
-        ]
-      : [loop, placing, ripe, harvest, reading, end, build];
+    const tabs = endless ? [play, board, hand, after, build] : [play, board, after, build];
+    return tabs.filter((tab) => tab.sections.length > 0);
   }
 
   /**

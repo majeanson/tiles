@@ -407,55 +407,90 @@ describe('the camera, and staying oriented', () => {
     expect(ctx.el.zoomOut.disabled).toBe(true);
   });
 
-  it('opens the full manual, numbers from the live tuning, and closes on a tap', () => {
+  it('opens the manual as tabs, one panel at a time, and closes on a tap', () => {
     expect(ctx.el.helpPanel.hidden).toBe(true);
     ctx.el.help.click();
     expect(ctx.el.helpPanel.hidden).toBe(false);
 
-    // Every endless system has its section…
-    const text = ctx.el.helpPanel.textContent ?? '';
-    for (const section of [
-      'THE LOOP',
-      'PLACING',
-      'RIPE AND WORTH',
-      'HARVEST',
-      'THE COLOURS',
-      'THE GROUND',
-      'DESTINATIONS',
-      'RARE TILES AND LUCK',
-      'THE STASH',
-      'YOUR WORLD',
-      'READING THE SCREEN',
-      'HOW IT ENDS',
-      'THIS BUILD',
-    ]) {
-      expect(text).toContain(section);
-    }
-    // THIS BUILD is derived, not written: the seed and the systems list come
-    // from the run itself.
-    expect(text).toContain(`seed ${ctx.game.state.rootSeed}`);
-    expect(text).toMatch(/Systems in play: .*destinations/);
-    // …and the numbers are the run's own tuning, not prose that can go stale.
-    const t = ctx.game.state.tuning;
-    expect(text).toContain(`${t.cachePays} tiles`);
-    expect(text).toContain(`${t.costGrace} placements, then +1 for every ${t.costRisesEvery}`);
-    expect(text).toContain(`${t.blueTideEvery} hexes`);
-    expect(text).toContain(`expedition of ${t.runLength} placements`);
-    expect(text).toContain(`past ${t.harvestSizeCap} tiles`);
-    expect(text).toContain(`pop a pocket of ${t.questNeed}+`);
+    const tabs = [...ctx.el.helpPanel.querySelectorAll('button.help-tab')] as HTMLButtonElement[];
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['PLAY', 'BOARD', 'HAND', 'AFTER', 'BUILD']);
+
+    // Exactly one panel is showing, and it is the first tab's.
+    const panels = [...ctx.el.helpPanel.querySelectorAll('.help-panel-body')] as HTMLElement[];
+    expect(panels.filter((p) => !p.hidden)).toHaveLength(1);
+    expect(panels[0]?.hidden).toBe(false);
+    expect(panels[0]?.textContent).toContain('THE LOOP');
+
+    // Tapping a tab swaps the panel and moves the marker, and does NOT close
+    // the manual on the way past — the panel closes on any tap, so a control
+    // that let its tap through would read as broken.
+    tabs[1]?.click();
+    expect(ctx.el.helpPanel.hidden).toBe(false);
+    expect(panels[0]?.hidden).toBe(true);
+    expect(panels[1]?.hidden).toBe(false);
+    expect(tabs[1]?.dataset['on']).toBe('true');
+    expect(tabs[0]?.dataset['on']).toBeUndefined();
 
     ctx.el.helpPanel.click();
     expect(ctx.el.helpPanel.hidden).toBe(true);
+  });
+
+  it('keeps the arithmetic folded away, and reads it from the live tuning', () => {
+    ctx.el.help.click();
+    const t = ctx.game.state.tuning;
+
+    // Folded by default: short manual, complete on demand.
+    const folds = [
+      ...ctx.el.helpPanel.querySelectorAll('details.help-more'),
+    ] as HTMLDetailsElement[];
+    expect(folds.length).toBeGreaterThan(4);
+    expect(folds.every((fold) => !fold.open)).toBe(true);
+    expect(folds.every((fold) => fold.querySelector('summary')?.textContent === 'NUMBERS')).toBe(
+      true,
+    );
+
+    // Every number is the run's own tuning rather than prose that can go stale.
+    const numbers = folds.map((fold) => fold.textContent ?? '').join(' ');
+    expect(numbers).toContain(`+1 for every ${t.costRisesEvery} after`);
+    expect(numbers).toContain(`${t.blueTideEvery} hexes from home`);
+    expect(numbers).toContain(`past ${t.harvestSizeCap} tiles`);
+    expect(numbers).toContain(`pop a pocket of ${t.questNeed}+`);
+
+    // A payout a player needs BEFORE deciding where to walk is a fact, not
+    // arithmetic, so it stays on the visible line rather than in a fold.
+    expect(ctx.el.helpPanel.textContent).toContain(`CACHE — ${t.cachePays} tiles`);
+
+    // The headline lines stay free of arithmetic — that is the whole split.
+    const lead = ctx.el.helpPanel.querySelector('.help-panel-body p')?.textContent ?? '';
+    expect(lead).not.toMatch(/\d/);
+
+    // And a fold opens without closing the manual under it.
+    folds[0]?.querySelector('summary')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(ctx.el.helpPanel.hidden).toBe(false);
+  });
+
+  it('names the build from the run itself, so it cannot go stale', () => {
+    ctx.el.help.click();
+    const text = ctx.el.helpPanel.textContent ?? '';
+    expect(text).toContain(`seed ${ctx.game.state.rootSeed}`);
+    expect(text).toMatch(/In play: .*destinations/);
   });
 
   it('keeps the bounded manual to the bounded game', () => {
     const bounded = build();
     bounded.game.start();
     bounded.el.help.click();
+
+    const tabs = [
+      ...bounded.el.helpPanel.querySelectorAll('button.help-tab'),
+    ] as HTMLButtonElement[];
+    // No HAND tab: no luck purse and no stash to explain.
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['PLAY', 'BOARD', 'AFTER', 'BUILD']);
+
     const text = bounded.el.helpPanel.textContent ?? '';
     expect(text).toContain('THE LOOP');
     expect(text).toContain('MOVE ON');
-    expect(text).not.toContain('DESTINATIONS');
+    expect(text).not.toContain('WHERE TO GO');
     expect(text).not.toContain('THE STASH');
   });
 

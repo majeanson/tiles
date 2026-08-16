@@ -1393,3 +1393,30 @@ and the four I argued against. Reference, not spec.
 
 372 tests. The prices are guesses and are meant to be: the shop cannot be
 balanced before anyone has spent anything in it.
+
+**Addendum, same day — the manual, rebuilt as tabs**
+
+Marc, while going off to play: _"rework the help with sections, tabs, etc.
+and rework to be concise and precise. if extra calculations are wanted,
+toggle to expand."_
+
+The manual had grown to fourteen sections of paragraphs — everything true and
+nothing findable, because every system that shipped added its paragraph to the
+bottom of the same scroll. Two rules replace it:
+
+- **Five tabs**, ordered as a run meets them: PLAY (the loop, placing,
+  ripening, popping), BOARD (colours, ground, where to go, reading the
+  screen), HAND (rare tiles, the luck purse, the stash), AFTER (relics, the
+  shop, how it ends, your world), BUILD (this run's own numbers).
+- **Every formula behind a NUMBERS fold.** A section says what a thing IS in
+  a line or two; the prices, thresholds and multipliers are one tap away.
+  Short by default, complete on demand.
+
+The tabs and folds swallow their own taps, because the panel closes on any
+tap and a control that let its tap through reads as a broken button — the
+same treatment the settings rows already had. Sections are gated on the
+systems that actually exist in the run, so the bounded game has four tabs and
+no stash section rather than a manual describing features it does not have.
+
+Still derived from live tuning, which was the point of writing it that way:
+the numbers in the folds are the same object the reducer pays with.
