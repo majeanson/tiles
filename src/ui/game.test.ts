@@ -88,6 +88,7 @@ function build(
     <button id="harvest-treasure" hidden></button>
     <button id="harvest-burn" hidden></button>
     <button id="leave"></button>
+    <div id="spends" hidden></div>
     <p id="end" hidden></p>`;
 
   const pick = <T extends HTMLElement>(id: string): T => {
@@ -102,6 +103,7 @@ function build(
     hint: pick('hint'),
     colours: pick('colours'),
     draft: pick('draft'),
+    spends: pick('spends'),
     harvestTiles: pick<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: pick<HTMLButtonElement>('harvest-points'),
     harvestTreasure: pick<HTMLButtonElement>('harvest-treasure'),

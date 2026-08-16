@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENDLESS_TUNING, TILESONLY_TUNING } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from './hex';
-import { newRun, reduce } from './reduce';
+import { canSpend, newRun, rarityOdds, reduce } from './reduce';
 import { harvestValue } from './rules';
 import type { Cell, GameState } from './state';
 
@@ -65,26 +65,92 @@ describe('one payout', () => {
 });
 
 describe('burning a pocket', () => {
-  it('pays luck instead of tiles and points', () => {
+  /**
+   * Switched OFF in the tiles-only run after Marc played it (2026-08-15): he
+   * never used it once, and the reason is arithmetic rather than taste — a
+   * burn paid `burnLuck` a tile where popping the same pocket paid comparable
+   * luck AND the tiles AND the score, so it was strictly dominated from the
+   * moment luck went flat-per-pop. The mechanic stays in the engine, priced
+   * at nothing, pending the open question of whether a burn should pay the
+   * between-runs currency instead. These pin both halves of that.
+   */
+  it('is off in the tiles-only run — the price is zero, so the action is a no-op', () => {
+    expect(T.burnLuck).toBe(0);
     const state = pocket(newRun(5, T), 6);
+    expect(reduce(state, { type: 'HARVEST', choice: 'burn', at: key(0, 0) })).toBe(state);
+  });
+
+  it('still works wherever a price is set, so the option can come back', () => {
+    const priced = { ...T, burnLuck: 3 };
+    const state = pocket(newRun(5, priced), 6);
     const burned = reduce(state, { type: 'HARVEST', choice: 'burn', at: key(0, 0) });
 
     expect(burned.tiles).toBe(state.tiles);
     expect(burned.points).toBe(state.points);
-    expect(burned.luck).toBe(6 * T.burnLuck);
+    expect(burned.luck).toBe(6 * 3);
     expect(burned.cells[key(0, 0)]?.kind).toBe('stone');
-  });
-
-  it('beats a plain pop for luck, which is the whole trade', () => {
-    const state = pocket(newRun(5, T), 6);
-    const popped = reduce(state, { type: 'HARVEST', choice: 'tiles', at: key(0, 0) });
-    const burned = reduce(state, { type: 'HARVEST', choice: 'burn', at: key(0, 0) });
-    expect(burned.luck).toBeGreaterThan(popped.luck);
   });
 
   it('does not exist where the sacrifice is switched off', () => {
     const state = pocket(newRun(5, ENDLESS), 6);
     expect(reduce(state, { type: 'HARVEST', choice: 'burn', at: key(0, 0) })).toBe(state);
+  });
+});
+
+describe('luck as a purse', () => {
+  /**
+   * The flaw Marc found by playing: luck was a bar that filled. `luckCap` was
+   * 150 and a pop paid 9, so a hundred-and-forty-pop run was maxed out inside
+   * fifteen pops and popping early bought nothing for the other nine tenths.
+   * Now luck buys nothing passively and is spent on three things.
+   */
+  it('no longer raises the odds by itself — it is a currency, not a stat', () => {
+    expect(T.luckMagicPerPop).toBe(0);
+    expect(T.luckUniquePerPop).toBe(0);
+    expect(rarityOdds(T, 0)).toEqual(rarityOdds(T, 900));
+  });
+
+  it('pays for a fresh hand', () => {
+    const rich: GameState = { ...newRun(5, T), luck: 100 };
+    const rerolled = reduce(rich, { type: 'SPEND', on: 'reroll' });
+
+    expect(rerolled.luck).toBe(100 - T.luckRerollCost);
+    expect(rerolled.draft.map((t) => t.id)).not.toEqual(rich.draft.map((t) => t.id));
+    expect(rerolled.selected).toBe(0);
+  });
+
+  it('pays for a hand of a colour you name, and keeps it leaning', () => {
+    const rich: GameState = { ...newRun(5, T), luck: 100 };
+    const steered = reduce(rich, { type: 'SPEND', on: 'steer', colour: 'blue' });
+
+    expect(steered.luck).toBe(100 - T.luckSteerCost);
+    // Steering redraws immediately, so some of the bias is already spent on
+    // the hand in front of you — that is what makes it a purchase and not a bet.
+    expect(steered.bias === null || steered.bias.colour === 'blue').toBe(true);
+    expect(steered.draft.map((t) => t.id)).not.toEqual(rich.draft.map((t) => t.id));
+  });
+
+  it('pays to forge the selected card unique', () => {
+    const rich: GameState = { ...newRun(5, T), luck: 100 };
+    const forged = reduce(rich, { type: 'SPEND', on: 'forge' });
+
+    expect(forged.luck).toBe(100 - T.luckForgeCost);
+    expect(forged.draft[forged.selected]?.rarity).toBe('unique');
+    // Only the selected card, and the colours are untouched.
+    expect(forged.draft.map((t) => t.colour)).toEqual(rich.draft.map((t) => t.colour));
+  });
+
+  it('refuses what the purse cannot pay for, and charges nothing', () => {
+    const broke: GameState = { ...newRun(5, T), luck: 1 };
+    expect(reduce(broke, { type: 'SPEND', on: 'forge' })).toBe(broke);
+    expect(reduce(broke, { type: 'SPEND', on: 'reroll' })).toBe(broke);
+    expect(canSpend(broke, 'reroll')).toBe(false);
+  });
+
+  it('has no shop at all in the shipped endless game', () => {
+    const state: GameState = { ...newRun(5, ENDLESS), luck: 500 };
+    expect(reduce(state, { type: 'SPEND', on: 'reroll' })).toBe(state);
+    expect(canSpend(state, 'forge')).toBe(false);
   });
 });
 

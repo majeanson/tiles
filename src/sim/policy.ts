@@ -1,5 +1,6 @@
+import { COLOURS, type Colour } from '@content/tuning';
 import { distance, key, parse, type HexKey } from '@engine/hex';
-import { canLeave } from '@engine/reduce';
+import { canLeave, canSpend } from '@engine/reduce';
 import { rngInt, rngPick, type RngStream } from '@engine/rng';
 import {
   canPlaceNow,
@@ -292,6 +293,59 @@ const bankAt = (threshold: number): Policy => ({
   },
 });
 
+/** The colour this board already holds most of — what steering doubles down on. */
+function dominantColour(state: GameState): Colour {
+  const counts = new Map<Colour, number>();
+  for (const cell of Object.values(state.cells)) {
+    if (cell.kind === 'tile') counts.set(cell.colour, (counts.get(cell.colour) ?? 0) + 1);
+  }
+  let best: Colour = COLOURS[0];
+  for (const colour of COLOURS)
+    if ((counts.get(colour) ?? 0) > (counts.get(best) ?? 0)) best = colour;
+  return best;
+}
+
+/**
+ * bank20, but it SPENDS its luck.
+ *
+ * The point of this policy is to answer one question the others cannot: is the
+ * luck shop worth anything? Every other line earns luck and sits on it, so a
+ * shop that pays nothing and a shop that pays double look identical in their
+ * scores. This one buys a hand of the colour it already has most of whenever
+ * it can still afford a forge afterwards, and forges the card it is about to
+ * place. If it does not beat bank20, the prices are wrong.
+ */
+const spender: Policy = {
+  name: 'spender',
+  note: 'Plays bank20 and spends luck as it earns it: a hand of its best colour, and a forged card to place.',
+  decide(state, stream) {
+    const t = state.tuning;
+
+    // Steering is its own turn, because it redraws the hand a placement plan
+    // would have been built from. The forge reserve is what stops it from
+    // spending everything on colour it cannot use.
+    if (canSpend(state, 'steer') && state.luck >= t.luckSteerCost + t.luckForgeCost) {
+      return [[{ type: 'SPEND', on: 'steer', colour: dominantColour(state) }], stream];
+    }
+
+    if (biggestHarvestSize(state) >= 20) return [biggestHarvest(state, 'points') ?? [], stream];
+
+    const place = bestPlacement(state);
+    if (place !== null) {
+      // SELECT first, then forge, so the card forged is the card placed.
+      const forge = canSpend(state, 'forge')
+        ? [{ type: 'SPEND' as const, on: 'forge' as const }]
+        : [];
+      const [pick, ...rest] = place;
+      return [pick === undefined ? place : [pick, ...forge, ...rest], stream];
+    }
+
+    const cash = smallestHarvest(state, 'tiles');
+    if (cash !== null) return [cash, stream];
+    return [canLeave(state) ? [{ type: 'LEAVE' }] : [], stream];
+  },
+};
+
 export const bank3 = bankAt(3);
 export const bank15 = bankAt(15);
 /** Cashing exactly at the size bonus's cap — the economy's own answer. */
@@ -501,6 +555,7 @@ export const POLICIES: readonly Policy[] = [
   seeker,
   chooser,
   survivor,
+  spender,
 ];
 
 export const policyByName = (name: string): Policy | undefined =>

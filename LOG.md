@@ -1301,3 +1301,50 @@ patience was always better. Nothing stalls; 343 tests green.
 win by ~4×. Small-and-often buys tempo, luck and the colours you need, not
 points. Whether those are worth the trade is a phone question, and the luck
 numbers are one constant each if they should be louder.
+
+**Addendum, same day — Marc played the steering build, and luck was a bar**
+
+Two reports, one bug behind both. He never burnt a pocket once ("popping
+often gave more luck than burning anyway"), and he never played for points
+("I thought if I go on more I would have more points anyway").
+
+He was right twice. **Burn was strictly dominated the moment luck went
+flat-per-pop**: a 6-pocket burned pays 18 luck, popped it pays 12 luck AND
+the 6 tiles AND the score — six tiles spent to buy six luck. I broke it the
+same hour I shipped it, by repricing luck without repricing the thing that
+sold luck. Switched off (`burnLuck: 0`), kept in the engine.
+
+Worse, and only visible in the numbers: **`luckCap` is 150 and a pop paid 9,
+so luck maxed out about fifteen pops into a hundred-and-forty-pop run.** For
+nine tenths of every run, popping early bought exactly nothing. The mechanic
+built to answer "why pop early" died before the run got going.
+
+So luck stopped being a bar and became a **purse** (Marc's call, from four
+options). It no longer raises the odds passively at all — `luckMagicPerPop`
+and `luckUniquePerPop` are zero here, and permanent odds are bought with
+points between runs instead. One number, one job. It buys three things:
+
+- REDRAW (12) — a fresh hand.
+- A colour's name (30) — a new hand drawn under that colour, and the next six
+  draws leaning with it. Not a bet on later: you see what you bought.
+- FORGE (75) — the selected card becomes UNIQUE. The only way to have a rare
+  exactly when you need one.
+
+And **points left the HUD** (`hidePoints`), because Marc was correct that they
+were furniture: score is what a run is worth when it ends, not a number to
+play against. The slot goes to LUCK, which is what the game is now played
+against. The end screen still shows the score.
+
+**Measured, 200 runs.** A new `spender` policy plays bank20 and spends its
+luck; it scores 15,000 against bank20's 14,217 — **the shop pays about 5.5%**
+at the same patience. That is the whole evidence that it is worth its prices.
+
+**A correction to what I told Marc last addendum.** I reported an interior
+optimum — bank20 beating bank40 — from a 30-run sample. At 200 runs it is
+gone: bank20 14,217, bank40 15,427, bank80 15,766, and bank40/bank80 still
+share a best run, so the threshold still never binds. **Patience is still
+monotonically better on score.** It was noise and I called it a result.
+
+Open, and now downstream of the meta economy rather than this build: score
+still rewards waiting, so the timing decision is a survival decision and a
+shopping decision but not a scoring one.

@@ -245,4 +245,13 @@ export type Action =
    * for both directions, so the stash is a place, not a mode.
    */
   | { readonly type: 'HOLD' }
+  /**
+   * Spend luck. `reroll` buys a fresh hand, `steer` names a colour and buys a
+   * hand drawn under it, `forge` turns the selected card unique. Prices live
+   * in tuning and a zero price means the shop does not exist — so every game
+   * that never heard of luck ignores this action entirely.
+   */
+  | { readonly type: 'SPEND'; readonly on: Spend; readonly colour?: Colour }
   | { readonly type: 'LEAVE' };
+
+export type Spend = 'reroll' | 'steer' | 'forge';

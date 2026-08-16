@@ -21,6 +21,7 @@ import type {
   HarvestChoice,
   Quest,
   Rarity,
+  Spend,
   Tile,
 } from './state';
 import { destinationAt, terrainAt } from './world';
@@ -310,9 +311,60 @@ export function reduce(state: GameState, action: Action): GameState {
       return harvest(state, action.choice, action.at);
     case 'HOLD':
       return hold(state);
+    case 'SPEND':
+      return spendLuck(state, action.on, action.colour);
     case 'LEAVE':
       return leave(state);
   }
+}
+
+/** What one spend costs, or 0 where that shop does not exist. */
+export function spendCost(t: Tuning, on: Spend): number {
+  return on === 'reroll' ? t.luckRerollCost : on === 'steer' ? t.luckSteerCost : t.luckForgeCost;
+}
+
+/** Whether the purse can pay for it right now. The UI asks before offering. */
+export function canSpend(state: GameState, on: Spend): boolean {
+  const cost = spendCost(state.tuning, on);
+  if (cost <= 0 || state.phase !== 'placing' || state.luck < cost) return false;
+  // Forging needs something in hand to forge.
+  return on !== 'forge' || state.draft[state.selected] !== undefined;
+}
+
+/**
+ * Spend luck.
+ *
+ * Popping early has to buy something, and after Marc played it, the answer is
+ * not better odds sitting in a bar — it is these three purchases. Steering
+ * redraws the hand under the named colour rather than merely biasing later
+ * draws, because a bet you cannot see is not a decision you can make.
+ */
+function spendLuck(state: GameState, on: Spend, colour?: Colour): GameState {
+  if (!canSpend(state, on)) return state;
+  if (on === 'steer' && colour === undefined) return state;
+  const t = state.tuning;
+  const luck = state.luck - spendCost(t, on);
+
+  if (on === 'forge') {
+    const card = state.draft[state.selected];
+    if (card === undefined || card.rarity === 'unique') return state;
+    const draft: readonly Tile[] = state.draft.map((tile, i) =>
+      i === state.selected ? { ...tile, rarity: 'unique' as const } : tile,
+    );
+    return { ...state, luck, draft };
+  }
+
+  const bias =
+    on === 'steer' && colour !== undefined ? { colour, left: t.colourBiasDraws } : state.bias;
+  const rolled = rollDraft(state.rng.tiles, state.rng.loot, t, luck, bias);
+  return {
+    ...state,
+    luck,
+    draft: rolled.draft,
+    selected: 0,
+    bias: rolled.bias,
+    rng: { ...state.rng, tiles: rolled.tiles, loot: rolled.loot },
+  };
 }
 
 /**

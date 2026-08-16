@@ -2,7 +2,14 @@ import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { canPlaceAt, harvestMultiplier, harvestValue, isRipe, worthOf } from '@engine/rules';
-import type { Action, GameState, HarvestChoice, LandmarkReward, Rarity } from '@engine/state';
+import type {
+  Action,
+  GameState,
+  HarvestChoice,
+  LandmarkReward,
+  Rarity,
+  Spend,
+} from '@engine/state';
 import { destinationAt } from '@engine/world';
 import { bakeSurface } from '@render/bake';
 import type { Renderer } from '@render/Renderer';
@@ -37,6 +44,7 @@ export type Elements = {
   readonly harvestTreasure: HTMLButtonElement;
   /** The sacrifice: pop for luck instead of tiles. Only where it exists. */
   readonly harvestBurn: HTMLButtonElement;
+  readonly spends: HTMLElement;
   readonly leave: HTMLButtonElement;
   readonly end: HTMLElement;
   readonly zoomIn: HTMLButtonElement;
@@ -290,6 +298,16 @@ export class Game {
     });
     this.#el.leave.addEventListener('click', () => {
       this.#dispatch({ type: 'LEAVE' });
+    });
+
+    // The shop's buttons are rebuilt every frame, so the listener lives on
+    // the row and reads what was tapped. One listener, any number of prices.
+    this.#el.spends.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement | null)?.closest('button');
+      const on = button?.dataset['spend'];
+      if (on === undefined) return;
+      const colour = button?.dataset['colour'] as Colour | undefined;
+      this.#spend(on as Spend, colour);
     });
 
     // A stranger's first minute: the manual, open, before the board is a
@@ -791,14 +809,21 @@ export class Game {
         'Every drawn tile can roll MAGIC or UNIQUE — the card says so, and rare tiles keep an accent edge on the board.',
         'MAGIC is wild: it matches EVERY neighbouring tile, whatever the colour, and they match it back.',
         'UNIQUE is wild and heavy: every match it is part of counts DOUBLE, for both sides — ground included.',
-        t.luckPerPop > 0
-          ? `Luck: every pop raises your odds (shown above your hand) by about ${t.luckPerPop}, plus a little per tile in it — so MANY SMALL POPS buy better draws than one monster does, while the monster wins on tiles and score. That is the whole reason to ever pop early.`
-          : `Luck: every tile popped in a TILES-harvest raises your odds (shown in the line above your hand), up to a cap. Cashing big pockets as survival is what buys better draws — the two currencies feed each other.`,
-        ...(t.colourBiasDraws > 0
+        t.luckRerollCost > 0
+          ? `LUCK is a purse, not a bar. Every pop pays about ${t.luckPerPop} luck flat, plus a little per tile — so many small pops earn far more luck than one monster does, while the monster wins on tiles. Luck buys nothing by itself; you SPEND it, on the row under your hand.`
+          : t.luckPerPop > 0
+            ? `Luck: every pop raises your odds (shown above your hand) by about ${t.luckPerPop}, plus a little per tile in it — so MANY SMALL POPS buy better draws than one monster does, while the monster wins on tiles and score.`
+            : `Luck: every tile popped in a TILES-harvest raises your odds (shown in the line above your hand), up to a cap. Cashing big pockets as survival is what buys better draws — the two currencies feed each other.`,
+        ...(t.luckRerollCost > 0
           ? [
-              `And a pop STEERS the draft: the next ${t.colourBiasDraws} tiles you draw lean toward the colour you just popped. Cashing a pocket is how you ask for more of what built it.`,
+              `REDRAW (${t.luckRerollCost}) throws this hand away for a new one. A colour's name (${t.luckSteerCost}) draws a new hand leaning that way and keeps the next ${t.colourBiasDraws} draws leaning with it — that is how you go and get the colour a pocket needs. FORGE (${t.luckForgeCost}) turns the selected card UNIQUE outright, which is the only way to have a rare exactly when you want one.`,
+              `So popping early is never about the odds now — it is about affording the thing you need next. A pocket cashed small is a hand of the right colour; a pocket grown fat is tiles to live on. That is the whole decision.`,
             ]
-          : []),
+          : t.colourBiasDraws > 0
+            ? [
+                `And a pop STEERS the draft: the next ${t.colourBiasDraws} tiles you draw lean toward the colour you just popped. Cashing a pocket is how you ask for more of what built it.`,
+              ]
+            : []),
       ],
     };
 
@@ -814,7 +839,9 @@ export class Game {
       title: 'READING THE SCREEN',
       lines: [
         endless
-          ? 'TILES is what you place with. POINTS is your score. REACH is how far from home you have built. COST is what the next placement takes. LEFT is how many placements the expedition has still to give.'
+          ? t.hidePoints
+            ? 'TILES is what you place with — it is the only thing keeping the run alive. LUCK is what pops pay you, and what the shop under your hand spends. REACH is how far from home you have built. COST is what the next placement takes. Your SCORE is deliberately not on screen: it is what the run is worth when it ends, not a number to play against.'
+            : 'TILES is what you place with. POINTS is your score. REACH is how far from home you have built. COST is what the next placement takes. LEFT is how many placements the expedition has still to give.'
           : 'TILES is your life — it is the number that ends the run. POINTS is your score. MAP is how deep you are. COST is what the next placement takes.',
         'The line above your hand reads: what to do now · the nearest destination · your current odds.',
         'Zoom with + and −, pinch works too, drag to pan, FIT shows everything. Worth numbers appear as you zoom in.',
@@ -907,9 +934,80 @@ export class Game {
    * Harvest what the buttons are pricing. The selector owns which pocket that
    * is (`hud.harvestAt`), so the dispatch and the price cannot disagree.
    */
+  /**
+   * The luck shop: what popping early is for.
+   *
+   * Everything the shop sells is on screen at all times, priced, whether or
+   * not the purse can pay — the whole reason to cash a small pocket is that
+   * you can see what the luck is going to buy. Unaffordable rows are dimmed
+   * rather than removed, which is what makes them a goal instead of a
+   * surprise. The row hides entirely where luck has no prices.
+   */
+  #renderSpends(hud: HudView): void {
+    this.#el.spends.hidden = hud.spends.length === 0;
+    if (hud.spends.length === 0) {
+      this.#el.spends.replaceChildren();
+      return;
+    }
+
+    const purse = document.createElement('span');
+    purse.className = 'spend-purse';
+    purse.textContent = `${hud.luck} LUCK`;
+
+    this.#el.spends.replaceChildren(
+      purse,
+      ...hud.spends.map((spend) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'spend';
+        button.dataset['spend'] = spend.on;
+        button.disabled = !spend.affordable;
+        if (spend.colour !== null) button.dataset['colour'] = spend.colour;
+
+        const label =
+          spend.colour !== null
+            ? this.#theme.terrainNames[spend.colour]
+            : spend.on === 'reroll'
+              ? 'REDRAW'
+              : 'FORGE';
+        button.textContent = `${label} ${spend.cost}`;
+        button.title =
+          spend.on === 'reroll'
+            ? 'Throw this hand away and draw a new one.'
+            : spend.on === 'forge'
+              ? 'Turn the selected card UNIQUE: wild, and its matches count double.'
+              : `Draw a new hand leaning ${label}, and keep it leaning for the next few draws.`;
+        return button;
+      }),
+    );
+  }
+
   #harvest(choice: HarvestChoice): void {
     const at = toHudView(this.#state, this.#harvestAt).harvestAt;
     this.#dispatch(at === null ? { type: 'HARVEST', choice } : { type: 'HARVEST', choice, at });
+  }
+
+  /**
+   * Buy something with luck, and SAY what was bought.
+   *
+   * A reroll that silently replaces three cards looks identical to a bug, so
+   * every purchase pays out into the toast — the purse is a currency now and
+   * a currency you cannot see leaving is a currency you stop trusting.
+   */
+  #spend(on: Spend, colour?: Colour): void {
+    const before = this.#state.luck;
+    this.#dispatch(colour === undefined ? { type: 'SPEND', on } : { type: 'SPEND', on, colour });
+    const paid = before - this.#state.luck;
+    if (paid <= 0) return;
+
+    const word = colour === undefined ? '' : this.#theme.terrainNames[colour];
+    this.#showNote(
+      on === 'reroll'
+        ? `A fresh hand, for ${paid} luck.`
+        : on === 'steer'
+          ? `${word} runs hot: a new hand drawn under it, and the next ${this.#state.tuning.colourBiasDraws} draws lean its way. ${paid} luck.`
+          : `Forged UNIQUE — wild, and every match it makes counts double, both ways. ${paid} luck.`,
+    );
   }
 
   #dispatch(action: Action): void {
@@ -1040,6 +1138,8 @@ export class Game {
         : `Take ${hud.harvestPoints} pts`;
       this.#el.harvestPoints.classList.toggle('bounty', hud.questPays);
     }
+
+    this.#renderSpends(hud);
 
     // The sacrifice, where it exists: give up the pocket for luck instead.
     const burn = hud.canHarvest ? hud.harvestBurn : 0;
@@ -1173,7 +1273,11 @@ export class Game {
   #renderStats(hud: HudView): void {
     const stats: readonly Stat[] = [
       { id: 'tiles', label: 'TILES', value: String(hud.tiles) },
-      { id: 'points', label: 'POINTS', value: String(hud.points) },
+      // Score where it is worth watching; otherwise the purse, which is the
+      // number this game is actually played against.
+      hud.showPoints
+        ? ({ id: 'points', label: 'POINTS', value: String(hud.points) } satisfies Stat)
+        : ({ id: 'luck', label: 'LUCK', value: String(hud.luck) } satisfies Stat),
       { id: 'map', label: hud.depthLabel, value: String(hud.depthValue) },
       { id: 'cost', label: 'COST', value: `−${hud.cost}` },
       // The clock, where there is one. Last on the row because it is the

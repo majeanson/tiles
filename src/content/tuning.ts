@@ -324,6 +324,40 @@ export type Tuning = {
   readonly colourBiasDraws: number;
   readonly colourBiasWeight: number;
 
+  /**
+   * What luck is SPENT on (2026-08-15, Marc played and reported the flaw:
+   * "popping often gave more luck than burning anyway", and the harness
+   * confirmed worse — luck hit `luckCap` about fifteen pops into a
+   * hundred-and-forty-pop run, so for nine tenths of the game popping early
+   * bought nothing at all).
+   *
+   * The fix is that luck stops being a bar that fills and becomes a purse.
+   * Where these are nonzero, luck no longer raises the odds passively at all
+   * (`luckMagicPerPop` and friends go to zero and permanent odds are bought
+   * with POINTS between runs instead) — it is a currency with three prices:
+   *
+   *   reroll — a fresh hand. The cheap, constant one.
+   *   steer  — name a colour: it runs hot for `colourBiasDraws` draws AND
+   *            your hand is redrawn under it immediately, so it is "buy a
+   *            hand of this colour" rather than a bet on later.
+   *   forge  — turn the selected card unique. The expensive one, and the
+   *            only deterministic source of a rare.
+   *
+   * One number doing one job. Zeros = no shop, which is every other game.
+   */
+  /**
+   * Hide the score while the run is alive (Marc, 2026-08-15: he never once
+   * thought about points mid-run, reasoning that going further would earn
+   * them anyway — which is correct, so the number was furniture). Points
+   * become purely the between-runs payout, revealed on the end screen, and
+   * the HUD slot they held goes to LUCK, which is now the live currency.
+   */
+  readonly hidePoints: boolean;
+
+  readonly luckRerollCost: number;
+  readonly luckSteerCost: number;
+  readonly luckForgeCost: number;
+
   readonly singlePayout: boolean;
   readonly pointsPerPop: number;
   readonly burnLuck: number;
@@ -434,6 +468,10 @@ export const TUNING: Tuning = {
 
   luckPerPop: 0,
   luckPerTile: 1,
+  hidePoints: false,
+  luckRerollCost: 0,
+  luckSteerCost: 0,
+  luckForgeCost: 0,
   colourBiasDraws: 0,
   colourBiasWeight: 0,
 
@@ -609,9 +647,27 @@ export const TILESONLY_TUNING: Tuning = {
   colourBiasDraws: 6,
   colourBiasWeight: 2,
 
+  // Luck is a PURSE, not a bar (Marc played it, 2026-08-15). It buys nothing
+  // passively here — permanent odds are bought with points between runs — so
+  // these three prices are the whole of what popping early is for. Income is
+  // about 10 a pop and a good run pops ~140 times, so a reroll is small
+  // change, a steered hand is a real decision, and a unique costs six pops.
+  luckMagicPerPop: 0,
+  luckUniquePerPop: 0,
+  luckCap: 99999,
+  hidePoints: true,
+  luckRerollCost: 12,
+  luckSteerCost: 30,
+  luckForgeCost: 75,
+
   singlePayout: true,
   pointsPerPop: 0.35,
-  burnLuck: 3,
+  // Off: burning a pocket paid 3 luck a tile where popping it paid the same
+  // luck AND the tiles AND the score, so it was strictly dominated the moment
+  // luck went flat-per-pop, and Marc never once used it. Kept in the engine,
+  // priced at nothing, pending his open question of whether a burn should pay
+  // the between-runs currency instead.
+  burnLuck: 0,
   endReachBonus: 40,
   endClaimBonus: 60,
 

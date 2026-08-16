@@ -577,3 +577,48 @@ button.spare {
   opacity: 0.45;
   border-style: dashed;
 }
+
+/* The luck purse and its prices. A shop, not a menu: everything on one row,
+   priced, dimmed when you cannot afford it rather than hidden — the point of
+   popping a small pocket is being able to see what the luck will buy. The
+   buttons are deliberately smaller than the harvest row, because they are the
+   secondary decision and the thumb should find the payouts first. */
+#spends {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+#spends button.spend {
+  min-height: 34px;
+  flex: 0 1 auto;
+  padding: 0 8px;
+  font-size: 0.82em;
+}
+
+.spend-purse {
+  flex: 0 0 auto;
+  padding-right: 2px;
+  color: var(--ink-dim, #c3c9d6);
+  font-family: var(--font-label, inherit);
+  font-size: 0.82em;
+  letter-spacing: var(--label-tracking, 0.04em);
+  opacity: 0.8;
+}
+
+/* A steer button wears the colour it buys, so the row reads as four colours
+   and two verbs rather than six words. */
+#spends button.spend[data-colour='green'] {
+  border-color: var(--tile-green, #6f9f5f);
+}
+#spends button.spend[data-colour='yellow'] {
+  border-color: var(--tile-yellow, #cbb04a);
+}
+#spends button.spend[data-colour='red'] {
+  border-color: var(--tile-red, #b4564a);
+}
+#spends button.spend[data-colour='blue'] {
+  border-color: var(--tile-blue, #4a7fb4);
+}

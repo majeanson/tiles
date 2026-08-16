@@ -1,6 +1,6 @@
 import { COLOURS, type Colour } from '@content/tuning';
 import { distance, key, parse, type HexKey } from '@engine/hex';
-import { canLeave, rarityOdds } from '@engine/reduce';
+import { canLeave, canSpend, rarityOdds, spendCost } from '@engine/reduce';
 import {
   canPlaceAt,
   canPlaceNow,
@@ -15,7 +15,7 @@ import {
   ripeKeys,
   worthOf,
 } from '@engine/rules';
-import type { GameState, LandmarkReward, Rarity } from '@engine/state';
+import type { GameState, LandmarkReward, Rarity, Spend } from '@engine/state';
 import { destinationAt, destinationsWithin, terrainAt } from '@engine/world';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
 
@@ -196,6 +196,21 @@ export type HudView = {
    */
   readonly tilesSpare: boolean;
 
+  /**
+   * False where the score is hidden until the run ends — points are the
+   * between-runs payout, not a number to play against, so the HUD slot goes
+   * to LUCK instead. The end screen always shows the score regardless.
+   */
+  readonly showPoints: boolean;
+
+  /**
+   * The luck purse and what it can buy. Empty where luck has no prices, which
+   * is every game but the tiles-only one. A spend you cannot afford is still
+   * LISTED — a shop with its expensive things hidden teaches you nothing.
+   */
+  readonly luck: number;
+  readonly spends: readonly SpendView[];
+
   /** Bounded only. The plane has no LEAVE, so the button has no reason to exist. */
   readonly showLeave: boolean;
 
@@ -330,6 +345,10 @@ export function toHudView(
     left: placementsLeft(state),
     tilesSpare: tilesSpareIn(state),
 
+    showPoints: !state.tuning.hidePoints,
+    luck: state.luck,
+    spends: spendsFor(state),
+
     showLeave: !endless,
 
     draft: state.draft.map((tile, i) => ({
@@ -369,6 +388,54 @@ export function toHudView(
     epitaph: state.phase === 'ended' ? epitaphFor(state) : null,
     summary: state.phase === 'ended' ? summariseRun(state) : null,
   };
+}
+
+/**
+ * One purchase in the luck shop: what it is called, what it costs, and
+ * whether the purse can pay for it right now.
+ *
+ * Steering is listed once per colour rather than offered as a mode, because a
+ * mode is a second tap and a state to be in; four labelled buttons are four
+ * things you can do. Each wears the world's own word for its colour.
+ */
+export type SpendView = {
+  readonly on: Spend;
+  readonly colour: Colour | null;
+  readonly cost: number;
+  readonly affordable: boolean;
+};
+
+/** The shop, in the order it reads: cheapest first, forge last. */
+function spendsFor(state: GameState): readonly SpendView[] {
+  const t = state.tuning;
+  const rows: SpendView[] = [];
+  if (t.luckRerollCost > 0) {
+    rows.push({
+      on: 'reroll',
+      colour: null,
+      cost: spendCost(t, 'reroll'),
+      affordable: canSpend(state, 'reroll'),
+    });
+  }
+  if (t.luckSteerCost > 0) {
+    for (const colour of COLOURS) {
+      rows.push({
+        on: 'steer',
+        colour,
+        cost: spendCost(t, 'steer'),
+        affordable: canSpend(state, 'steer'),
+      });
+    }
+  }
+  if (t.luckForgeCost > 0) {
+    rows.push({
+      on: 'forge',
+      colour: null,
+      cost: spendCost(t, 'forge'),
+      affordable: canSpend(state, 'forge'),
+    });
+  }
+  return rows;
 }
 
 /** The end screen's numbers, from the log the engine already keeps. */
