@@ -142,6 +142,21 @@ export type Tuning = {
   readonly biomeChance: number;
 
   /**
+   * The shape of the land (2026-08-16). One height per hex, hashed from the
+   * world seed like every other terrain layer, rounded into
+   * `elevationBands` steps so the ground reads as contours rather than as a
+   * gradient. `elevationEvery` is the coarse block size in hexes; 0 flattens
+   * the world.
+   *
+   * Cosmetic by decision, not by accident: Marc chose purely cosmetic when
+   * asked, so nothing in the rules may ever read these. They live here rather
+   * than in the theme because the shape of the land belongs to the WORLD — two
+   * art directions must not disagree about where the hills are.
+   */
+  readonly elevationEvery: number;
+  readonly elevationBands: number;
+
+  /**
    * Hold slots: pockets that keep a drafted tile for later. One tap swaps the
    * selected card with the stash, so every draft becomes "use it or save it".
    * 0 — no stash, the bounded default.
@@ -465,6 +480,8 @@ export const BARE_TUNING: Tuning = {
 
   biomeEvery: 0,
   biomeChance: 0,
+  elevationEvery: 0,
+  elevationBands: 0,
 
   holdSlots: 0,
 
@@ -605,6 +622,10 @@ const PLANE: Tuning = {
   // so walking somewhere changes what the ground grows.
   biomeEvery: 24,
   biomeChance: 0.65,
+  // Blocks of 9 hexes across five bands: big enough that a slope takes a few
+  // placements to climb, banded enough that two neighbours can visibly differ.
+  elevationEvery: 9,
+  elevationBands: 5,
 
   holdSlots: 1,
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TUNING, type Tuning } from '@content/tuning';
-import { key } from '@engine/hex';
+import { key, parse } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { legalPlacements, ripeKeys } from '@engine/rules';
 import type { GameState } from '@engine/state';
@@ -165,5 +165,67 @@ describe('destinations and rarity in the view', () => {
     expect(toHudView(newRun(1, TUNING)).odds).toMatch(/magic .+ unique/);
     const plain = tuned({ magicChance: 0, uniqueChance: 0 });
     expect(toHudView(newRun(1, plain)).odds).toBeNull();
+  });
+});
+
+describe('the torch', () => {
+  /**
+   * Marc, 2026-08-16: "whats our next steps for visuals?" — and then chose
+   * real light and dark first, with one rule attached: DIM, NEVER HIDDEN.
+   * The falloff curve itself is tested in `theme/tokens.test.ts`; what is
+   * checked here is that the board hands the renderer the right distances,
+   * from the right place, and never hands it a hex it cannot read.
+   */
+  const LIGHT = { radius: 2, fade: 8, floor: 0.4 };
+
+  it('centres the light on the last thing you built', () => {
+    const start = newRun(5, TINY);
+    const spot = legalPlacements(start.cells)[0];
+    if (spot === undefined) throw new Error('nowhere to build');
+    const after = reduce(start, { type: 'PLACE', hex: spot });
+    expect(after.lastPlaced).toBe(spot);
+
+    const at = (key: string, view: ReturnType<typeof toBoardView>): number =>
+      view.cells.find((c) => c.key === key)?.light ?? -1;
+
+    const view = toBoardView(after, null, null, [], LIGHT);
+    expect(at(spot, view)).toBe(1);
+  });
+
+  it('opens a fresh run lit, rather than dark until you earn a frame', () => {
+    const view = toBoardView(newRun(5, TINY), null, null, [], LIGHT);
+    expect(view.cells.find((c) => c.key === key(0, 0))?.light).toBe(1);
+  });
+
+  it('dims with distance, and never past the floor', () => {
+    // Grow the plane first: a fresh run has revealed only the clearing, and a
+    // torch cannot be shown falling off across ground that does not exist yet.
+    const grown = fill(newRun(5, TINY));
+    const torch = grown.lastPlaced === null ? { q: 0, r: 0 } : parse(grown.lastPlaced);
+    const far = toBoardView(grown, null, null, [], LIGHT).cells.filter(
+      (c) =>
+        Math.max(
+          Math.abs(c.q - torch.q),
+          Math.abs(c.r - torch.r),
+          Math.abs(torch.q - c.q + torch.r - c.r),
+        ) > 4,
+    );
+    expect(far.length).toBeGreaterThan(0);
+    for (const cell of far) {
+      expect(cell.light).toBeLessThan(1);
+      expect(cell.light).toBeGreaterThanOrEqual(LIGHT.floor);
+    }
+  });
+
+  it('never dims anything to nothing, however far out the board runs', () => {
+    // The rule Marc set, as a test: atmosphere may not cost a player
+    // information, so there is no distance at which a hex stops being legible.
+    const view = toBoardView(newRun(5, TINY), null, null, [], LIGHT);
+    for (const cell of view.cells) expect(cell.light).toBeGreaterThan(0);
+  });
+
+  it('is flat where a direction asks for no falloff', () => {
+    const view = toBoardView(newRun(5, TINY));
+    for (const cell of view.cells) expect(cell.light).toBe(1);
   });
 });

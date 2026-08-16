@@ -3,7 +3,13 @@ import { TUNING, COLOURS, type Tuning } from '@content/tuning';
 import { disc, distance, key, neighbourKeys } from './hex';
 import { newRun, reduce } from './reduce';
 import { previewWorth, worthOf } from './rules';
-import { destinationAt, destinationsWithin, terrainAt } from './world';
+import {
+  destinationAt,
+  destinationsWithin,
+  terrainAt,
+  elevationAt,
+  elevationBandAt,
+} from './world';
 
 /**
  * P2 (`ideas/endless-world.md`): the ground under the endless world. These pin
@@ -171,5 +177,68 @@ describe('walls on the plane', () => {
     // first. The walls contribute nothing, which is the claim being made.
     const t = state.tuning;
     expect(worthOf(cells, centre, t)).toBe(3 + 2 * t.greenCrowdBonus);
+  });
+});
+
+describe('elevation', () => {
+  /**
+   * Marc asked what to do about visuals — "real terrains? 3d like
+   * topography?" — and chose the cosmetic version. Height is a pure function
+   * of the seed like every other terrain layer, so it costs nothing to store
+   * and every run on a world agrees about where the hills are.
+   */
+  const HILLY = { ...TUNING, elevationEvery: 9, elevationBands: 5 };
+
+  it('is a pure function of the world seed', () => {
+    for (const [q, r] of [
+      [0, 0],
+      [7, -3],
+      [40, 40],
+    ] as const) {
+      expect(elevationAt(11, q, r, HILLY)).toBe(elevationAt(11, q, r, HILLY));
+      expect(elevationAt(11, q, r, HILLY)).not.toBe(elevationAt(12, q, r, HILLY));
+    }
+  });
+
+  it('stays in range, everywhere anyone can walk', () => {
+    for (let q = -40; q <= 40; q += 7) {
+      for (let r = -40; r <= 40; r += 7) {
+        const h = elevationAt(3, q, r, HILLY);
+        expect(h).toBeGreaterThanOrEqual(0);
+        expect(h).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('bands the land, and uses more than one band', () => {
+    const seen = new Set<number>();
+    for (let q = -30; q <= 30; q++) {
+      for (let r = -30; r <= 30; r++) seen.add(elevationBandAt(5, q, r, HILLY));
+    }
+    expect(seen.size).toBeGreaterThan(2);
+    for (const band of seen) {
+      expect(band).toBeGreaterThanOrEqual(0);
+      expect(band).toBeLessThan(HILLY.elevationBands);
+    }
+  });
+
+  it('makes hills rather than static — neighbours usually share a band', () => {
+    // The whole point of blocks: if every hex rolled its own height the board
+    // would be noise, not land.
+    let same = 0;
+    let total = 0;
+    for (let q = -20; q <= 20; q++) {
+      for (let r = -20; r <= 20; r++) {
+        total++;
+        if (elevationBandAt(5, q, r, HILLY) === elevationBandAt(5, q + 1, r, HILLY)) same++;
+      }
+    }
+    expect(same / total).toBeGreaterThan(0.6);
+  });
+
+  it('flattens entirely where the layer is switched off', () => {
+    const flat = { ...TUNING, elevationEvery: 0 };
+    expect(elevationAt(5, 12, 12, flat)).toBe(0);
+    expect(elevationBandAt(5, 12, 12, flat)).toBe(0);
   });
 });

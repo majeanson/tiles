@@ -150,3 +150,44 @@ export function terrainAt(seed: number, q: number, r: number, t: Tuning): Terrai
     biome ?? COLOURS[Math.floor((roll / t.fieldChance) * COLOURS.length) % COLOURS.length];
   return colour === undefined ? OPEN : { wall: false, native: colour };
 }
+
+/**
+ * How high this hex sits, 0..1 — pure, like everything else out here.
+ *
+ * Marc, 2026-08-16, asking what to do about visuals: "real terrains? 3d like
+ * topography?" This is the honest version of topography for a board that has
+ * to stay readable under a thumb in portrait. Height is a FUNCTION of the
+ * world seed, so it costs nothing to store, arrives already consistent for
+ * every run on this world, and can be drawn as bevel and shadow rather than
+ * as geometry that would occlude the numbers.
+ *
+ * Purely cosmetic, and that is Marc's call rather than an omission: the
+ * economy took four sessions to settle and a look must not be allowed to move
+ * it. `elevationEvery` 0 flattens the world entirely.
+ *
+ * Two octaves, coarse plus fine, because one block-hash gives plateaus with
+ * visible square seams — the second octave at a third the scale breaks the
+ * blocks up into something that reads as land.
+ */
+export function elevationAt(seed: number, q: number, r: number, t: Tuning): number {
+  if (t.elevationEvery <= 0) return 0;
+  const coarse = Math.max(1, t.elevationEvery);
+  const fine = Math.max(1, Math.round(coarse / 3));
+
+  const a = hashAt(seed ^ 0x2f6a5c11, Math.floor(q / coarse), Math.floor(r / coarse));
+  const b = hashAt(seed ^ 0x7d3e1b95, Math.floor(q / fine), Math.floor(r / fine));
+  return a * 0.65 + b * 0.35;
+}
+
+/**
+ * Height rounded to `elevationBands` steps.
+ *
+ * Bands rather than a continuum: a contour map reads as terrain where a smooth
+ * gradient reads as a stain, and banding is what lets one hex be visibly
+ * higher than the one beside it at the size a phone draws them.
+ */
+export function elevationBandAt(seed: number, q: number, r: number, t: Tuning): number {
+  if (t.elevationEvery <= 0 || t.elevationBands <= 1) return 0;
+  const raw = elevationAt(seed, q, r, t);
+  return Math.min(t.elevationBands - 1, Math.floor(raw * t.elevationBands));
+}

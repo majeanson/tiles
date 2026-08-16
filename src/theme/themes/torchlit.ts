@@ -132,4 +132,10 @@ export const TORCHLIT: Theme = {
 
   empty: surface(0x151310, { inset: 0.09 }),
   ghost: surface(0xf7dba0, { fillTo: 0x9c7331, alpha: 0.3, asset: 'terrain.ghost' }),
+
+  // One torch in a dark room: a tight pool, a deep falloff, and a floor that
+  // keeps the far board readable because Marc set the rule as dim, never
+  // hidden. The deepest falloff of the four, because this is the direction
+  // whose whole argument is that the map is endless because the darkness is.
+  light: { radius: 4, fade: 11, floor: 0.42 },
 };

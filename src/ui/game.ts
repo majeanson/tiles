@@ -1209,7 +1209,13 @@ export class Game {
 
   render(): void {
     this.#renderer.draw(
-      toBoardView(this.#state, this.#harvestAt, this.#spotlight, this.#hooks.memory ?? []),
+      toBoardView(
+        this.#state,
+        this.#harvestAt,
+        this.#spotlight,
+        this.#hooks.memory ?? [],
+        this.#theme.light,
+      ),
     );
     this.#renderHud(toHudView(this.#state, this.#harvestAt, this.#spotlight));
     // The board just grew, which moved the zoom ceiling: a placement can make

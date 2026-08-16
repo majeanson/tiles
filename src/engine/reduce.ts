@@ -271,6 +271,7 @@ export function newRun(
     held: null,
     quest: null,
     bias: null,
+    lastPlaced: null,
     claimed,
     log: { harvests: [], popped: 0, questsDone: 0 },
   };
@@ -457,6 +458,7 @@ function place(state: GameState, hex: HexKey): GameState {
     ...state,
     cells,
     placements: state.placements + 1,
+    lastPlaced: hex,
     tiles,
     points,
     relics,

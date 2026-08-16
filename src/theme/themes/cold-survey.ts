@@ -121,4 +121,9 @@ export const COLD_SURVEY: Theme = {
 
   empty: surface(0x111819, { inset: 0.09 }),
   ghost: surface(0xe8eeea, { fillTo: 0x8fa79c, alpha: 0.28, asset: 'terrain.ghost' }),
+
+  // Forensic daylight: the survey is lit from everywhere, so distance costs
+  // almost nothing. Present so the direction states its own answer rather
+  // than inheriting one.
+  light: { radius: 10, fade: 14, floor: 0.78 },
 };

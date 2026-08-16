@@ -219,6 +219,20 @@ export type GameState = {
   readonly bias: { readonly colour: Colour; readonly left: number } | null;
 
   /**
+   * The hex you last built on, or null before the first placement.
+   *
+   * The torch you are carrying (2026-08-16). Torchlit won its gate on a
+   * promise — "a warm pool over the middle of the map, deep falloff,
+   * everything past it dark" — and a pool has to be centred on something. It
+   * is centred on the last thing you did, so the light moves with the work
+   * rather than sitting on the origin you left twenty minutes ago.
+   *
+   * State rather than a UI guess, because a run reloaded from storage has to
+   * light up in the same place it went dark.
+   */
+  readonly lastPlaced: HexKey | null;
+
+  /**
    * Territories this WORLD already holds, from earlier runs (P4a). Plain
    * data handed to `newRun`, never read from storage by the engine: a run
    * stays reproducible from its seed, its tuning and this list. Those

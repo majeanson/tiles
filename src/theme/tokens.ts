@@ -322,6 +322,27 @@ export type Theme = {
   readonly empty: Surface;
   /** What the selected tile would look like here. Drawn under the preview number. */
   readonly ghost: Surface;
+
+  /**
+   * The torch (2026-08-16). Light falls off with distance from the hex you
+   * last built on, which is what makes the plane read as a room you are
+   * carrying a light through rather than a chart on black.
+   *
+   * Marc set the rule: DIM, NEVER HIDDEN. Distance drains light, but every
+   * number, symbol and beacon stays readable — atmosphere must not cost a
+   * player information, and a phone in daylight has to stay playable. That is
+   * what `floor` is for, and it is a floor rather than a suggestion.
+   */
+  readonly light: Light;
+};
+
+export type Light = {
+  /** Hexes of full brightness around the torch before any falloff starts. */
+  readonly radius: number;
+  /** Hexes over which brightness falls from full to the floor. */
+  readonly fade: number;
+  /** The dimmest a cell may ever be drawn, 0-1. Never 0: see above. */
+  readonly floor: number;
 };
 
 /**
@@ -420,4 +441,20 @@ export function surface(fill: Rgb, over: Partial<Surface> = {}): Surface {
     inset: over.inset ?? 0.06,
     alpha: over.alpha ?? 1,
   };
+}
+
+/**
+ * How brightly a hex `dist` hexes from the torch is drawn, 0-1.
+ *
+ * Full inside `radius`, falling to `floor` over `fade` hexes, and never below
+ * the floor — Marc's rule is dim, never hidden, so this function has no way
+ * to reach zero. The curve is squared rather than linear because linear
+ * falloff reads as a flat grey disc: the eye wants the light to hold near the
+ * source and give way quickly at the edge.
+ */
+export function brightness(light: Light, dist: number): number {
+  if (dist <= light.radius) return 1;
+  if (light.fade <= 0) return light.floor;
+  const t = Math.min(1, (dist - light.radius) / light.fade);
+  return light.floor + (1 - light.floor) * (1 - t) ** 2;
 }

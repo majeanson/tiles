@@ -69,6 +69,16 @@ export type CellView = {
   /** Matching neighbours. Meaningful on tiles; zero everywhere else. */
   readonly worth: number;
 
+  /**
+   * How brightly to draw this hex, 0-1: the torch, already resolved. Computed
+   * in the view because it is pure distance arithmetic and testable there;
+   * the renderer only paints it.
+   */
+  readonly light: number;
+
+  /** Which contour band this ground sits in. 0 where the world is flat. */
+  readonly band: number;
+
   /** Empty ground the player may build on right now. */
   readonly legal: boolean;
   /**

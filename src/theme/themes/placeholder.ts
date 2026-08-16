@@ -82,4 +82,7 @@ export const PLACEHOLDER: Theme = {
   stone: surface(0x3c3f47),
   empty: surface(0x1e222b),
   ghost: surface(0xe8ecf4, { alpha: 0.16 }),
+
+  // Flat by design — the placeholder measures layout, not mood.
+  light: { radius: 999, fade: 1, floor: 1 },
 };

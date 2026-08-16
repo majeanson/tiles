@@ -117,4 +117,7 @@ export const ROT_BLOOM: Theme = {
 
   empty: surface(0x0e100f, { inset: 0.09 }),
   ghost: surface(0xc8f0a8, { fillTo: 0x4e6b2e, alpha: 0.26, asset: 'terrain.ghost' }),
+
+  // Overcast and close: less a torch than a horizon that stops caring.
+  light: { radius: 6, fade: 12, floor: 0.55 },
 };

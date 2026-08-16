@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from 'pixi.js';
 import { key, type HexKey } from '@engine/hex';
-import { COLOUR_GLYPH, fieldDots, hex, rgba, type Surface, type Theme } from '@theme/tokens';
+import { COLOUR_GLYPH, fieldDots, hex, mix, rgba, type Surface, type Theme } from '@theme/tokens';
 import { AssetBook } from './assets';
 import { corners, fitLayout, hexAt, place, zoomCeiling, zoomLayout, type Layout } from './layout';
 import type { BoardView, CellView, Renderer } from './Renderer';
@@ -33,6 +33,15 @@ const ZOOM_MAX = 4;
  * layout was designed around in the first place.
  */
 const HEX_PX_MAX = 34;
+
+/**
+ * How much brighter one contour band draws than the one below it.
+ *
+ * Small on purpose: height is scenery, and a board where the hills are louder
+ * than the tiles is a board you cannot read. Marc chose purely cosmetic
+ * elevation, and this number is what keeps it honest about that.
+ */
+const BAND_LIFT = 0.06;
 
 /**
  * The board, drawn from a theme.
@@ -407,7 +416,32 @@ export class PixiRenderer implements Renderer {
       // is a map, not a place you can act on, and it must never compete with
       // the run you are actually playing.
       sprite.alpha = surface.alpha * (cell.dimmed ? 0.25 : 1) * (cell.remembered ? 0.3 : 1);
+      // The torch. Tint rather than alpha, because dropping alpha would show
+      // the page through the board and turn distance into holes; tinting
+      // toward the board's own dark reads as light falling away from you.
+      // Height rides on the same channel: a hex a band higher catches a little
+      // more of the light, which is what makes contours visible at all.
+      if (cell.light < 1 || cell.band > 0) {
+        const lift = 1 + cell.band * BAND_LIFT;
+        sprite.tint = mix(this.#theme.board.background, 0xffffff, Math.min(1, cell.light * lift));
+      }
       group.addChild(sprite);
+    }
+
+    // Contours: a hex that sits higher than the board's floor gets a light
+    // rim on its upper edges, so a slope reads as a slope rather than as a
+    // colour change. Cosmetic by Marc's decision — nothing in the rules has
+    // ever heard of height.
+    if (cell.band > 0 && layout.size > 8 && !cell.remembered) {
+      const pts = corners(x, y, layout.size * (1 - surface.inset), layout.orientation);
+      group.addChild(
+        new Graphics().poly(pts).stroke({
+          width: Math.max(0.5, layout.size * 0.045),
+          color: mix(this.#theme.board.background, 0xffffff, 0.55),
+          alpha: 0.1 * cell.band * cell.light,
+          alignment: 1,
+        }),
+      );
     }
 
     const stroke = this.#strokeFor(cell, layout.size);

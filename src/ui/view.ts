@@ -16,8 +16,14 @@ import {
   worthOf,
 } from '@engine/rules';
 import type { GameState, LandmarkReward, Rarity, Spend } from '@engine/state';
-import { destinationAt, destinationsWithin, terrainAt } from '@engine/world';
+import { destinationAt, destinationsWithin, elevationBandAt, terrainAt } from '@engine/world';
+import { brightness, type Light } from '@theme/tokens';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
+
+/** A direction that wants no falloff at all — and every test that has no theme. */
+const NO_FALLOFF: Light = { radius: Infinity, fade: 1, floor: 1 };
+
+const ORIGIN_HEX = { q: 0, r: 0 };
 
 /**
  * State to screen, as one pure function.
@@ -52,7 +58,15 @@ export function toBoardView(
   harvestAt: HexKey | null = null,
   spotlight: Colour | null = null,
   memory: readonly HexKey[] = [],
+  light: Light = NO_FALLOFF,
 ): BoardView {
+  // The torch sits on the last thing you built, and on the origin before you
+  // have built anything — so a fresh run opens lit rather than opening dark
+  // and waiting for you to earn a first frame you can read.
+  const torch = state.lastPlaced === null ? ORIGIN_HEX : parse(state.lastPlaced);
+  const lit = (q: number, r: number): number => brightness(light, distance({ q, r }, torch));
+  const band = (q: number, r: number): number =>
+    elevationBandAt(state.rootSeed, q, r, state.tuning);
   const selected = state.draft[state.selected];
   const placeable = canPlaceNow(state);
 
@@ -81,6 +95,8 @@ export function toBoardView(
       // back so one colour's holdings read as a single shape on the board.
       dimmed: spotlight !== null && cell.kind === 'tile' && cell.colour !== spotlight,
       worth: worthOf(state.cells, k, state.tuning),
+      light: lit(q, r),
+      band: band(q, r),
       legal,
       preview:
         legal && selected !== undefined
@@ -111,6 +127,8 @@ export function toBoardView(
       remembered: true,
       rarity: null,
       native: dest === null ? ground.native : null,
+      light: lit(q, r),
+      band: band(q, r),
       ripe: false,
       targeted: false,
       dimmed: false,
@@ -137,6 +155,8 @@ export function toBoardView(
       remembered: false,
       rarity: null,
       native: null,
+      light: lit(d.q, d.r),
+      band: band(d.q, d.r),
       ripe: false,
       targeted: false,
       dimmed: false,

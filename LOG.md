@@ -1533,3 +1533,56 @@ pays, patience still pays (the known open shape, recorded so a change that
 flattens it is visible), and the luck shop beats hoarding.
 
 367 tests, down from 379 — twelve fewer because twelve rules stopped existing.
+
+**Addendum, 2026-08-16 — the torch, and the shape of the land**
+
+Marc: _"whats our next steps for visuals? real terrains? 3d like topography?"_
+He picked two of four and set the constraint on both.
+
+**The torch, first — because the direction that won Gate E had never been
+built.** Torchlit's own note promises "a warm pool over the middle of the map,
+deep falloff, everything past it dark and blurred", and says in as many words
+that it was "recorded in `prompt.md`, not faked here". What was on screen was
+a static vignette and remembered ground at 30% alpha: a chart with a dark
+border, not a light being carried through a room.
+
+So the light is real now. `GameState.lastPlaced` is the torch — state rather
+than a UI guess, because a run reloaded from storage has to light up where it
+went dark — and `brightness(light, dist)` falls from full to a floor over the
+direction's own `fade`. Squared rather than linear: linear falloff reads as a
+flat grey disc, and the eye wants light to hold near the source and give way
+at the edge.
+
+**Marc's rule, and it is a rule: DIM, NEVER HIDDEN.** The floor is a floor —
+`brightness` has no way to reach zero, and a test asserts that no hex on any
+board is ever dimmed to nothing. Atmosphere may not cost a player information,
+and a phone in daylight has to stay playable. Every direction states its own
+light: torchlit is the deepest (floor 0.42), cold-survey's forensic daylight
+barely falls off at all (0.78), and the placeholder is flat, because it
+measures layout rather than mood.
+
+Painted as TINT, not alpha. Dropping alpha would show the page through the
+board and turn distance into holes; tinting toward the board's own dark reads
+as light falling away.
+
+**Then topography, and the honest version of it.** Elevation is a pure hash
+like every other terrain layer — two octaves, banded into five contours — so
+it costs nothing to store and every run on a world agrees where the hills are.
+It rides the same light channel: a hex a band higher catches a little more of
+the torch, with a faint rim on its upper edges. `BAND_LIFT` is 0.06, small on
+purpose, because a board whose hills are louder than its tiles is a board you
+cannot read.
+
+**Cosmetic, by Marc's decision.** Nothing in the rules has ever heard of
+height, and the economy took four sessions to settle — a look does not get to
+move it.
+
+**What was argued against and not built:** a tilted 2.5D board. It fights
+three things this game is already committed to — portrait phones, thumb-sized
+targets, and worth numbers that stay readable at every zoom, which we fixed a
+bug about yesterday. Tiles with real thickness occlude each other, and a board
+you cannot read at a glance is a board you cannot plan on. Lighting and bevels
+buy most of the depth for a fraction of the cost and none of the occlusion.
+
+Painted terrain art per biome is still unbuilt and still the obvious next
+thing, now that there is light to paint it under. 382 tests.
