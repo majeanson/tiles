@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { decodeRun, encodeRun } from '@meta/save';
 import { TUNING, type Tuning } from '@content/tuning';
 import { key, parse } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
@@ -227,5 +228,36 @@ describe('the torch', () => {
   it('is flat where a direction asks for no falloff', () => {
     const view = toBoardView(newRun(5, TINY));
     for (const cell of view.cells) expect(cell.light).toBe(1);
+  });
+});
+
+describe('a run saved before the torch existed', () => {
+  /**
+   * The black screen of 2026-08-16, from the side that actually broke.
+   *
+   * `lastPlaced` shipped without a fill in `decodeRun`, so every saved run
+   * decoded with it absent — and absent is not null. The guard meant to catch
+   * "no torch yet" let it through to `parse`, which threw on the first frame
+   * and took the whole render with it. `save.test.ts` pins the decoding;
+   * this pins that the board survives it either way.
+   */
+  it('still draws, with the torch back at the origin', () => {
+    const raw = JSON.parse(encodeRun(newRun(4, TINY))) as Record<string, unknown>;
+    delete raw['lastPlaced'];
+    const older = decodeRun(JSON.stringify(raw));
+    expect(older).not.toBeNull();
+    if (older === null) return;
+
+    const view = toBoardView(older, null, null, [], { radius: 2, fade: 8, floor: 0.4 });
+    expect(view.cells.length).toBeGreaterThan(0);
+    expect(view.cells.find((c) => c.key === key(0, 0))?.light).toBe(1);
+  });
+
+  it('survives a state whose field is missing outright, not merely null', () => {
+    // Belt and braces: even if a future decoder forgets to fill it, the view
+    // must not be the thing that dies. This is the guard that was missing.
+    const raw = JSON.parse(encodeRun(newRun(4, TINY))) as Record<string, unknown>;
+    delete raw['lastPlaced'];
+    expect(() => toBoardView(raw as unknown as GameState)).not.toThrow();
   });
 });

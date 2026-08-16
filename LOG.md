@@ -1586,3 +1586,37 @@ buy most of the depth for a fraction of the cost and none of the occlusion.
 
 Painted terrain art per biome is still unbuilt and still the obvious next
 thing, now that there is light to paint it under. 382 tests.
+
+**Addendum, 2026-08-16 — the black screen, and the class of bug behind it**
+
+Marc opened the game to nothing: no board, no stats, three empty card
+outlines. Not darkness — a crash on the first frame.
+
+`lastPlaced` shipped an hour earlier with no fill in `decodeRun`. A run saved
+before that field existed decodes with `lastPlaced: undefined`, and
+`undefined === null` is FALSE — so the guard written to catch "no torch yet"
+waved it through into `parse(undefined)`, which threw, and the render died
+with it. Every device with a saved run was affected. Mine, entirely.
+
+**The class matters more than the instance.** `decodeRun` was tolerant of
+exactly one late-arriving field (`claimed`, with a comment explaining why
+tolerance is the whole difference between a save format that evolves and one
+that eats a run every time the game grows) and then five more fields were
+added without joining it. Two of them — `bias` and `lastPlaced` — crash on
+property access when absent; the rest merely lie.
+
+So the block now fills all of them: `lastPlaced`, `bias`, `quest`, `held`,
+`luck`, `relics`, `usedSecondWind`. `relics` and `held` also stopped being
+hard REJECTS — a run written before relics existed was being thrown away
+outright, which is the same bug wearing a politer face.
+
+The view is defensive too, checking `typeof lastPlaced === 'string'` rather
+than trusting a decoder. Both, because this one cost a black screen.
+
+Tests strip each late field one at a time and then all together, and require
+the run to come back, draw, and keep playing. The render half lives in
+`view.test.ts` because the layering forbids `meta/` importing `ui/` — the
+lint caught me putting it in the wrong file, which is the rule doing its job.
+
+**The standing rule from here:** anything added to `GameState` joins that fill
+block in the same commit.

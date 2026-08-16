@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { legalPlacements } from '@engine/rules';
 import { TUNING } from '@content/tuning';
 import { key } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
+import type { GameState } from '@engine/state';
 import { decodeRun, encodeRun } from './save.js';
 
 /**
@@ -52,11 +54,70 @@ describe('keeping a run', () => {
     for (const mangle of [
       ['"phase":"placing"', '"phase":"paused"'],
       ['"tiles":30', '"tiles":"lots"'],
-      ['"relics":0', '"relics":"many"'],
+      // Still a hard reject: a core field the reducer cannot work without.
+      ['"selected":0', '"selected":"first"'],
     ] as const) {
       const raw = encodeRun(state).replace(mangle[0], mangle[1]);
       expect(raw).not.toBe(encodeRun(state)); // the mangle found its target
       expect(decodeRun(raw)).toBeNull();
     }
+  });
+});
+
+describe('runs saved before a field existed', () => {
+  /**
+   * The black screen of 2026-08-16.
+   *
+   * `lastPlaced` shipped without a fill in `decodeRun`, so every saved run on
+   * Earth decoded with `lastPlaced: undefined`. `undefined === null` is false,
+   * so the guard meant to catch "no torch yet" let it through to
+   * `parse(undefined)`, which threw on the first frame and took the whole
+   * render with it. Marc opened the game to nothing at all.
+   *
+   * These load a save with each later field stripped out, one at a time and
+   * then all together, and require that the run comes back and keeps playing.
+   */
+  const LATER = ['lastPlaced', 'bias', 'quest', 'held', 'luck', 'relics', 'usedSecondWind'];
+
+  const stripped = (state: GameState, fields: readonly string[]): string => {
+    const raw = JSON.parse(encodeRun(state)) as Record<string, unknown>;
+    for (const f of fields) delete raw[f];
+    return JSON.stringify(raw);
+  };
+
+  it('comes back with every later field filled, one at a time', () => {
+    const state = reduce(newRun(4), { type: 'PLACE', hex: legalPlacements(newRun(4).cells)[0]! });
+
+    for (const field of LATER) {
+      const back = decodeRun(stripped(state, [field]));
+      expect({ field, ok: back !== null }).toEqual({ field, ok: true });
+    }
+  });
+
+  it('comes back from a save with ALL of them missing, and still renders', () => {
+    const state = reduce(newRun(4), { type: 'PLACE', hex: legalPlacements(newRun(4).cells)[0]! });
+    const back = decodeRun(stripped(state, LATER));
+    expect(back).not.toBeNull();
+    if (back === null) return;
+
+    // The crash itself was in the view, which the layering forbids importing
+    // from here — `view.test.ts` owns that half. What this file owns is that
+    // every field the view goes on to read comes back NULL rather than
+    // undefined, which is the exact difference that caused it.
+    expect(back.lastPlaced).toBeNull();
+    expect(back.bias).toBeNull();
+    expect(back.relics).toBe(0);
+  });
+
+  it('keeps playing afterwards, which is the point of not rejecting it', () => {
+    const state = reduce(newRun(4), { type: 'PLACE', hex: legalPlacements(newRun(4).cells)[0]! });
+    const back = decodeRun(stripped(state, LATER));
+    if (back === null) throw new Error('rejected');
+
+    const spot = legalPlacements(back.cells)[0];
+    if (spot === undefined) throw new Error('nowhere to build');
+    const next = reduce(back, { type: 'PLACE', hex: spot });
+    expect(next.placements).toBe(back.placements + 1);
+    expect(next.lastPlaced).toBe(spot);
   });
 });

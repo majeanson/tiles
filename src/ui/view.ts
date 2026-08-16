@@ -63,7 +63,11 @@ export function toBoardView(
   // The torch sits on the last thing you built, and on the origin before you
   // have built anything — so a fresh run opens lit rather than opening dark
   // and waiting for you to earn a first frame you can read.
-  const torch = state.lastPlaced === null ? ORIGIN_HEX : parse(state.lastPlaced);
+  // Defensive on purpose: a save written before this field existed decodes it
+  // as absent, and `undefined` walks straight past an `=== null` guard into
+  // `parse`. `decodeRun` fills it as well — both, because this one cost Marc a
+  // black screen on the first frame of a resumed run.
+  const torch = typeof state.lastPlaced === 'string' ? parse(state.lastPlaced) : ORIGIN_HEX;
   const lit = (q: number, r: number): number => brightness(light, distance({ q, r }, torch));
   const band = (q: number, r: number): number =>
     elevationBandAt(state.rootSeed, q, r, state.tuning);

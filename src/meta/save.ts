@@ -47,7 +47,7 @@ export function decodeRun(raw: string | null): GameState | null {
   // still lose its own game; it cannot crash the loop.
   if (parsed['version'] !== 1) return null;
   if (parsed['phase'] !== 'placing' && parsed['phase'] !== 'ended') return null;
-  for (const key of ['tiles', 'points', 'placements', 'luck', 'relics', 'rootSeed']) {
+  for (const key of ['tiles', 'points', 'placements', 'rootSeed']) {
     if (typeof parsed[key] !== 'number') return null;
   }
 
@@ -69,7 +69,6 @@ export function decodeRun(raw: string | null): GameState | null {
 
   if (!isRecord(parsed['cells'])) return null;
   if (!Array.isArray(parsed['draft']) || !parsed['draft'].every(isTile)) return null;
-  if (parsed['held'] !== null && !isTile(parsed['held'])) return null;
   if (typeof parsed['selected'] !== 'number') return null;
 
   const log = parsed['log'];
@@ -77,14 +76,42 @@ export function decodeRun(raw: string | null): GameState | null {
     return null;
   }
 
-  // `claimed` (P4a) arrived after the first saves existed. A run written
-  // before it is not corrupt, it is just older — fill the field rather than
-  // throw the run away, which is the whole difference between a save format
-  // that can evolve and one that eats a run every time the game grows.
+  /**
+   * Fields that arrived AFTER saves already existed.
+   *
+   * A run written before one of them is not corrupt, it is just older, so each
+   * is filled rather than rejected — that is the difference between a save
+   * format that can evolve and one that eats a run every time the game grows.
+   *
+   * Filling is also not optional. An absent field decodes as `undefined`, and
+   * `undefined` slips past every `=== null` guard in the codebase before
+   * crashing on the property access underneath it.
+   *
+   * Not hypothetical: `lastPlaced` shipped on 2026-08-16 without this block,
+   * so every saved run decoded with `lastPlaced: undefined`, which reached
+   * `parse(undefined)` on the first frame and took the whole render down with
+   * it. Marc opened the game to a black screen. Anything added to `GameState`
+   * from here belongs in this list on the same commit.
+   */
   const claimed = parsed['claimed'];
+  const bias = parsed['bias'];
+  const lastPlaced = parsed['lastPlaced'];
+  const quest = parsed['quest'];
+  const held = parsed['held'];
+
   const state = {
     ...parsed,
     claimed: Array.isArray(claimed) && claimed.every((k) => typeof k === 'string') ? claimed : [],
+    lastPlaced: typeof lastPlaced === 'string' ? lastPlaced : null,
+    bias:
+      isRecord(bias) && typeof bias['colour'] === 'string' && typeof bias['left'] === 'number'
+        ? bias
+        : null,
+    quest: isRecord(quest) ? quest : null,
+    held: isTile(held) ? held : null,
+    luck: typeof parsed['luck'] === 'number' ? parsed['luck'] : 0,
+    relics: typeof parsed['relics'] === 'number' ? parsed['relics'] : 0,
+    usedSecondWind: parsed['usedSecondWind'] === true,
   };
   return state as unknown as GameState;
 }
