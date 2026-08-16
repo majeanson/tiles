@@ -39,46 +39,12 @@ export type FeatureDef = {
  */
 export const FEATURES = [
   {
-    id: 'pop.treasure',
-    label: 'Treasure payout',
-    note:
-      'A third choice when a big pocket pops: take a rare tile into your stash instead of ' +
-      'the tiles or the points — magic from 10 tiles, unique from 20. Declared in Session 0 ' +
-      'and wired in M3 (2026-08-15); off by default because run one is the smallest game ' +
-      'there is, and this is the first thing worth unlocking.',
-    defaultOn: false,
-    wired: true,
-  },
-  {
     id: 'debug.overlay',
     label: 'Debug overlay',
     note:
-      'Seed, cell counts and the run’s own numbers, printed under the board. Built in M3 ' +
-      'so the registry holds no flags that do nothing; off unless you are diagnosing ' +
-      'something on a phone with no console.',
-    defaultOn: false,
-    wired: true,
-  },
-  {
-    id: 'world.endless',
-    label: 'The endless world',
-    note:
-      'One unbounded plane instead of bounded maps: local cluster harvests, distance ' +
-      'pays, destinations, biomes, rarity, the stash. ON by default since 2026-08-14 — ' +
-      'Session 4 said endless-replaces-bounded would be decided by playing, and Marc ' +
-      'played both and chose (LOG, Session 9). Off = the original bounded game. ' +
-      'World changes apply from your next run, never to the one in progress.',
-    defaultOn: true,
-    wired: true,
-  },
-  {
-    id: 'run.tilesonly',
-    label: 'The tiles-only run',
-    note:
-      'The pivot of 2026-08-15: one currency. A pop always pays TILES, points become the ' +
-      'SCORE rather than a payout, there is no clock — you die when you run dry — and a pocket ' +
-      'can be BURNED for luck instead of taken. Off while it is a prototype: play it against the ' +
-      'shipped game and keep whichever is better.',
+      'Seed, cell counts and the run’s own numbers, printed under the board. Off unless ' +
+      'you are diagnosing something on a phone with no console — which is the only ' +
+      'console this project has, because testing happens on the deployed site.',
     defaultOn: false,
     wired: true,
   },
@@ -87,8 +53,8 @@ export const FEATURES = [
     label: 'Theme picker',
     note:
       'A row of art directions under the build stamp, switching the whole look on tap. ' +
-      'Off by default because Gate E is shut and the placeholder is the shipped look; ' +
-      'on when you are standing outside with a phone deciding which direction survives daylight.',
+      'Off by default because torchlit is the decision (Gate E, 2026-08-15); on when you ' +
+      'are standing outside with a phone deciding which direction survives daylight.',
     defaultOn: false,
     wired: true,
   },

@@ -1,4 +1,4 @@
-import { ENDLESS_TUNING, TILESONLY_TUNING, TUNING, type Tuning } from '@content/tuning';
+import { TILESONLY_TUNING, type Tuning } from '@content/tuning';
 import {
   decodeFeatures,
   encodeFeatures,
@@ -616,12 +616,11 @@ function mountSettings(
  * crosses the line. The manual then describes the result automatically,
  * because it reads the same tuning.
  */
-function applyUnlocks(base: Tuning, features: FeatureSet, unlocked: readonly string[]): Tuning {
+function applyUnlocks(base: Tuning, unlocked: readonly string[]): Tuning {
   let t = base;
-  // The treasure payout is either unlocked by a shrine or switched on by hand.
-  if (!isEnabled(features, 'pop.treasure') && !unlocked.includes('treasure')) {
-    t = { ...t, treasureNeed: 0 };
-  }
+  // Treasure is part of the game now rather than a flag or a shrine's gift:
+  // a third real choice at a pocket, and the economy Marc has been playing
+  // and balancing all along is the one with it in.
   if (unlocked.includes('draft')) t = { ...t, draftWidth: t.draftWidth + 1 };
   if (unlocked.includes('hold')) t = { ...t, holdSlots: t.holdSlots + 1 };
   if (unlocked.includes('luck')) {
@@ -737,12 +736,14 @@ async function main(): Promise<void> {
   // progress. `?ff=-world.endless` is the bounded game.
   // Flags and UNLOCKS become TUNING here at the edge and travel no further:
   // the engine sees numbers, never a feature registry and never a world.
-  const base = isEnabled(features, 'run.tilesonly')
-    ? TILESONLY_TUNING
-    : isEnabled(features, 'world.endless')
-      ? ENDLESS_TUNING
-      : TUNING;
-  const unlocked = applyUnlocks(base, features, seed === world.worldSeed ? unlockedBy(world) : []);
+  // ONE economy, for everybody (Marc, 2026-08-16: "officialize some decisions
+  // and remove some flags so all players play the same game when shared").
+  // The tiles-only run stopped being an experiment the day he played it and
+  // asked for the roguelite on top; the flag that used to gate it is gone, so
+  // a shared seed opens the game its sender was playing rather than whatever
+  // the receiver happened to have switched on.
+  const base = TILESONLY_TUNING;
+  const unlocked = applyUnlocks(base, seed === world.worldSeed ? unlockedBy(world) : []);
   // ...and then what the roguelite has bought, which is the last word: a
   // deeper purse, keener odds, richer worlds and whichever perk is worn.
   // A shared `?seed=` link is somebody else's run and plays the plain
