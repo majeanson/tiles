@@ -78,18 +78,27 @@
            harvest is only a decision if you can see what you are giving up. -->
       <div id="controls">
         <div id="draft"></div>
+
+        <!-- POP is the decision; everything else is a variation on it. So POP
+             gets the row, and the variations get a quieter one underneath —
+             five equal buttons wrapping their own labels was the crammed thing
+             Marc was looking at. -->
         <div id="actions">
           <button id="harvest-tiles" type="button"></button>
-          <button id="harvest-points" type="button"></button>
+          <button id="harvest-points" type="button" hidden></button>
+        </div>
+        <div id="actions-more">
           <button id="harvest-treasure" type="button" hidden></button>
           <button id="harvest-burn" type="button" hidden></button>
-          <button id="leave" type="button"></button>
         </div>
 
-        <!-- The luck purse, where luck is spent rather than accumulated: a
-             fresh hand, a hand of a colour you name, or the selected card
-             forged unique. Empty and hidden where the shop has no prices. -->
-        <div id="spends" hidden></div>
+        <!-- The luck purse, folded. Open it and it is a shop; closed it is one
+             line that says what you are carrying — and lights up when there is
+             something you can actually afford. -->
+        <div id="purse" hidden>
+          <button id="purse-toggle" type="button" aria-expanded="false"></button>
+          <div id="spends" hidden></div>
+        </div>
       </div>
 
       <!-- Gate D's screen: cause of death, the run's arc in numbers, the

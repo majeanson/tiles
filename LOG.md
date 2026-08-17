@@ -1689,3 +1689,38 @@ still ahead of `bank20`, so the luck shop still pays for itself.
 literal string `"tiles":30` to corrupt; the new starting purse is 22, so the
 mangle stopped finding its target and the assertion "this mangle broke the
 save" silently tested nothing. It derives the number from the run now.
+
+**Addendum, same day — hierarchy, not smaller things**
+
+Marc: _"adjust the visuals so its less crammed up, more ui ux user friendly."_
+
+The crowding had a shape worth naming: **five rows of equal-weight controls**
+under the board, none of them saying which mattered. Four payout buttons
+wrapping their own labels onto three lines each ("SACRIFICE for 30 relics"),
+then six shop buttons wrapping onto a second row, then chips, then a hint that
+ran to three lines with the debug overlay on. Everything was the same size, so
+nothing was the answer.
+
+The fix is not shrinking things:
+
+- **POP owns its row.** It is the decision; the others are variations on it.
+  TREASURE and SACRIFICE moved to a quieter second row, smaller and dimmer,
+  and that row hides itself entirely when neither applies.
+- **Labels stopped repeating their verbs.** `SACRIFICE  30 relics`,
+  `TAKE  1 MAGIC`, `POP  79 tiles · 6300 pts`. The numbers are the message.
+- **The purse folds.** Closed it is one line: what you carry, and either
+  `· SPEND` or `· next 12`. Open it is the shop, on a three-column grid rather
+  than a wrapping row.
+- **The hint line is capped at two lines** and scrolls inside them, rather
+  than pushing the hand down the screen when the debug overlay is on.
+
+**The fold is not only tidiness.** Marc finished a run with 166 luck unspent
+while every price sat on screen the whole time — an always-open shop was not
+advertising itself either. Closed, the toggle wears the accent colour the
+moment anything is affordable, so it speaks up exactly when it can be used and
+stays quiet when it cannot.
+
+One thing tried and reverted inside the same pass: making the colour chips
+bigger for "breathing room". They were already the most compact thing on the
+screen, and the change made the crowding worse. Room comes from the rows that
+were fighting, not from the row that was behaving.

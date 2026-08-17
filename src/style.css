@@ -578,51 +578,6 @@ button.spare {
   border-style: dashed;
 }
 
-/* The luck purse and its prices. A shop, not a menu: everything on one row,
-   priced, dimmed when you cannot afford it rather than hidden — the point of
-   popping a small pocket is being able to see what the luck will buy. The
-   buttons are deliberately smaller than the harvest row, because they are the
-   secondary decision and the thumb should find the payouts first. */
-#spends {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  justify-content: center;
-}
-
-#spends button.spend {
-  min-height: 34px;
-  flex: 0 1 auto;
-  padding: 0 8px;
-  font-size: 0.82em;
-}
-
-.spend-purse {
-  flex: 0 0 auto;
-  padding-right: 2px;
-  color: var(--ink-dim, #c3c9d6);
-  font-family: var(--font-label, inherit);
-  font-size: 0.82em;
-  letter-spacing: var(--label-tracking, 0.04em);
-  opacity: 0.8;
-}
-
-/* A steer button wears the colour it buys, so the row reads as four colours
-   and two verbs rather than six words. */
-#spends button.spend[data-colour='green'] {
-  border-color: var(--tile-green, #6f9f5f);
-}
-#spends button.spend[data-colour='yellow'] {
-  border-color: var(--tile-yellow, #cbb04a);
-}
-#spends button.spend[data-colour='red'] {
-  border-color: var(--tile-red, #b4564a);
-}
-#spends button.spend[data-colour='blue'] {
-  border-color: var(--tile-blue, #4a7fb4);
-}
-
 /* The between-runs shop, on the end screen. A list of rows rather than a grid
    of cards: the note matters more than the ornament, and a phone reads a
    column. Everything is listed whether or not it can be afforded, because the
@@ -745,4 +700,102 @@ button.help-tab[data-on='true'] {
    whatever the canvas happens to be sized at when the layout changes. */
 #board {
   overflow: hidden;
+}
+
+/* ------------------------------------------------------- hierarchy, not size
+
+   Marc: "adjust the visuals so its less crammed up, more ui ux user friendly."
+   Five rows of equal-weight controls were competing under the board — four
+   payout buttons wrapping their own labels, then six shop buttons wrapping to
+   a second line. The fix is not smaller things, it is deciding which thing
+   matters: POP is the decision, the variations are quieter, and the shop is
+   folded until you open it. */
+
+#controls {
+  gap: 10px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+}
+
+/* POP owns its row and reads as the primary action. */
+#actions button {
+  min-height: 52px;
+  font-size: 1.02em;
+  letter-spacing: 0.06em;
+}
+
+/* The variations: present, priced, and visibly secondary. */
+#actions-more {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+#actions-more:not(:has(button:not([hidden]))) {
+  display: none;
+}
+
+#actions-more button {
+  min-height: 40px;
+  font-size: 0.86em;
+  opacity: 0.85;
+}
+
+/* The purse, folded. One line closed; a shop open. */
+#purse {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#purse-toggle {
+  min-height: 38px;
+  flex: 1 1 auto;
+  font-size: 0.84em;
+  opacity: 0.6;
+}
+
+/* Affordable: the fold advertises itself at the moment it can be used. */
+#purse-toggle.live {
+  border-color: var(--accent, #d7b45a);
+  color: var(--accent, #d7b45a);
+  opacity: 1;
+}
+
+#spends {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+#spends button.spend {
+  min-height: 40px;
+  flex: 1 1 auto;
+  padding: 0 6px;
+  font-size: 0.8em;
+}
+
+/* A steer button wears the colour it buys, so the shop reads as four colours
+   and two verbs rather than six words. */
+#spends button.spend[data-colour='green'] {
+  border-color: var(--tile-green, #6f9f5f);
+}
+#spends button.spend[data-colour='yellow'] {
+  border-color: var(--tile-yellow, #cbb04a);
+}
+#spends button.spend[data-colour='red'] {
+  border-color: var(--tile-red, #b4564a);
+}
+#spends button.spend[data-colour='blue'] {
+  border-color: var(--tile-blue, #4a7fb4);
+}
+
+/* The reorientation line is one line. It was three on a phone with the debug
+   overlay on, and a paragraph under the board is a paragraph nobody reads. */
+#hint {
+  /* Capped rather than resized: it already has a size, and what it did not
+     have was a limit — with the debug overlay on it ran to three lines and
+     pushed the hand down the screen. It scrolls inside its own two lines now. */
+  max-height: 2.6em;
+  overflow-y: auto;
+  line-height: 1.3;
 }

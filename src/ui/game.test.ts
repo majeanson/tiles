@@ -93,7 +93,8 @@ function build(
     <button id="harvest-points"></button>
     <button id="harvest-treasure" hidden></button>
     <button id="harvest-burn" hidden></button>
-    <div id="spends" hidden></div>
+    <div id="actions-more"></div>
+    <div id="purse" hidden><button id="purse-toggle"></button><div id="spends" hidden></div></div>
     <p id="end" hidden></p>`;
 
   const pick = <T extends HTMLElement>(id: string): T => {
@@ -109,6 +110,9 @@ function build(
     colours: pick('colours'),
     draft: pick('draft'),
     spends: pick('spends'),
+    purse: pick('purse'),
+    purseToggle: pick<HTMLButtonElement>('purse-toggle'),
+    actionsMore: pick('actions-more'),
     controls: pick('controls'),
     harvestTiles: pick<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: pick<HTMLButtonElement>('harvest-points'),
@@ -938,5 +942,52 @@ describe('tiles you cannot spend', () => {
     ctx.game.start();
     expect(ctx.el.harvestTiles.textContent).not.toMatch(/SPARE/);
     expect(ctx.el.hint.textContent).not.toMatch(/more tiles than you can spend/i);
+  });
+});
+
+describe('the purse, folded', () => {
+  /**
+   * Marc: "adjust the visuals so its less crammed up, more ui ux user
+   * friendly." Six shop buttons wrapping to a second row under the hand were
+   * the crammed thing. They fold now — and the fold is not merely tidier: he
+   * finished a run with 166 luck unspent while every price sat on screen the
+   * whole time, so an always-open shop was not advertising itself either.
+   * Closed, the toggle says what you carry and lights up when you can buy.
+   */
+  const shop = (): { ctx: ReturnType<typeof build>; toggle: HTMLButtonElement } => {
+    const ctx = build(7, TUNING);
+    ctx.game.start();
+    return { ctx, toggle: ctx.el.purseToggle };
+  };
+
+  it('starts closed, with the prices out of the way', () => {
+    const { ctx, toggle } = shop();
+    expect(ctx.el.purse.hidden).toBe(false);
+    expect(ctx.el.spends.hidden).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toMatch(/LUCK/);
+  });
+
+  it('opens on a tap and closes on the next', () => {
+    const { ctx, toggle } = shop();
+    toggle.click();
+    expect(ctx.el.spends.hidden).toBe(false);
+    expect(ctx.el.spends.children.length).toBeGreaterThan(0);
+
+    toggle.click();
+    expect(ctx.el.spends.hidden).toBe(true);
+  });
+
+  it('stays quiet while nothing is affordable', () => {
+    const { toggle } = shop();
+    // A fresh run has no luck at all: the shop is a goal, not an option.
+    expect(toggle.classList.contains('live')).toBe(false);
+    expect(toggle.textContent).toMatch(/next \d+/);
+  });
+
+  it('names the cheapest thing it could sell you, so the fold is not a mystery', () => {
+    const { toggle } = shop();
+    const cheapest = Math.min(TUNING.luckRerollCost, TUNING.luckSteerCost, TUNING.luckForgeCost);
+    expect(toggle.textContent).toContain(String(cheapest));
   });
 });

@@ -64,6 +64,9 @@ export type Elements = {
   /** The sacrifice: pop for luck instead of tiles. Only where it exists. */
   readonly harvestBurn: HTMLButtonElement;
   readonly spends: HTMLElement;
+  readonly purse: HTMLElement;
+  readonly purseToggle: HTMLButtonElement;
+  readonly actionsMore: HTMLElement;
   readonly controls: HTMLElement;
   readonly end: HTMLElement;
   readonly zoomIn: HTMLButtonElement;
@@ -312,6 +315,12 @@ export class Game {
 
     // The shop's buttons are rebuilt every frame, so the listener lives on
     // the row and reads what was tapped. One listener, any number of prices.
+    this.#el.purseToggle.addEventListener('click', () => {
+      const open = this.#el.purseToggle.getAttribute('aria-expanded') === 'true';
+      this.#el.purseToggle.setAttribute('aria-expanded', String(!open));
+      this.render();
+    });
+
     this.#el.spends.addEventListener('click', (event) => {
       const button = (event.target as HTMLElement | null)?.closest('button');
       const on = button?.dataset['spend'];
@@ -1109,18 +1118,33 @@ export class Game {
    * surprise. The row hides entirely where luck has no prices.
    */
   #renderSpends(hud: HudView): void {
-    this.#el.spends.hidden = hud.spends.length === 0;
+    this.#el.purse.hidden = hud.spends.length === 0;
     if (hud.spends.length === 0) {
       this.#el.spends.replaceChildren();
       return;
     }
 
-    const purse = document.createElement('span');
-    purse.className = 'spend-purse';
-    purse.textContent = `${hud.luck} LUCK`;
+    // Closed by default, because six buttons wrapping to two rows under the
+    // hand was the crammed thing. The toggle carries the purse and the
+    // cheapest price, and wears the accent whenever something is affordable —
+    // so a folded shop advertises itself at exactly the moment it can be used,
+    // which the always-open version somehow did not: Marc finished a run with
+    // 166 luck unspent while every price sat on screen the whole time.
+    const cheapest = hud.spends.reduce((n, s2) => Math.min(n, s2.cost), Infinity);
+    const canBuy = hud.spends.some((s2) => s2.affordable);
+    const open = this.#el.purseToggle.getAttribute('aria-expanded') === 'true';
+
+    this.#el.purseToggle.textContent = open
+      ? `${hud.luck} LUCK  ▾`
+      : `${hud.luck} LUCK  ${canBuy ? '· SPEND' : `· next ${cheapest}`}  ▸`;
+    // Written rather than merely read, so the control states its own state
+    // even on the first frame — a screen reader should not have to infer it.
+    this.#el.purseToggle.setAttribute('aria-expanded', String(open));
+    this.#el.purseToggle.classList.toggle('live', canBuy);
+    this.#el.spends.hidden = !open;
+    if (!open) return;
 
     this.#el.spends.replaceChildren(
-      purse,
       ...hud.spends.map((spend) => {
         const button = document.createElement('button');
         button.type = 'button';
@@ -1299,8 +1323,8 @@ export class Game {
     // existing rather than sitting there meaning the same thing.
     if (hud.singlePayout) {
       this.#el.harvestTiles.textContent = hud.questPays
-        ? `POP ${hud.harvestTiles} tiles · ${hud.harvestPoints} pts ★`
-        : `POP ${hud.harvestTiles} tiles · ${hud.harvestPoints} pts`;
+        ? `★ POP  ${hud.harvestTiles} tiles · ${hud.harvestPoints} pts`
+        : `POP  ${hud.harvestTiles} tiles · ${hud.harvestPoints} pts`;
       this.#el.harvestTiles.classList.toggle('bounty', hud.questPays);
       this.#el.harvestTiles.classList.remove('spare');
       this.#el.harvestPoints.hidden = true;
@@ -1322,8 +1346,8 @@ export class Game {
     this.#el.harvestBurn.disabled = burn <= 0;
     if (burn > 0) {
       this.#el.harvestBurn.textContent = hud.burnPaysRelics
-        ? `SACRIFICE for ${burn} relics`
-        : `BURN for +${burn} luck`;
+        ? `SACRIFICE  ${burn} relics`
+        : `BURN  +${burn} luck`;
     }
     this.#el.harvestTiles.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;
@@ -1340,7 +1364,7 @@ export class Game {
     this.#el.harvestTreasure.hidden = treasure === null;
     this.#el.harvestTreasure.disabled = treasure === null;
     if (treasure !== null) {
-      this.#el.harvestTreasure.textContent = `Take a ${treasure.toUpperCase()} tile`;
+      this.#el.harvestTreasure.textContent = `TAKE  1 ${treasure.toUpperCase()}`;
     }
 
     this.#el.end.hidden = !hud.ended;
