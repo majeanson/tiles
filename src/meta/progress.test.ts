@@ -159,3 +159,37 @@ describe('storage', () => {
     expect(decoded.equipped).toEqual(['rootbound']);
   });
 });
+
+describe('the shop climbs back to what the rebalance took', () => {
+  /**
+   * Marc, 2026-08-16: tone the early game down "so after a few runs with
+   * bought relics item its back to what it is now". The floor came down —
+   * fewer starting tiles, thinner destinations, poorer caches — so the shop
+   * has to be able to put all three back, or the toning down is just a nerf.
+   */
+  const maxed = (id: UpgradeId): Progress => ({
+    relics: 0,
+    bought: { [id]: UPGRADES.find((u) => u.id === id)?.levels ?? 0 },
+    equipped: [],
+  });
+
+  it('returns caches to the 26 tiles they paid before', () => {
+    expect(applyProgress(TUNING, maxed('world')).cachePays).toBe(26);
+  });
+
+  it('puts destination density back past where it was', () => {
+    // 0.70 was the density before the rebalance; maxed RICHER WORLDS exceeds it.
+    expect(applyProgress(TUNING, maxed('world')).destinationChance).toBeGreaterThan(0.7);
+  });
+
+  it('puts the purse back past 30, which was the old start', () => {
+    expect(applyProgress(TUNING, maxed('tiles')).startingTiles).toBeGreaterThan(30);
+  });
+
+  it('starts every player below all three, which is the point', () => {
+    const fresh = applyProgress(TUNING, EMPTY_PROGRESS);
+    expect(fresh.startingTiles).toBeLessThan(30);
+    expect(fresh.cachePays).toBeLessThan(26);
+    expect(fresh.destinationChance).toBeLessThan(0.7);
+  });
+});

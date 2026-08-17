@@ -63,7 +63,7 @@ export const UPGRADES: readonly Upgrade[] = [
   {
     id: 'world',
     name: 'RICHER WORLDS',
-    note: 'More caches, sites and territories out there to find.',
+    note: 'More caches, sites and territories out there to find — and richer caches when you reach them.',
     cost: 50,
     levels: 4,
     perk: false,
@@ -180,7 +180,13 @@ export function applyProgress(tuning: Tuning, progress: Progress): Tuning {
     startingTiles: tuning.startingTiles + level('tiles') * 5,
     magicChance: tuning.magicChance + level('odds') * 0.02,
     uniqueChance: tuning.uniqueChance + level('odds') * 0.005,
+    // RICHER WORLDS buys back exactly what the 2026-08-16 rebalance took:
+    // more destinations out there, and caches worth more when you reach them.
+    // Maxed, it returns cache value to the 26 tiles it paid before the floor
+    // came down — so the shop restoring the early game is literal rather than
+    // approximate, which is what Marc asked for.
     destinationChance: Math.min(1, tuning.destinationChance + level('world') * 0.08),
+    cachePays: tuning.cachePays + level('world') * 3,
     rootboundOnly: equipped.has('rootbound'),
     secondWindTiles: equipped.has('secondwind') ? 20 : 0,
     secondWindChance: equipped.has('secondwind') ? 0.5 : 0,

@@ -1640,3 +1640,52 @@ built, so it is never far enough out for full strength to look wrong.
 Whether it READS is a phone question. What the tests pin is the contract
 underneath — a previewed cell still reports its native colour, so there is
 something for the renderer to draw through.
+
+**Addendum, same day — run one was already the best run**
+
+Marc, mid-run at 166 tiles on placement 61: _"feels like early on we can
+advance alot with only 30 tiles with all the caches and stuff, maybe we can
+tone it down and balance a bit so after a few runs with bought relics item its
+back to what it is now."_
+
+He was right, and the harness said something worse than he did. **Run one was
+already sitting where a MAXED run should be.** Every upgrade in the shop,
+bought to the last level for 2,415 relics, moved bank20 from reach 16 / 186
+placements / 14,153 points to reach 18 / 239 / 28,807 — two hexes of reach for
+the entire ladder. A roguelite whose first run is nearly its best run has a
+shop for decoration.
+
+So the floor came down: **22 starting tiles** (was 30), **caches pay 14** (was
+26), **destinations 0.45 of blocks** (was 0.70). Measured at 40 seeds a rung:
+
+```
+run 1                       reach 14 · 166 placements ·  7,795 pts
++2 purse            (60)    reach 15 · 174 · 10,801
++4 purse, eye, world (285)  reach 15 · 188 · 12,248   ← about today's run one
++6 purse, 3 eye, 2 world    reach 16 · 211 · 17,422
+maxed             (2,415)   reach 16 · 237 · 23,265
+```
+
+The shop climbs back through today's numbers at the middle rung — a few
+hundred relics, which is a few runs — and goes past it after. Exactly the
+shape he asked for.
+
+**And the restoration is literal.** RICHER WORLDS now buys cache VALUE as well
+as density, +3 a level, so four levels return caches to the 26 tiles they paid
+this morning. Maxed DEEPER PURSE passes the old 30-tile start, and maxed
+RICHER WORLDS passes the old 0.70 density. Four tests pin all three, because
+"we can put it back" is a promise that rots silently.
+
+**What was deliberately not done.** Steepening the cost curve as well (24
+rather than 30) tested beautifully as a nerf and terribly as a design: it put
+the MAXED ceiling _below_ today's floor. That is not toning down, it is a
+different and smaller game.
+
+The full sweep under the new numbers is clean — no stalls, no caps, random
+play dead at 26 placements against 167 for competent lines, and `spender`
+still ahead of `bank20`, so the luck shop still pays for itself.
+
+**One test was passing by missing.** The save-mangle test looked for the
+literal string `"tiles":30` to corrupt; the new starting purse is 22, so the
+mangle stopped finding its target and the assertion "this mangle broke the
+save" silently tested nothing. It derives the number from the run now.

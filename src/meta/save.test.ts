@@ -53,7 +53,10 @@ describe('keeping a run', () => {
     const state = newRun(3);
     for (const mangle of [
       ['"phase":"placing"', '"phase":"paused"'],
-      ['"tiles":30', '"tiles":"lots"'],
+      // Derived, not hardcoded: a starting purse of 30 was written into this
+      // test as a literal and a rebalance moved it to 22, so the mangle stopped
+      // finding its target and the test passed by missing.
+      [`"tiles":${state.tiles}`, '"tiles":"lots"'],
       // Still a hard reject: a core field the reducer cannot work without.
       ['"selected":0', '"selected":"first"'],
     ] as const) {

@@ -730,5 +730,36 @@ export const TUNING: Tuning = {
   // play dead at 111 and random play at 32, which is the skill spread Gate C
   // asks for.
   costRisesEvery: 30,
-  cachePays: 26,
+
+  /**
+   * RUN ONE IS SMALLER THAN IT WAS (Marc, 2026-08-16, mid-run at 166 tiles on
+   * placement 61: "feels like early on we can advance alot with only 30 tiles
+   * with all the caches and stuff, maybe we can tone it down and balance a bit
+   * so after a few runs with bought relics item its back to what it is now").
+   *
+   * He was right, and the harness said something worse: run one was already
+   * where a MAXED run should be. Every upgrade in the shop bought +2 reach and
+   * a quarter more placements between them, because a fresh run was already
+   * near the ceiling the plane allows. A roguelite whose first run is its best
+   * run has a shop for decoration.
+   *
+   * So the floor came down and the ladder got longer. Measured at 40 seeds a
+   * rung, on bank20:
+   *
+   *   run 1            reach 14 · 166 placements · 7,795 pts
+   *   +4 purse, eye, world   reach 15 · 187 · 12,211   (~today's run one)
+   *   +6 purse, 3 eye, 2 world  reach 16 · 209 · 17,305
+   *   maxed            reach 15 · 228 · 21,906
+   *
+   * Today's run one was reach 16 · 186 · 14,153, so the shop climbs back
+   * through it around the middle rung — a few hundred relics, which is a few
+   * runs — and goes past it after. Exactly the shape he asked for.
+   *
+   * The cost curve was deliberately NOT touched. Steepening it as well (24
+   * rather than 30) put the MAXED ceiling below today's floor, which is not
+   * toning down, it is a different, smaller game.
+   */
+  startingTiles: 22,
+  cachePays: 14,
+  destinationChance: 0.45,
 };
