@@ -1,9 +1,8 @@
 import { COLOURS, type Colour } from '@content/tuning';
-import { distance, key, parse, type HexKey } from '@engine/hex';
+import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
 import { canSpend, rarityOdds, spendCost } from '@engine/reduce';
 import {
   cachePaysAt,
-  canPlaceAt,
   canPlaceNow,
   costOf,
   harvestValue,
@@ -11,7 +10,6 @@ import {
   legalPlacements,
   placementsLeft,
   previewWorth,
-  ripeClusterAt,
   ripeClusters,
   ripeKeys,
   worthOf,
@@ -54,12 +52,120 @@ export function resolveHarvestTarget(state: GameState, asked: HexKey | null): He
   return best?.[0] ?? null;
 }
 
+/**
+ * Everything both selectors need that costs a pass over the board, computed
+ * ONCE per render and threaded through explicitly.
+ *
+ * Before this existed a single render resolved the harvest target three
+ * times, walked the ripe set five, measured reach three and re-derived every
+ * draft preview the board had already computed — each of them a full board
+ * pass, each per tap, on a board that only grows. An explicit context (not a
+ * module cache — the one last-value cache below is the exception, and it
+ * predates this) keeps the selectors pure and keeps "computed once" a fact
+ * the call shape enforces rather than a discipline.
+ *
+ * Nothing here DECIDES anything: every field is exactly what the old
+ * per-selector derivations produced, checked by the invariant tests staying
+ * green with their displayed values unchanged.
+ */
+export type RenderContext = {
+  /** Every ripe key, in board order — one ripeness pass for the render. */
+  readonly ripe: ReadonlySet<HexKey>;
+  /** The pocket a harvest would pop: the tapped ripe tile's, or the biggest. */
+  readonly target: HexKey | null;
+  /** The exact cells `target` pops — the board's outline. */
+  readonly targetCluster: ReadonlySet<HexKey>;
+  /** What popping `target` pays. The buttons' numbers. */
+  readonly value: ReturnType<typeof harvestValue>;
+  /**
+   * What popping the DEFAULT (biggest) pocket pays. The guide line prices
+   * this one deliberately — its words must not change because a different
+   * pocket happens to be tapped. Same object as `value` when they coincide.
+   */
+  readonly defaultValue: ReturnType<typeof harvestValue>;
+  /** Hexes a tile may go right now. Empty exactly when `canPlaceNow` is not. */
+  readonly legal: ReadonlySet<HexKey>;
+  /**
+   * `previewWorth` per draft card per legal hex — what the board prints for
+   * the selected card and what BEST is judged on, derived once so the two
+   * can never disagree.
+   */
+  readonly previews: readonly ReadonlyMap<HexKey, number>[];
+  /** How far from home the run has built — REACH, and the beacon horizon. */
+  readonly reach: number;
+};
+
+export function renderContext(state: GameState, asked: HexKey | null = null): RenderContext {
+  // One ripeness pass; the pockets are walked over the SET, which cannot
+  // change the answer (`ripeClusterAt` walks ripe neighbours the same way)
+  // and saves re-asking `isRipe` once per neighbour per cluster.
+  const ripe = new Set(ripeKeys(state.cells));
+  const pockets: HexKey[][] = [];
+  {
+    const seen = new Set<HexKey>();
+    for (const k of ripe) {
+      if (seen.has(k)) continue;
+      const cluster: HexKey[] = [k];
+      seen.add(k);
+      for (let i = 0; i < cluster.length; i++) {
+        const { q, r } = parse(cluster[i]!);
+        for (const n of neighbourKeys(q, r)) {
+          if (ripe.has(n) && !seen.has(n)) {
+            seen.add(n);
+            cluster.push(n);
+          }
+        }
+      }
+      pockets.push(cluster);
+    }
+  }
+
+  let biggest: HexKey[] | null = null;
+  for (const pocket of pockets) {
+    if (biggest === null || pocket.length > biggest.length) biggest = pocket;
+  }
+  const defaultTarget = biggest?.[0] ?? null;
+  const target = asked !== null && ripe.has(asked) ? asked : defaultTarget;
+  const targetCluster = new Set(
+    target === null ? [] : (pockets.find((p) => p.includes(target)) ?? []),
+  );
+
+  const value = harvestValue(state, target ?? undefined);
+  const defaultValue =
+    target === defaultTarget ? value : harvestValue(state, defaultTarget ?? undefined);
+
+  const placeable = canPlaceNow(state);
+  const legal = new Set(placeable ? legalPlacements(state.cells) : []);
+  const previews = placeable
+    ? state.draft.map((tile) => {
+        const map = new Map<HexKey, number>();
+        for (const k of legal) map.set(k, previewWorth(state.cells, k, tile, state.tuning));
+        return map;
+      })
+    : [];
+
+  return {
+    ripe,
+    target,
+    targetCluster,
+    value,
+    defaultValue,
+    legal,
+    previews,
+    reach: reachOf(state),
+  };
+}
+
 export function toBoardView(
   state: GameState,
   harvestAt: HexKey | null = null,
   spotlight: Colour | null = null,
   memory: readonly HexKey[] = [],
   light: Light = NO_FALLOFF,
+  // The per-render derivations, shareable with `toHudView`. Callers that
+  // render both (the game loop) build one and pass it twice; everyone else
+  // gets a fresh one for free.
+  ctx: RenderContext = renderContext(state, harvestAt),
 ): BoardView {
   // The torch sits on the last thing you built, and on the origin before you
   // have built anything — so a fresh run opens lit rather than opening dark
@@ -72,15 +178,11 @@ export function toBoardView(
   const lit = (q: number, r: number): number => brightness(light, distance({ q, r }, torch));
   const band = (q: number, r: number): number =>
     elevationBandAt(state.rootSeed, q, r, state.tuning);
-  const selected = state.draft[state.selected];
-  const placeable = canPlaceNow(state);
-
-  const target = resolveHarvestTarget(state, harvestAt);
-  const targeted = new Set(target === null ? [] : ripeClusterAt(state.cells, target));
+  const previews = ctx.previews[state.selected];
 
   const cells: CellView[] = Object.entries(state.cells).map(([k, cell]) => {
     const { q, r } = parse(k);
-    const legal = placeable && canPlaceAt(state.cells, k);
+    const legal = ctx.legal.has(k);
 
     return {
       key: k,
@@ -94,8 +196,8 @@ export function toBoardView(
       rarity: cell.kind === 'tile' ? (cell.rarity ?? null) : null,
       native: cell.kind === 'empty' ? (cell.native ?? null) : null,
       remembered: false,
-      ripe: isRipe(state.cells, k),
-      targeted: targeted.has(k),
+      ripe: ctx.ripe.has(k),
+      targeted: ctx.targetCluster.has(k),
       // The colour lens: with a chip active, every OTHER colour's tiles step
       // back so one colour's holdings read as a single shape on the board.
       dimmed: spotlight !== null && cell.kind === 'tile' && cell.colour !== spotlight,
@@ -103,10 +205,7 @@ export function toBoardView(
       light: lit(q, r),
       band: band(q, r),
       legal,
-      preview:
-        legal && selected !== undefined
-          ? previewWorth(state.cells, k, selected, state.tuning)
-          : null,
+      preview: legal ? (previews?.get(k) ?? null) : null,
     };
   });
 
@@ -146,7 +245,7 @@ export function toBoardView(
   // Destinations the board has not grown to yet, glowing through ground that
   // is not drawn: the endless world's somewhere-to-go. The horizon moves with
   // reach, so the next glow appears at the rim as you push toward the last.
-  for (const d of beaconsFor(state)) {
+  for (const d of beaconsFor(state, ctx.reach)) {
     if (onBoard.has(key(d.q, d.r))) continue;
     cells.push({
       key: key(d.q, d.r),
@@ -211,8 +310,9 @@ function destinationsCached(
 /** Destinations within the beacon horizon that growth has not revealed yet. */
 function beaconsFor(
   state: GameState,
+  reach: number,
 ): { q: number; r: number; reward: LandmarkReward; colour: Colour | null }[] {
-  const horizon = reachOf(state) + state.tuning.beaconHorizon;
+  const horizon = reach + state.tuning.beaconHorizon;
   return destinationsCached(state.rootSeed, horizon, state.tuning).filter(
     (d) => state.cells[key(d.q, d.r)] === undefined,
   );
@@ -381,16 +481,18 @@ export function toHudView(
   state: GameState,
   harvestAt: HexKey | null = null,
   spotlight: Colour | null = null,
+  // Shareable with `toBoardView` — see the parameter there.
+  ctx: RenderContext = renderContext(state, harvestAt),
 ): HudView {
-  const target = resolveHarvestTarget(state, harvestAt);
-  const value = harvestValue(state, target ?? undefined);
-  const best = bestDraftIndex(state);
+  const target = ctx.target;
+  const value = ctx.value;
+  const best = bestDraftIndex(ctx);
   const colours = colourPotentials(state);
 
   return {
     tiles: state.tiles,
     points: state.points,
-    depthValue: reachOf(state),
+    depthValue: ctx.reach,
     cost: costOf(state.placements, state.tuning),
     placements: state.placements,
     left: placementsLeft(state),
@@ -414,7 +516,7 @@ export function toHudView(
     colours,
     spotlight: colours.find((c) => c.colour === spotlight) ?? null,
 
-    ripeCount: ripeKeys(state.cells).length,
+    ripeCount: ctx.ripe.size,
     harvestTiles: value.tiles,
     harvestPoints: value.points,
     harvestAt: target,
@@ -436,8 +538,8 @@ export function toHudView(
 
     canHarvest: state.phase === 'placing' && value.count > 0,
 
-    guide: guideFor(state),
-    hint: hintFor(state),
+    guide: guideFor(state, ctx),
+    hint: hintFor(state, ctx.reach),
     odds: oddsFor(state),
 
     ended: state.phase === 'ended',
@@ -603,10 +705,10 @@ function questLineFor(state: GameState): string | null {
  * forced; a warning that fires while three comfortable placements remain is
  * a warning that teaches fear rather than danger. See `RUNWAY_ALARM`.
  */
-function guideFor(state: GameState): string | null {
+function guideFor(state: GameState, ctx: RenderContext): string | null {
   if (state.phase !== 'placing') return null;
 
-  const ripe = ripeKeys(state.cells).length > 0;
+  const ripe = ctx.ripe.size > 0;
   const single = state.tuning.singlePayout;
   if (runwayOf(state) <= RUNWAY_ALARM) {
     if (ripe)
@@ -614,7 +716,9 @@ function guideFor(state: GameState): string | null {
     return 'Low on tiles — ripen something to cash in';
   }
   if (ripe) {
-    const value = harvestValue(state, resolveHarvestTarget(state, null) ?? undefined);
+    // The DEFAULT pocket, deliberately — this line's words must not change
+    // because a different pocket happens to be tapped. See `defaultValue`.
+    const value = ctx.defaultValue;
     if (value.questPays) return 'BOUNTY READY — take this pocket as pts';
     // More tiles than the clock can spend: the survival button is dead and
     // saying so is the whole job of this line.
@@ -663,7 +767,7 @@ const RUNWAY_ALARM = 6;
  * The nearest unclaimed destination — revealed or beacon — named and priced
  * in the one unit the player already reads the board in: hexes out.
  */
-function hintFor(state: GameState): string | null {
+function hintFor(state: GameState, reach: number): string | null {
   let best: { reward: LandmarkReward; dist: number; at: HexKey } | null = null;
   const consider = (q: number, r: number, reward: LandmarkReward): void => {
     const dist = distance({ q, r }, { q: 0, r: 0 });
@@ -676,7 +780,7 @@ function hintFor(state: GameState): string | null {
       consider(q, r, cell.reward);
     }
   }
-  const horizon = reachOf(state) + state.tuning.beaconHorizon;
+  const horizon = reach + state.tuning.beaconHorizon;
   for (const d of destinationsCached(state.rootSeed, horizon, state.tuning)) {
     if (state.cells[key(d.q, d.r)] === undefined) consider(d.q, d.r, d.reward);
   }
@@ -695,17 +799,16 @@ function hintFor(state: GameState): string | null {
 /**
  * Which draft card's best placement pays the most, or null when nothing pays
  * anything — a marker on every draw would be noise, and a tie at zero is not
- * a recommendation. Derived from the same previews the board shows, so the
- * marked card and the lit-up hexes can never disagree.
+ * a recommendation. Read off the context's previews — the SAME numbers the
+ * board prints — so the marked card and the lit-up hexes cannot disagree,
+ * now by construction rather than by re-derivation.
  */
-function bestDraftIndex(state: GameState): number | null {
-  if (!canPlaceNow(state)) return null;
-  const spots = legalPlacements(state.cells);
+function bestDraftIndex(ctx: RenderContext): number | null {
+  if (ctx.previews.length === 0) return null;
 
   let best: { index: number; worth: number } | null = null;
-  state.draft.forEach((tile, index) => {
-    for (const k of spots) {
-      const worth = previewWorth(state.cells, k, tile, state.tuning);
+  ctx.previews.forEach((previews, index) => {
+    for (const worth of previews.values()) {
       if (best === null || worth > best.worth) best = { index, worth };
     }
   });

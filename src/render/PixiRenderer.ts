@@ -14,7 +14,7 @@ import {
 import { AssetBook } from './assets';
 import { corners, fitLayout, hexAt, place, zoomCeiling, zoomLayout, type Layout } from './layout';
 import type { BoardView, CellView, Renderer } from './Renderer';
-import { SurfaceTextures } from './surfaces';
+import { BakedCache, SurfaceTextures } from './surfaces';
 
 /**
  * The camera's range. 1 is the auto-fit that shows the whole grown world plus
@@ -121,6 +121,22 @@ export class PixiRenderer implements Renderer {
   readonly #theme: Theme;
   #assets: AssetBook;
   readonly #surfaces = new SurfaceTextures();
+  /**
+   * Label textures, cached by what changes their pixels: the text, the
+   * rounded font size, and which ink. `#drawLabel` used to create a fresh
+   * Pixi Text per labelled cell per draw — a canvas rasterise and a GPU
+   * upload each — for a vocabulary this small (worths and previews are small
+   * ints, plus four landmark glyphs). Sprites share the cached texture, and
+   * the per-draw teardown (`destroy({ children: true })`) does NOT destroy a
+   * child sprite's texture — pixi v8 only touches it under `texture: true`,
+   * verified in Sprite.destroy — so the cache owns them outright. Evicted
+   * beside the surface cache whenever the size settles (`#evictStale`).
+   */
+  readonly #labels = new BakedCache<Texture>((texture) => {
+    texture.destroy(true);
+  });
+  /** Keys drawn last frame, so a tap is a set lookup, not a linear scan. */
+  #drawnKeys: ReadonlySet<HexKey> = new Set();
   #flashTexture: Texture | null = null;
   #vignetteKey = '';
   #flashes: Flash[] = [];
@@ -184,7 +200,7 @@ export class PixiRenderer implements Renderer {
       // wrong hexes. They last a third of a second; dropping them is right.
       this.#clearFlashes();
       this.draw(this.#view);
-      this.#surfaces.evictExcept(this.#layout?.size ?? 0, this.#theme.orientation);
+      this.#evictStale();
     };
     const onTick = (ticker: Ticker): void => {
       this.#advanceFlashes(ticker.deltaMS);
@@ -204,6 +220,11 @@ export class PixiRenderer implements Renderer {
   draw(view: BoardView): void {
     const previous = this.#view;
     this.#view = view;
+    // Rebuilt before any early return, so hitTest always answers about the
+    // view it was handed — the same contract the old linear scan kept.
+    const keys = new Set<HexKey>();
+    for (const cell of view.cells) keys.add(cell.key);
+    this.#drawnKeys = keys;
 
     const app = this.#app;
     if (app === null) return;
@@ -272,8 +293,19 @@ export class PixiRenderer implements Renderer {
     if (this.#zoomSettle !== null) clearTimeout(this.#zoomSettle);
     this.#zoomSettle = setTimeout(() => {
       this.#zoomSettle = null;
-      this.#surfaces.evictExcept(this.#layout?.size ?? 0, this.#theme.orientation);
+      this.#evictStale();
     }, 250);
+  }
+
+  /**
+   * Drop the textures baked for sizes nobody is drawing at any more — the
+   * surfaces and the labels together, keyed by the same settled size, so the
+   * two caches cannot drift apart in what they consider current.
+   */
+  #evictStale(): void {
+    const size = this.#layout?.size ?? 0;
+    this.#surfaces.evictExcept(size, this.#theme.orientation);
+    this.#labels.evictExcept(`${labelPx(size)}:`);
   }
 
   /** One draw per animation frame, however many camera moves asked for it. */
@@ -343,7 +375,7 @@ export class PixiRenderer implements Renderer {
     // the tap is translated back before the layout answers.
     const h = hexAt(x - this.#panX, y - this.#panY, layout);
     const k = key(h.q, h.r);
-    return this.#view.cells.some((c) => c.key === k) ? k : null;
+    return this.#drawnKeys.has(k) ? k : null;
   }
 
   destroy(): void {
@@ -351,6 +383,7 @@ export class PixiRenderer implements Renderer {
     this.#detach = null;
     this.#clearFlashes();
     this.#surfaces.destroy();
+    this.#labels.clear();
     this.#flashTexture?.destroy(true);
     this.#flashTexture = null;
     this.#app?.destroy(true, { children: true });
@@ -560,18 +593,57 @@ export class PixiRenderer implements Renderer {
     return { width: Math.max(1, size * board.edgeWidth), colour: board.edge };
   }
 
-  #drawLabel(label: { text: string; faint: boolean }, x: number, y: number, size: number): Text {
-    const text = new Text({
-      text: label.text,
-      style: {
-        fill: label.faint ? this.#theme.ink.inkFaint : this.#theme.ink.ink,
-        fontSize: Math.round(size * 0.7),
-        fontFamily: this.#theme.type.display,
-      },
-    });
+  #drawLabel(
+    label: { text: string; faint: boolean },
+    x: number,
+    y: number,
+    size: number,
+  ): Container {
+    const texture = this.#labelTexture(label, size);
+    if (texture !== null) {
+      const sprite = new Sprite(texture);
+      sprite.anchor.set(0.5);
+      sprite.position.set(x, y);
+      return sprite;
+    }
+
+    // No renderer to bake with — a state draw() cannot reach, but a label is
+    // not worth crashing over. The old per-cell Text is the fallback.
+    const text = this.#labelText(label, size);
     text.anchor.set(0.5);
     text.position.set(x, y);
     return text;
+  }
+
+  /** The Text a label draws as — one place, so the cache renders exactly it. */
+  #labelText(label: { text: string; faint: boolean }, size: number): Text {
+    return new Text({
+      text: label.text,
+      style: {
+        fill: label.faint ? this.#theme.ink.inkFaint : this.#theme.ink.ink,
+        fontSize: labelPx(size),
+        fontFamily: this.#theme.type.display,
+      },
+    });
+  }
+
+  /** The cached texture for a label, rendered once per (text, size, ink). */
+  #labelTexture(label: { text: string; faint: boolean }, size: number): Texture | null {
+    const app = this.#app;
+    if (app === null) return null;
+
+    // A hard bound, defensively: the vocabulary is small by construction, so
+    // growing past this means something is generating unbounded strings, and
+    // rebaking beats hoarding GPU memory while it happens.
+    if (this.#labels.size > 256) this.#labels.clear();
+
+    const key = `${labelPx(size)}:${label.faint ? 'faint' : 'ink'}:${label.text}`;
+    return this.#labels.get(key, () => {
+      const text = this.#labelText(label, size);
+      const texture = app.renderer.generateTexture(text);
+      text.destroy(true);
+      return texture;
+    });
   }
 
   // ---------------------------------------------------------------- effects
@@ -828,6 +900,13 @@ export class PixiRenderer implements Renderer {
  * `+` pays tiles, `★` pays points, `◆` is a territory to claim. Words for them
  * live in the HUD hint, where there is room for words.
  */
+/**
+ * Label font size for a hex of circumradius `size`, in device-independent
+ * pixels. One function because three places must agree on it exactly: the
+ * Text style, the cache key, and the eviction's keep prefix.
+ */
+const labelPx = (size: number): number => Math.round(size * 0.7);
+
 function labelFor(cell: CellView): { text: string; faint: boolean } | null {
   if (cell.kind === 'landmark') {
     return { text: LANDMARK_GLYPH[cell.landmark ?? 'territory'], faint: cell.claimed };

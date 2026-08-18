@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { THEMES } from '@theme/index';
 import { surface, type Surface } from '@theme/tokens';
 import { bakeSurface } from './bake';
-import { surfaceKey, SurfaceTextures } from './surfaces';
+import { BakedCache, surfaceKey, SurfaceTextures } from './surfaces';
 
 /**
  * The baker, where it fails.
@@ -57,6 +57,90 @@ describe('SurfaceTextures', () => {
       textures.evictExcept(23, 'flat');
       textures.destroy();
     }).not.toThrow();
+  });
+});
+
+describe('the cache bookkeeping, with a fake baker', () => {
+  /**
+   * The half of the texture cache that could silently leak, finally under
+   * test. happy-dom has no 2D canvas, so with the Texture creation inline
+   * every earlier test only ever exercised the null path — the bake failed,
+   * the cache stayed empty, and the eviction had nothing to evict. With the
+   * baker and the disposer injected, hits, misses and eviction are checkable
+   * with plain objects.
+   */
+  const build = (): {
+    cache: BakedCache<{ id: string }>;
+    disposed: string[];
+    bake: (id: string) => () => { id: string };
+    bakes: number[];
+  } => {
+    const disposed: string[] = [];
+    const bakes = [0];
+    const cache = new BakedCache<{ id: string }>((v) => disposed.push(v.id));
+    const bake = (id: string) => (): { id: string } => {
+      bakes[0]!++;
+      return { id };
+    };
+    return { cache, disposed, bake, bakes };
+  };
+
+  it('bakes once per key and hands the same value back after', () => {
+    const { cache, bake, bakes } = build();
+    const first = cache.get('12:a', bake('a'));
+    const again = cache.get('12:a', bake('a'));
+    expect(again).toBe(first);
+    expect(bakes[0]).toBe(1);
+    expect(cache.size).toBe(1);
+  });
+
+  it('keeps different keys apart — no two surfaces may share by accident', () => {
+    const { cache, bake } = build();
+    const a = cache.get('12:a', bake('a'));
+    const b = cache.get('12:b', bake('b'));
+    expect(a).not.toBe(b);
+    expect(cache.size).toBe(2);
+  });
+
+  it('does not cache a failed bake, and asks again next time', () => {
+    const { cache, bakes } = build();
+    const failing = (): null => {
+      bakes[0]!++;
+      return null;
+    };
+    expect(cache.get('12:a', failing)).toBeNull();
+    expect(cache.get('12:a', failing)).toBeNull();
+    expect(bakes[0]).toBe(2);
+    expect(cache.size).toBe(0);
+  });
+
+  it('evicts everything outside the keep prefix, disposing as it goes', () => {
+    const { cache, disposed, bake } = build();
+    cache.get('12:a', bake('a'));
+    cache.get('12:b', bake('b'));
+    cache.get('34:a', bake('stale-a'));
+    cache.get('34:b', bake('stale-b'));
+
+    cache.evictExcept('12:');
+    expect(cache.size).toBe(2);
+    expect(disposed.sort()).toEqual(['stale-a', 'stale-b']);
+
+    // The kept entries are still hits, not rebakes.
+    const { bakes } = build();
+    expect(cache.get('12:a', bake('a'))).toEqual({ id: 'a' });
+    expect(bakes[0]).toBe(0);
+  });
+
+  it('clears whole, disposes everything, and stays usable', () => {
+    const { cache, disposed, bake } = build();
+    cache.get('12:a', bake('a'));
+    cache.get('34:b', bake('b'));
+    cache.clear();
+    expect(cache.size).toBe(0);
+    expect(disposed.sort()).toEqual(['a', 'b']);
+
+    expect(cache.get('12:a', bake('a2'))).toEqual({ id: 'a2' });
+    expect(cache.size).toBe(1);
   });
 });
 

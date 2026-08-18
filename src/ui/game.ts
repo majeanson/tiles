@@ -24,7 +24,7 @@ import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { COLOUR_MARK, type Theme } from '@theme/tokens';
 import { NAME, TAGLINE } from '@meta/identity';
-import { toBoardView, toHudView, type HudView } from './view';
+import { renderContext, toBoardView, toHudView, type HudView } from './view';
 
 /**
  * The loop: hold a state, turn taps into actions, redraw.
@@ -1334,6 +1334,10 @@ export class Game {
   }
 
   render(): void {
+    // One context for both selectors: the board and the HUD price the same
+    // pocket, mark the same previews and measure the same reach from one set
+    // of board passes instead of re-deriving them apart. See `renderContext`.
+    const ctx = renderContext(this.#state, this.#harvestAt);
     this.#renderer.draw(
       toBoardView(
         this.#state,
@@ -1341,9 +1345,10 @@ export class Game {
         this.#spotlight,
         this.#hooks.memory ?? [],
         this.#theme.light,
+        ctx,
       ),
     );
-    this.#renderHud(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+    this.#renderHud(toHudView(this.#state, this.#harvestAt, this.#spotlight, ctx));
     // The board just grew, which moved the zoom ceiling: a placement can make
     // ZOOM IN live again after it had gone dead. Resyncing only on the camera
     // buttons left that state a placement behind.

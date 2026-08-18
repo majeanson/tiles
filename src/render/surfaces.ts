@@ -16,10 +16,59 @@ import { bakeSurface } from './bake';
  * smaller. It costs a rebake on rotation, which happens once.
  */
 
-type CacheKey = string;
+/**
+ * The bookkeeping half of a texture cache, split from Texture creation the
+ * same way baking was split from this file: a Map from key to value, prefix
+ * eviction, and a disposal contract. Split because the leak modes live HERE —
+ * an eviction that forgets to dispose, a key that never matches its keep
+ * prefix — and happy-dom has no 2D canvas, so with the Texture creation
+ * inline none of this ever executed under test (the bake returned null and
+ * the cache stayed empty forever). With the baker and the disposer injected,
+ * the bookkeeping is testable with plain values.
+ */
+export class BakedCache<T> {
+  readonly #cache = new Map<string, T>();
+  readonly #dispose: (value: T) => void;
+
+  constructor(dispose: (value: T) => void) {
+    this.#dispose = dispose;
+  }
+
+  /** The cached value for `key`, baking on a miss. A null bake is not cached. */
+  get(key: string, bake: () => T | null): T | null {
+    const cached = this.#cache.get(key);
+    if (cached !== undefined) return cached;
+
+    const made = bake();
+    if (made === null) return null;
+    this.#cache.set(key, made);
+    return made;
+  }
+
+  get size(): number {
+    return this.#cache.size;
+  }
+
+  /** Drop and dispose every entry whose key does not start with `keep`. */
+  evictExcept(keep: string): void {
+    for (const [key, value] of this.#cache) {
+      if (key.startsWith(keep)) continue;
+      this.#dispose(value);
+      this.#cache.delete(key);
+    }
+  }
+
+  /** Drop and dispose everything. The cache stays usable. */
+  clear(): void {
+    for (const value of this.#cache.values()) this.#dispose(value);
+    this.#cache.clear();
+  }
+}
 
 export class SurfaceTextures {
-  readonly #cache = new Map<CacheKey, Texture>();
+  readonly #cache = new BakedCache<Texture>((texture) => {
+    texture.destroy(true);
+  });
 
   /**
    * A hex of `surface`, sized for a cell of circumradius `size` CSS pixels.
@@ -31,17 +80,10 @@ export class SurfaceTextures {
     if (size <= 0) return null;
 
     const px = Math.max(4, Math.round(size));
-    const key = `${orientation}:${px}:${surfaceKey(surface)}`;
-
-    const cached = this.#cache.get(key);
-    if (cached !== undefined) return cached;
-
-    const canvas = bakeSurface(surface, px, orientation);
-    if (canvas === null) return null;
-
-    const texture = Texture.from(canvas);
-    this.#cache.set(key, texture);
-    return texture;
+    return this.#cache.get(`${orientation}:${px}:${surfaceKey(surface)}`, () => {
+      const canvas = bakeSurface(surface, px, orientation);
+      return canvas === null ? null : Texture.from(canvas);
+    });
   }
 
   /**
@@ -51,16 +93,10 @@ export class SurfaceTextures {
    * narrow to wide leaves a texture for every intermediate width on the GPU.
    */
   evictExcept(size: number, orientation: Orientation): void {
-    const keep = `${orientation}:${Math.max(4, Math.round(size))}:`;
-    for (const [key, texture] of this.#cache) {
-      if (key.startsWith(keep)) continue;
-      texture.destroy(true);
-      this.#cache.delete(key);
-    }
+    this.#cache.evictExcept(`${orientation}:${Math.max(4, Math.round(size))}:`);
   }
 
   destroy(): void {
-    for (const texture of this.#cache.values()) texture.destroy(true);
     this.#cache.clear();
   }
 }

@@ -1975,3 +1975,61 @@ change is for a hand, an eye or a connection the defaults quietly assumed.
 411 tests. The dialog semantics, Escape, the live regions and the stat names
 are pinned in `game.test.ts`; the worker has no test rig and was verified by
 reading, plus the build's own stamp assertions.
+
+**Addendum, same day — the audit's fourth package: the performance debt**
+
+Zero balance changes, proven the strong way: `pnpm sim` is byte-identical
+before and after (the engine was never touched), and a scripted 120-placement
+board's full board+HUD view dumps byte-identical JSON across the refactor.
+What changed is how many times the same answers get computed.
+
+- **One context per render.** A single render used to resolve the harvest
+  target three times, walk the ripe set five times, measure reach three
+  times and re-derive every draft preview the board had already computed —
+  full board passes, per tap, on a board that only grows. `renderContext`
+  computes each once and threads through both selectors explicitly (an
+  argument, not a module cache — the one last-value destinations cache
+  predates this and stays). Both selectors still work standalone; the game
+  loop builds one context and passes it twice. Measured on a real spender
+  board (seed 11, stopped live at 120 placements, 174 cells; 500 renders,
+  Node): **0.55ms → 0.34ms per render, ~1.6× faster** — and the win grows
+  with the board, because the passes eliminated are the O(cells) ones. The
+  honest footnote: calling ONE selector alone now costs about what the old
+  pair did (~0.54ms), since the context computes previews for every card;
+  only event-time singles (a button press pricing a pocket) take that path.
+- **The keeper stopped re-writing the world per tap.** `onChange` ran
+  `mergeRun` over every cell and stringified the whole revealed array to
+  localStorage on EVERY action, and asked `askedSeed()` — a fresh
+  URLSearchParams — three times per action across hooks. Now: the seed
+  question is asked once (the URL cannot change without a reload); the merge
+  runs only when the world could have changed (one cheap counting pass —
+  cells only ever grow, claims only ever accrue); and the write coalesces to
+  every tenth action **with a flush on pagehide/visibilitychange and at
+  finish** — the flush is the load-bearing part, so closing the tab mid-run
+  still cannot lose a claim. The in-memory world stays exact per merge; only
+  the localStorage write is debounced.
+- **Labels are textures now.** `#drawLabel` created a fresh Pixi Text per
+  labelled cell per draw — a canvas rasterise and a GPU upload each — for a
+  vocabulary of small ints and four glyphs. They render once into a cached
+  texture (keyed text · size · ink) and every cell is a Sprite sharing it.
+  Verified in pixi v8's source before trusting it: the per-draw
+  `destroy({ children: true })` does NOT destroy a child sprite's texture
+  (only `texture: true` does), so the cache owns them outright, evicted
+  beside the surface cache when the size settles, with a hard 256-entry cap
+  in case a theme's vocabulary is ever wilder than expected.
+- **A tap is a set lookup.** `hitTest` ran `.some()` over every drawn cell;
+  `draw()` keeps the key set now.
+- **The texture cache's bookkeeping is finally under test.** The audit
+  caught that `surfaces.test.ts` only ever exercised the null path —
+  happy-dom has no 2D canvas, so the cache never populated and the eviction
+  had nothing to evict. The bookkeeping (`BakedCache`) is split from Texture
+  creation the way baking was split from surfaces, with the baker and the
+  disposer injected: cache hits, key separation, failed bakes, prefix
+  eviction and disposal are all pinned with plain objects now.
+- **Left alone, on purpose**: `corners()` still allocates a fresh array per
+  stroke per cell per draw. Reusing a scratch buffer would hand layout.ts a
+  mutable output for an allocation the label cache already made irrelevant
+  at per-action draw rates.
+
+416 tests, `view.test.ts` and `game.test.ts` passing unmodified — the
+"preview cannot disagree with payment" invariants never moved.

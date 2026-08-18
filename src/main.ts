@@ -239,9 +239,14 @@ function runKeeping(
   world: WorldMemory,
   debugOn: boolean,
 ): GameHooks & { savedSeed: number | null } {
+  // Asked once: the URL cannot change mid-session without a reload, and this
+  // used to construct fresh URLSearchParams three times per action across
+  // the hooks below.
+  const replaySeed = askedSeed();
+
   let saved = null;
   try {
-    saved = askedSeed() === null ? decodeRun(localStorage.getItem(RUN_STORAGE_KEY)) : null;
+    saved = replaySeed === null ? decodeRun(localStorage.getItem(RUN_STORAGE_KEY)) : null;
   } catch {
     // Private mode. Every run is its own life; that is also a game.
   }
@@ -255,6 +260,31 @@ function runKeeping(
   // atlas and the next merge both read the truth rather than the snapshot
   // this page happened to load with.
   let current = world;
+
+  // The world write, debounced. `mergeRun` walks every cell and `saveWorld`
+  // stringifies every revealed key, and both used to run on EVERY tap of a
+  // run whose board only grows. Two facts make it safe to do less: the world
+  // only changes when the run reveals ground (the cell count only ever
+  // grows) or claims a landmark, so anything else has nothing to merge; and
+  // localStorage is the slow half, so the in-memory `current` stays exact
+  // per merge while the WRITE coalesces to every tenth action — with a flush
+  // on pagehide/visibilitychange and at finish, so closing the tab mid-run
+  // can never lose a claim. That flush is the load-bearing part.
+  const WORLD_WRITE_EVERY = 10;
+  let mergedCells = 0;
+  let mergedClaims = 0;
+  let actionsSinceWrite = 0;
+  let worldDirty = false;
+  const flushWorld = (): void => {
+    if (!worldDirty) return;
+    worldDirty = false;
+    actionsSinceWrite = 0;
+    saveWorld(current);
+  };
+  window.addEventListener('pagehide', flushWorld);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushWorld();
+  });
 
   // Asked once, after the first run save has actually succeeded — persistent
   // storage is what stops iOS treating the world as evictable cache after a
@@ -312,10 +342,23 @@ function runKeeping(
       // seen, territories taken and shrines woken are facts the moment they
       // occur: waiting for the end of the expedition meant the atlas said
       // "0 of 5 found" while the popup was still announcing a shrine, and it
-      // meant closing the tab lost a claim outright.
-      if (askedSeed() === null) {
-        current = mergeRun(current, state);
-        saveWorld(current);
+      // meant closing the tab lost a claim outright. The merge is skipped
+      // when neither ground nor claims moved (one cheap counting pass — a
+      // pop or a reselect reveals nothing), and the write itself is
+      // debounced; see `flushWorld` above for why nothing can be lost.
+      if (replaySeed === null) {
+        const cells = Object.values(state.cells);
+        let claims = 0;
+        for (const cell of cells) {
+          if (cell.kind === 'landmark' && cell.claimed) claims++;
+        }
+        if (cells.length > mergedCells || claims > mergedClaims) {
+          mergedCells = cells.length;
+          mergedClaims = claims;
+          current = mergeRun(current, state);
+          worldDirty = true;
+        }
+        if (worldDirty && ++actionsSinceWrite >= WORLD_WRITE_EVERY) flushWorld();
       }
     },
 
@@ -323,13 +366,17 @@ function runKeeping(
       // Relics bank before anything else reads the purse: the shop renders
       // on this very screen, and a shop that opened before the run it is
       // paid for had been counted would be showing yesterday's money.
-      if (askedSeed() === null) bankRelics(state);
+      if (replaySeed === null) bankRelics(state);
 
       // The world remembers first: ground seen and territories held outlive
       // the run that found them, which is the whole of P4a. A replayed link
       // (`?seed=`) is somebody else's geography and must not touch it.
-      if (askedSeed() === null) {
+      // `rememberRun` folds the FULL final state, so this write is also the
+      // debounce's flush — nothing the merge skipped can be missing from it.
+      if (replaySeed === null) {
         current = rememberRun(current, state);
+        worldDirty = false;
+        actionsSinceWrite = 0;
         saveWorld(current);
       }
 
