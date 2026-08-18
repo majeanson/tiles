@@ -1748,13 +1748,13 @@ rather than before it.
 **The sweep (40 seeds a rung, bank20/spender, shop rungs modeled as
 `applyProgress` would produce them):**
 
-| candidate                    | run 1            | maxed            |
-| ---------------------------- | ---------------- | ---------------- |
-| baseline (2026-08-16 floor)  | 166 pl · r14 · 7,795 | 237 · r16 · 23,265 |
-| A — buyable cost curve 22→30 | 117 · r12 · 3,450    | 237 · r16 · 23,265 |
-| B — poorer pops 3→2          | 108 · r10 · 3,007    | 237 · r16 · 23,265 |
-| C — floor further down       | 169 · r14 · 7,398    | 230 · r16 · 20,478 |
-| D — gradual formulas         | 184 · r15 · 7,496    | 248 · r18 · 23,201 |
+| candidate                    | run 1                 | maxed                  |
+| ---------------------------- | --------------------- | ---------------------- |
+| baseline (2026-08-16 floor)  | 166 pl · r14 · 7,795  | 237 · r16 · 23,265     |
+| A — buyable cost curve 22→30 | 117 · r12 · 3,450     | 237 · r16 · 23,265     |
+| B — poorer pops 3→2          | 108 · r10 · 3,007     | 237 · r16 · 23,265     |
+| C — floor further down       | 169 · r14 · 7,398     | 230 · r16 · 20,478     |
+| D — gradual formulas         | 184 · r15 · 7,496     | 248 · r18 · 23,201     |
 | **A+D, ramp 2 (shipped)**    | **123 · r12 · 3,338** | **248 · r18 · 23,201** |
 
 Two findings inside the table. **C is exhausted**: pushing the same floor
