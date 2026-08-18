@@ -2154,3 +2154,17 @@ again on a later run is decided by ownership, not geography (it grants only
 unowned perks, so a full shelf makes every find an honest empty vault).
 Tier 1 stays parked whole; Tidecaller stays dead; no art, no sound, no new
 glyph beyond ✦ in the shared table. 450 tests.
+
+**Addendum, same day — the daily seed, designed to done**
+
+While the finds build ran, Marc settled the daily's four forks on option
+sets: **local-midnight** rollover (the ritual beats UTC's comparability),
+**strictly plain** loadout (rejecting the proposed featured-find rotation —
+plain buys one permanent ladder where every daily score ever posted is
+comparable, and makes a shared daily link the cleanest stranger invitation),
+**counted retries** (the share text confesses "2nd try" — honesty by
+construction over enforcement theater, which a no-backend game cannot have),
+and the **arc-sparkline share** (`▂▁▅▃█▂` from the harvest log the end
+screen already draws). Full design in `ideas/daily.md`, build parked until
+Marc calls it. Verified in passing: replay-seed guards already keep a daily
+from touching the real run or farming finds.
