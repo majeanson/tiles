@@ -34,6 +34,12 @@ body {
      tile placement, and double-tap-to-zoom adds 300ms to every tap. */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  /* Console-like, Marc's call (2026-08-18): a long-press anywhere used to pop
+     the OS text-selection loupe and copy menu over the game. Nothing here is
+     prose to quote — the seed travels via SHARE, which does the copying. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #app {
