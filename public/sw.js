@@ -18,7 +18,19 @@
  */
 
 const VERSION = 'ashwake-__BUILD_SHA__';
-const PRECACHE = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
+// The hashed bundle is stamped in at build time, same as the sha. It has to
+// be PRECACHED, not just opportunistically cached: this worker registers
+// after the first playable frame, so on visit one the page's own JS was
+// fetched before the worker controlled anything — and an offline visit two
+// then got a cached index.html pointing at a script the cache never held.
+// A white screen, from the feature that exists to prevent one (2026-08-18).
+const PRECACHE = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/icon.svg',
+  ...JSON.parse('__PRECACHE_ASSETS__'),
+];
 
 self.addEventListener('install', (event) => {
   // Take over as soon as the new build is cached: a game with no server state

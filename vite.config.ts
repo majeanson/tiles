@@ -133,7 +133,23 @@ function serviceWorkerStamp(sha: string): Plugin {
       if (stamped === source) {
         throw new Error('sw.js has no __BUILD_SHA__ to stamp — the cache name would never change');
       }
-      writeFileSync(file, stamped);
+
+      // The hashed bundle joins the precache list. Without this, offline only
+      // worked from the second visit: the worker registers after the first
+      // frame, so visit one's bundle was never cached, and an offline return
+      // served an index.html whose script the cache did not hold.
+      const assetsDir = fileURLToPath(new URL('./dist/assets', import.meta.url));
+      const bundle = readdirSync(assetsDir)
+        .filter((name) => name.endsWith('.js') || name.endsWith('.css'))
+        .map((name) => `/assets/${name}`);
+      const listed = stamped.replace(
+        "'__PRECACHE_ASSETS__'",
+        JSON.stringify(JSON.stringify(bundle)),
+      );
+      if (listed === stamped) {
+        throw new Error('sw.js has no __PRECACHE_ASSETS__ to fill — offline would need two visits');
+      }
+      writeFileSync(file, listed);
     },
   };
 }

@@ -8,6 +8,7 @@ import {
   decodeWorld,
   encodeWorld,
   knownFraction,
+  mergeRun,
   newWorld,
   rememberRun,
   unlockedBy,
@@ -38,6 +39,20 @@ describe('world memory', () => {
     expect(twice.runs).toBe(2);
     expect(twice.revealed.length).toBeGreaterThanOrEqual(after.revealed.length);
     for (const k of after.revealed) expect(twice.revealed).toContain(k);
+  });
+
+  it('merges mid-run without counting a run — only rememberRun counts', () => {
+    // mergeRun fires after EVERY action. When it bumped the count too
+    // (2026-08-18) the atlas called each tap a run.
+    const world = newWorld(42);
+    let state = newRun(42, TUNING);
+    state = reduce(state, { type: 'PLACE', hex: key(1, 0) });
+
+    const during = mergeRun(world, state);
+    expect(during.runs).toBe(0);
+    expect(during.revealed.length).toBe(Object.keys(state.cells).length);
+
+    expect(rememberRun(world, state).runs).toBe(1);
   });
 
   it('remembers only territories that were actually claimed', () => {

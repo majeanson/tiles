@@ -735,6 +735,7 @@ describe('a stranger arriving', () => {
       resume: { ...newRun(4, TUNING), phase: 'ended', death: 'spent', points: 120 },
       share: (state) => {
         shared = state;
+        return Promise.resolve('copied' as const);
       },
     });
     sharing.game.start();
@@ -743,6 +744,20 @@ describe('a stranger arriving', () => {
     (button as HTMLButtonElement).click();
     expect(shared).not.toBeNull();
     expect(shared!.points).toBe(120);
+  });
+
+  it('acknowledges a clipboard copy on the button itself', async () => {
+    // The clipboard path is invisible; until 2026-08-18 the button silently
+    // did nothing on browsers without a share sheet.
+    const ctx = build(4, TUNING, {
+      resume: { ...newRun(4, TUNING), phase: 'ended', death: 'spent', points: 9 },
+      share: () => Promise.resolve('copied' as const),
+    });
+    ctx.game.start();
+    const button = ctx.el.end.querySelector('#end-share') as HTMLButtonElement;
+    button.click();
+    await Promise.resolve();
+    expect(button.textContent).toBe('LINK COPIED');
   });
 
   it('names the run’s ending when the clock runs out', () => {

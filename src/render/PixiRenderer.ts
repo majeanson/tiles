@@ -99,6 +99,10 @@ export class PixiRenderer implements Renderer {
   #fitSize = 0;
   #panX = 0;
   #panY = 0;
+  /** True while a camera-driven redraw waits on the next animation frame. */
+  #drawQueued = false;
+  /** Pending post-gesture surface-cache eviction. */
+  #zoomSettle: ReturnType<typeof setTimeout> | null = null;
 
   readonly #theme: Theme;
   #assets: AssetBook;
@@ -240,7 +244,36 @@ export class PixiRenderer implements Renderer {
     // Flashes were positioned in the old layout; a third of a second of glow
     // is not worth drawing in the wrong place. Same reasoning as resize.
     this.#clearFlashes();
-    this.draw(this.#view);
+
+    // Coalesced, not immediate: a pinch delivers a zoomBy per pointer event —
+    // 60 to 120 a second — and a full board teardown at that rate is the
+    // phone jank (found 2026-08-18, reach 12+ boards). One draw per frame is
+    // all a screen can show anyway.
+    this.#queueDraw();
+
+    // The surface cache keys on rounded pixel size, so a slow pinch bakes a
+    // texture set at every integer size it passes through. Evict once the
+    // gesture settles — phones never fire the resize path that used to be
+    // the only cleaner.
+    if (this.#zoomSettle !== null) clearTimeout(this.#zoomSettle);
+    this.#zoomSettle = setTimeout(() => {
+      this.#zoomSettle = null;
+      this.#surfaces.evictExcept(this.#layout?.size ?? 0, this.#theme.orientation);
+    }, 250);
+  }
+
+  /** One draw per animation frame, however many camera moves asked for it. */
+  #queueDraw(): void {
+    if (this.#drawQueued) return;
+    if (typeof requestAnimationFrame !== 'function') {
+      this.draw(this.#view);
+      return;
+    }
+    this.#drawQueued = true;
+    requestAnimationFrame(() => {
+      this.#drawQueued = false;
+      this.draw(this.#view);
+    });
   }
 
   panBy(dx: number, dy: number): void {

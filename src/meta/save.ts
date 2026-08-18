@@ -47,14 +47,18 @@ export function decodeRun(raw: string | null): GameState | null {
   // still lose its own game; it cannot crash the loop.
   if (parsed['version'] !== 1) return null;
   if (parsed['phase'] !== 'placing' && parsed['phase'] !== 'ended') return null;
+  // Finite, not merely a number: NaN and Infinity are `typeof 'number'` and
+  // both resume into a run that can never be played (a NaN purse fails every
+  // affordability check forever). The world and records decoders already
+  // check finiteness; the run decoder is the one that mattered most.
   for (const key of ['tiles', 'points', 'placements', 'rootSeed']) {
-    if (typeof parsed[key] !== 'number') return null;
+    if (typeof parsed[key] !== 'number' || !Number.isFinite(parsed[key])) return null;
   }
 
   const tuning = parsed['tuning'];
   if (!isRecord(tuning)) return null;
   for (const key of ['startingTiles', 'baseCost', 'costRisesEvery', 'draftWidth']) {
-    if (typeof tuning[key] !== 'number') return null;
+    if (typeof tuning[key] !== 'number' || !Number.isFinite(tuning[key])) return null;
   }
 
   const rng = parsed['rng'];
@@ -67,7 +71,18 @@ export function decodeRun(raw: string | null): GameState | null {
     return null;
   }
 
-  if (!isRecord(parsed['cells'])) return null;
+  // Every cell must wear a kind the renderer and the describe switch know.
+  // Both are exhaustive switches with no default, so one unknown kind in a
+  // poked-at save was a black screen on EVERY load — and the only escape
+  // (ABANDON WORLD) lives behind a settings panel that needs the game booted.
+  const cells = parsed['cells'];
+  if (!isRecord(cells)) return null;
+  const KINDS = new Set(['tile', 'stone', 'wall', 'empty', 'landmark']);
+  for (const cell of Object.values(cells)) {
+    if (!isRecord(cell) || typeof cell['kind'] !== 'string' || !KINDS.has(cell['kind'])) {
+      return null;
+    }
+  }
   if (!Array.isArray(parsed['draft']) || !parsed['draft'].every(isTile)) return null;
   if (typeof parsed['selected'] !== 'number') return null;
 

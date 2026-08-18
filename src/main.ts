@@ -278,7 +278,16 @@ function runKeeping(
       try {
         localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
       } catch {
-        // Storage full or forbidden — the run simply is not kept.
+        // Storage full or forbidden. Before giving up on the run — the one
+        // thing in storage that cannot be regenerated — shed the world
+        // memory, which can: it regrows from play, the run does not. Only
+        // then is an unkept run accepted as the cost of a hostile browser.
+        try {
+          localStorage.removeItem(WORLD_STORAGE_KEY);
+          localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
+        } catch {
+          // Forbidden outright (private mode). Every run is its own life.
+        }
       }
       // The world learns as the run happens, not only when it ends. Ground
       // seen, territories taken and shrines woken are facts the moment they
@@ -319,6 +328,18 @@ function runKeeping(
         // A record that cannot be written is still a run that happened.
       }
 
+      // The finished run leaves storage HERE, not on NEW RUN: an ended run
+      // that stayed saved was resumed on every reload, and each resume banked
+      // its relics and counted it again — an infinitely repeatable double
+      // count found on 2026-08-18. The run is recorded; keeping its corpse
+      // around bought nothing but the bug.
+      try {
+        localStorage.removeItem(RUN_STORAGE_KEY);
+      } catch {
+        // Unwritable storage cannot double-bank either: the same failure that
+        // kept the run from being saved keeps it from being resumed.
+      }
+
       const now = after[ONLY_WORLD] ?? EMPTY_RECORDS;
       const gate = gateB(now);
       return {
@@ -351,19 +372,19 @@ function runKeeping(
     share: async (state) => {
       const url = new URL(location.href);
       url.searchParams.set('seed', String(state.rootSeed));
-      const text =
-        `${NAME}: ${state.points} pts in ${state.placements} placements` +
-        (state.death === 'spent' ? ' — expedition complete.' : '.') +
-        ' Beat my run:';
+      const text = `${NAME}: ${state.points} pts in ${state.placements} placements. Beat my run:`;
 
       try {
         if (typeof navigator.share === 'function') {
           await navigator.share({ title: NAME, text, url: url.toString() });
-          return;
+          return 'shared';
         }
         await navigator.clipboard.writeText(`${text} ${url.toString()}`);
+        return 'copied';
       } catch {
-        // Cancelled, or neither API exists. Nothing to say and nothing broken.
+        // Cancelled, or neither API exists. The button reports it — a copy
+        // nobody is told about reads as a button that does nothing.
+        return 'failed';
       }
     },
   };
@@ -777,4 +798,47 @@ async function main(): Promise<void> {
   });
 }
 
-void main();
+/**
+ * The failure panel: plain DOM, no Pixi, no framework — because it exists for
+ * exactly the moments those things are broken (a WebGL context that will not
+ * come up, a bundle half-loaded on a bad connection, a bug in the loop). The
+ * one promise it makes is the one the autosave already keeps: every action is
+ * saved the moment it happens, so a reload resumes the run.
+ */
+function showFailure(): void {
+  if (document.getElementById('boot-failure') !== null) return;
+  const panel = document.createElement('div');
+  panel.id = 'boot-failure';
+  panel.setAttribute('role', 'alert');
+  panel.style.cssText =
+    'position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;gap:12px;' +
+    'align-items:center;justify-content:center;background:#14161c;color:#e6e9f0;' +
+    'font-family:system-ui,sans-serif;padding:24px;text-align:center;';
+  const words = document.createElement('p');
+  words.textContent = 'Something broke. Your run is saved — reloading picks it up where it was.';
+  const reload = document.createElement('button');
+  reload.type = 'button';
+  reload.textContent = 'RELOAD';
+  reload.style.cssText =
+    'min-height:44px;padding:0 24px;font:inherit;color:inherit;' +
+    'background:#262b36;border:1px solid #3a4150;border-radius:6px;';
+  reload.addEventListener('click', () => {
+    location.reload();
+  });
+  panel.replaceChildren(words, reload);
+  document.body.replaceChildren(panel);
+}
+
+// A boot that dies (WebGL refused, an element missing, a bundle truncated)
+// used to be a silent blank page. The listeners catch what escapes later —
+// one uncaught throw in a pointer handler froze the loop with no signal.
+window.addEventListener('error', (event) => {
+  if (event.error !== undefined && event.error !== null) showFailure();
+});
+window.addEventListener('unhandledrejection', () => {
+  showFailure();
+});
+
+void main().catch(() => {
+  showFailure();
+});

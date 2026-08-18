@@ -174,12 +174,46 @@ export function toBoardView(
   return { cells };
 }
 
+/**
+ * The last `destinationsWithin` answer, keyed on everything it depends on.
+ *
+ * The scan is O(blocks²) in the horizon and pure in (seed, horizon, tuning) —
+ * and two selectors (beacons and the hint line) ask the identical question
+ * every render, so at reach 18 the board was paying ~400 block hashes per
+ * frame for one answer. The horizon only moves when reach does; this cache
+ * makes the second ask (and most first asks) free.
+ */
+let lastDestinations: {
+  seed: number;
+  horizon: number;
+  tuning: unknown;
+  out: ReturnType<typeof destinationsWithin>;
+} | null = null;
+
+function destinationsCached(
+  seed: number,
+  horizon: number,
+  tuning: GameState['tuning'],
+): ReturnType<typeof destinationsWithin> {
+  if (
+    lastDestinations !== null &&
+    lastDestinations.seed === seed &&
+    lastDestinations.horizon === horizon &&
+    lastDestinations.tuning === tuning
+  ) {
+    return lastDestinations.out;
+  }
+  const out = destinationsWithin(seed, horizon, tuning);
+  lastDestinations = { seed, horizon, tuning, out };
+  return out;
+}
+
 /** Destinations within the beacon horizon that growth has not revealed yet. */
 function beaconsFor(
   state: GameState,
 ): { q: number; r: number; reward: LandmarkReward; colour: Colour | null }[] {
   const horizon = reachOf(state) + state.tuning.beaconHorizon;
-  return destinationsWithin(state.rootSeed, horizon, state.tuning).filter(
+  return destinationsCached(state.rootSeed, horizon, state.tuning).filter(
     (d) => state.cells[key(d.q, d.r)] === undefined,
   );
 }
@@ -643,7 +677,7 @@ function hintFor(state: GameState): string | null {
     }
   }
   const horizon = reachOf(state) + state.tuning.beaconHorizon;
-  for (const d of destinationsWithin(state.rootSeed, horizon, state.tuning)) {
+  for (const d of destinationsCached(state.rootSeed, horizon, state.tuning)) {
     if (state.cells[key(d.q, d.r)] === undefined) consider(d.q, d.r, d.reward);
   }
 

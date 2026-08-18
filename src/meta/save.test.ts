@@ -49,6 +49,28 @@ describe('keeping a run', () => {
     expect(decodeRun(raw)).toBeNull();
   });
 
+  it('refuses non-finite numbers, which typeof calls numbers', () => {
+    // NaN tiles resumes into a run where nothing is ever affordable and
+    // nothing ever ends — a save that plays dead forever. JSON has no NaN
+    // literal, but devtools-poked and half-written saves reach the decoder
+    // through the same door as honest ones.
+    const state = newRun(3);
+    for (const bad of ['null', '1e999']) {
+      const raw = encodeRun(state).replace(`"tiles":${state.tiles}`, `"tiles":${bad}`);
+      expect(raw).not.toBe(encodeRun(state));
+      expect(decodeRun(raw)).toBeNull();
+    }
+  });
+
+  it('refuses a cell whose kind the renderer does not know', () => {
+    // The renderer and the tap-describe are exhaustive switches with no
+    // default: one unknown kind was a black screen on every load, forever.
+    const state = reduce(newRun(4), { type: 'PLACE', hex: legalPlacements(newRun(4).cells)[0]! });
+    const raw = encodeRun(state).replace('"kind":"tile"', '"kind":"lava"');
+    expect(raw).not.toBe(encodeRun(state));
+    expect(decodeRun(raw)).toBeNull();
+  });
+
   it('refuses a run with a mangled core field, whole', () => {
     const state = newRun(3);
     for (const mangle of [

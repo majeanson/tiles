@@ -149,8 +149,14 @@ export type GameHooks = {
    * Send this run somewhere — the share sheet, or the clipboard. Absent means
    * the button is not drawn, which is the honest state on a browser with no
    * way to share.
+   *
+   * The outcome comes back because the clipboard path is invisible: a copy
+   * with no acknowledgement reads as a button that does nothing, which is
+   * exactly how it read until 2026-08-18. `'shared'` needs no words — the
+   * share sheet was its own feedback; `'copied'` does; `'failed'` means
+   * neither API worked (or the user cancelled), and the button says so.
    */
-  readonly share?: (state: GameState) => void | Promise<void>;
+  readonly share?: (state: GameState) => Promise<'shared' | 'copied' | 'failed'>;
   /**
    * What the next shrine will unlock, by how many this run has already
    * claimed. The ledger belongs to the world, which lives outside the game —
@@ -1525,7 +1531,16 @@ export class Game {
       share.textContent = 'SHARE THIS RUN';
       const send = this.#hooks.share;
       share.addEventListener('click', () => {
-        void send(this.#state);
+        void send(this.#state).then((outcome) => {
+          // The share sheet is its own feedback; the clipboard is not. The
+          // acknowledgement lives on the button because the button is what
+          // the eye is already on.
+          if (outcome === 'shared') return;
+          share.textContent = outcome === 'copied' ? 'LINK COPIED' : 'SHARING UNAVAILABLE';
+          setTimeout(() => {
+            share.textContent = 'SHARE THIS RUN';
+          }, 2000);
+        });
       });
       parts.push(share);
     }

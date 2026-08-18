@@ -156,7 +156,10 @@ export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
     revealed: [...revealed],
     territories: [...territories],
     shrines: [...shrines],
-    runs: world.runs + 1,
+    // The run count is rememberRun's alone — this function runs after EVERY
+    // action, and when it bumped the count too (2026-08-18) the atlas called
+    // each tap a run. That is what the docblock's "EXCEPT" always meant.
+    runs: world.runs,
     bestPoints: Math.max(world.bestPoints, state.points),
     farthestReach: Math.max(world.farthestReach, reach),
   };
