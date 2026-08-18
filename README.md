@@ -8,13 +8,15 @@ a phone's home screen and plays offline.
 
 ## The game in a minute
 
-You start on one tile in the dark. Every placement costs tiles, and you have a
-fixed expedition — 260 placements — so the clock is real and so is the purse.
+You start on one tile in the dark with a small purse of tiles. Every placement
+spends from it, placements get dearer the more you make, and the run ends when
+you cannot afford another — so how far you get IS the game.
 
 - **Surround a tile on all six sides** and it ripens. Its worth is how many
   neighbours match it.
-- **Cash a pocket of ripe tiles** as TILES (keep going) or POINTS (your score,
-  worth more the farther from home you pop it). Never both.
+- **Pop a pocket of ripe tiles** and it pays tiles to keep you going and score
+  at the same time — bigger pockets pay more, and pockets farther from home
+  pay much more. Or BURN it: no tiles, no score, but relics for the next run.
 - **Every colour plays differently.** Moss crowds its own kind, ember scores
   beside strangers, ash feeds on the stone you leave behind, tide is worth
   more the farther out you carry it.
@@ -22,6 +24,9 @@ fixed expedition — 260 placements — so the clock is real and so is the purse
   territories become permanently yours, shrines unlock a system for good.
 - **Your world remembers.** One world per device: the ground you uncover stays
   on the map between runs, and territories you claim greet you already yours.
+- **Relics buy the climb.** Between runs they buy a deeper purse, keener odds,
+  richer worlds, a gentler cost curve — run one is deliberately lean, and the
+  shop is how it stops being.
 
 Everything else is explained in the game — tap **?** for the manual, which
 writes itself from the live rules and can never describe a different game.
@@ -31,8 +36,8 @@ writes itself from the live rules and can never describe a different game.
 ```bash
 pnpm install
 pnpm dev             # localhost, but see the note below
-pnpm test            # 314 tests
-pnpm sim --endless   # the balance harness, 200 seeds per policy
+pnpm test            # the whole suite, 400+ tests
+pnpm sim             # the balance harness, 200 seeds per policy
 pnpm build && pnpm exec wrangler deploy
 ```
 

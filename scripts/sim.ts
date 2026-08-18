@@ -11,13 +11,11 @@ import { playMany } from '../src/sim/run';
  *   pnpm sim --policy farm,hoard      just the comparison you care about
  *   pnpm sim --set costRisesEvery=60  the same runs under a different economy
  *   pnpm sim --set ripeTilesMatch=false
- *   pnpm sim --endless                the SHIPPED endless economy — what
- *                                     ?ff=world.endless actually plays, with
- *                                     destinations and rarity on. `--set
- *                                     world=endless` is the bare plane instead.
  *
  * `--set` is the whole reason tuning is data rather than an import: answering
  * "what does this number do" should cost one command, not an edit and a rebuild.
+ * (`--endless` existed when there were two worlds; there is one economy now,
+ * and the default IS it.)
  */
 
 type Args = {
@@ -64,7 +62,14 @@ function parseArgs(argv: readonly string[]): Args {
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     const value = argv[i + 1];
-    if (value === undefined) continue;
+    // A flag with no value used to be skipped silently — a typo'd sweep would
+    // quietly measure the default economy and report it as the change.
+    if (value === undefined) {
+      if (flag === '--seeds' || flag === '--policy' || flag === '--set') {
+        throw new Error(`${flag} wants a value`);
+      }
+      continue;
+    }
 
     if (flag === '--seeds') {
       args.seeds = Number(value);

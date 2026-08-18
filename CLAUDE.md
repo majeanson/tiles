@@ -19,10 +19,12 @@ Hard rules:
 - **Every balance number lives in `src/content/`.** A number that affects
   balance appearing under `src/engine/` is a bug.
 - **Every system ships behind a flag** in `src/meta/features.ts`, defaulting
-  off. Run one is the smallest game there is; depth arrives by unlock. One
-  recorded exception: `world.endless` defaults ON since 2026-08-14 — the
-  worlds question belonged to play (Session 4), and Marc played both and
-  chose (LOG, Session 9). `?ff=-world.endless` is the bounded game.
+  off. Run one is the smallest game there is; depth arrives by unlock — via
+  shrines and the relic shop since M3/M4, which is the same principle worn by
+  the game itself. (History: `world.endless` was the one default-ON exception
+  from 2026-08-14 — Marc played both worlds and chose — until 2026-08-16,
+  when the bounded game was deleted and the flag with it. One economy, for
+  everybody, so a shared seed opens the game its sender was playing.)
 - **Plain words.** No invented vocabulary until a concept has earned a name.
   The v1 design had twenty; that was the problem, not the flavour.
 - **One question per prototype.** Write it down before building, answer it after

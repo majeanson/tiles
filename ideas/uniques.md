@@ -3,9 +3,13 @@
 Marc, 2026-08-15: _"unique perks like diablo 2 uniques can determine a build"_,
 and then: _"lets brainstorm ideas together thoroughly"_.
 
-**Reference, not spec.** Nothing here is built. The point of the list is to be
-long enough that the good ones are visible by comparison, and honest enough
-that the bad ones are labelled rather than quietly dropped.
+**Reference, not spec — and still OPEN (status corrected 2026-08-18).** Two
+entries are built: **Rootbound** and **Second Wind** shipped as purchasable
+perks in M3 (`src/meta/progress.ts`), each amended exactly as recorded below.
+Tier 3 is rejected in writing. Everything else — Tier 1's Ashbound Seal,
+Everbloom, Leap and The Hoard, Tier 2's four — is neither built nor rejected,
+and the sizing question at the bottom is unanswered. This file is the one
+`ideas/` ledger that is not resolved, and `ROADMAP.md` says so.
 
 ## What makes a unique a unique
 

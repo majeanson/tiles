@@ -141,17 +141,23 @@ soft numbers in this file; the checkboxes are not.
 M1–M6 are built, verified and deployed. What the checklist actually says now:
 
 - [x] **All six gates** — A passed (S10), C passed (S1), D passed (S11),
-      F passed (S14), E opened (S15). **B is the exception**: fixed
-      structurally and measured, but its condition names a human's twenty
-      logged pops, and the game now counts them on every end screen. Not
-      flipped by a machine on a human's behalf.
+      F passed (S14), E opened (S15). **B is RETIRED (2026-08-18, Marc's
+      call)**: it failed twice in human hands for opposite reasons, and
+      `singlePayout` — the gate's own prescribed fallback, "cut it to a
+      single automatic payout" — shipped. A gate cannot stay open on a fork
+      that no longer exists. Its successor question is open and human-owned:
+      **is pop-vs-burn-vs-wait a real timing decision?** (LOG, 2026-08-18.)
 - [x] **Zero unwired feature flags.** `pop.treasure` and `debug.overlay` were
       wired in M3; the registry's `wired` field and its test remain for the
       next flag declared before it is built.
-- [x] **Every `ideas/` file resolved.** `endless-world.md` carries the queue
+- [ ] **Every `ideas/` file resolved.** `endless-world.md` carries the queue
       with each item built-and-kept or killed-in-writing;
       `persistent-world.md`'s P4a and P4b are built, P4c is built as shrines
-      and the atlas.
+      and the atlas. **`uniques.md` is still open** — Rootbound and Second
+      Wind shipped, Tier 3 is rejected in writing, and eight ideas are
+      neither built nor rejected. This box was checked while omitting that
+      file by name (caught 2026-08-18); it stays unchecked until the eight
+      are decided.
 - [ ] **`DESIGN.md` claims human-verified.** Gate A is; the rest is
       harness-verified and honest about it.
 - [x] **A name, an icon, a direction, and it installs offline.** Ashwake,
@@ -162,9 +168,9 @@ M1–M6 are built, verified and deployed. What the checklist actually says now:
 - [x] **Post-1.0 parking lot** — below.
 
 **v1.0 is deliberately untagged.** The roadmap's own definition of done
-requires the stranger test and Gate B's human verdict, and tagging without
-them would be the first cut corner in sixteen sessions. Everything else is
-ready: the tag is one command behind two conversations.
+requires the stranger test, Gate B's successor question answered by Marc on
+the phone, and `uniques.md` resolved. Tagging without them would be the first
+cut corner in twenty sessions.
 
 ## Post-1.0 parking lot
 
@@ -180,6 +186,8 @@ ready: the tag is one command behind two conversations.
 - **Storage compaction.** Revealed ground is stored as keys; a per-block
   bitmap is written down in `ideas/persistent-world.md` for the day an atlas
   reports a world past ~1MB.
-- **The bounded game.** Still shipped behind `?ff=-world.endless`, still
-  passing its own tests, and still the only thing in the build with no route
-  to it from the UI. Keep or delete after the stranger test.
+- **The bounded game.** Deleted outright on 2026-08-16 when the decisions
+  were officialised — one economy for everybody, so a shared seed opens the
+  same game its sender was playing. (This bullet said "still shipped behind
+  `?ff=-world.endless`" until 2026-08-18; the flag had already been gone for
+  two days.)

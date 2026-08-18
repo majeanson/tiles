@@ -106,7 +106,7 @@ export const ASSET_SLOTS: readonly AssetSlot[] = [
     id: 'fog.hard',
     label: 'Hard fog',
     size: [512, 512],
-    note: 'Never-seen ground. AWAITING MECHANIC — the map is a bounded island with no fog of war.',
+    note: 'Never-seen ground. The plane exists only where grown, so nothing draws this yet — the dark IS the fog.',
     wired: false,
     tiling: true,
   },
@@ -114,7 +114,7 @@ export const ASSET_SLOTS: readonly AssetSlot[] = [
     id: 'fog.soft',
     label: 'Soft fog',
     size: [512, 512],
-    note: 'Remembered ground, dimmed and blurred. AWAITING MECHANIC — see fog.hard.',
+    note: 'Remembered ground (P4a — built). Drawn today as a flat alpha dim; this texture would replace that, unconsumed until the renderer reads it.',
     wired: false,
     tiling: true,
   },
@@ -130,7 +130,7 @@ export const ASSET_SLOTS: readonly AssetSlot[] = [
     id: 'ui.logo',
     label: 'Title treatment',
     size: [876, 450],
-    note: 'Title screen and store icon source. AWAITING SCREEN — there is no title screen.',
+    note: 'Title treatment. The name renders as text in the help panel and footer; there is still no title screen for this to sit on.',
     wired: false,
     tiling: false,
   },
@@ -138,15 +138,14 @@ export const ASSET_SLOTS: readonly AssetSlot[] = [
     id: 'ui.runEnd',
     label: 'Run-end art',
     size: [876, 330],
-    note: 'Runs always end in failure, so this is seen more than any other image. AWAITING SCREEN.',
+    note: 'Runs always end in failure, so this is seen more than any other image. The end screen exists; it does not consume this slot yet.',
     wired: false,
     tiling: false,
   },
 ];
 
+/** Slot lookup for the manifest decoder — unknown ids are dropped, not kept. */
 const BY_ID = new Map(ASSET_SLOTS.map((s) => [s.id, s]));
-
-export const assetSlot = (id: AssetId): AssetSlot | null => BY_ID.get(id) ?? null;
 
 /**
  * Where a theme's art for a slot would live, relative to the site root.

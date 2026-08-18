@@ -12,7 +12,6 @@ import {
 import {
   decodeRecords,
   encodeRecords,
-  gateB,
   recordRun,
   EMPTY as EMPTY_RECORDS,
   ONLY_WORLD,
@@ -341,13 +340,10 @@ function runKeeping(
       }
 
       const now = after[ONLY_WORLD] ?? EMPTY_RECORDS;
-      const gate = gateB(now);
       return {
         runs: now.runs,
         best: now.bestPoints,
         isNewBest: state.points > before.bestPoints && state.points > 0,
-        pops: gate.pops,
-        tilesShare: gate.tilesShare,
       };
     },
 
@@ -495,7 +491,7 @@ function mountSettings(
   intro.textContent =
     'Sticky on this device. UI switches apply at once; world switches apply from your ' +
     'next run and never touch the one in progress. The address bar does the same job ' +
-    '(?ff=world.endless, ?ff=-world.endless), and each note below is the decision ' +
+    '(?ff=debug.overlay, ?ff=-ui.themePicker), and each note below is the decision ' +
     'that set the default.';
 
   const rows = FEATURES.map((f) => {
@@ -752,9 +748,8 @@ async function main(): Promise<void> {
   const renderer = new PixiRenderer(theme, AssetBook.empty(), prefersReducedMotion());
   await renderer.mount(elements.board);
 
-  // The world flag decides a NEW run's economy; a resumed run plays under the
-  // tuning it was saved with, by design — rebalances never re-score a run in
-  // progress. `?ff=-world.endless` is the bounded game.
+  // A resumed run plays under the tuning it was saved with, by design —
+  // rebalances never re-score a run in progress.
   // Flags and UNLOCKS become TUNING here at the edge and travel no further:
   // the engine sees numbers, never a feature registry and never a world.
   // ONE economy, for everybody (Marc, 2026-08-16: "officialize some decisions

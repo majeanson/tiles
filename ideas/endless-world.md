@@ -1,11 +1,12 @@
 # The endless world — a design push, 2026-08-04
 
-Status: **P1 built and answered (2026-08-04, Session 3 in `LOG.md`) — the
-answer is yes.** The engine plays the endless world behind
-`--set world=endless`, the harness has swept it, and harvest timing has an
-interior optimum with a cliff past it — pinned in `src/sim/sim.test.ts`. P2
-(terrain) and P3 (camera, fog, landmarks) remain unbuilt, and nothing here has
-been touched by a human hand yet.
+Status: **ALL PHASES BUILT — and since 2026-08-14 this IS the shipped game
+(updated 2026-08-18).** P1 answered yes (Session 3); P2 terrain, P3 camera and
+landmarks, and the whole content queue followed (Sessions 6–14, each item kept
+or killed in writing below). The bounded world this file was an alternative to
+was deleted on 2026-08-16. The header once said "nothing here has been touched
+by a human hand"; Marc has since played it across many sessions — the play
+answers live in `LOG.md`.
 
 This is the design pass `prompt.md` Q0 called option (b), pushed by Marc after
 playing the prototype. It lives in `ideas/` because `DESIGN.md` records only

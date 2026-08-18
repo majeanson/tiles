@@ -583,7 +583,7 @@ describe('keeping the run, and ending it properly', () => {
     const ctx = build(1, TUNING, {
       resume: ended,
       finish: () => {
-        return { runs: 4, best: 999, isNewBest: false, pops: 30, tilesShare: 0.5 };
+        return { runs: 4, best: 999, isNewBest: false };
       },
       newRun: () => {
         starts++;
@@ -614,7 +614,7 @@ describe('keeping the run, and ending it properly', () => {
     };
     const ctx = build(1, TUNING, {
       resume: ended,
-      finish: () => ({ runs: 1, best: 500, isNewBest: true, pops: 0, tilesShare: null }),
+      finish: () => ({ runs: 1, best: 500, isNewBest: true }),
     });
     ctx.game.start();
     expect(ctx.el.end.textContent).toMatch(/NEW BEST — 500 pts/);
@@ -627,7 +627,7 @@ describe('keeping the run, and ending it properly', () => {
       resume: ended,
       finish: () => {
         writes++;
-        return { runs: 1, best: 0, isNewBest: false, pops: 0, tilesShare: null };
+        return { runs: 1, best: 0, isNewBest: false };
       },
     });
     ctx.game.start();

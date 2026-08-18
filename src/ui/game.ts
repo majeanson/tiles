@@ -105,16 +105,14 @@ export type GameHooks = {
    * Submit a finished run to the record book; returns what the book now says.
    * Called exactly once per ended run.
    *
-   * `tilesShare` across `pops` harvests is Gate B's own measurement, carried
-   * here so the end screen can print the gate's verdict on the player's own
-   * play rather than on a memory of it.
+   * It used to carry Gate B's tiles-share tally too; that left with the gate
+   * (2026-08-18) — `singlePayout` removed the fork the tally measured, and a
+   * line the UI suppressed was evidence nobody could read.
    */
   readonly finish?: (state: GameState) => {
     readonly runs: number;
     readonly best: number;
     readonly isNewBest: boolean;
-    readonly pops: number;
-    readonly tilesShare: number | null;
   };
   /** Start a fresh run under the current settings. Wired to the end screen. */
   readonly newRun?: () => void;
@@ -1432,7 +1430,6 @@ export class Game {
       this.#el.harvestTreasure.textContent = `TAKE  1 ${treasure.toUpperCase()}`;
     }
 
-    this.#el.end.hidden = !hud.ended;
     // A finished run has no hand to play and no luck to spend, and leaving
     // those controls on screen did worse than confuse: the end screen is long
     // now that it carries the shop, and the live controls ended up drawn over
@@ -1457,18 +1454,11 @@ export class Game {
         this.#recordLines.push(
           book.isNewBest ? `NEW BEST — ${book.best} pts` : `best ${book.best} pts`,
         );
-        // Gate B's own measurement, printed — but only where the fork it
-        // measures still exists. Under the single payout every pop is both
-        // payouts, so '89% tiles / 11% pts' was reporting on a decision the
-        // game had stopped asking (Marc's end screen).
-        if (book.tilesShare !== null && !hud.singlePayout) {
-          const tiles = Math.round(book.tilesShare * 100);
-          this.#recordLines.push(
-            `across ${book.runs} run${book.runs === 1 ? '' : 's'}: ` +
-              `${book.pops} harvest${book.pops === 1 ? '' : 's'}, ` +
-              `${tiles}% tiles / ${100 - tiles}% pts`,
-          );
-        }
+        // A Gate B tally line lived here until 2026-08-18, guarded to hide
+        // itself under the single payout — which shipped, so the guard held
+        // the door shut on the roadmap's own evidence. The gate is retired
+        // (singlePayout WAS its prescribed fallback); the run's pops, burns
+        // and biggest-pop already print in the facts line below.
       }
     }
 

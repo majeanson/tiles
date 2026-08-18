@@ -119,23 +119,16 @@ export function recordRun(book: RecordBook, state: GameState): RecordBook {
   };
 }
 
-/**
- * Gate B, evaluated: the dominant option's share, and whether the sample is
- * big enough for the gate to speak. `null` share when nothing was harvested.
+/*
+ * `gateB()` lived here until 2026-08-18. The gate asked whether tiles-or-
+ * points was a real choice; `singlePayout` — the gate's own prescribed
+ * fallback, shipped after the fork failed twice in human hands — removed the
+ * fork it measured, so the instrument was measuring a deleted decision and
+ * its end-screen line had already been suppressed. Retired with the gate;
+ * the harvest tallies above stay recorded because storage formats outlive
+ * questions. The successor question (is pop-vs-burn-vs-wait a real decision?)
+ * is Marc's to answer on the phone — see LOG.md, 2026-08-18.
  */
-export function gateB(r: Records): {
-  pops: number;
-  tilesShare: number | null;
-  /** The gate's own threshold, and whether the count has reached its sample. */
-  passing: boolean;
-  enough: boolean;
-} {
-  const pops = r.tilesHarvests + r.pointsHarvests;
-  if (pops === 0) return { pops, tilesShare: null, passing: false, enough: false };
-  const tilesShare = r.tilesHarvests / pops;
-  const dominant = Math.max(tilesShare, 1 - tilesShare);
-  return { pops, tilesShare, passing: dominant <= 0.7, enough: pops >= 20 };
-}
 
 /** Gate D, evaluated: the mean arc, and whether it lands near the end. */
 export function gateD(r: Records): { arc: number | null; passing: boolean } {

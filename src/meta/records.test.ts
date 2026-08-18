@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TUNING } from '@content/tuning';
 import { newRun } from '@engine/reduce';
 import type { GameState, HarvestRecord } from '@engine/state';
-import { decodeRecords, encodeRecords, gateB, gateD, recordRun, EMPTY } from './records.js';
+import { decodeRecords, encodeRecords, gateD, recordRun } from './records.js';
 
 /**
  * The record book is how Gates B and D stop being memories. These pin the
@@ -44,20 +44,8 @@ describe('the record book', () => {
     expect(book['endless']?.runs).toBe(1);
   });
 
-  it('reads Gate B exactly as the ledger states it', () => {
-    // 70% is the line: at seven of ten the gate still passes, at eight it fails.
-    const at = (tiles: number, points: number) =>
-      gateB({ ...EMPTY, tilesHarvests: tiles, pointsHarvests: points });
-
-    expect(at(7, 3).passing).toBe(true);
-    expect(at(8, 2).passing).toBe(false);
-    expect(at(2, 8).passing).toBe(false); // symmetric — either side can dominate
-    expect(at(0, 0).tilesShare).toBeNull();
-
-    // And the gate wants twenty pops before it speaks.
-    expect(at(5, 5).enough).toBe(false);
-    expect(at(10, 10).enough).toBe(true);
-  });
+  // gateB's tests left with gateB (2026-08-18): singlePayout — the gate's own
+  // prescribed fallback — removed the fork it measured. See records.ts.
 
   it('reads Gate D as the arc landing late', () => {
     // Biggest harvest at 90% of a run is an arc; at 30% it is a plateau.

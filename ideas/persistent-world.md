@@ -1,6 +1,10 @@
-# The persistent world — P4, planned. 2026-08-15
+# The persistent world — P4, planned 2026-08-15
 
-Status: **PLAN, nothing built.** This is the roguelite layer: one world per
+Status: **BUILT — all three phases (updated 2026-08-18).** P4a (the remembered
+world) and P4b (territory perks) shipped in M2/M3; P4c shipped as shrines and
+the atlas in M4. The per-block bitmap compaction stays deferred, parked in
+`ROADMAP.md`'s post-1.0 lot. The plan below is kept as the record of the
+decisions, which were all Marc's. This is the roguelite layer: one world per
 player, remembered between runs. Every decision below is Marc's, given
 2026-08-15 via prompts; the architecture is drafted to the repo's rules
 (pure engine, numbers in content, one question per prototype). It lives in

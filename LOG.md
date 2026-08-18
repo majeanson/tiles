@@ -6,14 +6,14 @@ Established before any code, so that no work is done twice and no polish lands
 on an unproven design. **A gate is not passed until it is written down here as
 passed, with its evidence.**
 
-| Gate                         | Rule                                                                               | Passes when                                                                                                                    | State                                           |
-| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
-| **A — The minute is fun**    | No pops, no regions, no meta until placing a tile feels good                       | 20 consecutive placements with placeholder art feel good, on the phone                                                         | **PASSED (2026-08-15)**                         |
-| **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | **fixed structurally (S11); human log pending** |
-| **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**                          |
-| **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | **PASSED (2026-08-15)**                         |
-| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | **OPENED (2026-08-15) — torchlit**              |
-| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | **PASSED (2026-08-15)**                         |
+| Gate                         | Rule                                                                               | Passes when                                                                                                                    | State                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| **A — The minute is fun**    | No pops, no regions, no meta until placing a tile feels good                       | 20 consecutive placements with placeholder art feel good, on the phone                                                         | **PASSED (2026-08-15)**                                                      |
+| **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | **RETIRED (2026-08-18) — its own fallback shipped; successor question open** |
+| **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**                                                       |
+| **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | **PASSED (2026-08-15)**                                                      |
+| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | **OPENED (2026-08-15) — torchlit**                                           |
+| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | **PASSED (2026-08-15)**                                                      |
 
 ## Sessions
 
@@ -1810,3 +1810,84 @@ ceiling; does STEADY PACE feel worth its 30 relics; do the far caches pull;
 and Marc's reframed pop question — are the pop advantages worth taking now
 that tiles are scarce? Gate B's twenty logged pops and the stranger test
 still lead the human follow-up.
+
+### Session 21 — The audit, the bugs, and Gate B retired
+
+Marc: _"what can we advance before i play on my phone? explore the codebase
+for improvements, cut corners, things or visuals to implement for real."_
+Three parallel audits (cut corners, visuals, quality/resilience) swept the
+repo. Headline: zero TODOs in the code — the rot was in the gap between the
+shipped tuning and the records, plus eight real bugs. Marc green-lit four
+packages; this session shipped the first two.
+
+**The bug package (all balance-neutral):**
+
+- **An ended run was re-banked on every reload** — the run stayed in storage,
+  `resume` picked it up, and `finish` banked its relics and counted it again,
+  repeatable forever. The run leaves storage the moment it is recorded.
+- **`mergeRun` bumped the run count once per TAP** (it runs after every
+  action), so the atlas called every action a run — while its own docblock
+  said "everything EXCEPT the run count". Pinned by a new test.
+- **`decodeRun` hardened**: finite numbers only (NaN tiles resumed into a run
+  that could never be played), and every cell's `kind` validated — the
+  renderer's switches are exhaustive with no default, so one unknown kind was
+  a black screen on every load with the only escape behind a panel that
+  needs the game booted.
+- **Quota shedding**: a full-storage autosave now drops the regenerable world
+  memory to save the unregenerable run before giving up.
+- **An error boundary exists**: a boot or loop crash paints a plain-DOM panel
+  that says the truth — the run is saved, reload resumes it — instead of a
+  silent blank page.
+- **Pinch-zoom redrew the whole board per pointer event** (60–120 full
+  teardowns a second at reach 12+) and leaked a baked texture set at every
+  intermediate zoom size. Camera draws coalesce to one per frame; the cache
+  evicts when the gesture settles. `destinationsWithin` — O(blocks²), asked
+  identically twice per render — is cached.
+- **Offline needed two visits**: the worker precached everything EXCEPT the
+  bundle, and it registers after the first frame, so visit one's JS never
+  entered the cache and an offline return white-screened. The build stamps
+  the hashed asset list into PRECACHE and asserts the stamp took.
+- **iOS ignored the SVG `apple-touch-icon`** — a home-screen install got a
+  page screenshot on the exact device class this game targets. Real PNGs
+  now (180/192/512 + maskable, `scripts/icons.ts` regenerates them), plus
+  `og:image` so a shared link unfurls with the mark.
+- **The clipboard share fallback was silent** — on any browser without a
+  share sheet the button appeared to do nothing. It says LINK COPIED now,
+  and the hook reports its outcome honestly.
+
+Also, Marc's ask mid-session: **console-like touch** — long-pressing text
+popped the OS selection loupe over the game. `user-select: none` +
+`-webkit-touch-callout: none`; nothing on screen is prose to quote, and the
+seed travels via SHARE.
+
+**The honesty sweep.** Two rebalances had invalidated prose everywhere and
+nobody swept behind them: SETTINGS told players to type `?ff=world.endless`
+(a flag deleted two days earlier) in the very panel built on "a toggle that
+lies is worse than no toggle"; the README's first concrete claim was a
+260-placement clock that no longer exists; `persistent-world.md` said "PLAN,
+nothing built" about three shipped phases; `endless-world.md` said P2/P3
+"remain unbuilt"; `uniques.md` said "nothing here is built" while two of its
+entries were purchasable in the shop; the gallery said Gate E was shut; the
+ROADMAP checked "every ideas/ file resolved" while omitting `uniques.md` by
+name — **that box is unchecked now and stays so until the eight open uniques
+are decided.** All corrected to say what is true today, with the corrections
+dated.
+
+**GATE B IS RETIRED — Marc's call, made on the option set.** The gate asked
+whether tiles-or-points was a real choice. It failed twice in human hands for
+opposite reasons, and `singlePayout` — the gate's own written fallback, "cut
+it to a single automatic payout" — shipped on 2026-08-16. A gate cannot stay
+open on a fork that no longer exists; worse, its end-screen evidence line was
+suppressed by the very tuning that retired it, so three documents pointed at
+a blank space. `gateB()` and its tests are deleted (the record book still
+stores the tallies — storage formats outlive questions), the end screen keeps
+pops and biggest-pop in the facts line, and the ROADMAP row reads RETIRED
+with the reasoning. **The successor question is open and belongs to the
+phone: is pop-vs-burn-vs-wait a real timing decision?** Marc's own framing
+(2026-08-18): waiting should be the score line; popping should buy small
+advantages. Whether the advantages feel worth taking under the lean economy
+is the thing to answer before 1.0.
+
+Still queued from the audit, green-lit and not yet built: the end screen as
+a picture (sparkline arc, title treatment), stone's texture, and the gallery
+strips for light falloff, elevation and landmarks.

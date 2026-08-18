@@ -211,9 +211,9 @@ function header(): HTMLElement {
   const gate = el(
     'p',
     'gate',
-    'Gate E is shut: no art direction is chosen until gates A–D pass. These are loaded and ' +
-      'switchable so the decision can be made from play on a real phone, not from a document. ' +
-      'The placeholder remains the default until LOG.md says otherwise.',
+    'Gate E opened 2026-08-15 and TORCHLIT is the shipped default — chosen here, from a ' +
+      'phone, which is what this page was built for. The others stay loaded and switchable ' +
+      '(?theme=) so the choice can always be re-argued by looking rather than remembering.',
   );
   head.append(title, intro, gate);
   return head;

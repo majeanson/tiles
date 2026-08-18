@@ -380,8 +380,8 @@ export class PixiRenderer implements Renderer {
         // Native ground shows as a whisper of its colour — dots faint enough to
         // read as terrain, not as a tile. Derived entirely from tokens the theme
         // already has, so repainting the direction repaints the fields with it;
-        // the pattern numbers are PROVISIONAL placeholder values (Gate E), and a
-        // direction that wants its own field texture overrides `empty` per se.
+        // the pattern numbers are shared first values every direction inherits,
+        // and a direction that wants its own field texture overrides `empty`.
         if (cell.native !== null) {
           // Ink and alpha come from `fieldDots`, which equalises how strongly
           // all four read against this theme's ground — drawing each colour

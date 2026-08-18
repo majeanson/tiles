@@ -75,8 +75,8 @@ export function defaultFeatures(): FeatureSet {
 export const isEnabled = (set: FeatureSet, id: FeatureId): boolean => set[id];
 
 /**
- * Overrides from the query string: `?ff=pop.treasure,debug.overlay` turns those
- * on, `?ff=-pop.treasure` turns one off.
+ * Overrides from the query string: `?ff=debug.overlay,ui.themePicker` turns
+ * those on, `?ff=-ui.themePicker` turns one off.
  *
  * This is not a developer nicety. Testing happens on the deployed site from a
  * phone, where there is no dev server and no console worth using, so flipping a

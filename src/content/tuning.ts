@@ -27,7 +27,7 @@ export type Tuning = {
   /**
    * Endless terrain (P2 of `ideas/endless-world.md`). All of it is a pure
    * function of the world seed, computed as ground is revealed — never stored,
-   * never rolled. The bounded game reads none of these.
+   * never rolled. The bare skeleton zeroes all of these.
    *
    * `worldWalls` — fraction of revealed ground that is wall. Walls surround
    * (ripen things faster) but never match (pay less), and cannot be built on:
@@ -46,7 +46,7 @@ export type Tuning = {
    * Destinations (P3b of `ideas/endless-world.md`): landmarks seeded by the
    * same pure world hash, one per `destinationEvery`-hex block of the plane
    * (`destinationChance` of blocks hold one; 0 for either switches the system
-   * off, which is the bounded default). Reaching one — placing a tile against
+   * off, which is the bare default). Reaching one — placing a tile against
    * it — claims it, once:
    *
    *   cache     — pays `cachePays` tiles on the spot. A lifeline out there.
@@ -71,7 +71,7 @@ export type Tuning = {
    * place, collectable only by pressing the points button. That is the whole
    * design intent: a human who takes tiles nine times in ten needs a moment
    * where points is obviously right, and this manufactures one per site.
-   * `questNeed` 0 switches quests off (the bounded default).
+   * `questNeed` 0 switches quests off (the bare default).
    */
   readonly questNeed: number;
   readonly questRadius: number;
@@ -113,7 +113,7 @@ export type Tuning = {
    * each point adds `luckMagicPerPop` / `luckUniquePerPop` to the odds. Cashing
    * big pockets as tiles is what raises your odds — survival finally pays in
    * excitement, and it couples loot to the same timing decision points have.
-   * All zeros = the system does not exist, which is the bounded default.
+   * All zeros = the system does not exist, which is the bare default.
    */
   readonly magicChance: number;
   readonly uniqueChance: number;
@@ -135,7 +135,7 @@ export type Tuning = {
    *   blue   — tide:    +1 worth per `blueTideEvery` hexes from home. The
    *            colour you carry outward.
    *
-   * Zeros (and false) switch the personalities off — the bounded default.
+   * Zeros (and false) switch the personalities off — the bare default.
    */
   readonly greenCrowdBonus: number;
   readonly yellowCompanyBonus: number;
@@ -183,7 +183,7 @@ export type Tuning = {
   /**
    * Hold slots: pockets that keep a drafted tile for later. One tap swaps the
    * selected card with the stash, so every draft becomes "use it or save it".
-   * 0 — no stash, the bounded default.
+   * 0 — no stash, the bare default.
    */
   readonly holdSlots: number;
 
@@ -202,16 +202,17 @@ export type Tuning = {
   readonly territoryTilesCap: number;
 
   /**
-   * The third payout (`pop.treasure`, declared in Session 0 and wired in
-   * M3): a harvest of `treasureNeed`+ may be taken as TREASURE instead —
+   * The third payout (declared in Session 0 as the `pop.treasure` flag,
+   * wired in M3, a shrine unlock since the registry was cleaned): a harvest
+   * of `treasureNeed`+ may be taken as TREASURE instead —
    * neither tiles nor points, but a guaranteed rare tile straight into the
    * stash, magic below `treasureUnique` tiles and unique at or above it.
    *
    * It earns its place by being a third answer to the same question rather
    * than a bonus on top: taking it forfeits both the tiles and the points, so
    * it is a real cost every time, and it is the only way to CHOOSE a rare
-   * tile rather than wait for one. 0 leaves the option unbuilt, which is what
-   * the bounded game and every pre-M3 build had.
+   * tile rather than wait for one. 0 leaves the option unbuilt, which is
+   * what every pre-M3 build had.
    */
   readonly treasureNeed: number;
   readonly treasureUnique: number;
@@ -239,7 +240,7 @@ export type Tuning = {
   readonly costRisesEvery: number;
 
   /**
-   * The hard clock: placements a run gets, or 0 for none (the bounded game).
+   * The hard clock: placements a run gets, or 0 for none — the shipped game: the cost curve is its clock.
    *
    * The deepest thing M1's instrumentation found. An economy whose ONLY end
    * is bankruptcy always converges — income meets cost, that convergence IS
@@ -438,15 +439,6 @@ export type Tuning = {
   readonly draftWidth: number;
 
   /**
-   * Fraction of a map's cells that start as wall.
-   *
-   * Zero for now, because run one is the smallest game there is. It is a real
-   * dial rather than a stub: walls make a map ripen FASTER (they surround) but
-   * pay LESS (they never match), so this is the lever that gives deeper map
-   * types their character when unlock 5 lands.
-   */
-
-  /**
    * Whether a ripe tile still counts as a matching neighbour.
    *
    * This is the dial against DESIGN.md's "what is fragile". Points scale with
@@ -476,8 +468,8 @@ export const BARE_TUNING: Tuning = {
   fieldSize: 4,
   fieldChance: 0.55,
 
-  // Off in the shipped bounded game — run one is the smallest game there is.
-  // The endless tuning below turns both systems on; the harness sweeps them.
+  // Off in the bare skeleton — the shipped tuning below switches them on and
+  // the harness sweeps them.
   destinationEvery: 0,
   destinationChance: 0,
   cachePays: 12,
@@ -528,8 +520,8 @@ export const BARE_TUNING: Tuning = {
   startingTiles: 30,
 
   baseCost: 1,
-  // The bounded game keeps the original straight line: no grace, and the
-  // curve it was balanced against. Its Gate C evidence stands on it.
+  // The bare skeleton keeps the original straight line — the curve the
+  // earliest Gate C evidence was gathered on.
   costGrace: 0,
   costRisesEvery: 70,
   runLength: 0,
@@ -587,7 +579,7 @@ const PLANE: Tuning = {
   // of 4: every scoring line gains ~40% points in the SAME number of
   // placements (bank15 5,034 -> 7,112 · seeker 3,019 -> 4,320), so a minute
   // spent scoring is worth more and a minute spent stalling still pays ~0.
-  // The bounded game keeps its own 70/4; these are the plane's numbers.
+  // (The bounded game kept its own 70/4 until it was deleted, 2026-08-16.)
   // 2026-08-15 (M1): the knee. See `costGrace` — a straight curve made every
   // late harvest a forced tiles-harvest and Gate B unpassable at any content
   // setting. Swept in Session 11: grace 120 placements at cost 1, then +1
