@@ -2033,3 +2033,32 @@ What changed is how many times the same answers get computed.
 
 416 tests, `view.test.ts` and `game.test.ts` passing unmodified — the
 "preview cannot disagree with payment" invariants never moved.
+
+**Addendum, same day — the uniques design session, decided on option sets**
+
+While the a11y/PWA and perf packages ran in the background (their addenda
+above), Marc settled `ideas/uniques.md` in the foreground — every open item,
+in three rounds of option sets:
+
+- **Uniques are FOUND, never bought.** A hidden find: a rare landmark that
+  never beacons — revealed only when growing ground touches it. "Youre often
+  hidden from plain sight, you need to stumble on it." Revealing ground
+  becomes a lottery ticket, which the lean economy already makes deliberate.
+- **The shop sells the nose, never the prize**: a new boring SENSE upgrade
+  makes near finds shimmer; at level zero a find is pure surprise.
+- **Strictly one perk carried** — SECOND SLOT dies, refunded. Rootbound and
+  Second Wind convert to findable (owners keep them). Stonewalker,
+  Wallbreaker and Open Hand join the findable pool. Tidecaller killed in
+  writing. All of Tier 1 parked post-1.0, whole — none chosen, scope not
+  merit.
+- Two paths scouted into `ideas/`: **sound.md** (three moments, Web Audio,
+  zero assets, sound as theme data) and **daily.md** (date-hash seed, plain
+  economy per the shipped `?seed=` precedent, no backend).
+
+The build is specced and next: engine finds as their own pure hash layer
+(separate salt and dials, so existing worlds keep every destination exactly
+where it was), perks split from shop upgrades in `meta/progress.ts`, the
+grant following the shrine pattern (engine marks, shell grants), and the
+whole thing swept before it ships. The written question: **does a hidden
+find change how a player grows their ground?** — the phone answers after
+the build.

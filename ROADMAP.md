@@ -174,6 +174,13 @@ cut corner in twenty sessions.
 
 ## Post-1.0 parking lot
 
+- **Tier 1 uniques** (`ideas/uniques.md`): Ashbound Seal, Everbloom, Leap,
+  The Hoard. Parked whole on 2026-08-18 — Marc chose to build none of the
+  four for 1.0. Rejected on scope, not merit: each is a real build-definer
+  and each is expensive (Leap rewrites contiguity; the other three need
+  harness proof their exploits stay closed). Revisit once found-in-world
+  perks have proven the acquisition system.
+
 - **Sound.** Marc chose a silent 1.0; the pop, the claim and the clock
   running out are the three moments that most want a noise.
 - **A leaderboard.** Needs a backend, score validation and an abuse model —

@@ -3,13 +3,33 @@
 Marc, 2026-08-15: _"unique perks like diablo 2 uniques can determine a build"_,
 and then: _"lets brainstorm ideas together thoroughly"_.
 
-**Reference, not spec — and still OPEN (status corrected 2026-08-18).** Two
-entries are built: **Rootbound** and **Second Wind** shipped as purchasable
-perks in M3 (`src/meta/progress.ts`), each amended exactly as recorded below.
-Tier 3 is rejected in writing. Everything else — Tier 1's Ashbound Seal,
-Everbloom, Leap and The Hoard, Tier 2's four — is neither built nor rejected,
-and the sizing question at the bottom is unanswered. This file is the one
-`ideas/` ledger that is not resolved, and `ROADMAP.md` says so.
+**RESOLVED — every entry decided by Marc, 2026-08-18, on option sets.** The
+decisions, in full:
+
+- **Uniques are FOUND, never bought.** A new, rare landmark — the hidden
+  find — grants one unowned perk when your growing ground reveals it. It
+  never beacons: no glow through the dark, no atlas entry, you stumble onto
+  it. Marc's words: _"theyre often hidden from plain sight, you need to
+  stumble on it."_ The shop keeps only the boring upgrades, plus one new
+  boring one: a SENSE upgrade that makes hidden finds shimmer faintly when
+  your ground grows near — the shop sells the nose, never the prize.
+- **Rootbound and Second Wind convert to found-in-world.** They leave the
+  shop; anyone who already bought them keeps them owned.
+- **Strictly ONE perk carried, always.** The SECOND SLOT upgrade is deleted
+  and its relics refunded on load. A run has one identity; combinations are
+  where Diablo's balance went to die, and this game is not going there.
+- **Built (findable pool):** Rootbound · Second Wind · **Stonewalker** ·
+  **Wallbreaker** · **Open Hand**.
+- **Killed:** **Tidecaller** — the closest thing on the list to "a number
+  bigger": blue's identity handed to everyone is less identity, not more.
+  Offered twice, chosen never.
+- **Tier 1 parked post-1.0, whole** (Ashbound Seal, Everbloom, Leap, The
+  Hoard) — rejected on scope, not merit; see `ROADMAP.md`'s parking lot.
+  They can return when found-in-world has proven itself.
+- **The sizing question is answered by the slots decision**: one.
+
+Tier 3 was already rejected in writing. The brainstorm below is kept as the
+record of what was considered and why.
 
 ## What makes a unique a unique
 
