@@ -411,6 +411,30 @@ export const COLOUR_MARK: Readonly<Record<Colour, string>> = {
   blue: '●',
 };
 
+/**
+ * The destination glyphs — fixed across directions for the same reason the
+ * colour marks are: a symbol language that changes with the art direction is
+ * a language nobody learns. `+` pays tiles, `★` pays points, `◈` wakes an
+ * unlock, `◆` is ground to claim. Keyed by plain strings so the theme layer
+ * needs nothing from the engine.
+ */
+export const LANDMARK_GLYPH: Readonly<Record<'cache' | 'site' | 'shrine' | 'territory', string>> = {
+  cache: '+',
+  site: '★',
+  shrine: '◈',
+  territory: '◆',
+};
+
+/**
+ * How much one elevation band lifts a hex's light, multiplicatively.
+ *
+ * Deliberately gentle: elevation is Marc's purely-cosmetic call, and a slope
+ * that reads louder than the tiles is a board you cannot read. It lives here
+ * with `brightness` because the two ride the same channel — and so the
+ * gallery can draw the bands with the same number the board uses.
+ */
+export const BAND_LIFT = 0.06;
+
 export function fieldDots(theme: Theme, colour: Colour): { ink: Rgb; alpha: number } {
   const ground = luma(theme.empty.fill);
 

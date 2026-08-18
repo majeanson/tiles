@@ -453,10 +453,43 @@ button.quiet {
   margin: 0 0 6px;
 }
 
+/* The game's name, saying itself on the screen people screenshot. */
+.end-title {
+  font-family: var(--font-display, inherit);
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  color: var(--accent, #d7b45a);
+  text-transform: uppercase;
+}
+
 .end-score {
   font-family: var(--font-display, inherit);
   font-size: 28px;
   line-height: 1.1;
+}
+
+/* The run drawn as its harvests: one bar per pop, the biggest in accent.
+   A picture of Gate D's question — did the big number land near the end? */
+.end-arc {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: 44px;
+  margin: 2px auto 8px;
+}
+
+.end-arc-base {
+  stroke: var(--ink-faint, #767d8d);
+  stroke-opacity: 0.4;
+  stroke-width: 1;
+}
+
+.end-arc-bar {
+  fill: var(--ink-dim, #8a91a0);
+}
+
+.end-arc-bar.best {
+  fill: var(--accent, #d7b45a);
 }
 
 .end-best {

@@ -1891,3 +1891,32 @@ is the thing to answer before 1.0.
 Still queued from the audit, green-lit and not yet built: the end screen as
 a picture (sparkline arc, title treatment), stone's texture, and the gallery
 strips for light falloff, elevation and landmarks.
+
+**Addendum, same day — the other two packages: the end screen becomes a
+picture, and the gallery catches up to the game**
+
+- **The end screen says whose run it is and draws the arc.** ASHWAKE in the
+  display face at the top; then an inline SVG — one bar per harvest, placed
+  where it landed in the run, as tall as its score against the run's biggest,
+  which alone wears the accent. Gate D's question ("did the big number come
+  near the end?") is now answered by the shape of the chart instead of a
+  percentage buried in a fact line. No asset, themed through CSS variables,
+  survives a screenshot at any width — which was the roadmap's actual ask.
+- **Stone got a finish.** The most common cell in the back half of a run was
+  the one surface with no texture at all: a fine dark stipple now (dots,
+  alpha 0.16), quiet enough to keep "the board going pale" as the signal.
+- **The gallery shows the systems the game grew after it was written.** Four
+  new strips per direction: the torch (brightness by distance, through the
+  same `brightness()` and the same multiply-tint arithmetic the board uses —
+  the light values are arguable from a phone now, without a run), elevation
+  (five bands at the light floor, where contours actually live — at full
+  light they clamp invisible by design and the strip says so), destinations
+  (all four glyphs over their ground, unclaimed and spent), and native
+  fields (each colour's shape at the ink `fieldDots` equalises). To keep the
+  truth in one place, `BAND_LIFT` and the landmark glyph map moved from the
+  renderer into `@theme/tokens` beside `brightness()` — the gallery and the
+  board now read the same numbers by construction.
+
+406 tests. Deployed. What waits on the phone is unchanged — and the gallery
+just made two of those questions (field legibility, the torch pool)
+answerable without playing a full run.

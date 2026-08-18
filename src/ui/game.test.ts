@@ -620,6 +620,43 @@ describe('keeping the run, and ending it properly', () => {
     expect(ctx.el.end.textContent).toMatch(/NEW BEST — 500 pts/);
   });
 
+  it('draws the run as an arc chart, with the biggest pop in accent', () => {
+    const base = newRun(9, TUNING);
+    const ended: GameState = {
+      ...base,
+      phase: 'ended',
+      death: 'broke',
+      placements: 100,
+      points: 430,
+      log: {
+        ...base.log,
+        harvests: [
+          { at: 20, count: 3, choice: 'tiles', tiles: 5, points: 40 },
+          { at: 60, count: 5, choice: 'tiles', tiles: 8, points: 90 },
+          { at: 90, count: 8, choice: 'tiles', tiles: 12, points: 300 },
+        ],
+      },
+    };
+    const ctx = build(1, TUNING, { resume: ended });
+    ctx.game.start();
+
+    // The screen says whose run it is, and shows the run as a picture.
+    expect(ctx.el.end.querySelector('.end-title')?.textContent?.length).toBeGreaterThan(0);
+    const svg = ctx.el.end.querySelector('svg.end-arc');
+    expect(svg).not.toBeNull();
+    expect(svg!.querySelectorAll('rect.end-arc-bar')).toHaveLength(3);
+    // One bar wears the accent: the biggest pop, which landed late — Gate D
+    // read off a chart instead of a buried percentage.
+    expect(svg!.querySelectorAll('rect.best')).toHaveLength(1);
+  });
+
+  it('skips the arc chart when one pop could not make a shape', () => {
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    const ctx = build(1, TUNING, { resume: ended });
+    ctx.game.start();
+    expect(ctx.el.end.querySelector('svg.end-arc')).toBeNull();
+  });
+
   it('writes the record book exactly once per ended run', () => {
     const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
     let writes = 0;

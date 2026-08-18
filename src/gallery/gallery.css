@@ -137,6 +137,24 @@ body {
   color: var(--ink-faint, #767d8d);
 }
 
+/* A destination: its glyph centred over the ground it stands on, the same
+   plain mark the board labels it with. */
+.surface.landmark {
+  position: relative;
+}
+
+.landmark-glyph {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-display, inherit);
+  font-size: 20px;
+  line-height: 1;
+  pointer-events: none;
+}
+
 /*
  * The check the design documents keep asking for, run on the real surfaces
  * rather than on a mock-up: strip the hue and see whether four terrains are

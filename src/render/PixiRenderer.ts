@@ -1,6 +1,16 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from 'pixi.js';
 import { key, type HexKey } from '@engine/hex';
-import { COLOUR_GLYPH, fieldDots, hex, mix, rgba, type Surface, type Theme } from '@theme/tokens';
+import {
+  BAND_LIFT,
+  COLOUR_GLYPH,
+  LANDMARK_GLYPH,
+  fieldDots,
+  hex,
+  mix,
+  rgba,
+  type Surface,
+  type Theme,
+} from '@theme/tokens';
 import { AssetBook } from './assets';
 import { corners, fitLayout, hexAt, place, zoomCeiling, zoomLayout, type Layout } from './layout';
 import type { BoardView, CellView, Renderer } from './Renderer';
@@ -34,14 +44,9 @@ const ZOOM_MAX = 4;
  */
 const HEX_PX_MAX = 34;
 
-/**
- * How much brighter one contour band draws than the one below it.
- *
- * Small on purpose: height is scenery, and a board where the hills are louder
- * than the tiles is a board you cannot read. Marc chose purely cosmetic
- * elevation, and this number is what keeps it honest about that.
- */
-const BAND_LIFT = 0.06;
+// BAND_LIFT — how much brighter one contour band draws than the one below —
+// moved to @theme/tokens (2026-08-18) so the gallery can draw the bands with
+// the same number the board uses.
 
 /**
  * The board, drawn from a theme.
@@ -786,15 +791,7 @@ export class PixiRenderer implements Renderer {
  */
 function labelFor(cell: CellView): { text: string; faint: boolean } | null {
   if (cell.kind === 'landmark') {
-    const glyph =
-      cell.landmark === 'cache'
-        ? '+'
-        : cell.landmark === 'site'
-          ? '★'
-          : cell.landmark === 'shrine'
-            ? '◈'
-            : '◆';
-    return { text: glyph, faint: cell.claimed };
+    return { text: LANDMARK_GLYPH[cell.landmark ?? 'territory'], faint: cell.claimed };
   }
   if (cell.ripe && cell.worth > 0) return { text: String(cell.worth), faint: false };
   if (cell.legal && cell.preview !== null && cell.preview > 0) {

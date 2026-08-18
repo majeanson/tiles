@@ -128,7 +128,14 @@ export const TORCHLIT: Theme = {
   // Dry flagstone, sitting between crypt and burial ground in value. Lighter than
   // the ground it replaces on purpose: under a torch, the spent parts of the map
   // are the bare pale slabs, and a board going pale is the signal to move on.
-  stone: surface(0x5a5044, { fillTo: 0x453d33, asset: 'terrain.stone' }),
+  // Pitted since 2026-08-18: stone is the single most common cell in the back
+  // half of a run and was the one surface with no finish at all — a fine dark
+  // stipple reads as worked slab without stealing value from the pale signal.
+  stone: surface(0x5a5044, {
+    fillTo: 0x453d33,
+    pattern: { kind: 'dots', ink: 0x000000, alpha: 0.16, radius: 1.1, pitch: 5 },
+    asset: 'terrain.stone',
+  }),
 
   empty: surface(0x151310, { inset: 0.09 }),
   ghost: surface(0xf7dba0, { fillTo: 0x9c7331, alpha: 0.3, asset: 'terrain.ghost' }),

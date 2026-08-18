@@ -1440,6 +1440,58 @@ export class Game {
   }
 
   /**
+   * The run's arc, drawn: one bar per harvest, placed where it landed in the
+   * run, as tall as its score against the run's biggest — which is drawn in
+   * the accent. Gate D's question ("did the biggest number come near the
+   * end?") answered by a picture instead of a percentage buried in a fact
+   * line. Inline SVG so it costs no asset, inherits the theme through CSS,
+   * and survives a screenshot at any width.
+   */
+  #arcChart(): SVGSVGElement | null {
+    const harvests = this.#state.log.harvests;
+    if (harvests.length < 2) return null;
+    const biggest = harvests.reduce((n, h) => Math.max(n, h.points), 0);
+    const span = Math.max(1, this.#state.placements);
+    if (biggest <= 0) return null;
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const W = 280;
+    const H = 44;
+    const BASE = H - 2;
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('class', 'end-arc');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute(
+      'aria-label',
+      `every pop of the run in order; the biggest landed ${Math.round(
+        ((harvests.find((h) => h.points === biggest)?.at ?? 0) / span) * 100,
+      )}% of the way through`,
+    );
+
+    const base = document.createElementNS(NS, 'line');
+    base.setAttribute('x1', '0');
+    base.setAttribute('y1', String(BASE));
+    base.setAttribute('x2', String(W));
+    base.setAttribute('y2', String(BASE));
+    base.setAttribute('class', 'end-arc-base');
+    svg.appendChild(base);
+
+    for (const h of harvests) {
+      const x = 3 + (h.at / span) * (W - 6);
+      const height = Math.max(2, (h.points / biggest) * (H - 8));
+      const bar = document.createElementNS(NS, 'rect');
+      bar.setAttribute('x', String(x - 1.5));
+      bar.setAttribute('y', String(BASE - height));
+      bar.setAttribute('width', '3');
+      bar.setAttribute('height', String(height));
+      bar.setAttribute('class', h.points === biggest ? 'end-arc-bar best' : 'end-arc-bar');
+      svg.appendChild(bar);
+    }
+    return svg;
+  }
+
+  /**
    * The run, ended — Gate D's screen. The cause of death in one sentence,
    * then the arc in numbers: the score, how far, the biggest pop and WHERE it
    * landed in the run (near the end is an arc; the gate's question, asked of
@@ -1469,10 +1521,15 @@ export class Game {
       return p;
     };
 
-    const parts: HTMLElement[] = [
+    // The game says its own name here, because this is the screen that gets
+    // screenshotted and shared — a picture of a run should say whose run.
+    const parts: Element[] = [
+      line('end-title', NAME),
       line('end-epitaph', hud.epitaph ?? ''),
       line('end-score', `${hud.points} pts`),
     ];
+    const arc = this.#arcChart();
+    if (arc !== null) parts.push(arc);
     if (this.#recordLines.length > 0) parts.push(line('end-best', this.#recordLines[0]!));
 
     const s = hud.summary;

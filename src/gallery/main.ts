@@ -3,7 +3,18 @@ import { bakeSurface } from '@render/bake';
 import { ASSET_SLOTS, decodeManifest, manifestHas, type AssetManifest } from '@theme/assets';
 import { themeCssVars } from '@theme/css';
 import { THEMES } from '@theme/index';
-import { hex, luma, type Surface, type Theme } from '@theme/tokens';
+import {
+  BAND_LIFT,
+  COLOUR_GLYPH,
+  LANDMARK_GLYPH,
+  brightness,
+  fieldDots,
+  hex,
+  luma,
+  mix,
+  type Surface,
+  type Theme,
+} from '@theme/tokens';
 
 /**
  * The art-direction workbench.
@@ -65,6 +76,119 @@ function surfaceCard(
     box.appendChild(el('span', 'surface-value', mid.toFixed(3)));
   }
   return box;
+}
+
+/**
+ * The board tints a cell by MULTIPLYING its texture toward the background as
+ * the light falls (`sprite.tint = mix(bg, white, light)`), so the workbench
+ * reproduces exactly that: multiply the baked surface by the same colour,
+ * then mask the corners back. CSS `filter: brightness()` would be close but
+ * not the same arithmetic, and this page's one claim is "drawn by the same
+ * rules the board uses".
+ */
+function tinted(canvas: HTMLCanvasElement, tint: number): HTMLCanvasElement {
+  const out = document.createElement('canvas');
+  out.width = canvas.width;
+  out.height = canvas.height;
+  out.style.width = canvas.style.width;
+  out.style.height = canvas.style.height;
+  const ctx = out.getContext('2d');
+  if (ctx === null) return canvas;
+  ctx.drawImage(canvas, 0, 0);
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = hex(tint);
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(canvas, 0, 0);
+  return out;
+}
+
+/**
+ * The torch, as a strip: one hex per distance from the light, through the
+ * same `brightness()` the board multiplies by. This is the direction's most
+ * load-bearing value and, until 2026-08-18, the only one the gallery could
+ * not show — `light: {radius, fade, floor}` could only be argued with by
+ * playing a fifteen-minute run.
+ */
+function lightStrip(theme: Theme): HTMLElement {
+  const row = el('div', 'row');
+  for (const dist of [0, 3, 5, 7, 9, 12, 15, 20]) {
+    const level = brightness(theme.light, dist);
+    const box = el('div', 'surface');
+    const canvas = bakeSurface(theme.terrain.green, 23, theme.orientation);
+    if (canvas !== null) {
+      box.appendChild(tinted(canvas, mix(theme.board.background, 0xffffff, level)));
+    }
+    box.append(el('span', 'surface-name', `${dist} OUT`));
+    box.append(el('span', 'surface-value', level.toFixed(2)));
+    row.appendChild(box);
+  }
+  return row;
+}
+
+/**
+ * The contour bands, drawn in the dim where they live: at full light the
+ * lift clamps to 1 and bands are invisible BY DESIGN, so the strip shows
+ * them at the torch's floor — the deep board, where height actually reads.
+ */
+function elevationStrip(theme: Theme): HTMLElement {
+  const row = el('div', 'row');
+  const dim = theme.light.floor;
+  for (let band = 0; band < 5; band++) {
+    const level = Math.min(1, dim * (1 + band * BAND_LIFT));
+    const box = el('div', 'surface');
+    const canvas = bakeSurface(theme.empty, 23, theme.orientation);
+    if (canvas !== null) {
+      box.appendChild(tinted(canvas, mix(theme.board.background, 0xffffff, level)));
+    }
+    box.append(el('span', 'surface-name', `BAND ${band}`));
+    row.appendChild(box);
+  }
+  return row;
+}
+
+/** The four destination glyphs over the ground they stand on, lit and spent. */
+function landmarkRow(theme: Theme): HTMLElement {
+  const row = el('div', 'row');
+  for (const [reward, glyph] of Object.entries(LANDMARK_GLYPH)) {
+    for (const claimed of [false, true]) {
+      const box = el('div', 'surface landmark');
+      const canvas = bakeSurface(claimed ? theme.stone : theme.wall, 23, theme.orientation);
+      if (canvas !== null) box.appendChild(canvas);
+      const mark = el('span', 'landmark-glyph', glyph);
+      mark.style.color = hex(claimed ? theme.ink.inkFaint : theme.ink.accent);
+      box.appendChild(mark);
+      box.appendChild(el('span', 'surface-name', claimed ? `${reward} SPENT` : reward));
+      row.appendChild(box);
+    }
+  }
+  return row;
+}
+
+/**
+ * Native ground as the board actually paints it: the empty surface carrying
+ * each colour's SHAPE at the ink and alpha `fieldDots` equalises per theme.
+ * This is the exact thing the playtest keeps asking about ("too subtle,
+ * about right, or too busy?"), judged here without a run.
+ */
+function fieldRow(theme: Theme): HTMLElement {
+  const row = el('div', 'row');
+  for (const c of COLOURS) {
+    const dots = fieldDots(theme, c);
+    const surface: Surface = {
+      ...theme.empty,
+      pattern: {
+        kind: 'glyphs',
+        shape: COLOUR_GLYPH[c],
+        ink: dots.ink,
+        alpha: dots.alpha,
+        size: 2.1,
+        pitch: 9,
+      },
+    };
+    row.appendChild(surfaceCard(`${theme.terrainNames[c]} FIELD`, surface, theme, false));
+  }
+  return row;
 }
 
 function inkRow(theme: Theme): HTMLElement {
@@ -187,6 +311,14 @@ function themeCard(theme: Theme, manifest: AssetManifest): HTMLElement {
     colour,
     labelled('THE SAME FOUR WITHOUT HUE'),
     grey,
+    labelled('THE TORCH · BRIGHTNESS BY DISTANCE, THE MULTIPLIER UNDER EACH'),
+    lightStrip(theme),
+    labelled('ELEVATION · FIVE BANDS AT THE LIGHT FLOOR, WHERE CONTOURS LIVE'),
+    elevationStrip(theme),
+    labelled('DESTINATIONS · UNCLAIMED AND SPENT'),
+    landmarkRow(theme),
+    labelled('NATIVE FIELDS · THE SHAPE EACH COLOUR GROWS'),
+    fieldRow(theme),
     labelled('INK'),
     inkRow(theme),
     labelled('TYPE'),
