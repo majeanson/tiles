@@ -1104,6 +1104,11 @@ describe('the purse, folded', () => {
 
     toggle.click();
     expect(ctx.el.spends.hidden).toBe(true);
+    // Emptied as well as hidden: the fold's first phone test caught the grid
+    // still drawn after closing — #spends' display rule outranked [hidden]
+    // (a CSS fact this DOM-only harness cannot see), so the close path must
+    // not leave buttons behind for it to draw.
+    expect(ctx.el.spends.children.length).toBe(0);
   });
 
   it('stays quiet while nothing is affordable', () => {

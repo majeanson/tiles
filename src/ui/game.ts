@@ -1317,7 +1317,15 @@ export class Game {
     this.#el.purseToggle.setAttribute('aria-expanded', String(open));
     this.#el.purseToggle.classList.toggle('live', canBuy);
     this.#el.spends.hidden = !open;
-    if (!open) return;
+    if (!open) {
+      // Emptied as well as hidden. The fold's first phone test found the grid
+      // still drawn after closing: #spends' own display rule outranked the
+      // hidden attribute (fixed globally in style.css), and the early return
+      // here left the buttons in the DOM to be drawn. Either fix alone ends
+      // the symptom; both together end the bug.
+      this.#el.spends.replaceChildren();
+      return;
+    }
 
     this.#el.spends.replaceChildren(
       ...hud.spends.map((spend) => {

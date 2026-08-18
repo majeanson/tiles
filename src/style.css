@@ -19,6 +19,16 @@
   box-sizing: border-box;
 }
 
+/* The hidden attribute must always win. The browser's own [hidden] rule loses
+   to any id selector that sets display — which is how the luck purse "opened
+   but never closed" (Marc, 2026-08-18): #spends { display: grid } silently
+   outranked hidden, the attribute flipped correctly, and the grid drew anyway.
+   #themes { display: flex } carried the same latent bug. One global rule ends
+   the class of it. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
