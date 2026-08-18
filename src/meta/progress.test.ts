@@ -76,7 +76,7 @@ describe('the shop', () => {
 });
 
 describe('perks: found, and one worn', () => {
-  it('carries exactly one slot, with the second slot gone for good', () => {
+  it('carries exactly one perk, with the second slot gone for good', () => {
     expect(slotsOf()).toBe(1);
   });
 
@@ -249,26 +249,48 @@ describe('the shop climbs back to what the rebalance took', () => {
    * bought relics item its back to what it is now". The floor came down —
    * fewer starting tiles, thinner destinations, poorer caches — so the shop
    * has to be able to put all three back, or the toning down is just a nerf.
+   *
+   * Named once rather than repeated as bare literals across the assertions
+   * below. `cachePaysBase` is a maxed RICHER WORLDS' base cache payout;
+   * `cachePays` is what a ring-2 cache reaches from it (base plus two rings'
+   * bonus) and is also the pre-2026-08-18 flat payout that graded formula
+   * restores — the doorstep cache stays a snack on purpose. `baseCostRisesEvery`
+   * is TODAY's climb rate (what a fresh shop, nothing bought, plays under);
+   * `maxedCostRisesEvery` and `startingTiles` are what the 2026-08-16/18
+   * rebalances moved those two numbers DOWN from, and STEADY PACE's job is to
+   * buy the climb rate back up to its old value.
    */
+  const PRE_REBALANCE = {
+    cachePaysBase: 18,
+    cachePays: 26,
+    baseCostRisesEvery: 22,
+    maxedCostRisesEvery: 30,
+    startingTiles: 30,
+  };
+
   const maxed = (id: UpgradeId): Progress => ({
     ...EMPTY_PROGRESS,
     bought: { [id]: UPGRADES.find((u) => u.id === id)?.levels ?? 0 },
   });
 
-  it('returns a ring-2 cache to the 26 tiles caches paid before', () => {
+  it('returns a ring-2 cache to the tiles caches paid before', () => {
     // Cache value is graded by distance since 2026-08-18, so the restoration
-    // moved outward with it: maxed base 18, plus two rings' bonus, is the
-    // pre-rebalance 26. The doorstep cache stays a snack on purpose.
+    // moved outward with it: maxed base, plus two rings' bonus, is the
+    // pre-rebalance total. The doorstep cache stays a snack on purpose.
     const t = applyProgress(TUNING, maxed('world'));
-    expect(t.cachePays).toBe(18);
-    expect(t.cachePays + 2 * t.cachePaysPerRing).toBe(26);
+    expect(t.cachePays).toBe(PRE_REBALANCE.cachePaysBase);
+    expect(t.cachePays + 2 * t.cachePaysPerRing).toBe(PRE_REBALANCE.cachePays);
   });
 
-  it('returns the cost curve to the 30 it climbed at before', () => {
-    // STEADY PACE exists so the 2026-08-18 steepening (30 -> 22) is a ladder
-    // rather than a nerf: +2 a level, four levels, the old curve exactly.
-    expect(applyProgress(TUNING, EMPTY_PROGRESS).costRisesEvery).toBe(22);
-    expect(applyProgress(TUNING, maxed('pace')).costRisesEvery).toBe(30);
+  it('returns the cost curve to what it climbed at before', () => {
+    // STEADY PACE exists so the 2026-08-18 steepening is a ladder rather
+    // than a nerf: +2 a level, four levels, the old curve exactly.
+    expect(applyProgress(TUNING, EMPTY_PROGRESS).costRisesEvery).toBe(
+      PRE_REBALANCE.baseCostRisesEvery,
+    );
+    expect(applyProgress(TUNING, maxed('pace')).costRisesEvery).toBe(
+      PRE_REBALANCE.maxedCostRisesEvery,
+    );
   });
 
   it('puts destination density back past where it was', () => {
@@ -276,15 +298,17 @@ describe('the shop climbs back to what the rebalance took', () => {
     expect(applyProgress(TUNING, maxed('world')).destinationChance).toBeGreaterThan(0.7);
   });
 
-  it('puts the purse back past 30, which was the old start', () => {
-    expect(applyProgress(TUNING, maxed('tiles')).startingTiles).toBeGreaterThan(30);
+  it('puts the purse back past the old start', () => {
+    expect(applyProgress(TUNING, maxed('tiles')).startingTiles).toBeGreaterThan(
+      PRE_REBALANCE.startingTiles,
+    );
   });
 
   it('starts every player below all of it, which is the point', () => {
     const fresh = applyProgress(TUNING, EMPTY_PROGRESS);
-    expect(fresh.startingTiles).toBeLessThan(30);
-    expect(fresh.cachePays).toBeLessThan(26);
+    expect(fresh.startingTiles).toBeLessThan(PRE_REBALANCE.startingTiles);
+    expect(fresh.cachePays).toBeLessThan(PRE_REBALANCE.cachePays);
     expect(fresh.destinationChance).toBeLessThan(0.7);
-    expect(fresh.costRisesEvery).toBeLessThan(30);
+    expect(fresh.costRisesEvery).toBeLessThan(PRE_REBALANCE.maxedCostRisesEvery);
   });
 });

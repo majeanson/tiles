@@ -33,6 +33,15 @@ export type WorldMemory = {
    * it grants by `UNLOCKS` — geography IS the unlock ledger.
    */
   readonly shrines: readonly HexKey[];
+  /**
+   * Hidden finds claimed, ever (2026-08-18, closing the find re-farm). The
+   * same ride as `territories`: fed back to `newRun` so a find in this list
+   * reveals already claimed and pays no relics a second time, and read
+   * directly by the shell's `findLabel` hook so it refuses to grant a perk
+   * for a hex already here — the perk grant lives outside the engine, so the
+   * engine's "already claimed" alone cannot stop it being asked for twice.
+   */
+  readonly finds: readonly HexKey[];
   /** What the world has seen. The atlas line reads these. */
   readonly runs: number;
   readonly bestPoints: number;
@@ -44,6 +53,7 @@ export const newWorld = (worldSeed: number): WorldMemory => ({
   revealed: [],
   territories: [],
   shrines: [],
+  finds: [],
   runs: 0,
   bestPoints: 0,
   farthestReach: 0,
@@ -56,11 +66,20 @@ export const newWorld = (worldSeed: number): WorldMemory => ({
  * addressed as places rather than as a table: each entry is a system that
  * exists and is off, and the way to turn it on is to walk to it. Order is
  * fixed rather than random so a world's progression is a story you can tell
- * someone, and short rather than endless — five shrines is a world's worth of
+ * someone, and short rather than endless — four shrines is a world's worth of
  * reasons to go and look.
+ *
+ * The ledger shipped with five entries; the first, 'the treasure payout', was
+ * retired 2026-08-18 — `applyUnlocks` (`src/main.ts`) never read it, because
+ * treasure had already shipped on for everyone in `TUNING` by the time the
+ * ledger was written. A shrine wired to nothing is worse than no shrine, so
+ * the entry is gone rather than fixed to gate what it can no longer gate.
+ * Worlds that had already claimed a shrine or more keep their count; every
+ * position after the first shifts down one, so those shrines now unlock a
+ * REAL system one slot earlier than before — a one-time generosity, not a
+ * bug, and nobody's progress moves backward.
  */
 export const UNLOCKS: readonly { readonly id: string; readonly label: string }[] = [
-  { id: 'treasure', label: 'The treasure payout — cash a big pocket for a rare tile' },
   { id: 'draft', label: 'A fourth draft card' },
   { id: 'hold', label: 'A second stash slot' },
   { id: 'luck', label: 'Twice the rare-tile odds' },
@@ -93,8 +112,9 @@ export function decodeWorld(raw: string | null): WorldMemory | null {
   const territories = keys(parsed['territories']);
   if (revealed === null || territories === null) return null;
   // Shrines arrived after the first worlds existed: an older world has none,
-  // which is true rather than corrupt.
+  // which is true rather than corrupt. Finds the same, since (2026-08-18).
   const shrines = keys(parsed['shrines']) ?? [];
+  const finds = keys(parsed['finds']) ?? [];
 
   const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
   return {
@@ -102,6 +122,7 @@ export function decodeWorld(raw: string | null): WorldMemory | null {
     revealed,
     territories,
     shrines,
+    finds,
     runs: num(parsed['runs']),
     bestPoints: num(parsed['bestPoints']),
     farthestReach: num(parsed['farthestReach']),
@@ -136,6 +157,7 @@ export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
   const revealed = new Set(world.revealed);
   const territories = new Set(world.territories);
   const shrines = new Set(world.shrines);
+  const finds = new Set(world.finds);
   let reach = 0;
 
   for (const [k, cell] of Object.entries(state.cells)) {
@@ -145,6 +167,9 @@ export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
       // A shrine reached is a system switched on for good — but only up to
       // the ledger's length, so a world cannot bank unlocks it has no use for.
       if (cell.reward === 'shrine' && shrines.size < UNLOCKS.length) shrines.add(k);
+      // A find claimed, the same ride as a territory: remembered so it
+      // reveals already spent and cannot be walked into twice for a perk.
+      if (cell.reward === 'find') finds.add(k);
     }
     if (cell.kind === 'tile' || cell.kind === 'stone') {
       reach = Math.max(reach, distance(parse(k), ORIGIN));
@@ -156,6 +181,7 @@ export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
     revealed: [...revealed],
     territories: [...territories],
     shrines: [...shrines],
+    finds: [...finds],
     // The run count is rememberRun's alone — this function runs after EVERY
     // action, and when it bumped the count too (2026-08-18) the atlas called
     // each tap a run. That is what the docblock's "EXCEPT" always meant.

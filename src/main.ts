@@ -20,6 +20,7 @@ import {
 import { ICON_DATA_URI, NAME } from '@meta/identity';
 import {
   EMPTY_PROGRESS,
+  PERKS,
   applyProgress,
   decodeProgress,
   encodeProgress,
@@ -324,11 +325,17 @@ function runKeeping(
 
     // A hidden find, claimed: grant one unowned perk, write it down, hand
     // back the name for the toast. Deterministic in (world, hex) — no roll to
-    // farm — and guarded like `bankRelics`: a `?seed=` replay is somebody
-    // else's walk and must not fill this device's shelf, so it returns null
-    // and the toast celebrates without granting.
+    // farm within a run — and guarded two ways: a `?seed=` replay is
+    // somebody else's walk and must not fill this device's shelf, and a hex
+    // this WORLD has already claimed (`current.finds`, 2026-08-18) must not
+    // grant a second time on a later run. Without the second guard the same
+    // hex could be walked to again after other finds changed which perks are
+    // still unowned, and `grantFind`'s pick shifts with that set — a farm the
+    // engine's own "already claimed" cannot see, because the grant lives out
+    // here.
     findLabel: (hex) => {
       if (replaySeed !== null) return null;
+      if (current.finds.includes(hex)) return null;
       const granted = grantFind(readProgress(), world.worldSeed, hex);
       if (granted === null) return null;
       writeProgress(granted.progress);
@@ -675,6 +682,14 @@ function mountSettings(
       ? 'Every shrine in the ledger has been found. This world is fully awake.'
       : `Reach a shrine (◈ in the fog) to unlock the next one. ${w.shrines.length} of ${UNLOCKS.length} found.`;
 
+  // Perks are FOUND, never bought (2026-08-18) — a count, never a name: an
+  // unfound perk stays a mystery even here, so this line never says which
+  // ones are left. Progress carries across every world, unlike the shrine
+  // ledger above, so it is read fresh rather than off `live.world`.
+  const perksLine = document.createElement('p');
+  perksLine.className = 'flag-note';
+  perksLine.textContent = `${readProgress().found.length} of ${PERKS.length} perks found.`;
+
   let armed = false;
   const abandon = document.createElement('button');
   abandon.type = 'button';
@@ -699,6 +714,7 @@ function mountSettings(
     atlasLine,
     ledger,
     shrineHint,
+    perksLine,
     abandon,
   );
 }
@@ -847,11 +863,12 @@ async function main(): Promise<void> {
   // economy, because a replay scored under this device's upgrades would not
   // be a replay of anything.
   const tuning = askedSeed() === null ? applyProgress(unlocked, readProgress()) : unlocked;
-  // Territories the world already holds arrive as plain data — the engine
-  // still knows nothing about storage, and a replay is reproducible from
-  // seed + tuning + this list.
+  // Territories (and, since 2026-08-18, finds) the world already holds
+  // arrive as plain data — the engine still knows nothing about storage, and
+  // a replay is reproducible from seed + tuning + these two lists.
   const held = seed === world.worldSeed ? world.territories : [];
-  new Game(renderer, elements, seed, theme, tuning, keeper, held).start();
+  const heldFinds = seed === world.worldSeed ? world.finds : [];
+  new Game(renderer, elements, seed, theme, tuning, keeper, held, heldFinds).start();
 
   // Offline, after the game is already playable. A service worker that
   // registers before the first frame is a service worker that can delay one;

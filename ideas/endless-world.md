@@ -368,11 +368,20 @@ feature kept because it was promised.
   is walked into bankruptcy by having learned it. A mechanic that punishes
   the game's own lesson is not a risk, it is a lie. Deleted rather than
   parked at zero.
-- **Hidden finds** — killed unbuilt. Destinations now sit one per ~6-hex
-  block and pay 40 tiles (M1), which IS the dig-and-find layer, at a density
-  where a run claims six. A second, smaller, invisible version of the same
-  idea would be two systems answering one question, and the plane already
-  asks the player to read four kinds of ground.
+- **Hidden finds** — killed unbuilt 2026-08-14, **reversed 2026-08-18
+  (Session 22): shipped.** Original reasoning: destinations sit one per
+  ~6-hex block and pay 40 tiles (M1), which IS the dig-and-find layer, at a
+  density where a run claims six — a second, smaller, invisible version of
+  the same idea would be two systems answering one question, and the plane
+  already asks the player to read four kinds of ground. That held for
+  DESTINATIONS-as-dig-and-find and still does. What reopened it was a
+  different question, from `ideas/uniques.md`'s option-set pass the same
+  day: perks needed a home that was not a shop shelf — "you're often hidden
+  from plain sight, you need to stumble on it." A find never pays tiles or
+  points, never beacons, and sits on its own hash layer rarer than a shrine
+  — the THING being revealed (a perk, not tiles) made it a different
+  question after all, not the same one twice. See `LOG.md` Session 22 and
+  `ideas/uniques.md`.
 - **Tile quirks** — killed unbuilt. Rarity already prints modifiers on a
   card: magic is wild, unique is wild and heavy, and treasure lets you
   CHOOSE one. Quirks would be a third vocabulary for the same slot.

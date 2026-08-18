@@ -99,6 +99,13 @@ export type RenderContext = {
   readonly previews: readonly ReadonlyMap<HexKey, number>[];
   /** How far from home the run has built — REACH, and the beacon horizon. */
   readonly reach: number;
+  /**
+   * Every drawn cell, parsed once. The KEEN NOSE shimmer loop is the one
+   * consumer today (an O(cells × finds) distance scan per render), but this
+   * is the same "computed once, threaded through" shape as the rest of the
+   * context rather than a re-parse living inside `toBoardView`.
+   */
+  readonly ground: readonly { readonly q: number; readonly r: number }[];
 };
 
 export function renderContext(state: GameState, asked: HexKey | null = null): RenderContext {
@@ -161,6 +168,7 @@ export function renderContext(state: GameState, asked: HexKey | null = null): Re
     legal,
     previews,
     reach: reachOf(state),
+    ground: Object.keys(state.cells).map(parse),
   };
 }
 
@@ -285,14 +293,17 @@ export function toBoardView(
   // sense range of ANY cell of this run's board glows dimly — no glyph, no
   // kind, no atlas entry. This loop is the ONE consumer of `findsWithin`;
   // nothing else may draw an unrevealed find, because a find that shows
-  // through the dark is a destination with extra steps.
+  // through the dark is a destination with extra steps. `findsCached` and
+  // `ctx.ground` mirror `destinationsCached` and its beacon caller — before
+  // this the scan ran uncached (O(blocks²) every render) over a ground list
+  // re-parsed from scratch every render too, at O(cells) — real cost once
+  // reach grows past a couple dozen.
   if (state.tuning.findSense > 0) {
     const sense = state.tuning.findSense;
-    const ground = Object.keys(state.cells).map(parse);
-    for (const f of findsWithin(state.rootSeed, ctx.reach + sense + 1, state.tuning)) {
+    for (const f of findsCached(state.rootSeed, ctx.reach + sense + 1, state.tuning)) {
       const k = key(f.q, f.r);
       if (onBoard.has(k)) continue;
-      if (!ground.some((h) => distance(h, f) <= sense)) continue;
+      if (!ctx.ground.some((h) => distance(h, f) <= sense)) continue;
       cells.push({
         key: k,
         q: f.q,
@@ -352,6 +363,37 @@ function destinationsCached(
   }
   const out = destinationsWithin(seed, horizon, tuning);
   lastDestinations = { seed, horizon, tuning, out };
+  return out;
+}
+
+/**
+ * The last `findsWithin` answer, keyed on everything it depends on — the
+ * same last-value cache shape as `destinationsCached`, for the same reason:
+ * the shimmer loop asks this once a render and the horizon only moves when
+ * reach does, so most asks are free.
+ */
+let lastFinds: {
+  seed: number;
+  horizon: number;
+  tuning: unknown;
+  out: ReturnType<typeof findsWithin>;
+} | null = null;
+
+function findsCached(
+  seed: number,
+  horizon: number,
+  tuning: GameState['tuning'],
+): ReturnType<typeof findsWithin> {
+  if (
+    lastFinds !== null &&
+    lastFinds.seed === seed &&
+    lastFinds.horizon === horizon &&
+    lastFinds.tuning === tuning
+  ) {
+    return lastFinds.out;
+  }
+  const out = findsWithin(seed, horizon, tuning);
+  lastFinds = { seed, horizon, tuning, out };
   return out;
 }
 
@@ -842,7 +884,9 @@ function hintFor(state: GameState, reach: number): string | null {
       ? `a cache of ${cachePaysAt(at, state.tuning)} tiles`
       : reward === 'site'
         ? 'a scoring site'
-        : 'a territory to claim';
+        : reward === 'shrine'
+          ? 'a shrine'
+          : 'a territory to claim';
   return `${named[0]!.toUpperCase()}${named.slice(1)} glows ${dist} out`;
 }
 

@@ -2195,3 +2195,173 @@ clearance and field-lift pins all held without adjustment.
 
 Whether the new ground reads at arm's length is the phone's question, and
 the gallery's NATIVE FIELDS strip now shows exactly what the board draws.
+
+**Addendum, 2026-08-18, continuing — Stage 1: the triple audit's eighteen
+fixes, closed.** Marc green-lit a three-stage pipeline the same day
+(`WORKPLAN.md`): correctness first, then UI/UX, then new systems, one stage
+at a time on the same tree. This is stage 1 — every bug and seam the
+cut-corners / visuals / quality audit turned up that hadn't already shipped
+in the day's earlier packages. No design opinions, no redesigns; stage 2
+owns the screen.
+
+**The bugs, all balance-neutral:**
+
+- **`#claimNote` returned on the first claim it saw.** One placement beside
+  two unclaimed landmarks at once — a cache and a find sharing a frontier,
+  say — silently ate the second: no grant, no counter, no toast for it. It
+  now collects every claim, runs every side effect (a find's grant, a
+  shrine's counter) for each, and composes the note with the rarest leading
+  (find > shrine > territory > site > cache) and the rest after a blank
+  line. Pinned: one placement adjacent to a cache AND a find grants the perk
+  and the toast names it.
+- **The find toast pointed at a shelf that moved.** "Equip it on the end
+  screen" predates the end/shop split; it now says "Equip it in THE SHOP, on
+  the end screen."
+- **The hint line called a shrine "a territory to claim."** `hintFor`'s
+  `named` ternary was three-wide against the five-member `LandmarkReward`
+  union; a shrine fell through to the territory branch. Added its own line.
+- **The pop toast lied twice.** It printed the pocket's tile count as "Luck
+  +N", which is a different number from what `reduce.ts` actually credits
+  (`luckPerPop + count·luckPerTile`, rounded, capped) — for a 9-tile pocket
+  under the shipped economy that is +14, not +9. And it claimed rare-tile
+  odds "just rose" unconditionally, which is false in the shipped economy
+  (`luckMagicPerPop`/`luckUniquePerPop` are both 0 — permanent odds are
+  bought in the shop instead). Now prints the true gain and only adds the
+  odds sentence when it would be true.
+- **OPEN HAND × treasure was a silent total loss.** `treasureFor` offered
+  treasure at any pocket size regardless of `holdSlots`; with OPEN HAND's
+  stash gone, the reducer wrote the tile into `state.held` anyway and it
+  vanished. `treasureFor` now refuses whenever `!(holdSlots > 0)` — the one
+  function both the button and the reducer read, so the fix is structural
+  rather than a UI-side guard that the engine could still be called without.
+- **The shrine ledger's first entry did nothing.** `UNLOCKS[0]`, "the
+  treasure payout," was never read by `applyUnlocks` — treasure has shipped
+  on for everyone in `TUNING` since M3, which made the entry, and whichever
+  shrine granted it, a no-op dressed as a reward. Retired; the ledger is
+  four entries now (draft · hold · luck · reach). Existing worlds keep their
+  shrine COUNT, and every position after the first shifts down one — a
+  one-time generosity (an old claim now unlocks a real system a slot
+  earlier), not a regression, and nobody's progress moves backward.
+- **`findsWithin`'s KEEN NOSE scan was unmemoized and re-parsing ground
+  every render** — the one perf gap the Session 21 pass had not reached
+  yet. It now rides the same last-value cache `destinationsCached` uses
+  (seed + horizon + tuning), and the parsed ground list moved into
+  `RenderContext` so it is computed once per render like everything else
+  the context carries. View output is byte-identical; `view.test.ts` passed
+  unmodified.
+- **`undefined <= 0` is false.** `blockFind`/`findsWithin` guarded
+  `findEvery`/`findChance` with `<= 0`, so a save written before those
+  dials existed (they decode as `undefined`, since `decodeRun` does not —
+  cannot, cheaply — fill missing `tuning` sub-fields) ran the find hash on
+  `NaN`. Both guards are `!(x > 0)` now. A new save.test.ts case strips all
+  eight of the day's new tuning keys from an encoded run and plays a
+  placement afterward: no throw, no NaN. `save.ts`'s fill-block docblock now
+  says outright that `tuning` counts for the fill rule even though nothing
+  fills it — every new dial's call sites have to guard themselves.
+
+**Coverage seams — the no-staleness contract:**
+
+- THIS BUILD's systems list now names "hidden finds" and "a keen nose" when
+  their dials are live, instead of describing a build that has grown two
+  systems since the sentence was written.
+- SETTINGS gained "N of 5 perks found," read from `@meta/progress` fresh
+  (progress carries across worlds, unlike the shrine ledger above it) —
+  count only, no names, so the shelf's mystery survives the atlas too.
+- The debug overlay (`?ff=debug.overlay`) gained `relics{n}`,
+  `perk:{name or -}`, `sense{findSense}`, `claims{n}` — everything the day's
+  new systems added that a phone-with-no-console report couldn't previously
+  name.
+
+**Closing the find re-farm — Marc's call, made on the option set: "Close
+it."** Without a fix, the SAME find hex could be walked to again on a later
+run and grant a DIFFERENT perk, because `grantFind` picks from whichever
+perks are still unowned and that set shrinks as other finds get claimed —
+one physical location, farmed across runs until the shelf filled. Given the
+territories' own ride to copy, this took two layers:
+
+- **The engine's** — `WorldMemory` gained `finds: readonly HexKey[]`,
+  collected by `mergeRun`/`rememberRun` exactly like `territories` (claimed
+  FIND cells, not merely touched ones). `GameState` gained a sibling
+  `claimedFinds` list threaded through `newRun` → `openWorld` → `revealCell`
+  and through `place`'s reveal step — kept separate from `claimed` rather
+  than unioned into it, because `claimed.length` feeds `startingPerk`'s
+  territory-tiles arithmetic and a find is not a territory. A find in
+  `claimedFinds` now reveals `claimed: true` on the spot — the same "pays
+  nothing again" contract a held territory keeps — instead of the old
+  unconditional `claimed: false`.
+- **The shell's** — reveal-already-claimed alone does not stop
+  `#claimNote` calling `findLabel` again (a freshly-revealed cell has no
+  prior board state to compare against, so "was it already claimed" reads
+  as no every time a hex first enters `state.cells`, regardless of whether
+  the WORLD already knew it). `findLabel` in `main.ts` now checks
+  `current.finds.includes(hex)` before ever calling `grantFind`, the same
+  shape as its existing `replaySeed !== null` guard — a hex the world has
+  already claimed grants nothing, full stop, independent of any per-run
+  state comparison.
+
+`tuning.ts`'s find doc already called the geography "a lottery ticket, not
+a checklist" — that line stands; what changed is that the ticket can only
+ever be punched once. Tests: a world round-trips `finds` (and loads an
+older world missing the field as none, the same tolerance `shrines`
+already keeps); `mergeRun` records a claimed find mid-run without waiting
+for the run to end; a resumed world hands back a claimed find already
+`claimed: true` and pays no relics for it a second time (proved by
+comparing an identical beeline walk from a held vs. a fresh run of the same
+seed, rather than an absolute relics total — the fixture is dense enough
+that the walk legitimately touches other, still-open finds along the way,
+and both walks touch those identically).
+
+**Docs and small seams:** `STATUS.md`'s top checkpoint rewritten whole and
+dated today, with the stale "Shipped and settled" bullets it was carrying
+(the bounded map described as still switchable behind a flag that was
+deleted 2026-08-16; the P3a bullet still boasting "no pan/pinch" a full
+session after Session 7 built the camera; "Not started" still listing perks
+and save/resume years after both shipped) corrected in place rather than
+left to mislead the next reader — "Not started" now names exactly six
+things: sound, the daily seed, Tier-1 uniques, a leaderboard, the
+where-you-wake prototype, and stage 2's front door. `CLAUDE.md`'s flag rule
+amended to "behind a flag **or a tuning dial that zeroes it**, defaulting
+off," which is the shape every found perk already ships in and the rule
+had not caught up to. `ideas/endless-world.md`'s "killed unbuilt" line for
+hidden finds now says the decision reversed and why — a reveal mechanic
+judged once for tiles reads differently once the thing being revealed is a
+perk. The manual's own seed-share sentence overclaimed "plain rules" for a
+link to your OWN world's seed (it keeps that world's shrine unlocks —
+`applyUnlocks` reads `unlockedBy(world)` whenever the shared seed matches
+the sharer's own `worldSeed`); softened to name only what is actually
+stripped, shop upgrades and the worn perk. Comment sweep: "four landmark
+glyphs" became "five" in three places that had not caught up to the shrine
+and find glyphs (`game.ts`, `gallery/main.ts`, `PixiRenderer.ts` twice, the
+second of which was also missing ◈ and ✦ from its own enumeration);
+`game.test.ts`'s inverted Gate-B comment now says the tally left WITH the
+gate instead of describing a line still being printed; `progress.test.ts`'s
+four repeated bare literals (18/26/22/30) became one named
+`PRE_REBALANCE` object the assertions read from, and its "carries exactly
+one slot" test is titled "carries exactly one perk" to match what it is
+actually pinning. Dead code: the `#recordLines.length > 1` branch in the
+end screen (that array only ever holds zero or one line — deleted rather
+than left as a branch nothing could reach). `startingPerk` — exported,
+computed, never spoken — now gets a line of its own in the manual's AFTER
+tab when a run actually started richer for it: "This run started with +N
+tiles from territories held."
+
+**The rest of the option set, recorded:** world mood (a per-run tilt) stays
+**PARKED**, explicitly post-playtest — nothing here should feel different
+run to run yet, and adding a variable before the fixed economy has been
+played is a confound, not a feature. Ground-feeds-draft (native ground
+biasing the draw toward its own colour) was **offered and not chosen** —
+Marc's call was to leave the draft exactly as blind as it is today; it
+stays written down in `ideas/endless-world.md` rather than built, and
+nobody should build it on a hunch that it was implicitly approved by being
+on the table. Where-you-wake (starting a run at a held territory) is queued
+for stage 3 as a **harness-first prototype** — prove the distance
+multiplier cannot be beelined from a far spawn before any UI exists — and
+stays an engine flag with no player-visible surface until that proof lands.
+
+**Verified:** 458 tests (was 451 — seven new, one rewritten for the true
+luck arithmetic, none removed; `#recordLines`'s dead branch had no test
+depending on it). Typecheck, lint, format clean. `pnpm sim` — 200 seeds,
+15 policies — 0 stalled, 0 capped, numbers byte-identical to Session 22's
+table (spender 3,603 ahead of bank20's 3,397, seeker still the top
+claimer): every fix here was a bug or a seam, never a balance number.
+Stage 2 (UI/UX, the audit's big five) is next, on Sonnet, same tree.

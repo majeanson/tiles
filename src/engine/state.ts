@@ -247,6 +247,16 @@ export type GameState = {
    */
   readonly claimed: readonly HexKey[];
 
+  /**
+   * Hidden finds this WORLD already holds, from earlier runs (2026-08-18,
+   * closing the find re-farm). The same ride as `claimed`, on its own list
+   * rather than folded into it: `claimed.length` feeds `startingPerk`'s
+   * territory-count arithmetic, and a find is not a territory. A find in
+   * this list reveals already claimed — no relics a second time, and the
+   * shell's `findLabel` hook refuses to grant a perk for it again.
+   */
+  readonly claimedFinds: readonly HexKey[];
+
   /** Telemetry for the end screen and the harness. */
   readonly log: {
     readonly harvests: readonly HarvestRecord[];

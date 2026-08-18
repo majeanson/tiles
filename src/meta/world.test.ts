@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { TUNING } from '@content/tuning';
-import { key, neighbourKeys } from '@engine/hex';
+import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
-import { destinationsWithin } from '@engine/world';
+import { destinationsWithin, findsWithin } from '@engine/world';
 import type { Cell, GameState } from '@engine/state';
 import {
   decodeWorld,
@@ -14,6 +14,42 @@ import {
   unlockedBy,
   UNLOCKS,
 } from './world.js';
+
+/**
+ * Walk the board out to `at`, one placement at a time, always taking the
+ * legal spot closest to the target — a greedy beeline is enough to reach one
+ * particular hex on an otherwise-empty plane. Shared by the territory and
+ * find "arrives already claimed" tests below; not a policy, just a probe.
+ */
+function growToward(state: GameState, at: HexKey): GameState {
+  let s = state;
+  for (let step = 0; step < 400; step++) {
+    if (s.cells[at] !== undefined) return s;
+    const spots = Object.entries(s.cells).filter(([k, c]) => {
+      if (c.kind !== 'empty') return false;
+      return neighbourKeys(...(k.split(',').map(Number) as [number, number])).some((n) => {
+        const other = s.cells[n];
+        return other?.kind === 'tile' || other?.kind === 'stone';
+      });
+    });
+    if (spots.length === 0) return s;
+    const target = at.split(',').map(Number) as [number, number];
+    spots.sort((a, b) => {
+      const da = a[0].split(',').map(Number) as [number, number];
+      const db = b[0].split(',').map(Number) as [number, number];
+      const dist = (p: [number, number]) =>
+        (Math.abs(p[0] - target[0]) +
+          Math.abs(p[1] - target[1]) +
+          Math.abs(p[0] + p[1] - target[0] - target[1])) /
+        2;
+      return dist(da) - dist(db);
+    });
+    const next = reduce({ ...s, tiles: 999 }, { type: 'PLACE', hex: spots[0]![0] });
+    if (next === s) return s;
+    s = next;
+  }
+  return s;
+}
 
 /**
  * P4a: the world you keep. These pin the two promises — the map grows across
@@ -83,6 +119,37 @@ describe('world memory', () => {
     expect(decodeWorld('{"worldSeed":1,"revealed":[],"territories":[1,2]}')).toBeNull();
   });
 
+  it('remembers only finds that were actually claimed, mid-run', () => {
+    // mergeRun, not rememberRun: finds are facts the moment growth touches
+    // them, the same "does not wait for the run to end" contract territories
+    // and shrines already keep.
+    const base = newRun(42, TUNING);
+    const claimedAt = key(9, 9);
+    const unclaimedAt = key(9, 12);
+    const state: GameState = {
+      ...base,
+      cells: {
+        ...base.cells,
+        [claimedAt]: { kind: 'landmark', reward: 'find', claimed: true },
+        [unclaimedAt]: { kind: 'landmark', reward: 'find', claimed: false },
+      },
+    };
+
+    const world = mergeRun(newWorld(42), state);
+    expect(world.finds).toContain(claimedAt);
+    expect(world.finds).not.toContain(unclaimedAt);
+  });
+
+  it('round-trips finds, and loads a world written before they existed', () => {
+    const world = { ...newWorld(3), finds: [key(4, 4), key(-2, 7)] };
+    expect(decodeWorld(encodeWorld(world))).toEqual(world);
+
+    // Absent, from a world saved before finds existed: true rather than
+    // corrupt, the same contract `shrines` already keeps.
+    const old = '{"worldSeed":5,"revealed":["0,0"],"territories":[],"runs":2}';
+    expect(decodeWorld(old)?.finds).toEqual([]);
+  });
+
   it('reports a fraction known that cannot exceed the world it measures', () => {
     const empty = newWorld(1);
     expect(knownFraction(empty)).toBe(0);
@@ -116,39 +183,7 @@ describe('a world already held', () => {
 
     // Walk the board out to the territory and check it arrives claimed —
     // and that arriving pays nothing a second time.
-    const grow = (state: GameState): GameState => {
-      let s = state;
-      for (let step = 0; step < 400; step++) {
-        const cell = s.cells[at];
-        if (cell !== undefined) return s;
-        // Head toward the territory: the legal spot closest to it.
-        const spots = Object.entries(s.cells).filter(([k, c]) => {
-          if (c.kind !== 'empty') return false;
-          return neighbourKeys(...(k.split(',').map(Number) as [number, number])).some((n) => {
-            const other = s.cells[n];
-            return other?.kind === 'tile' || other?.kind === 'stone';
-          });
-        });
-        if (spots.length === 0) return s;
-        const target = at.split(',').map(Number) as [number, number];
-        spots.sort((a, b) => {
-          const da = a[0].split(',').map(Number) as [number, number];
-          const db = b[0].split(',').map(Number) as [number, number];
-          const dist = (p: [number, number]) =>
-            (Math.abs(p[0] - target[0]) +
-              Math.abs(p[1] - target[1]) +
-              Math.abs(p[0] + p[1] - target[0] - target[1])) /
-            2;
-          return dist(da) - dist(db);
-        });
-        const next = reduce({ ...s, tiles: 999 }, { type: 'PLACE', hex: spots[0]![0] });
-        if (next === s) return s;
-        s = next;
-      }
-      return s;
-    };
-
-    const grown = grow(held);
+    const grown = growToward(held, at);
     const cell: Cell | undefined = grown.cells[at];
     if (cell === undefined) return; // never reached it; the claim below is moot
     expect(cell.kind).toBe('landmark');
@@ -159,6 +194,57 @@ describe('a world already held', () => {
       (c) => c.kind === 'empty' && c.native !== undefined,
     );
     expect(native.length).toBeGreaterThan(0);
+  });
+});
+
+describe('a world already holding a find', () => {
+  /** A seed whose plane has a hidden find near enough to test with. */
+  const findSeed = (): { seed: number; at: string } => {
+    const dense = { ...TUNING, findEvery: 4, findChance: 1, worldWalls: 0, destinationChance: 0 };
+    for (let seed = 1; seed <= 400; seed++) {
+      const [f] = findsWithin(seed, 24, dense);
+      if (f !== undefined) return { seed, at: key(f.q, f.r) };
+    }
+    throw new Error('no find within 24 hexes in 400 seeds');
+  };
+
+  it('hands back a claimed find, unpaid a second time — the same ride as a territory', () => {
+    const { seed, at } = findSeed();
+    const tuning = {
+      ...TUNING,
+      findEvery: 4,
+      findChance: 1,
+      worldWalls: 0,
+      destinationChance: 0,
+      startingTiles: 500,
+      costRisesEvery: 1000,
+    };
+    const fresh = newRun(seed, tuning);
+    const held = newRun(seed, tuning, [], [at]);
+
+    // A find carries no starting-purse perk (that is territories' job) —
+    // only the standing claim differs.
+    expect(held.claimedFinds).toEqual([at]);
+    expect(held.tiles).toBe(fresh.tiles);
+
+    const grown = growToward(held, at);
+    const cell: Cell | undefined = grown.cells[at];
+    if (cell === undefined) return; // never reached it; the claim below is moot
+    expect(cell.kind).toBe('landmark');
+    if (cell.kind === 'landmark') {
+      expect(cell.reward).toBe('find');
+      expect(cell.claimed).toBe(true);
+    }
+
+    // Reveal-and-claimed pays no relics — the same "pays nothing again" the
+    // territory test pins above. Compared against the identical walk from a
+    // FRESH run (same seed, same tuning, `at` not yet held) rather than
+    // asserting an absolute relics total: at this density the beeline can
+    // legitimately stumble on other, still-unclaimed finds along the way,
+    // and both walks touch those identically — the only thing that should
+    // differ between them is the one claim `at` itself pays only once.
+    const grownFresh = growToward(fresh, at);
+    expect(grownFresh.relics).toBe(grown.relics + tuning.claimRelics);
   });
 });
 

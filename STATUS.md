@@ -4,21 +4,86 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-15** — **the game is ASHWAKE, and M1–M6 of
-`ROADMAP.md` are built.** Sessions 11–16 in one run: Gate B fixed
-structurally (a hard 260-placement clock, survival funded by caches, a cap on
-the size bonus — the tiles share of harvests fell from 94-98% to 41-64% for
-lines that harvest as they go), **Gate D passed** on the arc evidence, the
-remembered world (fog memory + territories that stay yours), the roguelite
-spine (territory perks, the treasure payout, zero unwired flags), shrines as
-the unlock ledger and the whole content queue emptied — one system deleted
-after its sweep said so — **Gate F passed**, **Gate E opened** with torchlit
-chosen and the four colours renamed MOSS · EMBER · ASH · TIDE, and the game
-made installable, offline, shareable and safe for a stranger's first minute.
-314 tests. **Gate B's own verdict and the stranger test are the two things
-code cannot produce — they lead the human follow-up.**
+Last checkpoint: **2026-08-18** — Sessions 15–22 plus the same-day audit's
+fix pass, in one run. 458 tests.
 
-Previous checkpoint: **2026-08-13** — Session 6: **P3b is built.** Destinations
+- **Gate B is RETIRED, not passed.** The gate asked whether tiles-or-points
+  was a real choice; it failed twice in human hands (94-98% tiles either
+  way), and `singlePayout` — the gate's OWN written fallback, "cut it to a
+  single automatic payout" — shipped 2026-08-16. `gateB()` and its tests are
+  deleted; the record book still stores the tallies. **The successor
+  question is open and human-owned**: Marc's own framing (2026-08-18) is
+  that waiting should be the score line and popping should buy small
+  advantages (luck, steering) — whether those advantages feel worth taking
+  under the lean economy is the thing the phone answers, not the harness.
+- **The rebalance** (2026-08-18, "make it easier gradually with relics, not
+  at the start"): run one starts lean — `startingTiles` 22, cost +1 every 22
+  placed — and the shop's **STEADY PACE** buys the old 30-placement curve
+  back, a level at a time. Three flat numbers became gradual formulas over
+  distance from home: caches pay 6 at the doorstep + 4/ring (RICHER WORLDS
+  still raises the base, so a maxed ring-2 cache pays the pre-rebalance 26),
+  a harvest pays a quarter-tile extra per pop per ring, and destination
+  density ramps in over two blocks so run one still meets its first claim.
+  Swept at 40 seeds a rung: reach across the shop ladder grew 12 → 18 where
+  the flat world managed 14 → 16.
+- **Perks are FOUND, never bought** (resolves `ideas/uniques.md`). A hidden
+  find is a landmark that never beacons — not even to KEEN NOSE's shimmer,
+  which stops two hexes short of the beacon horizon on purpose — revealed
+  only when growth touches its ground, on its own hash layer rarer than a
+  shrine. Reaching one grants a deterministic, unowned perk from a
+  five-strong pool (Rootbound, Second Wind, Stonewalker, Wallbreaker, Open
+  Hand) and auto-equips it if nothing is worn. **Exactly one perk is carried
+  at a time** — SECOND SLOT is deleted and its 400 relics refunded on load.
+  The shop sells only the boring floor (a deeper purse, better odds, richer
+  worlds, a gentler curve) plus KEEN NOSE; it never sells a perk. Closed
+  2026-08-18: a claimed find is now remembered per world
+  (`WorldMemory.finds`) so the same hex cannot be walked into on a later run
+  to farm a different still-unowned perk.
+- **The end screen and the shop split apart**, one door between them rather
+  than an always-open row competing with the run for space; the `?` manual
+  went from six tabs / nineteen sections to four (START · PLAY · HAND ·
+  AFTER) / thirteen, each section still reading its numbers from the run's
+  own live tuning so it cannot describe an economy it is not playing.
+- **Accessibility, PWA and performance shipped as their own audited
+  packages**, zero balance changes in any of them: dialog semantics + Escape
+  - live regions on the manual and the toast, `:focus-visible`, every
+    control at a real or invisible-hit-area 44px, `prefers-contrast`,
+    reduced-motion gets its own pop back instead of nothing; a 2.5s network
+    budget on the worker plus an update banner; camera draws coalesced to one
+    per frame and a render pass (`renderContext`) that computes ripeness,
+    target, reach and every draft preview ONCE instead of three-to-five times.
+- **Terrain speaks per colour.** Per-colour ground SHAPES (tried
+  2026-08-16) were retired by the same authority that ordered them — they
+  collapsed into lookalike specks at ground scale — and native fields now
+  wear their own colour's texture instead (moss diagonal, ash dots, tide
+  horizontals, ember verticals); EMBER got the finish it had been missing
+  since Gate E opened.
+
+**Several "Shipped and settled" bullets below were stale and are corrected
+in place**, not just here: the bounded map and its flag were deleted
+2026-08-16 (one economy, for everyone) but a bullet still described the
+endless world as living "behind tuning"; the P3a bullet still said "no
+pan/pinch" a full session after Session 7 built the camera; and "Not
+started" still listed perks and save/resume as unbuilt, sessions after both
+shipped. **Gate B's retirement and the stranger test are the two things
+code cannot produce — they lead the human follow-up**, alongside the open
+pop-vs-burn-vs-wait question above.
+
+Previous checkpoint: **2026-08-15** — **the game is ASHWAKE, and M1–M6 of
+`ROADMAP.md` were built.** Sessions 11–16 in one run: Gate B fixed
+structurally at the time (a hard 260-placement clock, survival funded by
+caches, a cap on the size bonus — the tiles share of harvests fell from
+94-98% to 41-64% for lines that harvest as they go; **superseded above —
+the gate is now RETIRED**), **Gate D passed** on the arc evidence and still
+stands, the remembered world (fog memory + territories that stay yours),
+the roguelite spine (territory perks, the treasure payout, zero unwired
+flags), shrines as the unlock ledger and the whole content queue emptied —
+one system deleted after its sweep said so — **Gate F passed**, **Gate E
+opened** with torchlit chosen and the four colours renamed MOSS · EMBER ·
+ASH · TIDE, and the game made installable, offline, shareable and safe for
+a stranger's first minute. 314 tests.
+
+Earlier — **2026-08-13** — Session 6: **P3b is built.** Destinations
 (cache / site / claimable territory, seeded by the world hash, drawn as
 beacons through unrevealed ground, claimed by touch) and rarity in the draft
 (magic = wild, unique = wild + double, luck accrued by tiles-harvests raising
@@ -155,26 +220,31 @@ milestone: M1.**
 - **`/gallery`** — the art-direction workbench, drawn by the same baker the
   board uses, shipped with the game so it opens on the phone.
 
-- **The endless world exists in the engine, behind tuning.** `world: 'endless'`
-  in `content/tuning.ts` (default `bounded`) turns the run into one unbounded
-  plane grown from a seed tile: no LEAVE, harvest pops one connected ripe
-  cluster targeted by `HARVEST`'s optional `at`, points multiply with distance
-  from home in place of the map number. The plane is grown, not generated —
-  every placement materialises the empty ground around itself, so no tile ever
-  borders an absent cell and every rule function serves both worlds unchanged.
-  Playable behind `?ff=world.endless` (see the P3a bullet below), per
-  `ideas/endless-world.md`.
+- **The endless world IS the game.** `world: 'endless'` was the only tuning
+  left after 2026-08-16 (Marc: "officialize some decisions... so all players
+  play the same game when shared") — the bounded map and the flag that chose
+  between them are both deleted, so this bullet no longer describes an
+  opt-in. One unbounded plane grown from a seed tile: no LEAVE, harvest pops
+  one connected ripe cluster targeted by `HARVEST`'s optional `at`, points
+  multiply with distance from home in place of the map number. The plane is
+  grown, not generated — every placement materialises the empty ground
+  around itself, so no tile ever borders an absent cell and every rule
+  function serves the one world unchanged. Per `ideas/endless-world.md`.
 - **The plane has ground under it (P2, answered).** `engine/world.ts` is a pure
   hash of `(worldSeed, hex)`: 6% walls that surround-but-never-match and cannot
   be built on, native fields where a tile of the right colour counts the ground
   as one extra match. The harness says terrain enriches without breaking —
   every scoring policy improves, reach extends, the timing structure holds.
   Walls added the run's second named death, `walled`. Pinned in `sim.test.ts`.
-- **P3a: the plane is playable on a phone**, behind `?ff=world.endless`. The
-  board auto-fits the grown world (no pan/pinch, so no gesture conflict with
-  tap-to-place); tapping a ripe tile targets its pocket — the harvest buttons
-  re-price to it and the board outlines it in accent; LEAVE is hidden; the
-  third stat reads REACH. Fog, landmarks and hints are P3b, not built.
+- **P3a: the plane is playable on a phone.** The board auto-fits the grown
+  world on first load; tapping a ripe tile targets its pocket — the harvest
+  buttons re-price to it and the board outlines it in accent; LEAVE does not
+  exist here; the third stat reads REACH. Fog, landmarks and hints (P3b)
+  shipped the same week this bullet was first written. **This bullet used to
+  say "no pan/pinch, so no gesture conflict with tap-to-place" — Session 7,
+  days later, built exactly that camera**: `+`/`−`/FIT buttons plus pinch
+  (1–4×) and one-finger drag past an 8px slop so a placement tap still reads
+  as a tap. The claim was true for one session and stale for every one after.
 - **Every decision in prompt.md is answered** — see its ANSWERED section.
   Highlights: P4 (persistent world, fog memory across runs) confirmed as the
   intent; the pop is a JUMP (tile leaps and falls, `popLift` per theme);
@@ -190,36 +260,32 @@ milestone: M1.**
 
 ## The gates
 
-**C is passed** (Session 1, with evidence in `LOG.md`). A is playable but
-unjudged — it needs a phone, in portrait, against prod. B has its mechanism
-confirmed by the harness but still needs 20 logged pops from a human. D, E and F
-are open. **Gate E still blocks CHOOSING an art direction** until A–D pass, and
-nothing has been chosen: the default is still the placeholder. Session 2 built
-the mechanism that makes the choice cheap when the gate opens, and loaded the
-candidates behind it so the decision can be made from a phone rather than from a
-document.
+Current state (full evidence in `LOG.md`'s gate table): **A passed**
+(2026-08-15, a full run on the phone against prod) · **B retired**
+(2026-08-18 — its own fallback shipped; see the top checkpoint's successor
+question) · **C passed** (Session 1) · **D passed** (2026-08-18, on the arc
+evidence) · **E opened** (2026-08-15, torchlit chosen, the four colours
+renamed MOSS · EMBER · ASH · TIDE) · **F passed** (2026-08-15). Every gate
+that can close without a human has closed; the stranger test is what is
+left.
 
-**Nothing visual has been seen by anything.** happy-dom has no 2D canvas, so no
-test in this repository has ever rendered the board. Everything Session 2 added
-is verified as wiring and unverified as a picture.
+**Nothing visual is tested by this repository.** happy-dom has no 2D canvas,
+so no test here has ever rendered the board. Everything visual is verified
+as wiring (the selectors that decide what to draw) and unverified as a
+picture — that half is what "against prod, on a phone" buys.
 
-## The open design problem — now with a candidate answer
+## The open design problem — resolved, kept as history
 
-Rule 5's harvest TIMING is a fake decision **on the bounded map**, and Session
-3 measured it as worse than first thought: the `bank<N>` line (protect one big
-harvest, feed on the rest as tiles) scores monotonically more the longer it
-banks, topping out at 4× the old champion with zero risk, because a full map
-hands you the cash-in moment for free. Still pinned as a failing design in
-`src/sim/sim.test.ts`. Do not author content around rule 5 in the bounded
-world.
-
-**The endless world is the candidate fix, and P1 says it works structurally:**
-on the plane the same dial has an interior optimum (bank40 ≈ 7,400) with a
-cliff past it (bank80 dies with its fortune unpopped, scoring 0), banking-
-until-forced ceases to exist as a scoring line, and the beeline exploit cannot
-ripen anything. Pinned in the same file. What the harness cannot say: whether
-the gradient is FEELABLE by a human — that is P3 (camera, fog, landmarks), and
-it has not been built. See `ideas/endless-world.md` for the full ledger.
+Rule 5's harvest TIMING was a fake decision **on the bounded map**: the
+`bank<N>` line scored monotonically more the longer it banked, because a
+full map handed the cash-in moment over for free. The endless world (P1)
+fixed it structurally — an interior optimum with a real cliff past it — and
+P3 (camera, fog, landmarks, all built by Session 7) made the gradient
+something a human could feel. The bounded map itself was deleted 2026-08-16;
+there is only one world now, so "the bounded map" is no longer a live
+concept this file needs to warn anyone off. Full ledger in
+`ideas/endless-world.md`; the sim pins for both shapes lived in
+`src/sim/sim.test.ts` until the bounded side of them went with the map.
 
 ## Push-to-deploy is armed
 
@@ -239,14 +305,23 @@ Manual deploy still works: `pnpm build && pnpm exec wrangler deploy`.
 
 ## Not started
 
-Unlocks (the ledger in `DESIGN.md` is a plan, not code), special tiles, perks,
-map routing, biome colour weights, and save/resume. No design claim has been
-proven by a HUMAN playing yet — everything in `DESIGN.md` marked proven was
-proven by the harness, which cannot tell you whether a minute of it is fun.
+Everything above this line has shipped. What has not, honestly:
 
-The handed-down art directions assume four mechanics: an endless scrolling map,
-two-tier fog of war, a chained cascade, and a pop choice that pays
-`+6 tiles / ×2 points`. As of Session 3 the first has an ENGINE (the endless
-world, above) but no UI — no scrolling, no camera — and the fog, cascade and
-that pop choice remain unbuilt and unfaked. Their asset slots stay declared and
-marked `NO MECHANIC` until the screen catches up with the reducer.
+- **Sound.** Designed to done in `ideas/sound.md` (three moments, Web Audio,
+  zero assets, sound as theme data) — scoped, not built. Post-1.0 by
+  `ROADMAP.md`'s own call.
+- **The daily seed.** Designed to done in `ideas/daily.md` (local-midnight
+  rollover, one permanent ladder, counted retries, an arc-sparkline share) —
+  every open fork resolved on option sets 2026-08-18, build parked until
+  Marc calls it.
+- **Tier-1 uniques.** Parked whole, post-1.0, per the 2026-08-18 uniques
+  design session — scope, not merit; see `ideas/uniques.md`.
+- **A leaderboard.** No backend exists to hold one; not designed past being
+  named as a gap.
+- **The where-you-wake prototype.** `WORKPLAN.md`'s stage-3 item: an engine
+  flag to start a run at a held territory, harness-first — prove the
+  distance multiplier cannot be beelined from a far spawn before any UI
+  exists. Not started.
+- **The front-door UI.** Name, tagline, BEGIN, a modal help panel, a
+  RESUMED state for returning players — `WORKPLAN.md` stage 2's first item.
+  Not started; this stage (correctness) intentionally does not touch it.

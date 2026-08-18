@@ -144,7 +144,11 @@ export type Find = { readonly q: number; readonly r: number };
  */
 export function blockFind(seed: number, bq: number, br: number, t: Tuning): Find | null {
   const size = Math.max(1, t.findEvery);
-  if (t.findEvery <= 0 || t.findChance <= 0) return null;
+  // `undefined <= 0` is false, not true — a save written before these dials
+  // existed decodes them as `undefined`, and the old `<= 0` guard let that
+  // slip through into `blockFind` running on NaN. Written as "not > 0" so
+  // absent and zero both read as off.
+  if (!(t.findEvery > 0) || !(t.findChance > 0)) return null;
 
   const roll = hashAt(seed ^ 0x5f356495, bq, br);
   if (roll >= t.findChance) return null;
@@ -172,7 +176,7 @@ export function findAt(seed: number, q: number, r: number, t: Tuning): Find | nu
  * extra steps, and the whole design is that you stumble on it.
  */
 export function findsWithin(seed: number, radius: number, t: Tuning): Find[] {
-  if (t.findEvery <= 0 || t.findChance <= 0) return [];
+  if (!(t.findEvery > 0) || !(t.findChance > 0)) return [];
   const size = Math.max(1, t.findEvery);
   const blocks = Math.ceil(radius / size);
 

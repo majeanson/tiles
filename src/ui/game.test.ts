@@ -591,7 +591,8 @@ describe('keeping the run, and ending it properly', () => {
     expect(text).toMatch(/0 pts/);
     expect(text).toMatch(/best 999 pts/);
     expect(text).toMatch(/placements/);
-    // Gate B's tally, printed where the player will actually read it.
+    // The tally left with the gate (2026-08-18) — singlePayout removed the
+    // fork it measured, so the end screen has nothing left to print here.
     expect(text).not.toMatch(/% tiles/);
 
     const again = ctx.el.end.querySelector('#end-new-run');
@@ -1042,7 +1043,28 @@ describe('special tiles and what a pop did', () => {
     tiles.el.harvestTiles.click();
     expect(tiles.el.toast.textContent).toMatch(/POPPED 9/);
     expect(tiles.el.toast.textContent).toMatch(/\+\d+ tiles/);
-    expect(tiles.el.toast.textContent).toMatch(/Luck \+9/);
+    // 9 pockets popped from luck 0: flat luckPerPop (9) + count (9) × luckPerTile
+    // (0.5) = 13.5, rounded to 14 — reduce.ts's own arithmetic, not the pocket
+    // count the line used to print (they only ever coincided by luck, so to
+    // speak).
+    expect(tiles.el.toast.textContent).toMatch(/Luck \+14\./);
+    // TUNING's luck does not move the draft's odds (luckMagicPerPop and
+    // luckUniquePerPop are both 0 in the shipped economy) — the claim must
+    // not appear when it would be false.
+    expect(tiles.el.toast.textContent).not.toMatch(/odds/i);
+  });
+
+  it('claims the odds line only when luck actually moves them', () => {
+    // `resume` carries its OWN tuning (a resumed run plays under the numbers
+    // it was saved with) — the tuning passed to `build` only seeds a fresh
+    // run, so the pocket's tuning has to be overridden directly.
+    const rare = { ...TUNING, luckMagicPerPop: 0.001, luckUniquePerPop: 0.0005 };
+    const tiles = build(1, TUNING, { resume: { ...rarePocket(9), tuning: rare } });
+    tiles.game.start();
+    tiles.renderer.nextHit = key(0, 0);
+    tap(tiles.el.board);
+    tiles.el.harvestTiles.click();
+    expect(tiles.el.toast.textContent).toMatch(/Luck \+14\. Your rare-tile odds just rose\./);
   });
 });
 
@@ -1153,13 +1175,50 @@ describe('hidden finds in the shell', () => {
     const text = ctx.el.toast.textContent ?? '';
     expect(text).toMatch(/✦/);
     expect(text).toMatch(/FOUND — STONEWALKER/);
-    expect(text).toMatch(/end screen/i);
+    expect(text).toMatch(/THE SHOP/i);
 
     // Rendering again must not grant again — the toast fired on the claim,
     // not on the frame.
     ctx.game.render();
     ctx.game.render();
     expect(granted).toHaveLength(1);
+  });
+
+  it('claims two landmarks from one placement — both side effects run, rarest first', () => {
+    // The old `#claimNote` returned on the FIRST claim it saw, which ate a
+    // find's grant (or a shrine's counter) whenever the same placement also
+    // reached something else. One tile beside a cache AND a find must fire
+    // both: the perk is granted, and the toast says so.
+    const base = newRun(7, TUNING);
+    const find = key(2, 0);
+    const cache = key(2, -1);
+    const granted: HexKey[] = [];
+    const ctx = build(1, TUNING, {
+      findLabel: (hex) => {
+        granted.push(hex);
+        return 'STONEWALKER';
+      },
+      resume: {
+        ...base,
+        cells: {
+          ...base.cells,
+          [find]: { kind: 'landmark', reward: 'find', claimed: false },
+          [cache]: { kind: 'landmark', reward: 'cache', claimed: false },
+        },
+      },
+    });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+
+    expect(granted).toEqual([find]);
+    const text = ctx.el.toast.textContent ?? '';
+    expect(text).toMatch(/FOUND — STONEWALKER/);
+    expect(text).toMatch(/CACHE CLAIMED/);
+    // The find is the rarer claim (find > shrine > territory > site > cache)
+    // and leads the note; the cache follows after a blank line.
+    expect(text.indexOf('FOUND')).toBeLessThan(text.indexOf('CACHE'));
   });
 
   it('says the vault was empty honestly when nothing is granted', () => {

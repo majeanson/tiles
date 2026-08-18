@@ -125,7 +125,7 @@ export class PixiRenderer implements Renderer {
    * rounded font size, and which ink. `#drawLabel` used to create a fresh
    * Pixi Text per labelled cell per draw — a canvas rasterise and a GPU
    * upload each — for a vocabulary this small (worths and previews are small
-   * ints, plus four landmark glyphs). Sprites share the cached texture, and
+   * ints, plus five landmark glyphs). Sprites share the cached texture, and
    * the per-draw teardown (`destroy({ children: true })`) does NOT destroy a
    * child sprite's texture — pixi v8 only touches it under `texture: true`,
    * verified in Sprite.destroy — so the cache owns them outright. Evicted
@@ -894,8 +894,9 @@ export class PixiRenderer implements Renderer {
  * attached.
  *
  * Landmark glyphs are deliberately the plainest marks that survive a tiny hex:
- * `+` pays tiles, `★` pays points, `◆` is a territory to claim. Words for them
- * live in the HUD hint, where there is room for words.
+ * `+` pays tiles, `★` pays points, `◈` wakes an unlock, `◆` is a territory to
+ * claim, `✦` is a hidden find. Words for them live in the HUD hint, where
+ * there is room for words.
  */
 /**
  * Label font size for a hex of circumradius `size`, in device-independent

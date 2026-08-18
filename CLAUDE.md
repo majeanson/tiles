@@ -18,13 +18,18 @@ Hard rules:
   mutation. ESLint enforces all four — see `eslint.config.js`.
 - **Every balance number lives in `src/content/`.** A number that affects
   balance appearing under `src/engine/` is a bug.
-- **Every system ships behind a flag** in `src/meta/features.ts`, defaulting
-  off. Run one is the smallest game there is; depth arrives by unlock — via
-  shrines and the relic shop since M3/M4, which is the same principle worn by
-  the game itself. (History: `world.endless` was the one default-ON exception
-  from 2026-08-14 — Marc played both worlds and chose — until 2026-08-16,
-  when the bounded game was deleted and the flag with it. One economy, for
-  everybody, so a shared seed opens the game its sender was playing.)
+- **Every system ships behind a flag** in `src/meta/features.ts` **or a
+  tuning dial that zeroes it**, defaulting off. Run one is the smallest game
+  there is; depth arrives by unlock — via shrines and the relic shop since
+  M3/M4, which is the same principle worn by the game itself. The dial form
+  is how a FOUND perk (Stonewalker's `stoneDiscount`, Wallbreaker's
+  `wallBuildCostMult`, KEEN NOSE's `findSense`, 2026-08-18) ships off for
+  everyone who has not earned it, with no flag to flip and no menu to find —
+  the same contract, paid in a number instead of a boolean. (History:
+  `world.endless` was the one default-ON exception from 2026-08-14 — Marc
+  played both worlds and chose — until 2026-08-16, when the bounded game was
+  deleted and the flag with it. One economy, for everybody, so a shared seed
+  opens the game its sender was playing.)
 - **Plain words.** No invented vocabulary until a concept has earned a name.
   The v1 design had twenty; that was the problem, not the flavour.
 - **One question per prototype.** Write it down before building, answer it after

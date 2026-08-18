@@ -145,4 +145,40 @@ describe('runs saved before a field existed', () => {
     expect(next.placements).toBe(back.placements + 1);
     expect(next.lastPlaced).toBe(spot);
   });
+
+  /**
+   * `decodeRun` does not fill `tuning` — the whole object survives via the
+   * `...parsed` spread, so a dial added to `Tuning` after this save was
+   * written decodes as `undefined` on that object rather than as a missing
+   * top-level field. Every reader has to treat that the same as zero
+   * (`> 0`, not `<= 0`); this pins that a save missing all eight
+   * 2026-08-18 dials still plays a placement without a NaN or a throw.
+   */
+  it('plays on when a save predates a whole batch of tuning keys', () => {
+    const TUNING_2026_08_18 = [
+      'findEvery',
+      'findChance',
+      'findSense',
+      'stoneDiscount',
+      'wallBuildCostMult',
+      'cachePaysPerRing',
+      'popTilesPerRing',
+      'destinationRampBlocks',
+    ];
+    const state = newRun(4);
+    const raw = JSON.parse(encodeRun(state)) as Record<string, unknown>;
+    const tuning = raw['tuning'] as Record<string, unknown>;
+    for (const key of TUNING_2026_08_18) delete tuning[key];
+
+    const back = decodeRun(JSON.stringify(raw));
+    expect(back).not.toBeNull();
+    if (back === null) return;
+
+    const spot = legalPlacements(back.cells)[0];
+    if (spot === undefined) throw new Error('nowhere to build');
+    const next = reduce(back, { type: 'PLACE', hex: spot });
+    expect(next.placements).toBe(back.placements + 1);
+    expect(Number.isFinite(next.tiles)).toBe(true);
+    expect(Number.isNaN(next.tiles)).toBe(false);
+  });
 });

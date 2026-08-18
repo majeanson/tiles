@@ -1,6 +1,6 @@
 import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { distance, parse, type HexKey } from '@engine/hex';
-import { newRun, reduce } from '@engine/reduce';
+import { newRun, reduce, startingPerk } from '@engine/reduce';
 import {
   cachePaysAt,
   canPlaceAt,
@@ -263,12 +263,13 @@ export class Game {
     tuning: Tuning = TUNING,
     hooks: GameHooks = {},
     claimed: readonly HexKey[] = [],
+    claimedFinds: readonly HexKey[] = [],
   ) {
     this.#renderer = renderer;
     this.#el = elements;
     this.#theme = theme;
     this.#hooks = hooks;
-    this.#state = hooks.resume ?? newRun(seed, tuning, claimed);
+    this.#state = hooks.resume ?? newRun(seed, tuning, claimed, claimedFinds);
 
     for (const colour of COLOURS) {
       try {
@@ -620,10 +621,21 @@ export class Game {
     const head = `POPPED ${value.count} — total worth ${worth}`;
 
     if (choice === 'tiles') {
-      const luck =
-        t.magicChance + t.uniqueChance > 0
-          ? `\nLuck +${value.count} — your rare-tile odds just rose.`
-          : '';
+      // The true gain, matching `reduce.ts`'s own arithmetic exactly (flat
+      // per pop plus a little per tile, then rounded and capped) — the old
+      // line here printed the pocket's tile count, which is a different
+      // number that only coincidentally looked plausible.
+      const perPop =
+        t.luckPerPop > 0 || t.luckPerTile !== 1
+          ? t.luckPerPop + value.count * t.luckPerTile
+          : value.count;
+      const gained = Math.min(t.luckCap, Math.round(before.luck + perPop)) - before.luck;
+      // The odds claim is only true when luck actually moves the draft's
+      // rare-tile chances — in the shipped economy it does not, and saying
+      // so anyway was the other half of this line lying.
+      const odds =
+        t.luckMagicPerPop + t.luckUniquePerPop > 0 ? ' Your rare-tile odds just rose.' : '';
+      const luck = `\nLuck +${gained}.${odds}`;
       // The depth grade, shown only when it actually paid something — the
       // arithmetic on screen has to sum to the number on screen.
       const rings = Math.floor(value.count * t.popTilesPerRing * (multiplier - 1));
@@ -649,9 +661,26 @@ export class Game {
   /**
    * What a placement just claimed, if anything — announced in the hint line
    * so the reward is legible at the moment it is earned.
+   *
+   * One placement can touch more than one unclaimed landmark at once (a
+   * cache and a find sharing a frontier, say) — the old version of this
+   * method returned on the FIRST claim it saw, which silently ate every
+   * find-grant or shrine-unlock that happened to sit beside something else
+   * that placement also reached. Every claim now runs its full side effect
+   * (a find's grant, a shrine's counter) and gets a line in the note; the
+   * rarest claim leads, the rest follow after a blank line.
    */
   #claimNote(before: GameState, after: GameState): string | null {
     const t = after.tuning;
+    const RANK: Record<LandmarkReward, number> = {
+      find: 0,
+      shrine: 1,
+      territory: 2,
+      site: 3,
+      cache: 4,
+    };
+    const notes: { rank: number; text: string }[] = [];
+
     for (const [k, cell] of Object.entries(after.cells)) {
       if (cell.kind !== 'landmark' || !cell.claimed) continue;
       const was = before.cells[k];
@@ -663,23 +692,39 @@ export class Game {
       // appeared".
       switch (cell.reward) {
         case 'cache':
-          return `+  CACHE CLAIMED\n+${cachePaysAt(k, t)} tiles, on the spot.`;
+          notes.push({
+            rank: RANK.cache,
+            text: `+  CACHE CLAIMED\n+${cachePaysAt(k, t)} tiles, on the spot.`,
+          });
+          break;
         case 'site':
-          return (
-            `★  SITE CLAIMED\nPoints banked — and this star has set a BOUNTY: ` +
-            `pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it and take it as PTS for ×${t.questBonus}.`
-          );
+          notes.push({
+            rank: RANK.site,
+            text:
+              `★  SITE CLAIMED\nPoints banked — and this star has set a BOUNTY: ` +
+              `pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it and take it as PTS for ×${t.questBonus}.`,
+          });
+          break;
         case 'territory': {
           const owns =
             cell.colour === undefined ? 'its colour' : this.#theme.terrainNames[cell.colour];
-          return `◆  TERRITORY CLAIMED\nGround within ${t.territoryRadius} hexes is native to ${owns} now — and it stays yours between runs.`;
+          notes.push({
+            rank: RANK.territory,
+            text: `◆  TERRITORY CLAIMED\nGround within ${t.territoryRadius} hexes is native to ${owns} now — and it stays yours between runs.`,
+          });
+          break;
         }
         case 'shrine': {
           const label = this.#hooks.unlockLabel?.(this.#shrinesClaimed) ?? null;
           this.#shrinesClaimed++;
-          return label === null
-            ? '◈  SHRINE WOKEN\nThis world is fully awake — every unlock is yours.'
-            : `◈  SHRINE WOKEN\n${label}\nYours from your next run on, in this world for good.`;
+          notes.push({
+            rank: RANK.shrine,
+            text:
+              label === null
+                ? '◈  SHRINE WOKEN\nThis world is fully awake — every unlock is yours.'
+                : `◈  SHRINE WOKEN\n${label}\nYours from your next run on, in this world for good.`,
+          });
+          break;
         }
         case 'find': {
           // The shell does the granting and hands back the perk's name — or
@@ -687,19 +732,27 @@ export class Game {
           // somebody else's replay". One honest sentence covers both: a find
           // only grants what you do not own, on your own world.
           const label = this.#hooks.findLabel?.(k) ?? null;
-          return label === null
-            ? '✦  A HIDDEN FIND\nNothing new inside — a find grants only what you do not already carry, and only on your own world.'
-            : `✦  FOUND — ${label}\nYours for good, on every world. Equip it on the end screen.`;
+          notes.push({
+            rank: RANK.find,
+            text:
+              label === null
+                ? '✦  A HIDDEN FIND\nNothing new inside — a find grants only what you do not already carry, and only on your own world.'
+                : `✦  FOUND — ${label}\nYours for good, on every world. Equip it in THE SHOP, on the end screen.`,
+          });
+          break;
         }
       }
     }
-    return null;
+
+    if (notes.length === 0) return null;
+    notes.sort((a, b) => a.rank - b.rank);
+    return notes.map((n) => n.text).join('\n\n');
   }
 
   /**
    * What that hex is, in one sentence, in the direction's own words and this
    * run's own numbers. Covers the things a player can tap and not understand:
-   * the four destination glyphs (reached or still glowing in the dark), wall,
+   * the five destination glyphs (reached or still glowing in the dark), wall,
    * stone, native ground, a tile not yet ripe, and ground this world only
    * remembers.
    */
@@ -945,7 +998,7 @@ export class Game {
           title: 'YOUR WORLD VS A SHARED RUN',
           lines: [
             'The plain link opens YOUR world: one per device, remembered between runs, played with everything you have bought and found.',
-            'A link with a seed in it is somebody else’s run — the same world under plain rules. No upgrades, no perk, and nothing you do there is kept.',
+            'A link with a seed in it is somebody else’s run — the same world, but no shop upgrades and no perk, and nothing you do there is kept.',
             'SHARE on the end screen makes such a link from your own run, so “beat my run” is always a fair fight.',
           ],
         },
@@ -1187,6 +1240,11 @@ export class Game {
                   `Each territory held starts every later run with +${t.territoryTiles} tiles, up to +${t.territoryTilesCap}.`,
                 ]
               : []),
+            ...(startingPerk(t, this.#state.claimed.length) > 0
+              ? [
+                  `This run started with +${startingPerk(t, this.#state.claimed.length)} tiles from territories held.`,
+                ]
+              : []),
             'SETTINGS shows what your world has seen, and can abandon it for a fresh one.',
           ],
         },
@@ -1206,6 +1264,8 @@ export class Game {
       systems.push('colour personalities');
     }
     if (t.holdSlots > 0) systems.push('the stash');
+    if (t.findEvery > 0 && t.findChance > 0) systems.push('hidden finds');
+    if (t.findSense > 0) systems.push('a keen nose');
 
     // THIS BUILD rides at the end of AFTER rather than owning a tab: one
     // section did not earn a sixth of the tab bar.
@@ -1638,8 +1698,6 @@ export class Game {
       parts.push(line('end-facts', facts.join(' · ')));
     }
 
-    if (this.#recordLines.length > 1) parts.push(line('end-facts', this.#recordLines[1]!));
-
     // The shop lives behind its own door now, not interleaved with the run's
     // picture. The door carries the balance, and wears the accent when
     // anything is affordable — the same advertising contract the luck fold
@@ -1950,11 +2008,18 @@ export class Game {
    */
   #debugLine(): string {
     const s = this.#state;
+    let claims = 0;
+    for (const cell of Object.values(s.cells)) {
+      if (cell.kind === 'landmark' && cell.claimed) claims++;
+    }
+    const wornId = this.#hooks.shop?.read().equipped[0];
+    const worn = wornId === undefined ? '-' : (PERKS.find((p) => p.id === wornId)?.name ?? '-');
     return (
       `seed ${s.rootSeed} · cells ${Object.keys(s.cells).length} · ` +
       `p${s.placements} t${s.tiles} pts${s.points} luck${s.luck} · ` +
       `rng ${s.rng.tiles.cursor}/${s.rng.loot.cursor}` +
-      (s.death === null ? '' : ` · ${s.death}`)
+      (s.death === null ? '' : ` · ${s.death}`) +
+      ` · relics${s.relics} · perk:${worn} · sense${s.tuning.findSense} · claims${claims}`
     );
   }
 

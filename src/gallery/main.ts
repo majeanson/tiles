@@ -146,7 +146,7 @@ function elevationStrip(theme: Theme): HTMLElement {
   return row;
 }
 
-/** The four destination glyphs over the ground they stand on, lit and spent. */
+/** The five destination glyphs over the ground they stand on, lit and spent. */
 function landmarkRow(theme: Theme): HTMLElement {
   const row = el('div', 'row');
   for (const [reward, glyph] of Object.entries(LANDMARK_GLYPH)) {

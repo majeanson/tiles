@@ -107,8 +107,19 @@ export function decodeRun(raw: string | null): GameState | null {
    * `parse(undefined)` on the first frame and took the whole render down with
    * it. Marc opened the game to a black screen. Anything added to `GameState`
    * from here belongs in this list on the same commit.
+   *
+   * `tuning` counts too, even though it is not filled here: `parsed['tuning']`
+   * is kept whole by the `...parsed` spread below, so a dial added to `Tuning`
+   * after a save was written decodes as `undefined` on that object exactly
+   * the way an absent top-level field would. There is no generic fill for it
+   * — every consumer of a new tuning key must guard with `> 0` (or the
+   * `!(x > 0)` form for a "some list is empty" default) rather than `<= 0`,
+   * so `undefined` reads as off instead of slipping through. `findEvery` and
+   * `findChance` (`engine/world.ts`) are the ones this cost a bug on
+   * 2026-08-18: `undefined <= 0` is false.
    */
   const claimed = parsed['claimed'];
+  const claimedFinds = parsed['claimedFinds'];
   const bias = parsed['bias'];
   const lastPlaced = parsed['lastPlaced'];
   const quest = parsed['quest'];
@@ -117,6 +128,10 @@ export function decodeRun(raw: string | null): GameState | null {
   const state = {
     ...parsed,
     claimed: Array.isArray(claimed) && claimed.every((k) => typeof k === 'string') ? claimed : [],
+    claimedFinds:
+      Array.isArray(claimedFinds) && claimedFinds.every((k) => typeof k === 'string')
+        ? claimedFinds
+        : [],
     lastPlaced: typeof lastPlaced === 'string' ? lastPlaced : null,
     bias:
       isRecord(bias) && typeof bias['colour'] === 'string' && typeof bias['left'] === 'number'

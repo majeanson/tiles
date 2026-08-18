@@ -181,6 +181,7 @@ function revealCell(
   t: Tuning,
   fields: readonly Field[],
   claimed: ReadonlySet<HexKey> = new Set(),
+  claimedFinds: ReadonlySet<HexKey> = new Set(),
 ): Cell {
   const { q, r } = parse(k);
 
@@ -196,10 +197,14 @@ function revealCell(
   }
 
   // A hidden find, met the only way one can be: growth touched its ground.
-  // It re-arms every run like a cache — whether it still has anything to
-  // GIVE is the shell's question, not the board's.
+  // The SAME ride as a territory (2026-08-18, closing the find re-farm): one
+  // this world already has in `claimedFinds` arrives already spent, so
+  // walking back to it pays no relics a second time — a find does not
+  // re-arm. Whether it still has a PERK to give is the shell's question
+  // regardless (`findLabel` refuses a hex already in the world's list), but
+  // this is what stops the engine paying the same claim twice.
   if (findAt(rootSeed, q, r, t) !== null) {
-    return { kind: 'landmark', reward: 'find', claimed: false };
+    return { kind: 'landmark', reward: 'find', claimed: claimedFinds.has(k) };
   }
 
   const ground = terrainAt(rootSeed, q, r, t);
@@ -224,14 +229,18 @@ function openWorld(
   rng: RngStreams,
   t: Tuning,
   claimed: readonly HexKey[],
+  claimedFinds: readonly HexKey[],
 ): { cells: Record<HexKey, Cell>; draft: Tile[]; rng: RngStreams } {
   const seeded = rollTile(rng.tiles, rng.loot, t, 0);
   const cells: Record<HexKey, Cell> = {
     [key(0, 0)]: tileCell(seeded.tile.colour, false, seeded.tile.rarity),
   };
   const held = new Set(claimed);
+  const heldFinds = new Set(claimedFinds);
   const fields = claimedFields({ cells, claimed, rootSeed, tuning: t });
-  for (const n of neighbourKeys(0, 0)) cells[n] = revealCell(rootSeed, n, t, fields, held);
+  for (const n of neighbourKeys(0, 0)) {
+    cells[n] = revealCell(rootSeed, n, t, fields, held, heldFinds);
+  }
 
   const { draft, tiles, loot } = rollDraft(seeded.tiles, seeded.loot, t, 0);
   return { cells, draft, rng: { ...rng, tiles, loot } };
@@ -246,17 +255,21 @@ export const startingPerk = (t: Tuning, territories: number): number =>
   t.territoryTiles <= 0 ? 0 : Math.min(t.territoryTilesCap, territories * t.territoryTiles);
 
 /**
- * Start a run. `claimed` is the world's standing territories (P4a) — plain
- * data, so the engine still knows nothing about storage and a run remains
- * reproducible from seed + tuning + this list.
+ * Start a run. `claimed` is the world's standing territories (P4a) and
+ * `claimedFinds` its standing hidden finds (2026-08-18) — plain data, so the
+ * engine still knows nothing about storage and a run remains reproducible
+ * from seed + tuning + these two lists. Kept separate rather than one list:
+ * `claimed.length` feeds `startingPerk` below, and a find is not a
+ * territory.
  */
 export function newRun(
   rootSeed: number,
   tuning: Tuning = TUNING,
   claimed: readonly HexKey[] = [],
+  claimedFinds: readonly HexKey[] = [],
 ): GameState {
   const streams = streamsFrom(rootSeed);
-  const opened = openWorld(rootSeed, streams, tuning, claimed);
+  const opened = openWorld(rootSeed, streams, tuning, claimed, claimedFinds);
 
   return {
     version: 1,
@@ -281,6 +294,7 @@ export function newRun(
     bias: null,
     lastPlaced: null,
     claimed,
+    claimedFinds,
     log: { harvests: [], popped: 0, questsDone: 0 },
   };
 }
@@ -416,8 +430,9 @@ function place(state: GameState, hex: HexKey): GameState {
     const { q, r } = parse(hex);
     const fields = claimedFields(state);
     const held = new Set(state.claimed);
+    const heldFinds = new Set(state.claimedFinds);
     for (const n of neighbourKeys(q, r)) {
-      cells[n] ??= revealCell(state.rootSeed, n, t, fields, held);
+      cells[n] ??= revealCell(state.rootSeed, n, t, fields, held, heldFinds);
     }
 
     // Reaching a destination: the tile you just placed touching an unclaimed

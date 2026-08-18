@@ -399,6 +399,10 @@ export function harvestValue(
  * promise exactly what the reducer will hand over.
  */
 export function treasureFor(count: number, t: Tuning): Rarity | null {
+  // OPEN HAND sets `holdSlots` to 0 — with nowhere for the tile to land,
+  // treasure would write into `state.held` and vanish behind a hidden
+  // stash, a silent total loss of the whole pocket. No stash, no offer.
+  if (!(t.holdSlots > 0)) return null;
   if (t.treasureNeed <= 0 || count < t.treasureNeed) return null;
   return t.treasureUnique > 0 && count >= t.treasureUnique ? 'unique' : 'magic';
 }

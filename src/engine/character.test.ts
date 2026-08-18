@@ -260,4 +260,14 @@ describe('the treasure payout', () => {
     const state = pocket(newRun(5, T), T.treasureNeed - 1);
     expect(reduce(state, { type: 'HARVEST', choice: 'treasure', at: key(0, 0) })).toBe(state);
   });
+
+  it('never offers treasure with nowhere to put it — OPEN HAND (holdSlots 0)', () => {
+    // Without this guard the reducer writes the tile into `state.held`
+    // anyway, and with no stash to show it in it vanishes: a silent total
+    // loss of the whole pocket.
+    const noHold = { ...T, holdSlots: 0 };
+    expect(treasureFor(50, noHold)).toBeNull();
+    const state = pocket(newRun(5, noHold), T.treasureNeed);
+    expect(reduce(state, { type: 'HARVEST', choice: 'treasure', at: key(0, 0) })).toBe(state);
+  });
 });
