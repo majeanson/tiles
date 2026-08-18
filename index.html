@@ -54,8 +54,9 @@
           <button id="zoom-fit" type="button" aria-label="Show everything">FIT</button>
         </div>
         <!-- What just happened, or what the glyph you tapped does. Over the
-             board, glyph first, gone on a tap. -->
-        <div id="toast" hidden></div>
+             board, glyph first, gone on a tap. aria-live so a screen reader
+             hears the announcement without focus ever moving. -->
+        <div id="toast" aria-live="polite" hidden></div>
 
         <!-- The manual and the switchboard. The manual half is written by the
              game from its LIVE tuning; the settings half is written from the
@@ -74,8 +75,9 @@
       <div id="colours"></div>
 
       <!-- The reorientation line: what to do now, the nearest unclaimed
-           destination, the current odds — or the held-down chip's numbers. -->
-      <p id="hint" hidden></p>
+           destination, the current odds — or the held-down chip's numbers.
+           aria-live for the same reason as the toast. -->
+      <p id="hint" aria-live="polite" hidden></p>
 
       <!-- Both payouts sit on screen with their real numbers at all times. The
            harvest is only a decision if you can see what you are giving up. -->

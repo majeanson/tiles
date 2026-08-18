@@ -256,6 +256,24 @@ function runKeeping(
   // this page happened to load with.
   let current = world;
 
+  // Asked once, after the first run save has actually succeeded — persistent
+  // storage is what stops iOS treating the world as evictable cache after a
+  // week of not playing. Best-effort by contract: some browsers prompt, some
+  // silently refuse, some lack the API, and the game is identical in every
+  // case, so nothing is awaited and nothing can throw past here.
+  let persistenceAsked = false;
+  const askPersistence = (): void => {
+    if (persistenceAsked) return;
+    persistenceAsked = true;
+    try {
+      if (typeof navigator.storage?.persist === 'function') {
+        void navigator.storage.persist().catch(() => undefined);
+      }
+    } catch {
+      // A browser that objects to being asked. The save already worked.
+    }
+  };
+
   return {
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
@@ -276,6 +294,7 @@ function runKeeping(
     onChange: (state) => {
       try {
         localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
+        askPersistence();
       } catch {
         // Storage full or forbidden. Before giving up on the run — the one
         // thing in storage that cannot be regenerated — shed the world
@@ -284,6 +303,7 @@ function runKeeping(
         try {
           localStorage.removeItem(WORLD_STORAGE_KEY);
           localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
+          askPersistence();
         } catch {
           // Forbidden outright (private mode). Every run is its own life.
         }
@@ -778,6 +798,16 @@ async function main(): Promise<void> {
   // Dev never registers one — a cached bundle is the last thing you want
   // while editing, and `import.meta.env.DEV` is compiled out of the build.
   if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
+    // The worker takes over mid-session by design (skipWaiting + claim), and
+    // until now it did so with no signal at all. `controllerchange` is that
+    // signal — but it ALSO fires on the very first install, when the page
+    // goes from uncontrolled to controlled, and telling a player who just
+    // arrived that there is a new version would be a lie. Only a page that
+    // already HAD a controller has actually been updated under.
+    const hadController = navigator.serviceWorker.controller !== null;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController) showUpdateNote();
+    });
     void navigator.serviceWorker.register('/sw.js').catch(() => {
       // No offline play. Every other thing still works, so this is not worth
       // a word on screen.
@@ -791,6 +821,27 @@ async function main(): Promise<void> {
   void AssetBook.load(theme.id).then((assets) => {
     if (assets.size > 0) renderer.useAssets(assets);
   });
+}
+
+/**
+ * The one-line update affordance. A new worker has already taken over — the
+ * autosave means a reload loses nothing — so this is an offer, not an alarm:
+ * one tappable line in the stamp's voice, above the stamp, that reloads into
+ * the build the worker is already serving. Plain DOM, like the failure panel,
+ * because it must work whatever state the game is in.
+ */
+function showUpdateNote(): void {
+  if (document.getElementById('update-note') !== null) return;
+  const note = document.createElement('button');
+  note.type = 'button';
+  note.id = 'update-note';
+  note.textContent = 'NEW VERSION — TAP TO RELOAD';
+  note.addEventListener('click', () => {
+    location.reload();
+  });
+  const stamp = document.getElementById('stamp');
+  if (stamp !== null) stamp.insertAdjacentElement('beforebegin', note);
+  else document.body.appendChild(note);
 }
 
 /**

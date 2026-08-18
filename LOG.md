@@ -1920,3 +1920,58 @@ picture, and the gallery catches up to the game**
 406 tests. Deployed. What waits on the phone is unchanged — and the gallery
 just made two of those questions (field legibility, the torch pool)
 answerable without playing a full run.
+
+**Addendum, same day — the audit's third package: accessibility and the PWA
+seams**
+
+Zero balance changes, and the default game — normal motion, default text
+size, default contrast — renders the same picture it did this morning. Every
+change is for a hand, an eye or a connection the defaults quietly assumed.
+
+- **The manual is a dialog now, and says so**: `role="dialog"`, `aria-modal`,
+  a name, Escape to close, and focus that moves into the panel on open and
+  back to the `?` button on close — however it closes. The close-on-any-tap
+  behaviour is untouched; the keyboard is an addition, not a replacement.
+- **The board speaks.** `#toast` and `#hint` are `aria-live="polite"`, so a
+  claim announced over the board is heard, not only seen. The stats row is
+  deliberately NOT a live region — it is rebuilt wholesale every render and
+  would re-announce four numbers per tap — so each box carries a stable
+  `aria-label` instead, findable by name.
+- **Keyboard focus exists**: `:focus-visible` in the theme's accent. There
+  were zero focus styles in the file and the tap highlight is transparent,
+  so a keyboard user had no cursor at all.
+- **Every control reaches the file's own 44px rule.** Where a control is
+  deliberately small to look at — the colour chips (grown once, reverted:
+  "hierarchy, not smaller things"), the camera stack, the folded purse row —
+  the visual footprint stays and a transparent `::before` grows the HIT AREA
+  to 44px invisibly. Where there was room (`quiet` buttons, the manual's
+  tabs, the theme swatches), the button grows for real.
+- **Font sizes are rem, mapped 1:1** (13px = 0.8125rem): identical at
+  default settings, and the OS text-size preference finally does something.
+  Spacing and layout stay px — the board is geometry, not prose.
+- **`prefers-contrast: more` lifts the faintest text** to the dim ink, which
+  passes AA against torchlit's ground. The palette itself does not move;
+  Gate E's values stay pinned by the theme tests.
+- **Reduced motion gets its pop back.** The early return in `#spawnFlashes`
+  gave those players NOTHING — a harvest left no sign on the board at all.
+  They get the same glow at a fixed alpha now, held 200ms and removed: no
+  jump, no scale, no stagger. The animated path is byte-identical.
+- **The worker's navigation fetch has a 2.5s budget.** A phone on one bar
+  used to hang on the browser's own 30s+ timeout with a complete game
+  sitting in the cache. The network still wins whenever it answers in time,
+  and a late response still refreshes the cache for next time.
+- **An update announces itself.** `skipWaiting` + `claim` means a new worker
+  takes over mid-session, and until now it did so silently.
+  `controllerchange` — guarded so a first install stays quiet, because the
+  page had no controller to change — surfaces one line above the stamp:
+  NEW VERSION — TAP TO RELOAD. The autosave means the reload costs nothing.
+- **`navigator.storage.persist()`**, asked once, after the first run save
+  has actually succeeded — so iOS stops treating the world as evictable
+  cache. Guarded for absence, never awaited, never thrown.
+- **Deliberately not done**: `user-scalable=no` stays, and text selection
+  stays off. WCAG disagrees; Marc chose console-like touch on 2026-08-18,
+  and that decision outranks the checklist here.
+
+411 tests. The dialog semantics, Escape, the live regions and the stat names
+are pinned in `game.test.ts`; the worker has no test rig and was verified by
+reading, plus the build's own stamp assertions.

@@ -824,6 +824,74 @@ describe('a stranger arriving', () => {
   });
 });
 
+describe('the manual as a dialog', () => {
+  it('declares itself: role, modality, and a name', () => {
+    const ctx = build(7, TUNING);
+    ctx.game.start();
+    expect(ctx.el.helpPanel.getAttribute('role')).toBe('dialog');
+    expect(ctx.el.helpPanel.getAttribute('aria-modal')).toBe('true');
+    expect(ctx.el.helpPanel.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('moves focus in on open and back to the ? button on close', () => {
+    const ctx = build(7, TUNING);
+    ctx.game.start();
+
+    ctx.el.help.click();
+    expect(ctx.el.helpPanel.hidden).toBe(false);
+    expect(document.activeElement).toBe(ctx.el.helpPanel);
+
+    // The close-on-any-tap behaviour stays, and it returns focus too.
+    ctx.el.helpPanel.click();
+    expect(ctx.el.helpPanel.hidden).toBe(true);
+    expect(document.activeElement).toBe(ctx.el.help);
+  });
+
+  it('closes on Escape — the keyboard path the tap never offered', () => {
+    const ctx = build(7, TUNING);
+    ctx.game.start();
+    ctx.el.help.click();
+    expect(ctx.el.helpPanel.hidden).toBe(false);
+
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(ctx.el.helpPanel.hidden).toBe(true);
+    expect(document.activeElement).toBe(ctx.el.help);
+
+    // Escape with the panel already closed is a no-op, not a crash.
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(ctx.el.helpPanel.hidden).toBe(true);
+  });
+
+  it('announces the toast and the hint without moving focus', () => {
+    // Stated by the game, like the aria-labels, so the markup cannot lose
+    // them: the popup and the reorientation line are the two places words
+    // appear on their own, and a screen reader should hear both.
+    const ctx = build(7, TUNING);
+    ctx.game.start();
+    expect(ctx.el.toast.getAttribute('aria-live')).toBe('polite');
+    expect(ctx.el.hint.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('names every stat stably, and never makes the row a live region', () => {
+    // The stats row is rebuilt wholesale each render, which would defeat a
+    // live region — so each box carries a constant name instead, and the row
+    // itself stays silent.
+    const ctx = build(7, TUNING);
+    ctx.game.start();
+    const boxes = [...ctx.el.stats.children];
+    expect(boxes.length).toBeGreaterThanOrEqual(4);
+    for (const box of boxes) {
+      expect(box.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
+    }
+    expect(ctx.el.stats.getAttribute('aria-live')).toBeNull();
+
+    // Stable across renders: the same names, in the same order.
+    const before = boxes.map((b) => b.getAttribute('aria-label'));
+    ctx.game.render();
+    expect([...ctx.el.stats.children].map((b) => b.getAttribute('aria-label'))).toEqual(before);
+  });
+});
+
 describe('the curtain, and contextual help', () => {
   it('takes no gesture at all while the manual is open', () => {
     const ctx = build(7, TUNING);

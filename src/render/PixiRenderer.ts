@@ -44,6 +44,13 @@ const ZOOM_MAX = 4;
  */
 const HEX_PX_MAX = 34;
 
+/**
+ * How long the reduced-motion pop glow stays before it is removed. Long
+ * enough to register as "that happened", short enough to never read as an
+ * animation — which is the whole contract of asking a phone for less motion.
+ */
+const REDUCED_POP_MS = 200;
+
 // BAND_LIFT — how much brighter one contour band draws than the one below —
 // moved to @theme/tokens (2026-08-18) so the gallery can draw the bands with
 // the same number the board uses.
@@ -68,9 +75,11 @@ const HEX_PX_MAX = 34;
  * One popped hex, animating. `glow` is the warm flash; `jump` is the tile
  * itself leaping and falling away — Marc's Q3 answer, reward and disturbance
  * at once. Both run on the same stagger so a big harvest reads as a cascade.
+ * `hold` is the reduced-motion pop: the same glow at a fixed alpha, no
+ * movement at all, removed after a beat — feedback without animation.
  */
 type Flash = {
-  readonly kind: 'glow' | 'jump';
+  readonly kind: 'glow' | 'jump' | 'hold';
   readonly sprite: Sprite;
   /** Milliseconds until it starts. A harvest staggers so it reads as a cascade. */
   delayMs: number;
@@ -577,7 +586,7 @@ export class PixiRenderer implements Renderer {
    * exists, and no event bus has to stay in sync with the reducer.
    */
   #spawnFlashes(previous: BoardView, next: BoardView, layout: Layout): void {
-    if (this.#reducedMotion || previous.cells.length === 0) return;
+    if (previous.cells.length === 0) return;
 
     // Key to colour, so the jump can wear the popped tile's own surface.
     const wasRipe = new Map<HexKey, CellView>();
@@ -595,6 +604,33 @@ export class PixiRenderer implements Renderer {
       if (cell.kind !== 'stone' || !wasRipe.has(cell.key)) continue;
 
       const { x, y } = place(cell, layout);
+
+      // Reduced motion is not NO FEEDBACK — that was the bug: the early
+      // return above used to skip everything, so a harvest left the board
+      // with no sign anything happened. These players get the same glow at a
+      // fixed alpha, no jump, no scale, no stagger, gone after a beat. An
+      // accessibility fix, not a feel change: the animated path below is
+      // untouched.
+      if (this.#reducedMotion) {
+        const still = new Sprite(texture);
+        still.anchor.set(0.5);
+        still.position.set(x, y);
+        still.setSize(layout.size * 3.2, layout.size * 3.2);
+        still.alpha = motion.popAlpha;
+        this.#fx.addChild(still);
+        this.#flashes.push({
+          kind: 'hold',
+          sprite: still,
+          delayMs: 0,
+          elapsedMs: 0,
+          lifeMs: REDUCED_POP_MS,
+          peak: motion.popAlpha,
+          baseY: y,
+          liftPx: 0,
+        });
+        continue;
+      }
+
       const delayMs = index * motion.popStaggerMs;
 
       const glow = new Sprite(texture);
@@ -675,7 +711,10 @@ export class PixiRenderer implements Renderer {
         continue;
       }
 
-      if (flash.kind === 'glow') {
+      if (flash.kind === 'hold') {
+        // The reduced-motion pop: nothing moves, nothing fades. It spawned at
+        // its alpha and sits there until the life check above removes it.
+      } else if (flash.kind === 'glow') {
         // Fast up, slow down. A symmetric fade reads as a pulsing light; the
         // asymmetry is what makes it read as something having happened.
         const curve = t < 0.15 ? t / 0.15 : Math.pow(1 - (t - 0.15) / 0.85, 2);

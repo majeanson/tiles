@@ -274,6 +274,12 @@ export class Game {
     label(this.#el.zoomOut, 'Zoom out');
     label(this.#el.zoomFit, 'Show the whole world');
 
+    // The two places words appear on their own: the popup and the hint line.
+    // aria-live, stated here for the same reason as the labels above — so a
+    // screen reader hears a claim or a warning without focus ever moving.
+    this.#el.toast.setAttribute('aria-live', 'polite');
+    this.#el.hint.setAttribute('aria-live', 'polite');
+
     this.#el.zoomIn.addEventListener('click', () => {
       this.#renderer.zoomBy(ZOOM_STEP);
       this.#syncCamera();
@@ -299,11 +305,26 @@ export class Game {
     tagline.textContent = TAGLINE;
 
     this.#el.helpManual.replaceChildren(title, tagline, ...this.#buildManual());
+
+    // The panel IS a dialog — it sits over the board and takes every gesture —
+    // so it says so: role, modality, a name, and a keyboard path (Escape, and
+    // focus that moves in on open and back to the ? button on close). The
+    // close-on-any-tap behaviour stays; the keyboard is an addition, not a
+    // replacement.
+    this.#el.helpPanel.setAttribute('role', 'dialog');
+    this.#el.helpPanel.setAttribute('aria-modal', 'true');
+    this.#el.helpPanel.setAttribute('aria-label', 'How to play, and settings');
+    this.#el.helpPanel.tabIndex = -1;
+
     this.#el.help.addEventListener('click', () => {
-      this.#el.helpPanel.hidden = !this.#el.helpPanel.hidden;
+      if (this.#el.helpPanel.hidden) this.#openHelp();
+      else this.#closeHelp();
     });
     this.#el.helpPanel.addEventListener('click', () => {
-      this.#el.helpPanel.hidden = true;
+      this.#closeHelp();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !this.#el.helpPanel.hidden) this.#closeHelp();
     });
 
     // The popup goes away on a tap, like everything else that covers a board.
@@ -344,7 +365,7 @@ export class Game {
     // puzzle they have to guess at. Once ever — the shell remembers — and it
     // closes on the same tap as always, so it costs a returning player
     // nothing and a new one one gesture.
-    if (this.#hooks.firstVisit === true) this.#el.helpPanel.hidden = false;
+    if (this.#hooks.firstVisit === true) this.#openHelp();
 
     this.#syncCamera();
     this.render();
@@ -450,6 +471,24 @@ export class Game {
     };
     board.addEventListener('pointerup', lift);
     board.addEventListener('pointercancel', lift);
+  }
+
+  /**
+   * The dialog contract, kept in one pair so no opener or closer can forget
+   * half of it: focus moves into the panel when it opens (the panel itself,
+   * tabIndex −1 — the first tab button would also do, but the panel keeps
+   * working when a tuning empties the tab bar) and back to the ? button when
+   * it closes, however it closes — tap, Escape, or the ? again.
+   */
+  #openHelp(): void {
+    this.#el.helpPanel.hidden = false;
+    this.#el.helpPanel.focus();
+  }
+
+  #closeHelp(): void {
+    if (this.#el.helpPanel.hidden) return;
+    this.#el.helpPanel.hidden = true;
+    this.#el.help.focus();
   }
 
   #tap(event: PointerEvent): void {
@@ -1709,6 +1748,11 @@ export class Game {
         const box = document.createElement('div');
         box.className = 'stat';
         box.dataset['stat'] = stat.id;
+        // A STABLE name per stat. The row is rebuilt wholesale every render,
+        // which is exactly why it must not be an aria-live region (every
+        // action would re-announce four numbers); a constant label instead,
+        // so a reader can find TILES by name and ask for it when it wants it.
+        box.setAttribute('aria-label', stat.label);
 
         const label = document.createElement('span');
         label.className = 'stat-label';

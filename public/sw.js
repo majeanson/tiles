@@ -5,10 +5,17 @@
  * network in the loop — so "works on a plane" is a caching problem and nothing
  * else. The strategy is deliberately the boring one:
  *
- *   NAVIGATIONS  network first, cache as fallback. A player who is online must
- *                get the build that just deployed; a player who is not must
- *                still get a game. Stale HTML is the one thing that would make
- *                `verify-deploy` a liar.
+ *   NAVIGATIONS  network first, cache as fallback — and the network gets 2.5
+ *                seconds. A player who is online must get the build that just
+ *                deployed; a player who is not must still get a game; and a
+ *                player on one flickering bar is the second case wearing the
+ *                first one's clothes — without the timer they stared at a
+ *                blank tab for the browser's own 30s+ while a complete game
+ *                sat in the cache. A network response that beats the timer
+ *                still wins, and still refreshes the cache even when it
+ *                loses. Stale HTML is the one thing that would make
+ *                `verify-deploy` a liar, and the timer never serves stale to
+ *                anyone the network could actually reach in time.
  *   EVERYTHING   cache first, then network, then store. Vite fingerprints its
  *   ELSE         assets, so a cached hash is immutable and a new build simply
  *                asks for different names.
@@ -64,14 +71,34 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname === '/version.json') return;
 
   if (request.mode === 'navigate') {
+    // How long the network gets before the cached shell answers instead.
+    const NAV_TIMEOUT_MS = 2500;
+    const network = fetch(request);
+
+    // The cache refresh rides on waitUntil, not on the response: when the
+    // timer wins, the page has already been answered from cache, and the
+    // late network response must still land in the cache for next time.
+    event.waitUntil(
+      network
+        .then((response) =>
+          caches.open(VERSION).then((cache) => cache.put(request, response.clone())),
+        )
+        .catch(() => undefined),
+    );
+
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          void caches.open(VERSION).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request).then((hit) => hit ?? caches.match('/index.html'))),
+      (async () => {
+        const winner = await Promise.race([
+          network.catch(() => null),
+          new Promise((resolve) => setTimeout(() => resolve(null), NAV_TIMEOUT_MS)),
+        ]);
+        if (winner !== null) return winner;
+
+        const cached = (await caches.match(request)) ?? (await caches.match('/index.html'));
+        // A first visit on a line this slow has nothing cached yet, so the
+        // network — however late — is the only answer left to wait for.
+        return cached ?? network;
+      })(),
     );
     return;
   }
