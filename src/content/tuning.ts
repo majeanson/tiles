@@ -104,6 +104,51 @@ export type Tuning = {
   readonly destinationRampBlocks: number;
 
   /**
+   * Hidden finds (Marc, 2026-08-18, resolving `ideas/uniques.md`): a rare
+   * landmark that grants an unowned PERK when growing ground reveals it. It
+   * never beacons — no glow through the dark, no atlas entry, no hint. "Theyre
+   * often hidden from plain sight, you need to stumble on it."
+   *
+   * Same pure-hash trick as destinations, on its own salts and its own block
+   * scale, so switching finds on cannot move a single existing destination.
+   * One find per `findEvery`-hex block, `findChance` of blocks holding one;
+   * 0 for either switches the system off (the bare default). Where a find and
+   * a destination would share a hex, the destination wins and the find does
+   * not exist there — deterministic precedence, not a coin flip.
+   *
+   * `findSense` is the one exception to the darkness, and it is SOLD, never
+   * given: hexes of range at which an unrevealed find shimmers when your
+   * ground grows near. 0 — pure surprise — everywhere except under the shop's
+   * KEEN NOSE upgrade, which raises it via `applyProgress`. It is capped well
+   * under `beaconHorizon` so a shimmer can never become a beacon.
+   */
+  readonly findEvery: number;
+  readonly findChance: number;
+  readonly findSense: number;
+
+  /**
+   * Perk dials (2026-08-18). All zero here and in every shipped tuning —
+   * these are set by `applyProgress` ONLY while the perk is equipped, the
+   * same contract as `rootboundOnly` below. Old saves decode them as
+   * `undefined`, so every reader guards with `> 0`.
+   *
+   * `stoneDiscount` — STONEWALKER: tiles off a placement's cost when at least
+   * one neighbour of the placement hex is stone, floored at a free placement.
+   * Hug your own wake to stay solvent, in tension with fleeing it for fresh
+   * matches.
+   *
+   * `wallBuildCostMult` — WALLBREAKER: 0 keeps rule 7 (walls cannot be built
+   * on); above 0, placing on a wall REPLACES it with the tile at that
+   * multiple of the normal cost. Straight lines through terrain that used to
+   * divert you, and an answer to the `walled` death.
+   *
+   * OPEN HAND needs no dial of its own — it is `draftWidth` 5 with
+   * `holdSlots` 0, both of which already exist.
+   */
+  readonly stoneDiscount: number;
+  readonly wallBuildCostMult: number;
+
+  /**
    * Rarity on the draft (P3b's second half, shaped by Marc 2026-08-13): every
    * drawn tile rolls common / magic / unique on its own stream, so the bounded
    * game's sequences never move. Magic is WILD — it matches every neighbouring
@@ -481,6 +526,13 @@ export const BARE_TUNING: Tuning = {
   popTilesPerRing: 0,
   destinationRampBlocks: 0,
 
+  findEvery: 0,
+  findChance: 0,
+  findSense: 0,
+
+  stoneDiscount: 0,
+  wallBuildCostMult: 0,
+
   questNeed: 0,
   questRadius: 6,
   questBonus: 3,
@@ -816,4 +868,25 @@ export const TUNING: Tuning = {
   cachePaysPerRing: 4,
   popTilesPerRing: 0.25,
   destinationRampBlocks: 2,
+
+  /**
+   * HIDDEN FINDS EXIST, AND ARE RARER THAN SHRINES (2026-08-18, first
+   * values). The yardstick is the rarest thing already out there: shrines
+   * are 8% of destinations at one per ~6-hex block and 0.45 chance —
+   * 0.45 × 0.08 / 36 ≈ 0.0010 shrines per hex at full ramp. A find block of
+   * 12 hexes at 0.14 is 0.14 / 144 ≈ 0.0010 per hex BEFORE the deep-world
+   * exclusion (nothing within a block-width of home) carves out the whole
+   * ground a short run ever sees — so where runs actually happen, finds come
+   * up rarer than shrines. Measured over seeds 1-40: a disc of radius 14
+   * holds ~0.15 finds a world against ~0.5 shrines, radius 20 holds ~0.9
+   * against ~1.2, radius 30 ~2.5 against ~3.0 — under the shrine line at
+   * every depth. A run that pushes to reach 14+ reveals a strip of that
+   * disc, so a find lands every few pushing runs: a lottery ticket, not a
+   * checklist. Swept beside 10/0.12 (crosses ABOVE the shrine line past
+   * radius 20) and 12/0.2 (outnumbers shrines everywhere deep); 12/0.14 is
+   * the one that stays rarest without vanishing. `findSense` stays 0 — the
+   * shop sells the nose.
+   */
+  findEvery: 12,
+  findChance: 0.14,
 };

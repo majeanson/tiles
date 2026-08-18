@@ -5,12 +5,12 @@ import {
   cachePaysAt,
   canAfford,
   canPlaceAt,
-  costOf,
   distanceMultiplierAt,
   harvestValue,
   isExhausted,
   outOfTime,
   payPlacement,
+  placementCostAt,
   ripeKeys,
 } from './rules';
 import type {
@@ -24,7 +24,7 @@ import type {
   Spend,
   Tile,
 } from './state';
-import { destinationAt, terrainAt } from './world';
+import { destinationAt, findAt, terrainAt } from './world';
 
 /**
  * The engine. `reduce(state, action) -> state`, and nothing else.
@@ -193,6 +193,13 @@ function revealCell(
     return dest.colour === null
       ? { kind: 'landmark', reward: dest.reward, claimed: false }
       : { kind: 'landmark', reward: dest.reward, claimed: was, colour: dest.colour };
+  }
+
+  // A hidden find, met the only way one can be: growth touched its ground.
+  // It re-arms every run like a cache — whether it still has anything to
+  // GIVE is the shell's question, not the board's.
+  if (findAt(rootSeed, q, r, t) !== null) {
+    return { kind: 'landmark', reward: 'find', claimed: false };
   }
 
   const ground = terrainAt(rootSeed, q, r, t);
@@ -379,11 +386,12 @@ function place(state: GameState, hex: HexKey): GameState {
   const t = state.tuning;
   const tile = state.draft[state.selected];
   if (tile === undefined) return state;
-  if (!canPlaceAt(state.cells, hex)) return state;
+  if (!canPlaceAt(state.cells, hex, t)) return state;
   if (!canAfford(state.tiles)) return state;
   if (outOfTime(state)) return state;
 
   // A tile on its own native ground carries that fact from the cell it covers.
+  // A wall being built over (WALLBREAKER) is native to nothing.
   const ground = state.cells[hex];
   const onNative = ground?.kind === 'empty' && ground.native === tile.colour;
 
@@ -392,7 +400,10 @@ function place(state: GameState, hex: HexKey): GameState {
     [hex]: tileCell(tile.colour, onNative, tile.rarity),
   };
 
-  let tiles = payPlacement(state.tiles, costOf(state.placements, t));
+  // The perk dials price this exact hex: a wall costs its multiple, a hex
+  // beside stone costs its discount. Both are `costOf` untouched wherever the
+  // dials are zero, which is every economy that never equipped the perk.
+  let tiles = payPlacement(state.tiles, placementCostAt(state.cells, hex, state.placements, t));
   let points = state.points;
   let relics = state.relics;
   let quest: Quest | null = state.quest;
@@ -608,7 +619,9 @@ function endIfStuck(state: GameState): GameState {
 
   if (timeUp) return ending(state, 'spent');
   if (!solvent) return ending(state, 'broke');
-  if (isExhausted(state.cells)) return ending(state, 'walled');
+  // Under WALLBREAKER a frontier of walls is still a frontier, so the tuning
+  // rides along and `walled` keeps meaning "no move at any price".
+  if (isExhausted(state.cells, state.tuning)) return ending(state, 'walled');
   return state;
 }
 

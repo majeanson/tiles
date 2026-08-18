@@ -123,6 +123,70 @@ export function destinationsWithin(seed: number, radius: number, t: Tuning): Des
 }
 
 /**
+ * A hidden find: the landmark that is never advertised.
+ *
+ * Carries no reward field because the reward is not the engine's business —
+ * reaching one grants a PERK, which outlives the run, so the engine only
+ * marks it reached and the shell reads that (the shrine contract, exactly).
+ */
+export type Find = { readonly q: number; readonly r: number };
+
+/**
+ * The one hidden find a block of the plane holds, if it holds one.
+ *
+ * Mirrors `blockDestination` on its OWN salts and its own block scale, so
+ * switching finds on cannot move a single existing destination — worlds
+ * already explored keep every landmark exactly where it was. Two rules of its
+ * own: nothing within a block-width of home (a find is deep-world by design,
+ * where a shrine merely thins near it), and where `destinationAt` claims the
+ * same hex the destination wins and the find does not exist — deterministic
+ * precedence, decided here so `findAt` and `findsWithin` cannot disagree.
+ */
+export function blockFind(seed: number, bq: number, br: number, t: Tuning): Find | null {
+  const size = Math.max(1, t.findEvery);
+  if (t.findEvery <= 0 || t.findChance <= 0) return null;
+
+  const roll = hashAt(seed ^ 0x5f356495, bq, br);
+  if (roll >= t.findChance) return null;
+
+  const spot = hashAt(seed ^ 0x3c6ef372, bq, br);
+  const q = bq * size + Math.floor((spot * size * size) % size);
+  const r = br * size + Math.floor(spot * size);
+  if (hexDistance(q, r) < size) return null;
+
+  if (destinationAt(seed, q, r, t) !== null) return null;
+  return { q, r };
+}
+
+/** The hidden find standing at exactly this hex, if any. What reveal consults. */
+export function findAt(seed: number, q: number, r: number, t: Tuning): Find | null {
+  const size = Math.max(1, t.findEvery);
+  const f = blockFind(seed, Math.floor(q / size), Math.floor(r / size), t);
+  return f !== null && f.q === q && f.r === r ? f : null;
+}
+
+/**
+ * Every hidden find within `radius` of home. NOT a beacon feed: the one
+ * consumer is the shimmer (`findSense` > 0), and nothing else may draw an
+ * unrevealed find — a find that shows through the dark is a destination with
+ * extra steps, and the whole design is that you stumble on it.
+ */
+export function findsWithin(seed: number, radius: number, t: Tuning): Find[] {
+  if (t.findEvery <= 0 || t.findChance <= 0) return [];
+  const size = Math.max(1, t.findEvery);
+  const blocks = Math.ceil(radius / size);
+
+  const out: Find[] = [];
+  for (let bq = -blocks - 1; bq <= blocks; bq++) {
+    for (let br = -blocks - 1; br <= blocks; br++) {
+      const f = blockFind(seed, bq, br, t);
+      if (f !== null && hexDistance(f.q, f.r) <= radius) out.push(f);
+    }
+  }
+  return out;
+}
+
+/**
  * The biome a hex sits in: one colour's country, or none. A pure hash at the
  * broadest scale the plane has — destinations are blocks, fields are patches,
  * biomes are regions — so "where am I" has an answer bigger than one screen.

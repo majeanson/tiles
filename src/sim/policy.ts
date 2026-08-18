@@ -50,7 +50,8 @@ export type Policy = {
  */
 function options(state: GameState): { index: number; hex: string; worth: number }[] {
   if (!canPlaceNow(state)) return [];
-  const spots = legalPlacements(state.cells);
+  // Tuning rides along so WALLBREAKER's wall placements are options too.
+  const spots = legalPlacements(state.cells, state.tuning);
   const out: { index: number; hex: string; worth: number }[] = [];
   for (let index = 0; index < state.draft.length; index++) {
     const tile = state.draft[index];
@@ -511,7 +512,7 @@ export const blind: Policy = {
   name: 'blind',
   note: 'Places in the first legal spot, ignoring colour. The no-skill floor to measure against.',
   decide(state, stream) {
-    const first = canPlaceNow(state) ? legalPlacements(state.cells)[0] : undefined;
+    const first = canPlaceNow(state) ? legalPlacements(state.cells, state.tuning)[0] : undefined;
     if (first !== undefined) {
       const [index, next] = rngInt(stream, state.draft.length);
       return [placeMove(index, first), next];
@@ -545,4 +546,4 @@ export const policyByName = (name: string): Policy | undefined =>
 
 /** Exported for the runner's stall check; `isExhausted` is the interesting half. */
 export const stuckOnMap = (state: GameState): boolean =>
-  isExhausted(state.cells) && ripeKeys(state.cells).length === 0;
+  isExhausted(state.cells, state.tuning) && ripeKeys(state.cells).length === 0;

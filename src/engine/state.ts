@@ -55,8 +55,14 @@ export type Cell =
  * a system on for this world, permanently. The engine only marks it claimed;
  * WHICH system it grants is the shell's business, because an unlock outlives
  * the run that found it and the engine may not know that runs have a past.
+ *
+ * A FIND (2026-08-18) is the shrine contract again, for perks: a hidden
+ * landmark that never beacons, revealed only when growth touches its ground.
+ * Claiming one pays `claimRelics` like every claim and NOTHING else here —
+ * the perk it grants is meta, and the shell reads the claim the way it reads
+ * a shrine's.
  */
-export type LandmarkReward = 'cache' | 'site' | 'territory' | 'shrine';
+export type LandmarkReward = 'cache' | 'site' | 'territory' | 'shrine' | 'find';
 
 /**
  * Common is the tile the whole game is made of. Magic is WILD — it matches

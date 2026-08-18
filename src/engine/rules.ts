@@ -50,19 +50,29 @@ function isBuilt(cells: Cells, k: HexKey): boolean {
   return cell !== undefined && (cell.kind === 'tile' || cell.kind === 'stone');
 }
 
-export function canPlaceAt(cells: Cells, k: HexKey): boolean {
-  if (cells[k]?.kind !== 'empty') return false;
+/**
+ * Where a tile may go. Empty ground beside built ground, always — and, under
+ * WALLBREAKER (`wallBuildCostMult` > 0), a wall beside built ground too: the
+ * placement replaces it, at a multiple of the normal cost that
+ * `placementCostAt` prices. The tuning is optional so every caller that never
+ * heard of the perk keeps rule 7 exactly as written; old saves decode the
+ * dial as `undefined`, which the `> 0` guard reads as "walls say no".
+ */
+export function canPlaceAt(cells: Cells, k: HexKey, t?: Tuning): boolean {
+  const kind = cells[k]?.kind;
+  const buildable = kind === 'empty' || (kind === 'wall' && (t?.wallBuildCostMult ?? 0) > 0);
+  if (!buildable) return false;
   const { q, r } = parse(k);
   return neighbourKeys(q, r).some((n) => isBuilt(cells, n));
 }
 
-export function legalPlacements(cells: Cells): HexKey[] {
-  return Object.keys(cells).filter((k) => canPlaceAt(cells, k));
+export function legalPlacements(cells: Cells, t?: Tuning): HexKey[] {
+  return Object.keys(cells).filter((k) => canPlaceAt(cells, k, t));
 }
 
 /** No room left. Not death by itself — you can still harvest, or leave. */
-export const isExhausted = (cells: Cells): boolean =>
-  !Object.keys(cells).some((k) => canPlaceAt(cells, k));
+export const isExhausted = (cells: Cells, t?: Tuning): boolean =>
+  !Object.keys(cells).some((k) => canPlaceAt(cells, k, t));
 
 /**
  * The hard clock, spent. Placements left is `runLength - placements`; at zero
@@ -87,7 +97,28 @@ export const canPlaceNow = (state: GameState): boolean =>
   state.phase === 'placing' &&
   canAfford(state.tiles) &&
   !outOfTime(state) &&
-  !isExhausted(state.cells);
+  !isExhausted(state.cells, state.tuning);
+
+/**
+ * What placing at exactly this hex costs, with the perk dials applied: a wall
+ * costs `wallBuildCostMult` times the normal price (WALLBREAKER — the only
+ * way a wall is ever a legal target), and a hex with stone beside it costs
+ * `stoneDiscount` less (STONEWALKER), floored at free. One function so the
+ * reducer, the tests and any surface that ever explains the price agree by
+ * construction. The HUD's COST stat deliberately keeps showing the base cost —
+ * the discount is situational and the manual explains it instead.
+ */
+export function placementCostAt(cells: Cells, k: HexKey, placements: number, t: Tuning): number {
+  let cost = costOf(placements, t);
+  if (cells[k]?.kind === 'wall' && t.wallBuildCostMult > 0) cost *= t.wallBuildCostMult;
+  if (t.stoneDiscount > 0) {
+    const { q, r } = parse(k);
+    if (neighbourKeys(q, r).some((n) => cells[n]?.kind === 'stone')) {
+      cost = Math.max(0, cost - t.stoneDiscount);
+    }
+  }
+  return cost;
+}
 
 /** Ripe: a live tile touched on all six sides. */
 export function isRipe(cells: Cells, k: HexKey): boolean {
