@@ -23,14 +23,17 @@ What rides on it now:
 - **The stranger test.** Someone who is not you, on their own phone, unaided:
   do they finish a run and start another? The v1.0 tag stays blocked on it.
 
-## 2. One design ledger is still open: `ideas/uniques.md`
+## 2. Hidden finds are built — the question is yours to play
 
-Rootbound and Second Wind shipped; Tier 3 is rejected in writing. Eight ideas
-(Ashbound Seal, Everbloom, Leap, The Hoard, Tidecaller, Stonewalker,
-Wallbreaker, Open Hand) are neither built nor rejected, and the "how many
-uniques can a run carry" question is unanswered. The roadmap's "every ideas/
-file resolved" box is unchecked until you call these — build, kill, or park
-them post-1.0 in as many words.
+You resolved `ideas/uniques.md` on 2026-08-18 and the build shipped the same
+day: perks are found, never bought — a rare hidden landmark (rarer than a
+shrine, never glowing) grants an unowned perk when your ground stumbles onto
+it; the shop sells only KEEN NOSE, the shimmer; one perk carried, the second
+slot refunded. The written question waits on the phone: **does a hidden find
+change how a player grows their ground?** Sub-questions while you play — did
+the first find land as an event, does KEEN NOSE feel worth 40 relics, and do
+Stonewalker/Wallbreaker/Open Hand each change your next placement the way a
+unique should?
 
 ## 3. Standing decisions that remain one line to reverse
 
@@ -42,7 +45,8 @@ them post-1.0 in as many words.
 
 ## 4. What is ready and waiting
 
-- **v1.0 tag** — one command, blocked on §1's stranger test and §2.
+- **v1.0 tag** — one command, blocked on §1's stranger test and Gate B's
+  successor question.
 - **Sound** — you chose a silent 1.0; the pop, the claim and running dry are
   the three moments that most want a noise.
 - The rest of the parking lot is at the bottom of `ROADMAP.md`.

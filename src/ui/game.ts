@@ -1,5 +1,5 @@
 import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
-import { parse, type HexKey } from '@engine/hex';
+import { distance, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import {
   cachePaysAt,
@@ -17,9 +17,9 @@ import type {
   Rarity,
   Spend,
 } from '@engine/state';
-import { destinationAt } from '@engine/world';
+import { destinationAt, findAt } from '@engine/world';
 import { bakeSurface } from '@render/bake';
-import { UPGRADES, buy, equip, levelOf, priceOf, slotsOf, type Progress } from '@meta/progress';
+import { PERKS, UPGRADES, buy, equip, levelOf, priceOf, type Progress } from '@meta/progress';
 import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { COLOUR_MARK, type Theme } from '@theme/tokens';
@@ -161,6 +161,15 @@ export type GameHooks = {
    * the game only needs the words to put in the popup.
    */
   readonly unlockLabel?: (nth: number) => string | null;
+  /**
+   * A hidden find was claimed at this hex: the shell grants a perk
+   * (deterministically, writes progress) and returns its NAME for the toast —
+   * or null when there was nothing to grant: every perk already owned, or a
+   * `?seed=` replay, where somebody else's walk must not fill this device's
+   * shelf. Same contract as `unlockLabel`: the grant outlives the run, so it
+   * belongs to the shell, and the game only needs the words.
+   */
+  readonly findLabel?: (hex: HexKey) => string | null;
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -513,7 +522,7 @@ export class Game {
     // worst answer a game can give a deliberate action. It is now the
     // contextual help: tap a glyph, learn what it does. Nothing to learn a
     // mode for, and it costs a gesture that did nothing before.
-    if (!canPlaceAt(this.#state.cells, hex)) {
+    if (!canPlaceAt(this.#state.cells, hex, this.#state.tuning)) {
       // Sticky: you asked for this one, so it waits for you to be done.
       this.#showNote(this.#describe(hex), true);
       return;
@@ -656,6 +665,16 @@ export class Game {
             ? '◈  SHRINE WOKEN\nThis world is fully awake — every unlock is yours.'
             : `◈  SHRINE WOKEN\n${label}\nYours from your next run on, in this world for good.`;
         }
+        case 'find': {
+          // The shell does the granting and hands back the perk's name — or
+          // null, which is both "you carry everything already" and "this is
+          // somebody else's replay". One honest sentence covers both: a find
+          // only grants what you do not own, on your own world.
+          const label = this.#hooks.findLabel?.(k) ?? null;
+          return label === null
+            ? '✦  A HIDDEN FIND\nNothing new inside — a find grants only what you do not already carry, and only on your own world.'
+            : `✦  FOUND — ${label}\nYours for good, on every world. Equip it on the end screen.`;
+        }
       }
     }
     return null;
@@ -694,6 +713,13 @@ export class Game {
           ? '◈ SHRINE — woken. It switched a system on for this world.'
           : `◈ SHRINE — claim it to unlock ${next ?? 'a system'} for this world, permanently.`;
       }
+      if (reward === 'find') {
+        // Mysterious but honest: what a find gives is the one thing the
+        // board never says out loud.
+        return claimed
+          ? '✦ A hidden find — spent. It gave what it had.'
+          : '✦ Something is here. Touch it with a tile.';
+      }
       const owns = colour === null ? 'a colour' : name(colour);
       return claimed
         ? `◆ TERRITORY — yours. The ground within ${t.territoryRadius} hexes is native to ${owns}.`
@@ -701,12 +727,21 @@ export class Game {
     };
 
     if (cell === undefined) {
-      // Not on the board: either a destination glowing through the dark, or
-      // ground this world remembers from an earlier run.
+      // Not on the board: a destination glowing through the dark, a find's
+      // shimmer, or ground this world remembers from an earlier run.
       const { q, r } = parse(hex);
       const dest = destinationAt(this.#state.rootSeed, q, r, t);
       if (dest !== null) {
         return `${destination(dest.reward, dest.colour, false)} Build your chain out to it.`;
+      }
+      // Only a hex the shimmer is actually drawing gets this answer — with
+      // no sense, or out of range, a hidden find stays exactly that, and
+      // tap-scanning remembered ground must not become a divining rod.
+      if (t.findSense > 0 && findAt(this.#state.rootSeed, q, r, t) !== null) {
+        const near = Object.keys(this.#state.cells).some(
+          (k) => distance(parse(k), { q, r }) <= t.findSense,
+        );
+        if (near) return 'Something shimmers here. Grow your ground to it.';
       }
       return 'Remembered from an earlier run — this run has not grown here yet.';
     }
@@ -714,10 +749,17 @@ export class Game {
     switch (cell.kind) {
       case 'landmark':
         return destination(cell.reward, cell.colour ?? null, cell.claimed);
-      case 'wall':
+      case 'wall': {
+        // WALLBREAKER rewrites this sentence while it is worn — a rule the
+        // perk breaks must not go on being stated as a rule.
+        const standing =
+          t.wallBuildCostMult > 0
+            ? `Wall — you can build on it, at ${t.wallBuildCostMult}× the placement cost.`
+            : 'Wall — cannot be built on.';
         return t.redAshWalls
-          ? `Wall — cannot be built on. It surrounds (so it helps things ripen) but never matches, except for ${name('red')}, which counts it as one.`
-          : 'Wall — cannot be built on. It surrounds (so it helps things ripen) but never matches.';
+          ? `${standing} It surrounds (so it helps things ripen) but never matches, except for ${name('red')}, which counts it as one.`
+          : `${standing} It surrounds (so it helps things ripen) but never matches.`;
+      }
       case 'stone':
         return `Spent ground — a popped tile. It surrounds but never matches, except for ${name('red')}, which feeds on it.`;
       case 'tile': {
@@ -915,6 +957,11 @@ export class Game {
               ? `A placement costs ${t.baseCost} tiles for the first ${t.costGrace}, then +1 for every ${t.costRisesEvery} after.`
               : `A placement costs ${t.baseCost} tiles, +1 for every ${t.costRisesEvery} you have ever placed this run.`,
             'The cost never comes back down. That is the clock that ends every run.',
+            ...(t.stoneDiscount > 0
+              ? [
+                  `Your perk: a placement with stone beside it costs ${t.stoneDiscount} less, down to free. The COST stat shows the base price; the discount comes off as you pay.`,
+                ]
+              : []),
             'BEST marks the card whose strongest placement pays most right now. Advice, not an order.',
           ],
         },
@@ -996,10 +1043,17 @@ export class Game {
           title: 'THE GROUND',
           lines: [
             'Dotted ground is a NATIVE FIELD — a tile of that colour placed there gains a match.',
-            'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
+            t.wallBuildCostMult > 0
+              ? 'Walls surround but never match — and your perk lets you build ON them, at a price.'
+              : 'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
           ],
           detail: [
             'Whole regions of one colour’s dots are BIOMES. Chasing a colour means walking to where it grows.',
+            ...(t.wallBuildCostMult > 0
+              ? [
+                  `Building on a wall replaces it with your tile and costs ${t.wallBuildCostMult}× the normal placement price.`,
+                ]
+              : []),
             'The plane only exists where you have grown it. Every placement reveals the ground around itself.',
           ],
         },
@@ -1013,9 +1067,19 @@ export class Game {
             `★ SITE — points, and it opens a bounty.`,
             `◆ TERRITORY — turns the ground around it into your field, for good.`,
             '◈ SHRINE — switches a system on for your world, permanently.',
+            ...(t.findEvery > 0 && t.findChance > 0
+              ? [
+                  'And something else is hidden out there, deep and unmarked. It never glows. You stumble onto it, or you never know it was there.',
+                ]
+              : []),
           ],
           detail: [
             `A site pays ${t.sitePays} pts × the distance multiplier at its hex.`,
+            ...(t.findSense > 0
+              ? [
+                  `Your nose is keen: hidden things shimmer faintly when your ground grows within ${t.findSense} hexes of them.`,
+                ]
+              : []),
             ...(t.destinationRampBlocks > 0
               ? [
                   'The near world is deliberately sparse. The deeper you push, the thicker the lights — and the richer the caches.',
@@ -1097,6 +1161,16 @@ export class Game {
               },
             ]
           : []),
+        ...(t.draftWidth >= 5 && t.holdSlots === 0
+          ? [
+              {
+                title: 'THE OPEN HAND',
+                lines: [
+                  `Your perk: ${t.draftWidth} cards to choose from, and no stash. Wide choice now, no saving for later — that is the trade.`,
+                ],
+              },
+            ]
+          : []),
       ],
     };
 
@@ -1123,12 +1197,11 @@ export class Game {
                 title: 'THE SHOP',
                 lines: [
                   'Spend relics on the screen that appears when a run ends. Everything you buy is permanent and follows you into every world.',
-                  'PERKS change the rules rather than the numbers. You may wear one at a time until you buy the second slot.',
+                  'PERKS are not for sale. They are FOUND — hidden somewhere out in the world — and you may wear one at a time.',
                 ],
                 detail: [
-                  'DEEPER PURSE, KEENER EYE and RICHER WORLDS are the steady floor: more starting tiles, better odds, more out there to find.',
-                  'ROOTBOUND makes your own ground pay double and everything else pay nothing.',
-                  'SECOND WIND flips a coin the first time a run would end broke. Half the time you carry on. Half the time you do not.',
+                  'The shop sells the steady floor: a deeper purse, keener odds, richer worlds, a gentler cost curve, and a nose for what is hidden.',
+                  'What a perk does is written on the shelf once you own it. Before that it is a mystery, on purpose.',
                 ],
               },
             ]
@@ -1655,7 +1728,6 @@ export class Game {
     const shop = this.#hooks.shop;
     if (shop === undefined) return [];
     const progress = shop.read();
-    const slots = slotsOf(progress);
 
     const head = document.createElement('p');
     head.className = 'shop-purse';
@@ -1665,11 +1737,9 @@ export class Game {
       const level = levelOf(progress, upgrade.id);
       const price = priceOf(progress, upgrade);
       const owned = level > 0;
-      const worn = progress.equipped.includes(upgrade.id);
 
       const row = document.createElement('div');
       row.className = 'shop-row';
-      if (worn) row.dataset['worn'] = 'true';
 
       const name = document.createElement('span');
       name.className = 'shop-name';
@@ -1684,17 +1754,7 @@ export class Game {
       button.type = 'button';
       button.className = 'shop-buy';
 
-      // A perk already owned offers the only other thing it can do: be worn,
-      // or taken off to make room. With two perks and one slot that is the
-      // decision the slot upgrade exists to sell.
-      if (upgrade.perk && owned) {
-        button.textContent = worn ? 'WORN' : 'WEAR';
-        button.disabled = false;
-        button.addEventListener('click', () => {
-          shop.write(equip(shop.read(), upgrade.id));
-          this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
-        });
-      } else if (price === null) {
+      if (price === null) {
         button.textContent = 'DONE';
         button.disabled = true;
       } else {
@@ -1710,12 +1770,52 @@ export class Game {
       return row;
     });
 
+    // THE SHELF (2026-08-18): perks are found in the world, never bought.
+    // An owned perk shows its name, its sentence and the one toggle it has;
+    // an undiscovered one is a mystery row — no name, no price, no note
+    // beyond a dash. The mystery is the point, so nothing here may print an
+    // unowned perk's name or effect.
+    const shelfHead = document.createElement('p');
+    shelfHead.className = 'shop-purse';
+    shelfHead.textContent = 'THE SHELF — found out in the world, never sold';
+
+    const shelf = PERKS.map((perk) => {
+      const owned = progress.found.includes(perk.id);
+      const worn = progress.equipped.includes(perk.id);
+
+      const row = document.createElement('div');
+      row.className = 'shop-row';
+      if (worn) row.dataset['worn'] = 'true';
+
+      const name = document.createElement('span');
+      name.className = 'shop-name';
+      name.textContent = owned ? perk.name : 'UNDISCOVERED';
+
+      const note = document.createElement('span');
+      note.className = 'shop-note';
+      note.textContent = owned ? perk.note : '—';
+
+      row.append(name, note);
+
+      if (owned) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'shop-buy';
+        button.textContent = worn ? 'WORN' : 'WEAR';
+        button.addEventListener('click', () => {
+          shop.write(equip(shop.read(), perk.id));
+          this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+        });
+        row.append(button);
+      }
+      return row;
+    });
+
     const slotLine = document.createElement('p');
     slotLine.className = 'end-facts';
-    slotLine.textContent =
-      slots === 1 ? 'One perk may be worn at a time.' : `${slots} perks may be worn at a time.`;
+    slotLine.textContent = 'One perk may be worn at a time.';
 
-    return [head, ...rows, slotLine];
+    return [head, ...rows, shelfHead, ...shelf, slotLine];
   }
 
   /**

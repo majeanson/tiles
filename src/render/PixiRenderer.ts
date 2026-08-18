@@ -401,6 +401,23 @@ export class PixiRenderer implements Renderer {
       case 'stone':
         return theme.stone;
       case 'landmark': {
+        // A hidden find's shimmer: the same glow vocabulary, quieter, and
+        // saying strictly less — accent dots at low alpha, no glyph, no
+        // outline. The player learns that SOMETHING is near, and that is the
+        // whole message the sense upgrade sells.
+        if (cell.shimmer) {
+          return {
+            ...theme.wall,
+            pattern: {
+              kind: 'dots' as const,
+              ink: theme.ink.accent,
+              alpha: 0.22,
+              radius: 1.6,
+              pitch: 5,
+            },
+            alpha: 0.3,
+          };
+        }
         // A destination wears the wall's ground — it is solid, and it should
         // read as a THING standing on the plane — lit with the theme's accent
         // while unclaimed, gone quiet once reached. A beacon is the same
@@ -569,6 +586,8 @@ export class PixiRenderer implements Renderer {
     const board = this.#theme.board;
     // Memory gets no outline at all — an edge would read as a live cell.
     if (cell.remembered) return null;
+    // A shimmer is a rumour, not a landmark: no edge, no accent, no promise.
+    if (cell.shimmer) return null;
     // The pocket being priced outranks even ripe: on the plane the harvest
     // buttons answer for exactly these cells, and the outline is that promise.
     if (cell.targeted)
@@ -908,8 +927,14 @@ export class PixiRenderer implements Renderer {
 const labelPx = (size: number): number => Math.round(size * 0.7);
 
 function labelFor(cell: CellView): { text: string; faint: boolean } | null {
+  // A shimmer carries `landmark: null` and must stay wordless — printing any
+  // glyph would tell the player WHAT is out there, which is exactly the thing
+  // the sense upgrade does not sell. The old `?? 'territory'` fallback would
+  // have done precisely that.
   if (cell.kind === 'landmark') {
-    return { text: LANDMARK_GLYPH[cell.landmark ?? 'territory'], faint: cell.claimed };
+    return cell.landmark === null
+      ? null
+      : { text: LANDMARK_GLYPH[cell.landmark], faint: cell.claimed };
   }
   if (cell.ripe && cell.worth > 0) return { text: String(cell.worth), faint: false };
   if (cell.legal && cell.preview !== null && cell.preview > 0) {

@@ -1119,3 +1119,113 @@ describe('the purse, folded', () => {
     expect(toggle.textContent).toContain(String(cheapest));
   });
 });
+
+describe('hidden finds in the shell', () => {
+  /** A run with an unclaimed find planted one placement from the clearing. */
+  const withFind = (hooks: GameHooks = {}): ReturnType<typeof build> & { find: HexKey } => {
+    const base = newRun(7, TUNING);
+    const find = key(2, 0);
+    const ctx = build(1, TUNING, {
+      ...hooks,
+      resume: {
+        ...base,
+        cells: { ...base.cells, [find]: { kind: 'landmark', reward: 'find', claimed: false } },
+      },
+    });
+    ctx.game.start();
+    return { ...ctx, find };
+  };
+
+  it('announces the claim once, with the granted perk name, and only once', () => {
+    const granted: HexKey[] = [];
+    const ctx = withFind({
+      findLabel: (hex) => {
+        granted.push(hex);
+        return 'STONEWALKER';
+      },
+    });
+
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+
+    expect(granted).toEqual([ctx.find]);
+    expect(ctx.el.toast.hidden).toBe(false);
+    const text = ctx.el.toast.textContent ?? '';
+    expect(text).toMatch(/✦/);
+    expect(text).toMatch(/FOUND — STONEWALKER/);
+    expect(text).toMatch(/end screen/i);
+
+    // Rendering again must not grant again — the toast fired on the claim,
+    // not on the frame.
+    ctx.game.render();
+    ctx.game.render();
+    expect(granted).toHaveLength(1);
+  });
+
+  it('says the vault was empty honestly when nothing is granted', () => {
+    const ctx = withFind({ findLabel: () => null });
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toMatch(/Nothing new inside/);
+  });
+
+  it('describes a tapped find without giving the mystery away', () => {
+    const ctx = withFind();
+    ctx.renderer.nextHit = ctx.find;
+    tap(ctx.el.board);
+    const text = ctx.el.toast.textContent ?? '';
+    expect(text).toMatch(/Something is here/);
+    // No perk name, no reward, no odds — the mystery is the design.
+    expect(text).not.toMatch(/perk/i);
+  });
+});
+
+describe('the shelf', () => {
+  /** An ended run whose shop reads a live progress object. */
+  const shelf = (found: string[], equipped: string[]) => {
+    let progress = {
+      relics: 0,
+      bought: {},
+      found: found as never[],
+      equipped: equipped as never[],
+    };
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      shop: {
+        read: () => progress,
+        write: (p) => {
+          progress = p as typeof progress;
+        },
+      },
+    });
+    ctx.game.start();
+    return { ...ctx, current: () => progress };
+  };
+
+  it('shows owned perks by name and the rest as UNDISCOVERED, unnamed', () => {
+    const ctx = shelf(['stonewalker'], ['stonewalker']);
+    const text = ctx.el.end.textContent ?? '';
+
+    expect(text).toMatch(/THE SHELF/);
+    expect(text).toMatch(/STONEWALKER/);
+    expect(text).toMatch(/beside stone cost 1 less/i);
+    // Four perks unowned, four mystery rows — and not one of their names.
+    expect((text.match(/UNDISCOVERED/g) ?? []).length).toBe(4);
+    for (const name of ['ROOTBOUND', 'SECOND WIND', 'WALLBREAKER', 'OPEN HAND']) {
+      expect(text).not.toContain(name);
+    }
+    expect(text).toMatch(/One perk may be worn at a time/);
+  });
+
+  it('keeps the worn count at one: wearing a second replaces the first', () => {
+    const ctx = shelf(['stonewalker', 'wallbreaker'], ['stonewalker']);
+    const wear = [...ctx.el.end.querySelectorAll<HTMLButtonElement>('.shop-buy')].find(
+      (b) => b.textContent === 'WEAR',
+    );
+    expect(wear).not.toBeUndefined();
+    wear!.click();
+
+    expect(ctx.current().equipped).toEqual(['wallbreaker']);
+  });
+});

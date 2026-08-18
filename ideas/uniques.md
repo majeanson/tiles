@@ -31,6 +31,11 @@ decisions, in full:
 Tier 3 was already rejected in writing. The brainstorm below is kept as the
 record of what was considered and why.
 
+**Built the same day** — hidden finds, the findable pool, KEEN NOSE, the
+one-slot shelf and the slot refund all shipped 2026-08-18; see `LOG.md`,
+Session 22. The written question ("does a hidden find change how a player
+grows their ground?") waits on the phone.
+
 ## What makes a unique a unique
 
 A Diablo 2 unique is not a bigger number. It is an item that **breaks a rule

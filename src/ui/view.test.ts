@@ -5,7 +5,7 @@ import { key, parse } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { legalPlacements, ripeKeys } from '@engine/rules';
 import type { GameState } from '@engine/state';
-import { destinationsWithin } from '@engine/world';
+import { destinationsWithin, findAt } from '@engine/world';
 import { toBoardView, toHudView } from './view';
 
 /**
@@ -307,4 +307,57 @@ describe('what a previewed cell still says about itself', () => {
       expect(cell.preview).toBeGreaterThan(0);
     }
   });
+});
+
+describe('the shimmer', () => {
+  /**
+   * Hidden finds never beacon. The one thing `findSense` (KEEN NOSE) buys is
+   * this: an unrevealed find within sense range of the board's ground draws
+   * as a dim glow that says SOMETHING is there — landmark null, no glyph for
+   * the renderer to print, nothing to tap into an action.
+   */
+  const SENSED = tuned({
+    findEvery: 2,
+    findChance: 1,
+    findSense: 3,
+    worldWalls: 0,
+    destinationChance: 0,
+  });
+
+  it('draws nothing at all while the sense is zero', () => {
+    const blind = { ...SENSED, findSense: 0 };
+    const view = toBoardView(newRun(5, blind));
+    expect(view.cells.some((c) => c.shimmer)).toBe(false);
+  });
+
+  it('glows over near finds, wordlessly, and only over finds', () => {
+    const state = newRun(5, SENSED);
+    const shimmers = toBoardView(state).cells.filter((c) => c.shimmer);
+    expect(shimmers.length).toBeGreaterThan(0);
+
+    for (const cell of shimmers) {
+      // The whole message is "something is near": no glyph, no kind, no tap.
+      expect(cell.landmark).toBeNull();
+      expect(cell.legal).toBe(false);
+      expect(cell.beacon).toBe(false);
+      // Every shimmer stands over a real find, off the board, in range.
+      expect(findAt(state.rootSeed, cell.q, cell.r, SENSED)).not.toBeNull();
+      expect(state.cells[cell.key]).toBeUndefined();
+      const near = Object.keys(state.cells).some(
+        (k) => distanceTo(parse(k), cell) <= SENSED.findSense,
+      );
+      expect(near).toBe(true);
+    }
+  });
+
+  it('never glows past the sense range', () => {
+    const state = newRun(5, SENSED);
+    for (const cell of toBoardView(state).cells.filter((c) => c.shimmer)) {
+      const nearest = Math.min(...Object.keys(state.cells).map((k) => distanceTo(parse(k), cell)));
+      expect(nearest).toBeLessThanOrEqual(SENSED.findSense);
+    }
+  });
+
+  const distanceTo = (a: { q: number; r: number }, b: { q: number; r: number }): number =>
+    Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.q + a.r - b.q - b.r));
 });

@@ -15,7 +15,13 @@ import {
   worthOf,
 } from '@engine/rules';
 import type { GameState, LandmarkReward, Rarity, Spend } from '@engine/state';
-import { destinationAt, destinationsWithin, elevationBandAt, terrainAt } from '@engine/world';
+import {
+  destinationAt,
+  destinationsWithin,
+  elevationBandAt,
+  findsWithin,
+  terrainAt,
+} from '@engine/world';
 import { brightness, type Light } from '@theme/tokens';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
 
@@ -135,7 +141,9 @@ export function renderContext(state: GameState, asked: HexKey | null = null): Re
     target === defaultTarget ? value : harvestValue(state, defaultTarget ?? undefined);
 
   const placeable = canPlaceNow(state);
-  const legal = new Set(placeable ? legalPlacements(state.cells) : []);
+  // The tuning rides along so WALLBREAKER's wall placements light up and
+  // preview like any legal hex — legality has one owner, and this is it.
+  const legal = new Set(placeable ? legalPlacements(state.cells, state.tuning) : []);
   const previews = placeable
     ? state.draft.map((tile) => {
         const map = new Map<HexKey, number>();
@@ -193,6 +201,7 @@ export function toBoardView(
       landmark: cell.kind === 'landmark' ? cell.reward : null,
       claimed: cell.kind === 'landmark' && cell.claimed,
       beacon: false,
+      shimmer: false,
       rarity: cell.kind === 'tile' ? (cell.rarity ?? null) : null,
       native: cell.kind === 'empty' ? (cell.native ?? null) : null,
       remembered: false,
@@ -228,6 +237,7 @@ export function toBoardView(
       landmark: dest?.reward ?? null,
       claimed: dest !== null && state.claimed.includes(k),
       beacon: false,
+      shimmer: false,
       remembered: true,
       rarity: null,
       native: dest === null ? ground.native : null,
@@ -256,6 +266,7 @@ export function toBoardView(
       landmark: d.reward,
       claimed: state.claimed.includes(key(d.q, d.r)),
       beacon: true,
+      shimmer: false,
       remembered: false,
       rarity: null,
       native: null,
@@ -268,6 +279,43 @@ export function toBoardView(
       legal: false,
       preview: null,
     });
+  }
+
+  // The shimmer (`findSense` > 0, sold as KEEN NOSE): a hidden find within
+  // sense range of ANY cell of this run's board glows dimly — no glyph, no
+  // kind, no atlas entry. This loop is the ONE consumer of `findsWithin`;
+  // nothing else may draw an unrevealed find, because a find that shows
+  // through the dark is a destination with extra steps.
+  if (state.tuning.findSense > 0) {
+    const sense = state.tuning.findSense;
+    const ground = Object.keys(state.cells).map(parse);
+    for (const f of findsWithin(state.rootSeed, ctx.reach + sense + 1, state.tuning)) {
+      const k = key(f.q, f.r);
+      if (onBoard.has(k)) continue;
+      if (!ground.some((h) => distance(h, f) <= sense)) continue;
+      cells.push({
+        key: k,
+        q: f.q,
+        r: f.r,
+        kind: 'landmark',
+        colour: null,
+        landmark: null,
+        claimed: false,
+        beacon: false,
+        shimmer: true,
+        remembered: false,
+        rarity: null,
+        native: null,
+        light: lit(f.q, f.r),
+        band: band(f.q, f.r),
+        ripe: false,
+        targeted: false,
+        dimmed: false,
+        worth: 0,
+        legal: false,
+        preview: null,
+      });
+    }
   }
 
   return { cells };
@@ -775,7 +823,9 @@ function hintFor(state: GameState, reach: number): string | null {
   };
 
   for (const [k, cell] of Object.entries(state.cells)) {
-    if (cell.kind === 'landmark' && !cell.claimed) {
+    // A find is never advertised, not even revealed: the hint line is a
+    // signpost, and a signpost to a hidden thing is a beacon in words.
+    if (cell.kind === 'landmark' && !cell.claimed && cell.reward !== 'find') {
       const { q, r } = parse(k);
       consider(q, r, cell.reward);
     }

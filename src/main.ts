@@ -23,6 +23,7 @@ import {
   applyProgress,
   decodeProgress,
   encodeProgress,
+  grantFind,
   type Progress,
 } from '@meta/progress';
 import { decodeRun, encodeRun } from '@meta/save';
@@ -320,6 +321,19 @@ function runKeeping(
     // moment it is woken. The ledger lives out here with the world; the game
     // only knows how many shrines this run has claimed.
     unlockLabel: (nth) => UNLOCKS[world.shrines.length + nth]?.label ?? null,
+
+    // A hidden find, claimed: grant one unowned perk, write it down, hand
+    // back the name for the toast. Deterministic in (world, hex) — no roll to
+    // farm — and guarded like `bankRelics`: a `?seed=` replay is somebody
+    // else's walk and must not fill this device's shelf, so it returns null
+    // and the toast celebrates without granting.
+    findLabel: (hex) => {
+      if (replaySeed !== null) return null;
+      const granted = grantFind(readProgress(), world.worldSeed, hex);
+      if (granted === null) return null;
+      writeProgress(granted.progress);
+      return granted.perk.name;
+    },
 
     onChange: (state) => {
       try {

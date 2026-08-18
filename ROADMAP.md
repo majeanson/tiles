@@ -150,14 +150,15 @@ M1–M6 are built, verified and deployed. What the checklist actually says now:
 - [x] **Zero unwired feature flags.** `pop.treasure` and `debug.overlay` were
       wired in M3; the registry's `wired` field and its test remain for the
       next flag declared before it is built.
-- [ ] **Every `ideas/` file resolved.** `endless-world.md` carries the queue
+- [x] **Every `ideas/` file resolved.** `endless-world.md` carries the queue
       with each item built-and-kept or killed-in-writing;
       `persistent-world.md`'s P4a and P4b are built, P4c is built as shrines
-      and the atlas. **`uniques.md` is still open** — Rootbound and Second
-      Wind shipped, Tier 3 is rejected in writing, and eight ideas are
-      neither built nor rejected. This box was checked while omitting that
-      file by name (caught 2026-08-18); it stays unchecked until the eight
-      are decided.
+      and the atlas. **`uniques.md` resolved 2026-08-18**, every entry by
+      Marc on option sets and the build shipped the same day: perks are
+      found-in-world (hidden finds, the shrine contract, the shop selling
+      only the nose), Stonewalker/Wallbreaker/Open Hand joined
+      Rootbound/Second Wind in the findable pool, Tier 1 is parked whole in
+      the lot below, and Tidecaller is killed in writing.
 - [ ] **`DESIGN.md` claims human-verified.** Gate A is; the rest is
       harness-verified and honest about it.
 - [x] **A name, an icon, a direction, and it installs offline.** Ashwake,
@@ -168,9 +169,9 @@ M1–M6 are built, verified and deployed. What the checklist actually says now:
 - [x] **Post-1.0 parking lot** — below.
 
 **v1.0 is deliberately untagged.** The roadmap's own definition of done
-requires the stranger test, Gate B's successor question answered by Marc on
-the phone, and `uniques.md` resolved. Tagging without them would be the first
-cut corner in twenty sessions.
+requires the stranger test and Gate B's successor question answered by Marc
+on the phone (`uniques.md` resolved and built, 2026-08-18). Tagging without
+them would be the first cut corner in twenty sessions.
 
 ## Post-1.0 parking lot
 

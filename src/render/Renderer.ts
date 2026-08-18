@@ -43,6 +43,13 @@ export type CellView = {
    * head, which is the whole meta-progression.
    */
   readonly remembered: boolean;
+  /**
+   * A hidden find's SHIMMER (`findSense` > 0): something is near, and that is
+   * the whole message. Drawn as a dim glow with `landmark` null and no glyph
+   * — the player must not learn WHAT is there, only that something is. Never
+   * tappable into an action, like a beacon.
+   */
+  readonly shimmer: boolean;
 
   /** Set on magic and unique tiles; the board marks them so power stays visible. */
   readonly rarity: Rarity | null;

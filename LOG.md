@@ -2062,3 +2062,95 @@ grant following the shrine pattern (engine marks, shell grants), and the
 whole thing swept before it ships. The written question: **does a hidden
 find change how a player grows their ground?** — the phone answers after
 the build.
+
+### Session 22 — Hidden finds: the world holds the perks now
+
+Same-day continuation of the uniques decisions (the addendum above). The
+build the option sets specced, built whole: perks are FOUND, never bought.
+
+**The question, written before building:** does a hidden find change how a
+player grows their ground? Phone-owned, open — the harness can prove the
+system safe, not that stumbling is a feeling.
+
+**What shipped:**
+
+- **Finds are their own pure hash layer** (`blockFind` / `findAt` /
+  `findsWithin` in `engine/world.ts`), on their own salts — pinned by test:
+  switching finds on moves not one existing destination, so every explored
+  world keeps its geography. Two rules of their own: deep-world by design
+  (nothing within a block-width of home, where destinations only thin), and
+  where a destination claims the same hex the destination wins,
+  deterministically.
+- **First values: `findEvery` 12 · `findChance` 0.14, measured rarer than a
+  shrine at every depth** (40 worlds: ~0.15 finds a world inside radius 14
+  against ~0.5 shrines; ~0.9 vs ~1.2 at 20; ~2.5 vs ~3.0 at 30 — 10/0.12
+  crossed above the shrine line past radius 20, 12/0.2 outnumbered shrines
+  everywhere deep). A pushing run stumbles on one every few runs: a lottery
+  ticket, not a checklist.
+- **A find never beacons.** Reveal follows the shrine contract exactly: the
+  engine bakes a `find` landmark when growth touches its ground, marks it
+  claimed, pays `claimRelics` and NOTHING else. The shell (`findLabel`, the
+  `unlockLabel` pattern) grants one UNOWNED perk via `grantFind` —
+  deterministic in (worldSeed, hex) through the run streams' own mulberry32,
+  so there is no roll to farm — writes progress, and hands back the name for
+  the toast. A newly found perk auto-equips into an empty slot, for the same
+  reason the shop's auto-equip existed: a payoff that visibly changes nothing
+  reads as a bug.
+- **The pool:** Rootbound · Second Wind (converted from the shop; owners
+  keep them) · Stonewalker (`stoneDiscount` — placements beside stone cost 1
+  less, floored at free; the COST stat keeps the base price and the manual
+  explains the discount) · Wallbreaker (`wallBuildCostMult` — walls buildable
+  at 2×, the wall REPLACED, previews on wall hexes equal to what the
+  placement pays, `walled` retired while worn) · Open Hand (draft 5, no
+  stash — both dials already existed). All dials zero in every shipped
+  tuning, set only by `applyProgress` while worn, `> 0`-guarded so old saves
+  decode safely.
+- **The shop sells the nose, never the prize:** KEEN NOSE (40 relics, 3
+  levels, +2 hexes of `findSense` a level, capped at 6 — under the beacon
+  horizon of 8, pinned, so a shimmer can never become a beacon). The shimmer
+  is a dim glow cell with `landmark: null` and NO glyph — the renderer's
+  `?? 'territory'` fallback is gone so nothing can ever print a mark over
+  one — and `findsWithin` has exactly one consumer, the shimmer loop.
+- **Migration:** SECOND SLOT is deleted and refunds its exact 400 relics on
+  load; bought Rootbound/Second Wind decode into `found`; `equipped` clamps
+  to the one slot that exists now. All pinned in `progress.test.ts`.
+- **The shelf** replaces the shop's perk rows: owned perks show name, note
+  and the WEAR/WORN toggle; unowned ones are UNDISCOVERED rows with a dash —
+  no names, no effects, no prices. The mystery is the point, and a test holds
+  the end screen to it.
+
+**The replay decision, written down:** a `?seed=` link is somebody else's
+walk, so the grant is guarded exactly like `bankRelics` — `findLabel`
+returns null on a replay and no progress is written; otherwise a stranger's
+seed would be a perk farm. The toast still fires and says one honest
+sentence that covers both the replay and the full shelf: a find grants only
+what you do not already carry, and only on your own world.
+
+**Sweep evidence.** Full `pnpm sim` (200 seeds, 15 policies): 0 stalled,
+0 capped, random-legal dead at 24 placements, spender 3,603 ahead of
+bank20's 3,397, seeker still the top claimer. Finds pay no tiles and no
+points by construction, so the economy is untouched — the tables agree.
+Each perk forced on via `--set` at 40 seeds, all 0 stalled / 0 capped,
+random-legal dead at 23–24 against bank20's 113–136 everywhere:
+
+| forced dial                | bank20               | note                                       |
+| -------------------------- | -------------------- | ------------------------------------------ |
+| baseline (200 seeds)       | 3,397 · r11 · 125 pl |                                            |
+| stoneDiscount=1            | 3,338 · r12 · 123 pl | neutral for scripts — they don't hug stone |
+| wallBuildCostMult=2        | 2,530 · r10 · 113 pl | scripts pay 2× without a plan; see below   |
+| draftWidth=5 + holdSlots=0 | 4,823 · r12 · 136 pl | wide choice packs better; stash unused     |
+
+Two honest footnotes. Wallbreaker reads NEGATIVE under scripted play:
+policies treat wall hexes as ordinary options and sometimes pay double for
+nothing, which is what a dial with no judgement attached looks like — the
+perk's value is choosing WHICH wall, and that is precisely the phone's half.
+Open Hand reads strongly positive because no policy uses the stash, so its
+cost is invisible to the harness; whether five-wide beats keeping one tile
+in the pocket is a human question too.
+
+**Deliberately not done:** find claims are not persisted in world memory —
+finds re-arm every run like caches, and whether the SAME find can grant
+again on a later run is decided by ownership, not geography (it grants only
+unowned perks, so a full shelf makes every find an honest empty vault).
+Tier 1 stays parked whole; Tidecaller stays dead; no art, no sound, no new
+glyph beyond ✦ in the shared table. 450 tests.

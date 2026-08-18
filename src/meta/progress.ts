@@ -1,4 +1,5 @@
 import type { Tuning } from '@content/tuning';
+import { rngNext, stream } from '@engine/rng';
 
 /**
  * The roguelite layer: what you keep when a run ends.
@@ -13,13 +14,21 @@ import type { Tuning } from '@content/tuning';
  *   a new world is a fresh map and never a reset. (Shrines stay per-world, so
  *   a world still has a story of its own.)
  * - **Spent on the end screen**, at the moment the numbers mean something.
- * - **One perk, plus a second slot unlocked late.**
+ *
+ * And reshaped it on 2026-08-18, resolving `ideas/uniques.md`:
+ *
+ * - **Perks are FOUND, never bought.** The shop keeps the boring upgrades and
+ *   sells the nose (KEEN NOSE); the perks themselves are granted by hidden
+ *   finds out in the world. Owning one is a fact about where you have been.
+ * - **Strictly ONE perk carried.** The second slot is deleted and refunded on
+ *   load — a run has one identity, and combinations are where Diablo's
+ *   balance went to die.
  *
  * Everything here is plain data with no DOM and no storage: the shell reads
  * and writes it, this module only says what it means.
  */
 
-export type UpgradeId = 'tiles' | 'odds' | 'world' | 'pace' | 'slot' | 'rootbound' | 'secondwind';
+export type UpgradeId = 'tiles' | 'odds' | 'world' | 'pace' | 'sense';
 
 export type Upgrade = {
   readonly id: UpgradeId;
@@ -28,20 +37,19 @@ export type Upgrade = {
   readonly note: string;
   /** Relics for the first level; each level after costs `cost * (level + 1)`. */
   readonly cost: number;
-  /** How many times it can be bought. Perks and the slot are bought once. */
+  /** How many times it can be bought. */
   readonly levels: number;
-  /** True for the two perks, which are equipped rather than merely owned. */
-  readonly perk: boolean;
 };
 
 /**
  * The shop.
  *
- * Three upgrades are deliberately BORING — a bigger purse, better odds, a
- * richer world. They are the steady floor that makes run 20 feel unlike run
- * 1, and they are boring on purpose so the perks can be strange. The two
- * perks are the ones Marc picked out of a brainstorm of sixteen; the four
- * rule-breakers he was not convinced by are in `ideas/uniques.md`, unbuilt.
+ * Every upgrade is deliberately BORING — a bigger purse, better odds, a
+ * richer world, a cheaper curve, a keener nose. They are the steady floor
+ * that makes run 20 feel unlike run 1, and they are boring on purpose so the
+ * perks can be strange. The perks themselves are not for sale: they are found
+ * in the world (`grantFind`), which is the 2026-08-18 decision in one line —
+ * the shop sells the nose, never the prize.
  */
 export const UPGRADES: readonly Upgrade[] = [
   {
@@ -50,7 +58,6 @@ export const UPGRADES: readonly Upgrade[] = [
     note: '+5 tiles to start every run.',
     cost: 20,
     levels: 8,
-    perk: false,
   },
   {
     id: 'odds',
@@ -58,7 +65,6 @@ export const UPGRADES: readonly Upgrade[] = [
     note: 'Magic and unique tiles turn up more often, on every run, for good.',
     cost: 35,
     levels: 5,
-    perk: false,
   },
   {
     id: 'world',
@@ -66,7 +72,6 @@ export const UPGRADES: readonly Upgrade[] = [
     note: 'More caches, sites and territories out there to find — and richer caches when you reach them.',
     cost: 50,
     levels: 4,
-    perk: false,
   },
   {
     id: 'pace',
@@ -74,56 +79,88 @@ export const UPGRADES: readonly Upgrade[] = [
     note: 'Placements stay cheap for longer, on every run, for good.',
     cost: 30,
     levels: 4,
-    perk: false,
   },
+  {
+    id: 'sense',
+    name: 'KEEN NOSE',
+    note: 'Hidden finds shimmer when your ground grows near — farther each level.',
+    cost: 40,
+    levels: 3,
+  },
+];
+
+export type PerkId = 'rootbound' | 'secondwind' | 'stonewalker' | 'wallbreaker' | 'openhand';
+
+export type Perk = {
+  readonly id: PerkId;
+  readonly name: string;
+  /** What it does, in the words the shelf prints — once it is yours. */
+  readonly note: string;
+};
+
+/**
+ * The findable pool, in the order the shelf lists it. Names in the shop's
+ * plain-caps voice; what each one costs is not relics but a walk — a hidden
+ * find grants one of these, unowned ones only, and an undiscovered perk shows
+ * on the shelf as a mystery row with no name. Do not print these names
+ * anywhere an unowned perk is being described.
+ */
+export const PERKS: readonly Perk[] = [
   {
     id: 'rootbound',
     name: 'ROOTBOUND',
     note: 'Native ground pays DOUBLE. Ground that is not yours pays nothing at all.',
-    cost: 120,
-    levels: 1,
-    perk: true,
   },
   {
     id: 'secondwind',
     name: 'SECOND WIND',
     note: 'The first time a run would end broke, a coin is flipped. Half the time you carry on with 20 tiles. Half the time you do not.',
-    cost: 150,
-    levels: 1,
-    perk: true,
   },
   {
-    id: 'slot',
-    name: 'SECOND SLOT',
-    note: 'Carry two perks at once instead of one.',
-    cost: 400,
-    levels: 1,
-    perk: false,
+    id: 'stonewalker',
+    name: 'STONEWALKER',
+    note: 'Placements beside stone cost 1 less.',
+  },
+  {
+    id: 'wallbreaker',
+    name: 'WALLBREAKER',
+    note: 'Walls can be built on, at double cost.',
+  },
+  {
+    id: 'openhand',
+    name: 'OPEN HAND',
+    note: 'Draft five tiles. No stash.',
   },
 ];
+
+export const perkById = (id: PerkId): Perk | undefined => PERKS.find((p) => p.id === id);
 
 export type Progress = {
   readonly relics: number;
   /** Levels bought, by upgrade. Absent means none. */
   readonly bought: Readonly<Partial<Record<UpgradeId, number>>>;
-  /** Perks the player has chosen to carry. Longer than the slots is invalid. */
-  readonly equipped: readonly UpgradeId[];
+  /** Perks granted by hidden finds (or owned from the bought-perks era). */
+  readonly found: readonly PerkId[];
+  /** The perk being carried. Never longer than the one slot there is. */
+  readonly equipped: readonly PerkId[];
 };
 
-export const EMPTY_PROGRESS: Progress = { relics: 0, bought: {}, equipped: [] };
+export const EMPTY_PROGRESS: Progress = { relics: 0, bought: {}, found: [], equipped: [] };
 
 export const levelOf = (progress: Progress, id: UpgradeId): number => progress.bought[id] ?? 0;
 
-/** How many perks may be carried: one, or two once the slot is bought. */
-export const slotsOf = (progress: Progress): number => 1 + levelOf(progress, 'slot');
+/**
+ * How many perks may be carried: one, always. The SECOND SLOT upgrade was
+ * deleted and refunded on 2026-08-18 — a run has one identity, and the
+ * combinations a second slot invites are where Diablo's balance went to die.
+ */
+export const slotsOf = (): number => 1;
 
 /**
  * What the next level of an upgrade costs, or null when it is maxed.
  *
  * Prices climb per level so that the boring upgrades stay worth buying early
- * and stop being the obvious purchase later — otherwise a player would take
- * eight purses before ever seeing a perk, and the interesting half of the
- * shop would never open.
+ * and stop being the obvious purchase later.
  */
 export function priceOf(progress: Progress, upgrade: Upgrade): number | null {
   const level = levelOf(progress, upgrade.id);
@@ -139,48 +176,76 @@ export const canAfford = (progress: Progress, upgrade: Upgrade): boolean => {
 /**
  * Buy one level. Returns the progress unchanged when it cannot be afforded —
  * the same contract the engine keeps, for the same reason.
- *
- * A perk bought is EQUIPPED immediately if there is a free slot, because the
- * alternative is a player spending 150 relics and seeing nothing happen.
  */
 export function buy(progress: Progress, upgrade: Upgrade): Progress {
   const price = priceOf(progress, upgrade);
   if (price === null || progress.relics < price) return progress;
 
   const bought = { ...progress.bought, [upgrade.id]: levelOf(progress, upgrade.id) + 1 };
-  const next: Progress = { ...progress, relics: progress.relics - price, bought };
-  if (!upgrade.perk || next.equipped.length >= slotsOf(next)) return next;
-  return { ...next, equipped: [...next.equipped, upgrade.id] };
+  return { ...progress, relics: progress.relics - price, bought };
 }
 
 /**
- * Equip or unequip an owned perk.
- *
- * With two perks and one slot this is a real decision, which is the point of
- * the slot being an upgrade rather than a given. Equipping past the slot
- * count drops the OLDEST perk, so the tap always does something visible
- * rather than silently refusing.
+ * Equip or unequip a found perk. One slot, so equipping replaces whatever was
+ * worn — the tap always does something visible rather than silently refusing.
  */
-export function equip(progress: Progress, id: UpgradeId): Progress {
-  if (levelOf(progress, id) === 0) return progress;
+export function equip(progress: Progress, id: PerkId): Progress {
+  if (!progress.found.includes(id)) return progress;
   if (progress.equipped.includes(id)) {
     return { ...progress, equipped: progress.equipped.filter((e) => e !== id) };
   }
-  const slots = slotsOf(progress);
-  const kept = progress.equipped.slice(Math.max(0, progress.equipped.length - (slots - 1)));
-  return { ...progress, equipped: [...kept, id] };
+  return { ...progress, equipped: [id] };
+}
+
+/** A cheap deterministic fold of a hex key into 32 bits, for `grantFind`. */
+function foldKey(hexKey: string): number {
+  let h = 0;
+  for (let i = 0; i < hexKey.length; i++) h = (Math.imul(h, 31) + hexKey.charCodeAt(i)) | 0;
+  return h;
 }
 
 /**
- * Fold what has been bought into the run's economy.
+ * What a hidden find grants: one perk you do not yet own, picked
+ * deterministically from (worldSeed, hex) — the same find on the same world
+ * gives the same answer, replay-honest like everything else — via the run
+ * streams' own mulberry32, never `Math.random`. Null when every perk is
+ * owned: a find met with a full shelf grants nothing, and the shell's toast
+ * says so honestly.
+ *
+ * The granted perk AUTO-EQUIPS when nothing is worn — a find that visibly
+ * changed nothing was the exact bug the shop's old auto-equip fixed, and the
+ * same reasoning holds harder for something you cannot buy twice.
+ */
+export function grantFind(
+  progress: Progress,
+  worldSeed: number,
+  hexKey: string,
+): { progress: Progress; perk: Perk } | null {
+  const unowned = PERKS.filter((p) => !progress.found.includes(p.id));
+  if (unowned.length === 0) return null;
+
+  const [roll] = rngNext(stream((worldSeed ^ foldKey(hexKey)) | 0));
+  const perk = unowned[Math.floor(roll * unowned.length) % unowned.length];
+  if (perk === undefined) return null;
+
+  const next: Progress = {
+    ...progress,
+    found: [...progress.found, perk.id],
+    equipped: progress.equipped.length === 0 ? [perk.id] : progress.equipped,
+  };
+  return { progress: next, perk };
+}
+
+/**
+ * Fold what has been bought — and found — into the run's economy.
  *
  * This is the ONLY place progress touches balance, and it produces a `Tuning`
  * — so a run still carries its whole economy in its state, a replay still
  * knows which economy it was recorded under, and the harness can play any
- * point on the upgrade ladder with `--set`.
+ * point on the ladder with `--set`.
  */
 export function applyProgress(tuning: Tuning, progress: Progress): Tuning {
-  const equipped = new Set(progress.equipped);
+  const worn = new Set(progress.equipped);
   const level = (id: UpgradeId): number => levelOf(progress, id);
 
   return {
@@ -199,16 +264,34 @@ export function applyProgress(tuning: Tuning, progress: Progress): Tuning {
     // 22 at run one, +2 a level, 30 — the old curve exactly — at max. The
     // whole point of a steeper start is that this ladder exists.
     costRisesEvery: tuning.costRisesEvery + level('pace') * 2,
-    rootboundOnly: equipped.has('rootbound'),
-    secondWindTiles: equipped.has('secondwind') ? 20 : 0,
-    secondWindChance: equipped.has('secondwind') ? 0.5 : 0,
+    // KEEN NOSE: 2 hexes of shimmer a level, 6 maxed — deliberately under
+    // `beaconHorizon` (8), so a shimmer can never become a beacon.
+    findSense: tuning.findSense + level('sense') * 2,
+    // The worn perk, as dials. Exactly one of these blocks can fire.
+    rootboundOnly: worn.has('rootbound'),
+    secondWindTiles: worn.has('secondwind') ? 20 : 0,
+    secondWindChance: worn.has('secondwind') ? 0.5 : 0,
+    stoneDiscount: worn.has('stonewalker') ? 1 : tuning.stoneDiscount,
+    wallBuildCostMult: worn.has('wallbreaker') ? 2 : tuning.wallBuildCostMult,
+    draftWidth: worn.has('openhand') ? 5 : tuning.draftWidth,
+    holdSlots: worn.has('openhand') ? 0 : tuning.holdSlots,
   };
 }
 
+/** The exact price the second slot sold for, refunded on load when found. */
+const SLOT_REFUND = 400;
+
 /**
- * Read progress back from storage, refusing anything that is not the shape
- * this version writes. A corrupt or older blob starts empty rather than
- * crashing the shell on load — the same tolerance `decodeRun` keeps.
+ * Read progress back from storage, refusing anything that is not a shape a
+ * version of this module ever wrote. A corrupt or unknown blob starts empty
+ * rather than crashing the shell on load — the same tolerance `decodeRun`
+ * keeps.
+ *
+ * Two migrations from the bought-perks era (2026-08-18), both one-way:
+ * ROOTBOUND and SECOND WIND stored as purchases become FOUND — anyone who
+ * paid keeps them owned; a stored SECOND SLOT refunds its exact price into
+ * relics and vanishes, and whatever was equipped is clamped to the one slot
+ * that exists now.
  */
 export function decodeProgress(raw: string | null): Progress {
   if (raw === null) return EMPTY_PROGRESS;
@@ -216,33 +299,48 @@ export function decodeProgress(raw: string | null): Progress {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null) return EMPTY_PROGRESS;
 
-    const { relics, bought, equipped } = parsed as Partial<Progress>;
+    const { relics, bought, found, equipped } = parsed as {
+      relics?: unknown;
+      bought?: unknown;
+      found?: unknown;
+      equipped?: unknown;
+    };
     if (typeof relics !== 'number' || !Number.isFinite(relics)) return EMPTY_PROGRESS;
     if (typeof bought !== 'object' || bought === null) return EMPTY_PROGRESS;
 
-    const known = new Set(UPGRADES.map((u) => u.id));
+    const knownUpgrades = new Set<string>(UPGRADES.map((u) => u.id));
+    const knownPerks = new Set<string>(PERKS.map((p) => p.id));
+
     const clean: Partial<Record<UpgradeId, number>> = {};
+    const owned = new Set<PerkId>();
+    let refund = 0;
     for (const [id, n] of Object.entries(bought)) {
-      if (known.has(id as UpgradeId) && typeof n === 'number' && n > 0) {
-        clean[id as UpgradeId] = Math.floor(n);
+      if (typeof n !== 'number' || n <= 0) continue;
+      if (knownUpgrades.has(id)) clean[id as UpgradeId] = Math.floor(n);
+      // The bought-perks era: a purchased perk is kept, as found.
+      else if (knownPerks.has(id)) owned.add(id as PerkId);
+      // The deleted SECOND SLOT: its exact price comes back as relics.
+      else if (id === 'slot') refund += SLOT_REFUND * Math.floor(n);
+    }
+
+    if (Array.isArray(found)) {
+      for (const id of found) {
+        if (typeof id === 'string' && knownPerks.has(id)) owned.add(id as PerkId);
       }
     }
 
-    const worn: UpgradeId[] = Array.isArray(equipped)
+    const worn: PerkId[] = Array.isArray(equipped)
       ? (equipped as unknown[]).filter(
-          (id): id is UpgradeId =>
-            typeof id === 'string' &&
-            known.has(id as UpgradeId) &&
-            clean[id as UpgradeId] !== undefined,
+          (id): id is PerkId => typeof id === 'string' && owned.has(id as PerkId),
         )
       : [];
 
-    const progress: Progress = {
-      relics: Math.max(0, Math.floor(relics)),
+    return {
+      relics: Math.max(0, Math.floor(relics)) + refund,
       bought: clean,
-      equipped: worn,
+      found: [...owned],
+      equipped: worn.slice(0, slotsOf()),
     };
-    return { ...progress, equipped: worn.slice(0, slotsOf(progress)) };
   } catch {
     return EMPTY_PROGRESS;
   }
