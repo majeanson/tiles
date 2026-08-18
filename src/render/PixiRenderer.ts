@@ -2,9 +2,8 @@ import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } 
 import { key, type HexKey } from '@engine/hex';
 import {
   BAND_LIFT,
-  COLOUR_GLYPH,
   LANDMARK_GLYPH,
-  fieldDots,
+  fieldPattern,
   hex,
   mix,
   rgba,
@@ -441,36 +440,15 @@ export class PixiRenderer implements Renderer {
         return cell.beacon ? { ...base, alpha: 0.55 } : base;
       }
       case 'empty': {
-        // Native ground shows as a whisper of its colour — dots faint enough to
-        // read as terrain, not as a tile. Derived entirely from tokens the theme
-        // already has, so repainting the direction repaints the fields with it;
-        // the pattern numbers are shared first values every direction inherits,
-        // and a direction that wants its own field texture overrides `empty`.
+        // Native ground wears its colour's OWN terrain texture, thinned to a
+        // whisper — moss ground carries moss's diagonal hatch, ash ground its
+        // dots (Marc, 2026-08-18: the per-colour shapes this replaced were
+        // "too lookalike" at ground scale; orientation survives smallness
+        // where silhouette does not). `fieldPattern` owns the derivation, and
+        // the gallery draws from the same function, so the workbench and the
+        // board cannot disagree.
         if (cell.native !== null) {
-          // Ink and alpha come from `fieldDots`, which equalises how strongly
-          // all four read against this theme's ground — drawing each colour
-          // in its own fill at one flat alpha made the bright fields shout
-          // and the dark ones disappear. Slightly larger and tighter than
-          // before, too: at phone scale a 1.1px dot on a 7px pitch is a
-          // texture you have to hunt for.
-          // A SHAPE rather than a dot, one per colour, so which field this is
-          // survives being read by someone who cannot tell the hues apart —
-          // and reads faster for everyone else, because a silhouette is
-          // recognised before a colour is judged. Slightly larger and more
-          // spaced than the dots were: a symbol has to be big enough to have
-          // a shape at all, which a 1.4px dot did not.
-          const dots = fieldDots(theme, cell.native);
-          return {
-            ...theme.empty,
-            pattern: {
-              kind: 'glyphs',
-              shape: COLOUR_GLYPH[cell.native],
-              ink: dots.ink,
-              alpha: dots.alpha,
-              size: 2.1,
-              pitch: 9,
-            },
-          };
+          return { ...theme.empty, pattern: fieldPattern(theme, cell.native) };
         }
         return theme.empty;
       }

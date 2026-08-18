@@ -388,20 +388,17 @@ function vivid(c: Rgb): Rgb {
  * makes the FINAL lift the same for every colour. Bright fields stop
  * shouting, dark fields become readable, and all four still say their name.
  */
-/**
- * One colour's symbol, everywhere it appears.
- *
- * The point is that it is the SAME shape on the ground, on the chip and in
- * the hand: a symbol that means green in one place and nothing in another is
- * decoration. Fixed rather than themed, because a symbol language that
- * changes with the art direction is a language nobody learns.
+/*
+ * COLOUR_GLYPH — a per-colour SHAPE repeated over native ground — lived here
+ * from 2026-08-16 to 2026-08-18. Marc asked for it ("a symbol per color")
+ * and Marc retired it after playing it: at ground scale the shapes collapsed
+ * into lookalike dots ("blue and green are too lookalike"). Fields now carry
+ * their colour's own TEXTURE instead — see `fieldPattern` below — which
+ * keeps the non-hue channel (orientation survives smallness better than
+ * silhouette) and makes ground read as its terrain. The cards keep
+ * COLOUR_MARK; the `glyphs` pattern kind stays in the vocabulary, currently
+ * unreferenced by any theme.
  */
-export const COLOUR_GLYPH: Readonly<Record<Colour, GlyphShape>> = {
-  green: 'triangle',
-  yellow: 'diamond',
-  red: 'square',
-  blue: 'circle',
-};
 
 /** The same four as characters, for the places that draw text rather than textures. */
 export const COLOUR_MARK: Readonly<Record<Colour, string>> = {
@@ -454,6 +451,45 @@ export function fieldDots(theme: Theme, colour: Colour): { ink: Rgb; alpha: numb
 
   const gap = Math.max(0.001, luma(ink) - ground);
   return { ink, alpha: Math.min(0.65, Math.max(0.18, MIN_FIELD_LIFT / gap)) };
+}
+
+/**
+ * When a theme's terrain has no pattern of its own, its fields still need a
+ * distinct mark — and the fallback keeps all four apart in ANY theme: two
+ * hatch angles, verticals, and dots can never collide the way two smooth
+ * terrains would.
+ */
+const FIELD_FALLBACK: Readonly<
+  Record<Colour, { kind: 'hatch'; angleDeg: number } | { kind: 'dots' }>
+> = {
+  green: { kind: 'hatch', angleDeg: 60 },
+  yellow: { kind: 'hatch', angleDeg: 90 },
+  red: { kind: 'dots' },
+  blue: { kind: 'hatch', angleDeg: 0 },
+};
+
+/**
+ * The pattern a native field wears: the COLOUR'S OWN terrain texture, thinned
+ * to ground weight (Marc, 2026-08-18: "they should use the proper pattern —
+ * dots, diagonal, verticals — so its easier on the eyes").
+ *
+ * A field is a promise about what grows well there, so it speaks the same
+ * texture language as the tile it wants: moss ground carries moss's diagonal
+ * hatch, ash ground its dots, tide ground its horizontals. Ink and alpha come
+ * from `fieldDots`, which equalises how strongly all four read against this
+ * theme's ground; the geometry comes from the terrain, with a per-colour
+ * fallback where a terrain is smooth. One function, used by the renderer and
+ * the gallery both, so the workbench can never disagree with the board.
+ */
+export function fieldPattern(theme: Theme, colour: Colour): Pattern {
+  const { ink, alpha } = fieldDots(theme, colour);
+  const terrain = theme.terrain[colour].pattern;
+
+  const geometry =
+    terrain.kind === 'hatch' || terrain.kind === 'dots' ? terrain : FIELD_FALLBACK[colour];
+  return geometry.kind === 'dots'
+    ? { kind: 'dots', ink, alpha, radius: 1.4, pitch: 6 }
+    : { kind: 'hatch', angleDeg: geometry.angleDeg, ink, alpha, bar: 1, gap: 5 };
 }
 
 /**

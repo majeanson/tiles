@@ -5,10 +5,9 @@ import { themeCssVars } from '@theme/css';
 import { THEMES } from '@theme/index';
 import {
   BAND_LIFT,
-  COLOUR_GLYPH,
   LANDMARK_GLYPH,
   brightness,
-  fieldDots,
+  fieldPattern,
   hex,
   luma,
   mix,
@@ -166,26 +165,15 @@ function landmarkRow(theme: Theme): HTMLElement {
 }
 
 /**
- * Native ground as the board actually paints it: the empty surface carrying
- * each colour's SHAPE at the ink and alpha `fieldDots` equalises per theme.
- * This is the exact thing the playtest keeps asking about ("too subtle,
- * about right, or too busy?"), judged here without a run.
+ * Native ground as the board actually paints it: each colour's own terrain
+ * texture thinned to ground weight, from the same `fieldPattern` the
+ * renderer uses. This is the exact thing the playtest keeps asking about
+ * ("too subtle, about right, or too busy?"), judged here without a run.
  */
 function fieldRow(theme: Theme): HTMLElement {
   const row = el('div', 'row');
   for (const c of COLOURS) {
-    const dots = fieldDots(theme, c);
-    const surface: Surface = {
-      ...theme.empty,
-      pattern: {
-        kind: 'glyphs',
-        shape: COLOUR_GLYPH[c],
-        ink: dots.ink,
-        alpha: dots.alpha,
-        size: 2.1,
-        pitch: 9,
-      },
-    };
+    const surface: Surface = { ...theme.empty, pattern: fieldPattern(theme, c) };
     row.appendChild(surfaceCard(`${theme.terrainNames[c]} FIELD`, surface, theme, false));
   }
   return row;

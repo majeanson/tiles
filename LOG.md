@@ -2168,3 +2168,30 @@ and the **arc-sparkline share** (`▂▁▅▃█▂` from the harvest log the e
 screen already draws). Full design in `ideas/daily.md`, build parked until
 Marc calls it. Verified in passing: replay-seed guards already keep a daily
 from touching the real run or farming finds.
+
+**Addendum, same day — ground speaks terrain, and EMBER gets its finish**
+
+Marc, from play: _"all territories have dots but they should use the proper
+pattern (dots, diagonal, verticals) so its easier on the eyes (blue and
+green are too lookalike)"_ — and _"make sure all visuals are there too,
+terrains, etc."_
+
+The per-colour ground SHAPES (his own 2026-08-16 ask) are retired by the
+same authority that ordered them: at ground scale the silhouettes collapsed
+into lookalike specks. Native fields now wear their colour's OWN terrain
+texture, thinned to ground weight — moss ground carries moss's diagonal
+hatch, ash ground its dots, tide its horizontals, ember its verticals. One
+function (`fieldPattern` in tokens, beside `fieldDots`) feeds the renderer
+AND the gallery, so the workbench cannot disagree with the board; a
+per-colour fallback keeps all four apart even in a direction whose terrains
+are smooth, and a test now pins four distinct ground textures in EVERY
+loaded direction.
+
+Completing the set meant completing the terrains: EMBER was still the one
+surface with no finish at all (flagged in the audit, deferred as
+playtest-adjacent) — vertical stalks now, closing the four-orientation
+language: diagonal · vertical · dots · horizontal. The greyscale, wall-
+clearance and field-lift pins all held without adjustment.
+
+Whether the new ground reads at arm's length is the phone's question, and
+the gallery's NATIVE FIELDS strip now shows exactly what the board draws.

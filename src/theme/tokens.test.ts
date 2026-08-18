@@ -1,43 +1,55 @@
 import { describe, expect, it } from 'vitest';
 import { COLOURS } from '@content/tuning';
-import { brightness, COLOUR_GLYPH, COLOUR_MARK } from './tokens';
+import { THEMES } from './index';
+import { brightness, COLOUR_MARK, fieldPattern } from './tokens';
 
 /**
- * The symbol language: one shape per colour, the same everywhere it appears.
- * The contrast maths for the fields themselves lives in theme.test.ts, which
- * measures every direction; this file is only about the second channel.
+ * The non-hue channels: a character per colour on the cards, and a texture
+ * per colour on the ground. The contrast maths for the fields themselves
+ * lives in theme.test.ts, which measures every direction; this file is about
+ * the second channel staying a channel.
  */
-describe('one symbol per colour', () => {
-  /**
-   * Marc, 2026-08-16: "instead of dots we could have a symbol per color and
-   * this symbol could repeat so its coilor + symbol, good for all humans."
-   *
-   * Colour alone carried which field was whose, and roughly one man in twelve
-   * cannot read the green/red half of that. The symbol is a second channel
-   * saying the same thing, and it has to be the SAME symbol everywhere or it
-   * is decoration rather than language.
-   */
-  it('gives every colour a shape, and no two the same', () => {
-    const shapes = COLOURS.map((c) => COLOUR_GLYPH[c]);
-    expect(shapes).toHaveLength(COLOURS.length);
-    expect(new Set(shapes).size).toBe(COLOURS.length);
-  });
-
+describe('one mark per colour', () => {
   it('gives every colour a character, and no two the same', () => {
     const marks = COLOURS.map((c) => COLOUR_MARK[c]);
     expect(marks.every((m) => m.length > 0)).toBe(true);
     expect(new Set(marks).size).toBe(COLOURS.length);
   });
+});
 
-  it('is fixed rather than themed — a language that changes is not learned', () => {
-    // Named explicitly so a future art direction cannot quietly reassign them
-    // and leave a player's memory of the board wrong.
-    expect(COLOUR_GLYPH).toEqual({
-      green: 'triangle',
-      yellow: 'diamond',
-      red: 'square',
-      blue: 'circle',
-    });
+describe('field patterns', () => {
+  /**
+   * Marc, 2026-08-18: fields "should use the proper pattern (dots, diagonal,
+   * verticals) so its easier on the eyes — blue and green are too lookalike."
+   * This replaced the per-colour shapes he asked for on 2026-08-16 and then
+   * retired after playing them: at ground scale, orientation survives where
+   * silhouette does not. The claim to hold, in EVERY loaded direction: no two
+   * colours' ground wears the same texture.
+   */
+  const signature = (p: ReturnType<typeof fieldPattern>): string =>
+    p.kind === 'hatch' ? `hatch:${p.angleDeg}` : p.kind;
+
+  it('keeps all four colours apart on the ground, in every direction', () => {
+    for (const theme of THEMES) {
+      const signatures = COLOURS.map((c) => signature(fieldPattern(theme, c)));
+      expect({ theme: theme.id, distinct: new Set(signatures).size }).toEqual({
+        theme: theme.id,
+        distinct: COLOURS.length,
+      });
+    }
+  });
+
+  it('speaks the terrain’s own texture language where the terrain has one', () => {
+    for (const theme of THEMES) {
+      for (const c of COLOURS) {
+        const terrain = theme.terrain[c].pattern;
+        const field = fieldPattern(theme, c);
+        if (terrain.kind === 'hatch') {
+          expect(field).toMatchObject({ kind: 'hatch', angleDeg: terrain.angleDeg });
+        }
+        if (terrain.kind === 'dots') expect(field.kind).toBe('dots');
+      }
+    }
   });
 });
 

@@ -80,8 +80,18 @@ export const TORCHLIT: Theme = {
       pattern: { kind: 'hatch', angleDeg: 60, ink: 0x000000, alpha: 0.22, bar: 2, gap: 4 },
       asset: 'terrain.green',
     }),
-    // CEMETERY — low and dry, the lightest surface under the torch.
-    yellow: surface(0xc6b187, { fillTo: 0x98865f, asset: 'terrain.yellow' }),
+    // CEMETERY — low and dry, the lightest surface under the torch. Vertical
+    // stalks since 2026-08-18: it was the one terrain with no finish at all,
+    // which broke the direction's own "identity lives in surface height and
+    // finish" thesis — and the field markers now derive from these patterns,
+    // so a smooth terrain would have left ember ground speaking a borrowed
+    // language. Verticals complete the set: diagonal, vertical, dots,
+    // horizontal — four orientations no squint can confuse.
+    yellow: surface(0xc6b187, {
+      fillTo: 0x98865f,
+      pattern: { kind: 'hatch', angleDeg: 90, ink: 0x000000, alpha: 0.14, bar: 1, gap: 5 },
+      asset: 'terrain.yellow',
+    }),
     // BURIAL GROUND — mounded rows, catching the flame on the ridges.
     red: surface(0x9a5a32, {
       fillTo: 0x6b3a1e,
