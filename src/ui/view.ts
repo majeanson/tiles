@@ -2,6 +2,7 @@ import { COLOURS, type Colour } from '@content/tuning';
 import { distance, key, parse, type HexKey } from '@engine/hex';
 import { canSpend, rarityOdds, spendCost } from '@engine/reduce';
 import {
+  cachePaysAt,
   canPlaceAt,
   canPlaceNow,
   costOf,
@@ -629,10 +630,10 @@ const RUNWAY_ALARM = 6;
  * in the one unit the player already reads the board in: hexes out.
  */
 function hintFor(state: GameState): string | null {
-  let best: { reward: LandmarkReward; dist: number } | null = null;
+  let best: { reward: LandmarkReward; dist: number; at: HexKey } | null = null;
   const consider = (q: number, r: number, reward: LandmarkReward): void => {
     const dist = distance({ q, r }, { q: 0, r: 0 });
-    if (best === null || dist < best.dist) best = { reward, dist };
+    if (best === null || dist < best.dist) best = { reward, dist, at: key(q, r) };
   };
 
   for (const [k, cell] of Object.entries(state.cells)) {
@@ -647,10 +648,10 @@ function hintFor(state: GameState): string | null {
   }
 
   if (best === null) return null;
-  const { reward, dist } = best as { reward: LandmarkReward; dist: number };
+  const { reward, dist, at } = best as { reward: LandmarkReward; dist: number; at: HexKey };
   const named =
     reward === 'cache'
-      ? `a cache of ${state.tuning.cachePays} tiles`
+      ? `a cache of ${cachePaysAt(at, state.tuning)} tiles`
       : reward === 'site'
         ? 'a scoring site'
         : 'a territory to claim';

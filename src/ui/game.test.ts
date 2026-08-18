@@ -429,13 +429,21 @@ describe('the camera, and staying oriented', () => {
     expect(ctx.el.helpPanel.hidden).toBe(false);
 
     const tabs = [...ctx.el.helpPanel.querySelectorAll('button.help-tab')] as HTMLButtonElement[];
-    expect(tabs.map((tab) => tab.textContent)).toEqual(['PLAY', 'BOARD', 'HAND', 'AFTER', 'BUILD']);
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      'START',
+      'PLAY',
+      'BOARD',
+      'HAND',
+      'AFTER',
+      'BUILD',
+    ]);
 
-    // Exactly one panel is showing, and it is the first tab's.
+    // Exactly one panel is showing, and it is the first tab's — the quick
+    // start, which is the tab a stranger reads before their first placement.
     const panels = [...ctx.el.helpPanel.querySelectorAll('.help-panel-body')] as HTMLElement[];
     expect(panels.filter((p) => !p.hidden)).toHaveLength(1);
     expect(panels[0]?.hidden).toBe(false);
-    expect(panels[0]?.textContent).toContain('THE LOOP');
+    expect(panels[0]?.textContent).toContain('WHAT YOU SEE');
 
     // Tapping a tab swaps the panel and moves the marker, and does NOT close
     // the manual on the way past — the panel closes on any tap, so a control

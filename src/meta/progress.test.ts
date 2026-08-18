@@ -173,8 +173,20 @@ describe('the shop climbs back to what the rebalance took', () => {
     equipped: [],
   });
 
-  it('returns caches to the 26 tiles they paid before', () => {
-    expect(applyProgress(TUNING, maxed('world')).cachePays).toBe(26);
+  it('returns a ring-2 cache to the 26 tiles caches paid before', () => {
+    // Cache value is graded by distance since 2026-08-18, so the restoration
+    // moved outward with it: maxed base 18, plus two rings' bonus, is the
+    // pre-rebalance 26. The doorstep cache stays a snack on purpose.
+    const t = applyProgress(TUNING, maxed('world'));
+    expect(t.cachePays).toBe(18);
+    expect(t.cachePays + 2 * t.cachePaysPerRing).toBe(26);
+  });
+
+  it('returns the cost curve to the 30 it climbed at before', () => {
+    // STEADY PACE exists so the 2026-08-18 steepening (30 -> 22) is a ladder
+    // rather than a nerf: +2 a level, four levels, the old curve exactly.
+    expect(applyProgress(TUNING, EMPTY_PROGRESS).costRisesEvery).toBe(22);
+    expect(applyProgress(TUNING, maxed('pace')).costRisesEvery).toBe(30);
   });
 
   it('puts destination density back past where it was', () => {
@@ -186,10 +198,11 @@ describe('the shop climbs back to what the rebalance took', () => {
     expect(applyProgress(TUNING, maxed('tiles')).startingTiles).toBeGreaterThan(30);
   });
 
-  it('starts every player below all three, which is the point', () => {
+  it('starts every player below all of it, which is the point', () => {
     const fresh = applyProgress(TUNING, EMPTY_PROGRESS);
     expect(fresh.startingTiles).toBeLessThan(30);
     expect(fresh.cachePays).toBeLessThan(26);
     expect(fresh.destinationChance).toBeLessThan(0.7);
+    expect(fresh.costRisesEvery).toBeLessThan(30);
   });
 });

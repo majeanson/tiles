@@ -19,7 +19,7 @@ import type { Tuning } from '@content/tuning';
  * and writes it, this module only says what it means.
  */
 
-export type UpgradeId = 'tiles' | 'odds' | 'world' | 'slot' | 'rootbound' | 'secondwind';
+export type UpgradeId = 'tiles' | 'odds' | 'world' | 'pace' | 'slot' | 'rootbound' | 'secondwind';
 
 export type Upgrade = {
   readonly id: UpgradeId;
@@ -65,6 +65,14 @@ export const UPGRADES: readonly Upgrade[] = [
     name: 'RICHER WORLDS',
     note: 'More caches, sites and territories out there to find — and richer caches when you reach them.',
     cost: 50,
+    levels: 4,
+    perk: false,
+  },
+  {
+    id: 'pace',
+    name: 'STEADY PACE',
+    note: 'Placements stay cheap for longer, on every run, for good.',
+    cost: 30,
     levels: 4,
     perk: false,
   },
@@ -180,13 +188,17 @@ export function applyProgress(tuning: Tuning, progress: Progress): Tuning {
     startingTiles: tuning.startingTiles + level('tiles') * 5,
     magicChance: tuning.magicChance + level('odds') * 0.02,
     uniqueChance: tuning.uniqueChance + level('odds') * 0.005,
-    // RICHER WORLDS buys back exactly what the 2026-08-16 rebalance took:
-    // more destinations out there, and caches worth more when you reach them.
-    // Maxed, it returns cache value to the 26 tiles it paid before the floor
-    // came down — so the shop restoring the early game is literal rather than
-    // approximate, which is what Marc asked for.
+    // RICHER WORLDS buys back what the rebalances took: more destinations out
+    // there, and caches worth more when you reach them. Since 2026-08-18 cache
+    // value is graded by distance, so the restoration reads differently but
+    // stays literal: a maxed base of 18 plus two rings' bonus is 26 — the
+    // number caches paid before the floor first came down.
     destinationChance: Math.min(1, tuning.destinationChance + level('world') * 0.08),
     cachePays: tuning.cachePays + level('world') * 3,
+    // STEADY PACE buys back the curve the 2026-08-18 rebalance steepened:
+    // 22 at run one, +2 a level, 30 — the old curve exactly — at max. The
+    // whole point of a steeper start is that this ladder exists.
+    costRisesEvery: tuning.costRisesEvery + level('pace') * 2,
     rootboundOnly: equipped.has('rootbound'),
     secondWindTiles: equipped.has('secondwind') ? 20 : 0,
     secondWindChance: equipped.has('secondwind') ? 0.5 : 0,

@@ -85,9 +85,12 @@ describe('what the harness proves about the one economy', () => {
     // Honest rather than aspirational: cashing at 3 scores a fraction of
     // cashing at 20 or 40, and the curve has never turned over at 200 runs.
     // Recorded here so that a change which flattens it is visible immediately.
+    // The factor came down from 2 on 2026-08-18: the steeper 22-curve ends
+    // runs sooner, so the patience gap compressed (2.6x at 40 seeds, noisier
+    // at 6). 1.5 still fails if patience ever stops paying.
     const small = stats(bank3);
     const patient = stats(bank40);
-    expect(patient.medianPoints).toBeGreaterThan(small.medianPoints * 2);
+    expect(patient.medianPoints).toBeGreaterThan(small.medianPoints * 1.5);
   });
 
   it('makes the luck shop worth its prices', () => {
@@ -108,6 +111,10 @@ describe('what the harness proves about the one economy', () => {
     const walker = stats(seeker);
     const packer = stats(farm);
     expect(walker.medianClaims).toBeGreaterThanOrEqual(packer.medianClaims);
-    expect(walker.medianPlacements).toBeGreaterThan(100);
+    // Relative rather than the old absolute 100: every rebalance moves run
+    // length, and the claim is only that walking is a REAL run, not a suicide
+    // line — most of a packer's length, spent crossing instead of filling.
+    const competent = stats(bank20);
+    expect(walker.medianPlacements).toBeGreaterThan(competent.medianPlacements * 0.6);
   });
 });

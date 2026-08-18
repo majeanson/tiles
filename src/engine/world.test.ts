@@ -90,6 +90,30 @@ describe('destinations', () => {
     expect([...rewards].sort()).toEqual(['cache', 'shrine', 'site', 'territory']);
   });
 
+  // The gradual dial (2026-08-18): density climbs from home to the horizon.
+  // Ramped destinations stand where flat ones stood (the presence roll is the
+  // same hash, only the bar moves), the near world holds fewer of them, and
+  // blocks past the ramp are untouched.
+  it('thins destinations near home when destinationRampBlocks is on', () => {
+    const ramped = { ...TUNING, destinationRampBlocks: 6 };
+    let flatNear = 0;
+    let thinNear = 0;
+    for (let seed = 1; seed <= 10; seed++) {
+      const flat = destinationsWithin(seed, 60, TUNING);
+      const thin = destinationsWithin(seed, 60, ramped);
+      const spots = new Set(flat.map((d) => key(d.q, d.r)));
+      for (const d of thin) expect(spots.has(key(d.q, d.r))).toBe(true);
+
+      flatNear += flat.filter((d) => distance(d, { q: 0, r: 0 }) < 18).length;
+      thinNear += thin.filter((d) => distance(d, { q: 0, r: 0 }) < 18).length;
+
+      const far = (ds: readonly { q: number; r: number }[]) =>
+        ds.filter((d) => distance(d, { q: 0, r: 0 }) > 45).length;
+      expect(far(thin)).toBe(far(flat));
+    }
+    expect(thinNear).toBeLessThan(flatNear);
+  });
+
   it('does not exist while the system is switched off', () => {
     const none = { ...TUNING, destinationChance: 0 };
     expect(destinationsWithin(9, 60, none)).toEqual([]);

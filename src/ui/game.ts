@@ -1,7 +1,14 @@
 import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
-import { canPlaceAt, harvestMultiplier, harvestValue, isRipe, worthOf } from '@engine/rules';
+import {
+  cachePaysAt,
+  canPlaceAt,
+  harvestMultiplier,
+  harvestValue,
+  isRipe,
+  worthOf,
+} from '@engine/rules';
 import type {
   Action,
   GameState,
@@ -549,7 +556,11 @@ export class Game {
         t.magicChance + t.uniqueChance > 0
           ? `\nLuck +${value.count} — your rare-tile odds just rose.`
           : '';
-      return `${head}\n+${value.tiles} tiles: ${t.tilesPerPop} per tile, +1 more per ${t.worthPerExtraTile} worth.${luck}`;
+      // The depth grade, shown only when it actually paid something — the
+      // arithmetic on screen has to sum to the number on screen.
+      const rings = Math.floor(value.count * t.popTilesPerRing * (multiplier - 1));
+      const depth = rings > 0 ? `, +${rings} for the depth` : '';
+      return `${head}\n+${value.tiles} tiles: ${t.tilesPerPop} per tile, +1 more per ${t.worthPerExtraTile} worth${depth}.${luck}`;
     }
     if (choice === 'treasure') {
       return `${head}\nA ${String(value.treasure).toUpperCase()} tile goes to your stash — no tiles, no points.`;
@@ -584,7 +595,7 @@ export class Game {
       // appeared".
       switch (cell.reward) {
         case 'cache':
-          return `+  CACHE CLAIMED\n+${t.cachePays} tiles, on the spot.`;
+          return `+  CACHE CLAIMED\n+${cachePaysAt(k, t)} tiles, on the spot.`;
         case 'site':
           return (
             `★  SITE CLAIMED\nPoints banked — and this star has set a BOUNTY: ` +
@@ -627,7 +638,7 @@ export class Game {
       if (reward === 'cache') {
         return claimed
           ? '+ CACHE — already claimed. It gave its tiles.'
-          : `+ CACHE — build a tile touching it to claim ${t.cachePays} tiles on the spot.`;
+          : `+ CACHE — build a tile touching it to claim ${cachePaysAt(hex, t)} tiles on the spot.`;
       }
       if (reward === 'site') {
         return claimed
@@ -795,6 +806,42 @@ export class Game {
     // the reducer pays with — so a balance change rewrites the manual by
     // itself and the text can never describe an economy nobody is playing.
 
+    // The quick start (Marc, 2026-08-18: "here is what you see, here is what
+    // you do, here is how you make points — then the advanced sections").
+    // Three sections, three lines each, no NUMBERS fold: the one tab a
+    // stranger reads before their first placement. Everything it says is said
+    // again, properly, in the tabs after it.
+    const start: HelpTab = {
+      id: 'start',
+      label: 'START',
+      sections: [
+        {
+          title: 'WHAT YOU SEE',
+          lines: [
+            'The board is your land. The cards below are tiles you can place.',
+            'Glowing edges are where you may build. Faint numbers show what a tile pays there.',
+            'Lights beyond your land are places worth walking to. They pay when you reach them.',
+          ],
+        },
+        {
+          title: 'WHAT YOU DO',
+          lines: [
+            'Tap a card, then tap a glowing hex.',
+            'Surround a tile on all six sides and it ripens — it lights up.',
+            'Tap a ripe tile, then POP. Popping pays the tiles that keep you going.',
+          ],
+        },
+        {
+          title: 'HOW YOU SCORE',
+          lines: [
+            'Every pop scores on its own. You never trade survival for points.',
+            'Bigger pockets score more. Pockets farther from home score much more.',
+            'The run ends when your tiles run out. Go deep before it does.',
+          ],
+        },
+      ],
+    };
+
     const play: HelpTab = {
       id: 'play',
       label: 'PLAY',
@@ -851,6 +898,11 @@ export class Game {
           ],
           detail: [
             `A pop pays ${t.tilesPerPop} tile per popped tile, plus 1 more per ${t.worthPerExtraTile} worth.`,
+            ...(t.popTilesPerRing > 0
+              ? [
+                  `Depth pays: a pocket adds ${t.popTilesPerRing} tile per popped tile for every distance ring it sits from home.`,
+                ]
+              : []),
             `It scores the pocket’s summed worth × its size bonus × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`,
             ...(t.harvestSizeCap > 0
               ? [
@@ -912,13 +964,20 @@ export class Game {
           title: 'WHERE TO GO',
           lines: [
             'The glows beyond your ground are destinations, shining through land you have not reached. Touch one with a tile to claim it. Each pays once.',
-            `+ CACHE — ${t.cachePays} tiles on the spot.`,
+            t.cachePaysPerRing > 0
+              ? `+ CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} more per ring out.`
+              : `+ CACHE — ${t.cachePays} tiles on the spot.`,
             `★ SITE — points, and it opens a bounty.`,
             `◆ TERRITORY — turns the ground around it into your field, for good.`,
             '◈ SHRINE — switches a system on for your world, permanently.',
           ],
           detail: [
             `A site pays ${t.sitePays} pts × the distance multiplier at its hex.`,
+            ...(t.destinationRampBlocks > 0
+              ? [
+                  'The near world is deliberately sparse. The deeper you push, the thicker the lights — and the richer the caches.',
+                ]
+              : []),
             ...(t.questNeed > 0
               ? [
                   `Its bounty: pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it and take it as PTS for ×${t.questBonus}. Take it as tiles and the bounty stays standing. One at a time.`,
@@ -1100,7 +1159,7 @@ export class Game {
       ],
     };
 
-    const tabs = [play, board, hand, after, build];
+    const tabs = [start, play, board, hand, after, build];
     return tabs.filter((tab) => tab.sections.length > 0);
   }
 

@@ -1724,3 +1724,89 @@ One thing tried and reverted inside the same pass: making the colour chips
 bigger for "breathing room". They were already the most compact thing on the
 screen, and the change made the crowding worse. Room comes from the rows that
 were fighting, not from the row that was behaving.
+
+### Session 20 — The ladder gets a bottom rung, and the world gets gradual
+
+Marc, playing: _"i always wait to pop no matter what it feels. also the game
+advances too quickly, is too easy. i want it to become easier gradually with
+relics, not at the start."_ And mid-session: _"also check for gradual formulas
+instead of constants for our distance, pop / tiles, shrine density, etc."_
+
+**The question, written before building:** which difficulty ramp makes run one
+feel earned without shrinking the maxed game — a steeper cost curve the shop
+buys back, poorer pops, a lower floor, or income graded by distance?
+
+**On the pop timing, a design decision first.** Asked the fork, Marc flipped
+it: _"maybe we always want the user to wait then. more points if you wait vs
+if you pop, but if you pop you can get small advantages or smthing."_ So
+waiting is not the bug — it is the intended score line, and popping early is
+supposed to buy tactical advantages (luck, steering). No stick was added. The
+open question is whether those advantages FEEL worth taking once the economy
+is tight, and that waits on the phone, deliberately after this rebalance
+rather than before it.
+
+**The sweep (40 seeds a rung, bank20/spender, shop rungs modeled as
+`applyProgress` would produce them):**
+
+| candidate                    | run 1            | maxed            |
+| ---------------------------- | ---------------- | ---------------- |
+| baseline (2026-08-16 floor)  | 166 pl · r14 · 7,795 | 237 · r16 · 23,265 |
+| A — buyable cost curve 22→30 | 117 · r12 · 3,450    | 237 · r16 · 23,265 |
+| B — poorer pops 3→2          | 108 · r10 · 3,007    | 237 · r16 · 23,265 |
+| C — floor further down       | 169 · r14 · 7,398    | 230 · r16 · 20,478 |
+| D — gradual formulas         | 184 · r15 · 7,496    | 248 · r18 · 23,201 |
+| **A+D, ramp 2 (shipped)**    | **123 · r12 · 3,338** | **248 · r18 · 23,201** |
+
+Two findings inside the table. **C is exhausted**: pushing the same floor
+dials further (caches 10, destinations 0.35) barely moved run one — that
+lever has nothing left. **D alone makes the game EASIER** — depth-graded
+income out-pays the sparse near-world — but it is the only candidate that
+grows REACH, which is the point of the game. So the shipped answer is the
+combination: A's steep curve makes run one lean, D's grading points the lean
+run outward. Marc delegated the pick to the harness ("sweep all three,
+harness picks"), and the harness picked the widest ladder: placements double
+run1→maxed, reach goes 12→18 where the flat world managed 14→16, points 7×.
+Ramp 4 was rejected for ramp 2 because it zeroed run one's median claims — a
+first run that never meets a cache is barren, not hard.
+
+**Shipped:**
+
+- `costRisesEvery` 30→22, and **STEADY PACE** in the shop: +2 a level, four
+  levels, the old 30 exactly at max. Last session rejected a steeper curve
+  because it sank the maxed ceiling; a buyable curve removes the objection —
+  the steepening IS the ladder now.
+- Three gradual dials, engine formulas with numbers in content, all neutral
+  at zero (and old saves' missing keys decode as zero-shaped `undefined`
+  behind `> 0` guards, so a pre-session run resumes under its own flat
+  economy): `cachePaysPerRing` (cache = 6 base + 4/ring; maxed RICHER WORLDS
+  base 18, so a ring-2 cache maxed pays the pre-rebalance 26 — the
+  restoration moved outward but stays literal, re-pinned in
+  `progress.test.ts`), `popTilesPerRing` (0.25/pop/ring), and
+  `destinationRampBlocks` (2 — density climbs from home to the horizon).
+- `cachePaysAt` exported from `rules.ts` so the payment, the claim toast, the
+  tap description and the beacon hint all say the same graded number — the
+  tallyWorth rule applied to caches.
+- The manual grew the gradient lines conditionally, and the harvest toast
+  prints `+N for the depth` only when depth actually paid, so the arithmetic
+  on screen still sums to the number on screen.
+- **A quick start** (Marc: the help has "too much words going on for not much
+  information"): a START tab, first and default — WHAT YOU SEE · WHAT YOU DO
+  · HOW YOU SCORE, three lines each, no NUMBERS fold. The stranger's tab;
+  everything it says is said properly in the tabs after.
+
+**Re-pinned honestly rather than loosened quietly:** the patience factor 2→1.5
+(the tighter curve compresses the gap; still 2.6× at 40 seeds) and seeker's
+"real run" floor from an absolute 100 placements to 60% of bank20's — every
+rebalance moves run length, and the claim was never about the number 100.
+Notable: bank40 now plays identically to bank20 — under the 22-curve a
+40-pocket never forms, which is the pressure doing its job.
+
+Full sweep clean: 15 policies × 200 seeds, 0 stalled, 0 capped, random dead
+at 24 placements, spender still ahead of bank20, seeker still the top
+claimer. 401 tests.
+
+**What waits on the phone:** does run one now feel like a floor instead of a
+ceiling; does STEADY PACE feel worth its 30 relics; do the far caches pull;
+and Marc's reframed pop question — are the pop advantages worth taking now
+that tiles are scarce? Gate B's twenty logged pops and the stranger test
+still lead the human follow-up.

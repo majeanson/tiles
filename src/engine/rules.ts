@@ -265,6 +265,15 @@ export const distanceMultiplierAt = (k: HexKey, t: Tuning): number =>
   1 + Math.floor(distance(parse(k), ORIGIN) / t.distanceStep);
 
 /**
+ * What a cache at this hex hands over: the base, plus the per-ring grade when
+ * the gradual dial is on. One function so the payment, the claim announcement
+ * and the tap description can never disagree about the number.
+ */
+export const cachePaysAt = (k: HexKey, t: Tuning): number =>
+  t.cachePays +
+  (t.cachePaysPerRing > 0 ? t.cachePaysPerRing * (distanceMultiplierAt(k, t) - 1) : 0);
+
+/**
  * The points multiplier a harvest of exactly these tiles earns.
  *
  * How far from home the pocket sits: `1 + floor(mean distance / distanceStep)`.
@@ -334,6 +343,10 @@ export function harvestValue(
 
   const counted = t.harvestSizeCap > 0 ? Math.min(pops.length, t.harvestSizeCap) : pops.length;
   const sizeBonus = 1 + t.harvestSizeBonus * Math.max(0, counted - 1);
+  const mult = harvestMultiplier(state, pops);
+  // The gradual dial: a pocket cashed farther out pays extra tiles per pop per
+  // ring, so survival income grows with depth instead of being flat everywhere.
+  if (t.popTilesPerRing > 0) tiles += Math.floor(pops.length * t.popTilesPerRing * (mult - 1));
   // The bounty multiplies the one scoring channel rather than adding another.
   // It is priced into the button so the reason to press it is on the button.
   const questPays = pops.length > 0 && questMet(state, pops);
@@ -343,7 +356,7 @@ export function harvestValue(
     keys: pops,
     count: pops.length,
     tiles,
-    points: Math.floor(sumWorth * sizeBonus * harvestMultiplier(state, pops) * bounty),
+    points: Math.floor(sumWorth * sizeBonus * mult * bounty),
     questPays,
     treasure: treasureFor(pops.length, t),
   };

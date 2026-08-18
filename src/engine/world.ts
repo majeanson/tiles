@@ -67,7 +67,13 @@ export function blockDestination(
   if (t.destinationEvery <= 0 || t.destinationChance <= 0) return null;
 
   const roll = hashAt(seed ^ 0x2c9277b5, bq, br);
-  if (roll >= t.destinationChance) return null;
+  // The gradual dial: density climbs from nothing at home to the full chance
+  // over `destinationRampBlocks` blocks, so the near world is sparse and the
+  // horizon is where the lights are. Off (0) leaves the chance flat.
+  const ramp =
+    t.destinationRampBlocks > 0 ? Math.min(1, hexDistance(bq, br) / t.destinationRampBlocks) : 1;
+  const chance = t.destinationChance * ramp;
+  if (roll >= chance) return null;
 
   const spot = hashAt(seed ^ 0x6b79a3d1, bq, br);
   const q = bq * size + Math.floor((spot * size * size) % size);
@@ -77,7 +83,7 @@ export function blockDestination(
   // 40% cache, 35% site, 17% territory, 8% shrine — caches carry survival so
   // they lead, and shrines are rare because an unlock you meet every run is
   // not an unlock. Reward kinds ride the presence roll.
-  const kind = roll / t.destinationChance;
+  const kind = roll / chance;
   const reward: LandmarkReward =
     kind < 0.4 ? 'cache' : kind < 0.75 ? 'site' : kind < 0.92 ? 'territory' : 'shrine';
 

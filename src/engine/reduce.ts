@@ -2,6 +2,7 @@ import { COLOUR_WEIGHTS, TUNING, type Colour, type Tuning } from '@content/tunin
 import { distance, key, neighbourKeys, parse, type HexKey } from './hex';
 import { rngNext, rngWeighted, streamsFrom, type RngStream, type RngStreams } from './rng';
 import {
+  cachePaysAt,
   canAfford,
   canPlaceAt,
   costOf,
@@ -421,7 +422,9 @@ function place(state: GameState, hex: HexKey): GameState {
       // asks you to give up nothing.
       relics += t.claimRelics;
 
-      if (c.reward === 'cache') tiles += t.cachePays;
+      // Graded by distance since 2026-08-18: the walk that found a cache is
+      // priced into what it holds. `cachePaysAt` so the UI says the same.
+      if (c.reward === 'cache') tiles += cachePaysAt(n, t);
       if (c.reward === 'site') {
         points += t.sitePays * distanceMultiplierAt(n, t);
         // A site also opens its bounty, if quests are on and none is in play.

@@ -53,6 +53,20 @@ describe('reaching a destination', () => {
     expect(next.tiles).toBe(before - 1 + state.tuning.cachePays);
   });
 
+  // The gradual dial (2026-08-18): a cache met farther out holds more. At
+  // distanceStep 1 the landmark at distance 2 sits two rings out, so it pays
+  // the flat price plus two rings' worth on top.
+  it('pays a cache extra per ring when cachePaysPerRing is on', () => {
+    const graded: Tuning = { ...CALM, distanceStep: 1, cachePaysPerRing: 5 };
+    const { state, landmark } = withLandmark('cache', graded);
+    const before = state.tiles;
+    const next = reduce(state, { type: 'PLACE', hex: key(1, 0) });
+
+    const rings = distanceMultiplierAt(landmark, graded) - 1;
+    expect(rings).toBe(2);
+    expect(next.tiles).toBe(before - 1 + graded.cachePays + 5 * rings);
+  });
+
   it('pays a site through the distance multiplier at its hex', () => {
     const { state, landmark } = withLandmark('site');
     const next = reduce(state, { type: 'PLACE', hex: key(1, 0) });

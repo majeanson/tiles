@@ -80,6 +80,30 @@ export type Tuning = {
   readonly beaconHorizon: number;
 
   /**
+   * Gradual formulas (Marc, 2026-08-18: "gradual formulas instead of
+   * constants"). Each turns a flat constant into a curve over distance from
+   * home, so the world can be lean at the doorstep and rich in the deep — a
+   * difficulty ramp that lives inside the run instead of only between runs.
+   * All zeros = the constants stay flat, which is every earlier economy, and
+   * what a save written before these existed decodes to.
+   *
+   * `cachePaysPerRing` — extra tiles a cache pays per distance ring (rule 6's
+   * rings: floor(distance / distanceStep)). A cache met three rings out is
+   * worth the walk; one beside home is a snack.
+   *
+   * `popTilesPerRing` — extra tiles a harvest pays per popped tile per ring
+   * beyond the first, floored once per harvest. Survival income itself grows
+   * with depth, so the lean early game is paid back by pushing outward.
+   *
+   * `destinationRampBlocks` — blocks of the plane over which destination
+   * density climbs from nothing at home to the full `destinationChance`.
+   * Near home the world is sparse; the horizon is where the lights are.
+   */
+  readonly cachePaysPerRing: number;
+  readonly popTilesPerRing: number;
+  readonly destinationRampBlocks: number;
+
+  /**
    * Rarity on the draft (P3b's second half, shaped by Marc 2026-08-13): every
    * drawn tile rolls common / magic / unique on its own stream, so the bounded
    * game's sequences never move. Magic is WILD — it matches every neighbouring
@@ -461,6 +485,10 @@ export const BARE_TUNING: Tuning = {
   territoryRadius: 2,
   beaconHorizon: 8,
 
+  cachePaysPerRing: 0,
+  popTilesPerRing: 0,
+  destinationRampBlocks: 0,
+
   questNeed: 0,
   questRadius: 6,
   questBonus: 3,
@@ -729,7 +757,16 @@ export const TUNING: Tuning = {
   // a good run near 200 placements — about twelve minutes — with careless
   // play dead at 111 and random play at 32, which is the skill spread Gate C
   // asks for.
-  costRisesEvery: 30,
+  //
+  // 2026-08-18 (Marc: "too easy, I want it to become easier gradually with
+  // relics, not at the start"): the curve came down to 22 — and became the
+  // thing STEADY PACE buys back, +2 a level to the old 30. Last session's
+  // sweep rejected a steeper curve because it sank the maxed ceiling; making
+  // the curve itself purchasable removes that objection, and the harness
+  // agrees: run one falls to ~121 placements · reach 12 · ~3,000 pts while
+  // maxed climbs to ~248 · 18 · ~23,000 — the widest ladder of every
+  // candidate swept (see LOG, 2026-08-18).
+  costRisesEvery: 22,
 
   /**
    * RUN ONE IS SMALLER THAN IT WAS (Marc, 2026-08-16, mid-run at 166 tiles on
@@ -760,6 +797,31 @@ export const TUNING: Tuning = {
    * toning down, it is a different, smaller game.
    */
   startingTiles: 22,
-  cachePays: 14,
   destinationChance: 0.45,
+
+  /**
+   * THE WORLD IS GRADUAL NOW (Marc, 2026-08-18: "check for gradual formulas
+   * instead of constants for our distance, pop/tiles, shrine density").
+   *
+   * Three constants became curves over distance from home, so the run is lean
+   * at the doorstep and rich in the deep — the difficulty ramp lives inside
+   * the run as well as between runs:
+   *
+   * - a cache pays 6 at the doorstep and +4 per ring out, so the cache worth
+   *   walking to is the far one. RICHER WORLDS still raises the base +3 a
+   *   level, so a maxed ring-2 cache pays 26 — the pre-rebalance number.
+   * - a harvest pays a quarter-tile extra per pop per ring, so survival
+   *   income grows with depth instead of being flat everywhere.
+   * - destination density ramps in over 2 blocks, so the near world is
+   *   sparse but run one still meets its first claim (~1 median, swept).
+   *
+   * Swept together with the 22-curve at 40 seeds a rung: no stalls, skill
+   * spread intact (random dead at 23 placements, pop-early at 102, competent
+   * at 121), and reach — the point of the game — grows 12 → 18 across the
+   * shop ladder where the flat world managed 14 → 16.
+   */
+  cachePays: 6,
+  cachePaysPerRing: 4,
+  popTilesPerRing: 0.25,
+  destinationRampBlocks: 2,
 };

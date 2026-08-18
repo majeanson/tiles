@@ -245,6 +245,24 @@ describe('harvest value', () => {
     expect(many.points / one.points).toBeGreaterThan(many.count);
   });
 
+  // The gradual dial (2026-08-18): survival income grows with depth. The same
+  // pocket pays its flat price at home and extra tiles per pop per ring out.
+  it('pays extra tiles per ring when popTilesPerRing is on', () => {
+    const cells = blankMap(disc(10));
+    const far = key(8, 0);
+    cells[far] = tile('green');
+    const around = [key(9, 0), key(9, -1), key(8, -1), key(7, 0), key(7, 1), key(8, 1)];
+    for (const k of around) cells[k] = tile('green');
+
+    const flat = harvestValue({ ...newRun(1, T), cells }, far);
+    const graded = harvestValue({ ...newRun(1, tuned({ popTilesPerRing: 2 })), cells }, far);
+
+    // Distance 8 at distanceStep 4 is ring 3: one pop, 2 extra tiles a ring.
+    expect(flat.count).toBe(1);
+    expect(graded.tiles).toBe(flat.tiles + Math.floor(1 * 2 * 2));
+    expect(graded.points).toBe(flat.points);
+  });
+
   it('pays nothing when nothing is ripe', () => {
     const cells = blankMap(disc(2));
     cells[key(0, 0)] = tile('green');
