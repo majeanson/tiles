@@ -533,6 +533,21 @@ button.quiet {
   max-width: 320px;
 }
 
+/* The shop's door on the run screen, and the way back. The door wears the
+   accent when anything inside is affordable — the same advertising contract
+   the luck fold keeps in-run. */
+#end-shop-open,
+#end-shop-back {
+  width: 100%;
+  max-width: 320px;
+}
+
+#end-shop-open.live {
+  border-color: var(--accent, #d7b45a);
+  color: var(--accent, #d7b45a);
+  opacity: 1;
+}
+
 #themes {
   flex: 0 0 auto;
   display: flex;

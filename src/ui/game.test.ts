@@ -429,14 +429,9 @@ describe('the camera, and staying oriented', () => {
     expect(ctx.el.helpPanel.hidden).toBe(false);
 
     const tabs = [...ctx.el.helpPanel.querySelectorAll('button.help-tab')] as HTMLButtonElement[];
-    expect(tabs.map((tab) => tab.textContent)).toEqual([
-      'START',
-      'PLAY',
-      'BOARD',
-      'HAND',
-      'AFTER',
-      'BUILD',
-    ]);
+    // Four tabs since 2026-08-18 (Marc: "less sections, more info per words
+    // read") — BOARD merged into PLAY, BUILD into AFTER.
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['START', 'PLAY', 'HAND', 'AFTER']);
 
     // Exactly one panel is showing, and it is the first tab's — the quick
     // start, which is the tab a stranger reads before their first placement.
@@ -1205,8 +1200,24 @@ describe('the shelf', () => {
       },
     });
     ctx.game.start();
+    // The shop lives behind its own door since the end/spend split — the
+    // shelf is inside it, so these tests walk through first.
+    (ctx.el.end.querySelector('#end-shop-open') as HTMLButtonElement).click();
     return { ...ctx, current: () => progress };
   };
+
+  it('keeps the run screen and the shop apart, one door between them', () => {
+    const ctx = shelf([], []);
+    // We are in the shop (the helper opened the door): rows, no epitaph.
+    expect(ctx.el.end.querySelector('.shop-row')).not.toBeNull();
+    expect(ctx.el.end.querySelector('.end-epitaph')).toBeNull();
+
+    (ctx.el.end.querySelector('#end-shop-back') as HTMLButtonElement).click();
+    // Back on the run screen: the picture, the door, and no shop rows.
+    expect(ctx.el.end.querySelector('.end-epitaph')).not.toBeNull();
+    expect(ctx.el.end.querySelector('.shop-row')).toBeNull();
+    expect(ctx.el.end.querySelector('#end-shop-open')?.textContent).toMatch(/THE SHOP · \d+/);
+  });
 
   it('shows owned perks by name and the rest as UNDISCOVERED, unnamed', () => {
     const ctx = shelf(['stonewalker'], ['stonewalker']);
