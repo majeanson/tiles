@@ -18,7 +18,7 @@ CI green, then mark it here and start the next.
   prove the distance multiplier cannot be beelined from a far spawn before
   any UI exists.
 
-## Stage 1 — correctness (STATUS: RUNNING, agent launched this session)
+## Stage 1 — correctness (STATUS: DONE, commit `1e09a89`)
 
 Seam/bug fixes from the 2026-08-18 triple audit: the find-grant eaten by
 `#claimNote`'s early return · stale find-toast copy ("end screen" → THE
@@ -32,7 +32,13 @@ finds/perks · close the find re-farm (WorldMemory.finds) · STATUS.md
 checkpoint rewrite · CLAUDE.md flag-rule amendment · doc/test comment
 sweep · call or delete `startingPerk`.
 
-## Stage 2 — UI/UX (STATUS: TODO — launch on Sonnet when stage 1 lands)
+All eighteen items landed in `1e09a89` ("stage 1: the audit closes — every
+claim counted, every find spent once"): 458 tests (was 451), typecheck/
+lint/format clean, `pnpm sim` byte-identical to the last balance sweep (0
+stalled, 0 capped, 200 seeds × 15 policies). Full account in `LOG.md`'s
+2026-08-18 addendum. Pushed; CI green on `main`.
+
+## Stage 2 — UI/UX (STATUS: TODO — next up, on Sonnet)
 
 The audit's big five, one coherent pass, plus the small wins:
 
