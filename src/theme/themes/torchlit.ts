@@ -130,8 +130,17 @@ export const TORCHLIT: Theme = {
   // Lifted 2026-08-15: the dark band was 0.007 above the background in L* —
   // under a torch, blocked ground vanished into the dark instead of blocking.
   // Up a step, band contrast kept, pinned in `theme.test.ts`.
+  //
+  // Quieted 2026-08-18: 4px bands at phone scale read as a barber pole, not
+  // as rubble. Wider (10, was 4) means a single hex shows at most one seam
+  // instead of several; the two band colours were also pulled closer
+  // together (was 0x1b1512, a 0.043 L* gap from the fill) so the texture
+  // reads as a near-solid dark mass with a whisper of banding rather than
+  // alternating stripes. Both colours still clear `MIN_WALL_CLEARANCE`
+  // comfortably (0.093 and 0.074 above the background) — this is a contrast
+  // change within that floor, not a relaxation of it.
   wall: surface(0x261d16, {
-    pattern: { kind: 'bands', angleDeg: 135, a: 0x261d16, b: 0x1b1512, width: 4 },
+    pattern: { kind: 'bands', angleDeg: 135, a: 0x261d16, b: 0x221912, width: 10 },
     asset: 'terrain.wall',
   }),
 
