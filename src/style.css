@@ -145,12 +145,17 @@ body {
 
 /* ------------------------------------------------------------------ camera */
 
-/* The camera stack and the manual, floating over the canvas top-right. Small
-   on purpose — chrome over the board must never read as part of the board. */
+/* Bottom-right — a thumb's natural reach holding the phone one-handed
+   (Stage 2, 2026-08-18: it lived top-right before, where a thumb has to
+   stretch for it). Small on purpose either way — chrome over the board must
+   never read as part of the board. The toast (below, z-index 2) shares this
+   corner and sits above it while a claim is showing — an accepted trade,
+   since the toast is transient and dismisses on the very tap that would
+   otherwise land on the camera. */
 #camera {
   position: absolute;
-  top: 8px;
   right: 8px;
+  bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -166,7 +171,7 @@ body {
   opacity: 0.9;
 }
 
-#camera #zoom-fit {
+#camera-toggle {
   font-size: 0.5625rem;
 }
 
@@ -323,47 +328,6 @@ body {
   color: var(--ink-faint, #767d8d);
 }
 
-/* ------------------------------------------------------------------ colours */
-
-/* The colour lens: four small chips, each wearing its colour and its standing
-   worth. Pressed = that colour is spotlit on the board. */
-#colours {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  padding: 2px 10px 0;
-}
-
-.chip {
-  flex: 0 1 auto;
-  min-height: 30px;
-  min-width: 64px;
-  padding: 0 8px;
-  font-size: 0.625rem;
-  color: var(--ink, #e8ecf4);
-  text-shadow: 0 1px 2px rgb(0 0 0 / 65%);
-  border-radius: 3px;
-}
-
-.chip[data-colour='green'] {
-  background: var(--tile-green, #3f7d55);
-}
-.chip[data-colour='yellow'] {
-  background: var(--tile-yellow, #a8912f);
-}
-.chip[data-colour='red'] {
-  background: var(--tile-red, #9c4340);
-}
-.chip[data-colour='blue'] {
-  background: var(--tile-blue, #304a70);
-}
-
-.chip[aria-pressed='true'] {
-  border-color: var(--panel-edge-active, #e8ecf4);
-  box-shadow: 0 0 0 1px var(--panel-edge-active, #e8ecf4);
-}
-
 /* ------------------------------------------------------------------ controls */
 
 #controls {
@@ -477,10 +441,21 @@ button.quiet {
   pointer-events: none;
 }
 
+/* Selected: which card would place next. Strengthened (Stage 2,
+   2026-08-18): a 1px ring read as barely-there beside everything else
+   competing for attention in the hand. */
 .tile[aria-pressed='true'] {
   border-color: var(--panel-edge-active, #e8ecf4);
-  box-shadow: 0 0 0 1px var(--panel-edge-active, #e8ecf4);
-  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px var(--panel-edge-active, #e8ecf4);
+  transform: translateY(-3px);
+}
+
+/* Spotlit: long-pressed (or right-clicked) to study this colour on the
+   board — the accent, not the selection ring, because a card can be both
+   selected AND spotlit at once and the two states have to read as
+   different questions. */
+.tile.spotlit {
+  box-shadow: 0 0 0 2px var(--accent, #d7b45a);
 }
 
 /*
@@ -507,8 +482,28 @@ button.quiet {
   color: var(--ink-dim, #8a91a0);
 }
 
-/* The stash: one more card, dashed while empty so it reads as a place to put
-   something rather than a thing to take. */
+/* The stash: one more card, behind a divider and narrower than a draft card
+   (Stage 2, 2026-08-18: "bottom-third reclaim") — it is not a fourth choice,
+   it is a place to put one aside, and the row should read that difference
+   at a glance rather than four equal-width cards in an unbroken line. */
+.tile.hold {
+  position: relative;
+  max-width: 64px;
+  margin-left: 10px;
+}
+
+.tile.hold::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--panel-edge, #3a4150);
+}
+
+/* Dashed while empty, so it reads as a place to put something rather than a
+   thing to take. */
 .tile.hold:not([data-colour]) {
   border-style: dashed;
   color: var(--ink-faint, #767d8d);
@@ -1098,13 +1093,13 @@ button.help-tab[data-on='true'] {
 /* --------------------------------------------------- hit areas, not sizes
 
    44px is the rule (stated above the button block), and these controls are
-   under it ON PURPOSE — the chips were grown once and reverted because it
-   worsened the crowding ("hierarchy, not smaller things"), and the camera
-   stack is small so chrome never reads as board. So the VISUAL size stays
-   and the touch target grows invisibly: a transparent ::before, centred on
-   the button, at least 44px each way. A press on the pseudo-element is a
-   press on the button; nothing on screen moves by a pixel. */
-.chip,
+   under it ON PURPOSE — the old standalone colour chips were grown once and
+   reverted because it worsened the crowding ("hierarchy, not smaller
+   things"), and the camera stack is small so chrome never reads as board.
+   So the VISUAL size stays and the touch target grows invisibly: a
+   transparent ::before, centred on the button, at least 44px each way. A
+   press on the pseudo-element is a press on the button; nothing on screen
+   moves by a pixel. */
 .flag-toggle,
 #camera button,
 #purse-toggle,
@@ -1113,7 +1108,6 @@ button.help-tab[data-on='true'] {
   position: relative;
 }
 
-.chip::before,
 .flag-toggle::before,
 #camera button::before,
 #purse-toggle::before,

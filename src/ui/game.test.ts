@@ -25,10 +25,11 @@ class StubRenderer implements Renderer {
   nextHit: HexKey | null = null;
 
   /** Camera calls, recorded. The stub clamps like the real one so the
-      buttons' disabled logic can be exercised without a canvas. */
+      toggle's own logic (FIT ⇄ HERE) can be exercised without a canvas. */
   zoom = 1;
   pans: [number, number][] = [];
   resets = 0;
+  centered: HexKey[] = [];
 
   mount(): Promise<void> {
     return Promise.resolve();
@@ -44,6 +45,9 @@ class StubRenderer implements Renderer {
   }
   panBy(dx: number, dy: number): void {
     this.pans.push([dx, dy]);
+  }
+  centerOn(hex: HexKey): void {
+    this.centered.push(hex);
   }
   resetCamera(): void {
     this.zoom = 1;
@@ -76,9 +80,7 @@ function build(
     <div id="board">
       <div id="camera">
         <button id="help">?</button>
-        <button id="zoom-in">+</button>
-        <button id="zoom-out">−</button>
-        <button id="zoom-fit">FIT</button>
+        <button id="camera-toggle">FIT</button>
       </div>
       <div id="toast" hidden></div>
       <div id="help-panel" hidden>
@@ -86,7 +88,6 @@ function build(
         <div id="help-meta"></div>
       </div>
     </div>
-    <div id="colours"></div>
     <p id="hint" hidden></p>
     <div id="controls"><div id="draft"></div></div>
     <button id="harvest-tiles"></button>
@@ -107,7 +108,6 @@ function build(
     board: pick('board'),
     stats: pick('stats'),
     hint: pick('hint'),
-    colours: pick('colours'),
     draft: pick('draft'),
     spends: pick('spends'),
     purse: pick('purse'),
@@ -119,9 +119,7 @@ function build(
     harvestTreasure: pick<HTMLButtonElement>('harvest-treasure'),
     harvestBurn: pick<HTMLButtonElement>('harvest-burn'),
     end: pick('end'),
-    zoomIn: pick<HTMLButtonElement>('zoom-in'),
-    zoomOut: pick<HTMLButtonElement>('zoom-out'),
-    zoomFit: pick<HTMLButtonElement>('zoom-fit'),
+    cameraToggle: pick<HTMLButtonElement>('camera-toggle'),
     help: pick<HTMLButtonElement>('help'),
     helpPanel: pick('help-panel'),
     helpManual: pick('help-manual'),
@@ -345,6 +343,62 @@ describe('the endless world, under a thumb', () => {
     ctx.el.harvestTiles.click();
     expect(ctx.game.state.cells[key(0, 0)]?.kind).toBe('stone');
   });
+
+  // Pan-to-pocket (Stage 2, 2026-08-18): pressing POP with nothing tapped
+  // prices the DEFAULT (biggest) pocket, which could be anywhere on a grown
+  // board — the camera has to show what it is about to pop, not leave the
+  // player finding out after the fact.
+  it('pans the camera to the pocket before popping it', () => {
+    ripenTheSeed();
+    expect(ctx.renderer.centered).toHaveLength(0);
+    ctx.el.harvestTiles.click();
+    expect(ctx.renderer.centered).toEqual([key(0, 0)]);
+  });
+});
+
+describe('the hint line, cut to one clause', () => {
+  // The destination signpost and the rare-tile odds used to live on the
+  // persistent hint line alongside the guide; both moved off it (Stage 2,
+  // 2026-08-18) — the signpost to a toast on change, the odds to the purse.
+  it('never carries the destination signpost, even with one to show', () => {
+    const base = newRun(7, TUNING);
+    const near = key(2, 0);
+    const ctx = build(1, TUNING, {
+      resume: {
+        ...base,
+        cells: { ...base.cells, [near]: { kind: 'landmark', reward: 'cache', claimed: false } },
+      },
+    });
+    ctx.game.start();
+    expect(ctx.el.hint.textContent).not.toMatch(/glows/);
+    // No toast either: the FIRST render primes silently rather than
+    // greeting a resumed run with a toast about ground it already knew.
+    expect(ctx.el.toast.hidden).toBe(true);
+  });
+
+  it('never carries the rare-tile odds', () => {
+    const ctx = build(7, TUNING);
+    ctx.game.start();
+    expect(ctx.el.hint.textContent).not.toMatch(/magic .+ unique/);
+  });
+
+  // A claim's own toast always wins the beat it happens on — the signpost
+  // must never clobber it.
+  it('lets a claim toast win over the signpost on the same placement', () => {
+    const base = newRun(7, TUNING);
+    const near = key(2, 0);
+    const ctx = build(1, TUNING, {
+      resume: {
+        ...base,
+        cells: { ...base.cells, [near]: { kind: 'landmark', reward: 'cache', claimed: false } },
+      },
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toMatch(/CACHE CLAIMED/);
+    expect(ctx.el.toast.textContent).not.toMatch(/glows/);
+  });
 });
 
 describe('the camera, and staying oriented', () => {
@@ -392,8 +446,8 @@ describe('the camera, and staying oriented', () => {
     // there must not be captured as a gesture or lifted as a placement —
     // that is exactly how every board-mounted button died on desktop.
     ctx.renderer.nextHit = key(1, 0);
-    pointer(ctx.el.zoomIn, 'pointerdown', 5, 5);
-    pointer(ctx.el.zoomIn, 'pointerup', 5, 5);
+    pointer(ctx.el.cameraToggle, 'pointerdown', 5, 5);
+    pointer(ctx.el.cameraToggle, 'pointerup', 5, 5);
     expect(ctx.game.state.placements).toBe(0);
 
     ctx.el.help.click();
@@ -410,17 +464,23 @@ describe('the camera, and staying oriented', () => {
     expect(ctx.renderer.zoom).toBe(1);
   });
 
-  it('drives the camera from the buttons, with FIT the way back', () => {
-    expect(ctx.el.zoomOut.disabled).toBe(true);
+  it('is a two-state toggle: HERE jumps in on the torch, FIT is the way back', () => {
+    // At fit, the label names the destination a tap goes to — HERE — not
+    // the state the camera is currently in.
+    expect(ctx.el.cameraToggle.textContent).toBe('HERE');
 
-    ctx.el.zoomIn.click();
+    ctx.el.cameraToggle.click();
     expect(ctx.renderer.zoom).toBeGreaterThan(1);
-    expect(ctx.el.zoomOut.disabled).toBe(false);
+    // Centred on the torch — `state.lastPlaced`, or the origin before the
+    // first placement — the same point the light already centres on.
+    expect(ctx.renderer.centered).toHaveLength(1);
+    expect(ctx.renderer.centered[0]).toBe(ctx.game.state.lastPlaced ?? key(0, 0));
+    expect(ctx.el.cameraToggle.textContent).toBe('FIT');
 
-    ctx.el.zoomFit.click();
+    ctx.el.cameraToggle.click();
     expect(ctx.renderer.zoom).toBe(1);
     expect(ctx.renderer.resets).toBe(1);
-    expect(ctx.el.zoomOut.disabled).toBe(true);
+    expect(ctx.el.cameraToggle.textContent).toBe('HERE');
   });
 
   it('opens the manual as tabs, one panel at a time, and closes on a tap', () => {
@@ -495,39 +555,76 @@ describe('the camera, and staying oriented', () => {
     expect(text).toMatch(/In play: .*destinations/);
   });
 
-  it('shows a chip per colour, and a held chip spotlights and explains', () => {
-    const chips = [...ctx.el.colours.children] as HTMLButtonElement[];
-    expect(chips).toHaveLength(4);
+  // The footer stamp moved behind ?ff=debug.overlay (Stage 2, 2026-08-18) —
+  // THIS BUILD keeps "which build is this" answerable regardless of it.
+  it('states the build sha in the manual, whether or not the footer shows it', () => {
+    const withSha = build(4, TUNING, { buildSha: 'abc1234' });
+    withSha.game.start();
+    withSha.el.help.click();
+    expect(withSha.el.helpPanel.textContent).toContain('abc1234');
 
-    // Grow the seed tile a same-coloured neighbour so one colour has worth.
+    const withoutSha = build(4, TUNING);
+    withoutSha.game.start();
+    withoutSha.el.help.click();
+    expect(withoutSha.el.helpPanel.textContent).toMatch(/unlabelled build/);
+  });
+
+  // The colour lens folded off its own row and into a long-press on the
+  // draft card wearing that colour (2026-08-18, "bottom-third reclaim") —
+  // `contextmenu` is the ONE native event long-press, right-click AND the
+  // keyboard's own context-menu key all fire, so the gesture is free of a
+  // hand-rolled timer and free for a keyboard user at the same time.
+  it('long-presses a draft card to spotlight its colour and explain it', () => {
+    // A card of the SEED's own colour, forced rather than hoped for — the
+    // draft is random, and the point of the test is the gesture, not
+    // whether a seed happened to draw a matching card.
     const seed = ctx.game.state.cells[key(0, 0)];
     if (seed?.kind !== 'tile') throw new Error('no seed');
     const colour = seed.colour;
+    const forced = build(4, TUNING, {
+      resume: {
+        ...ctx.game.state,
+        draft: [{ ...ctx.game.state.draft[0]!, colour }, ...ctx.game.state.draft.slice(1)],
+      },
+    });
+    forced.game.start();
 
-    const chip = chips.find((c) => c.dataset['colour'] === colour);
-    if (chip === undefined) throw new Error('no chip for the seed colour');
+    // `#renderDraft` rebuilds the row wholesale on every render (comment on
+    // the method: rebuilt rather than diffed), so the card has to be
+    // re-queried after each press — the DOM node the first press fired on
+    // no longer exists once the spotlight re-renders it.
+    const firstCard = forced.el.draft.children[0] as HTMLButtonElement;
+    expect(firstCard.dataset['colour']).toBe(colour);
 
-    chip.click();
-    expect(chip.getAttribute('aria-pressed')).toBe('false'); // rebuilt below
-    const pressed = [...ctx.el.colours.children].find(
-      (c) => c.getAttribute('aria-pressed') === 'true',
-    );
-    expect(pressed).toBeDefined();
+    firstCard.dispatchEvent(new window.MouseEvent('contextmenu', { cancelable: true }));
+    const spotlit = forced.el.draft.children[0] as HTMLButtonElement;
+    expect(spotlit.classList.contains('spotlit')).toBe(true);
     // The hint line carries the calculation, in the theme's word for it —
     // and each colour's OWN power, so no two colours read the same.
-    expect(ctx.el.hint.textContent).toMatch(/standing/);
-    expect(ctx.el.hint.textContent).toMatch(/worth × pocket size × distance/);
-    expect(ctx.el.hint.textContent).toMatch(/crowds|company|ash|tide/);
+    expect(forced.el.hint.textContent).toMatch(/standing/);
+    expect(forced.el.hint.textContent).toMatch(/worth × pocket size × distance/);
+    expect(forced.el.hint.textContent).toMatch(/crowds|company|ash|tide/);
 
     // Other-coloured tiles dim on the board; the studied colour does not.
-    const drawn = ctx.renderer.last.cells.filter((c) => c.kind === 'tile');
+    const drawn = forced.renderer.last.cells.filter((c) => c.kind === 'tile');
     for (const cell of drawn) {
       expect(cell.dimmed).toBe(cell.colour !== colour);
     }
 
-    // Tapping the pressed chip again lets go.
-    (pressed as HTMLButtonElement).click();
-    expect(ctx.renderer.last.cells.some((c) => c.dimmed)).toBe(false);
+    // A second long-press on the same (re-rendered) card lets go.
+    spotlit.dispatchEvent(new window.MouseEvent('contextmenu', { cancelable: true }));
+    const released = forced.el.draft.children[0] as HTMLButtonElement;
+    expect(released.classList.contains('spotlit')).toBe(false);
+    expect(forced.renderer.last.cells.some((c) => c.dimmed)).toBe(false);
+  });
+
+  // The long-press does not steal the ordinary tap: `contextmenu` and
+  // `click` are different events, and a normal press must still select.
+  it('still selects the card on an ordinary tap, long-press or not', () => {
+    const card = ctx.el.draft.children[0] as HTMLButtonElement;
+    card.dispatchEvent(new window.MouseEvent('contextmenu', { cancelable: true }));
+    card.click();
+    expect(ctx.game.state.selected).toBe(0);
   });
 
   it('always says what to do now, and hides the harvest until it exists', () => {
@@ -926,14 +1023,11 @@ describe('a stranger arriving', () => {
   it('keeps every control reachable by name, for a screen reader', () => {
     const ctx = build(4, TUNING);
     ctx.game.start();
-    for (const el of [ctx.el.help, ctx.el.zoomIn, ctx.el.zoomOut, ctx.el.zoomFit]) {
+    for (const el of [ctx.el.help, ctx.el.cameraToggle]) {
       expect(el.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
     }
     for (const card of [...ctx.el.draft.children]) {
       expect(card.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
-    }
-    for (const chip of [...ctx.el.colours.children]) {
-      expect(chip.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
     }
   });
 });
@@ -1283,6 +1377,16 @@ describe('the purse, folded', () => {
     const { toggle } = shop();
     const cheapest = Math.min(TUNING.luckRerollCost, TUNING.luckSteerCost, TUNING.luckForgeCost);
     expect(toggle.textContent).toContain(String(cheapest));
+  });
+
+  // The odds moved here from the hint line (Stage 2, 2026-08-18) — closed
+  // only, since open already shows the priced spends themselves.
+  it('carries the rare-tile odds when closed, and steps aside when open', () => {
+    const { ctx, toggle } = shop();
+    expect(toggle.textContent).toMatch(/magic .+ unique/);
+    toggle.click();
+    expect(toggle.textContent).not.toMatch(/magic/);
+    expect(ctx.el.spends.hidden).toBe(false);
   });
 });
 

@@ -74,14 +74,16 @@
         <header id="stats"></header>
 
         <div id="board">
-          <!-- The camera, floating over the canvas. Zoom is buttons-first
-             (pinch also works): unambiguous on a phone, and no gesture ever
-             fights tap-to-place. -->
+          <!-- The camera, floating over the canvas, bottom-right — a thumb's
+               natural reach holding the phone one-handed. One discrete
+               control (Stage 2, 2026-08-18): pinch and drag already do
+               continuous zoom and pan, so FIT/+/− became one FIT ⇄ HERE
+               toggle. Its label and aria-label are written by the game
+               (Game#syncCamera) because they name where a tap GOES, not a
+               fixed word. -->
           <div id="camera">
             <button id="help" type="button" aria-label="How to play">?</button>
-            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
-            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
-            <button id="zoom-fit" type="button" aria-label="Show everything">FIT</button>
+            <button id="camera-toggle" type="button">FIT</button>
           </div>
           <!-- What just happened, or what the glyph you tapped does. Over the
              board, glyph first, gone on a tap. aria-live so a screen reader
@@ -89,14 +91,11 @@
           <div id="toast" aria-live="polite" hidden></div>
         </div>
 
-        <!-- The colour lens: one chip per colour with its standing worth — the
-           number a points harvest sums. Tap to spotlight that colour on the
-           board and see the calculation in the hint line. -->
-        <div id="colours"></div>
-
-        <!-- The reorientation line: what to do now, the nearest unclaimed
-           destination, the current odds — or the held-down chip's numbers.
-           aria-live for the same reason as the toast. -->
+        <!-- The reorientation line: what to do now, ONE clause (Stage 2,
+             2026-08-18) — or a long-pressed draft card's calculation. The
+             destination signpost moved to the toast (announced on change);
+             the rare-tile odds moved onto the purse toggle, below. aria-live
+             for the same reason as the toast. -->
         <p id="hint" aria-live="polite" hidden></p>
 
         <!-- Both payouts sit on screen with their real numbers at all times. The

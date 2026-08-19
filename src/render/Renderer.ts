@@ -116,6 +116,13 @@ export interface Renderer {
   zoomBy(factor: number): void;
   panBy(dx: number, dy: number): void;
   resetCamera(): void;
+  /**
+   * Pan (only — zoom is untouched) so `hex` sits at the centre of the
+   * screen. The HERE half of the FIT ⇄ HERE toggle and pan-to-pocket both
+   * ride this: a jump to a known point rather than a step in a direction.
+   * A no-op before anything has ever been drawn.
+   */
+  centerOn(hex: HexKey): void;
   /** Current zoom, 1 = fit. For the buttons' disabled states. */
   zoomLevel(): number;
 

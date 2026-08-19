@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from 'pixi.js';
-import { key, type HexKey } from '@engine/hex';
+import { key, parse, type HexKey } from '@engine/hex';
 import {
   BAND_LIFT,
   LANDMARK_GLYPH,
@@ -110,6 +110,13 @@ export class PixiRenderer implements Renderer {
   #zoom = 1;
   /** The fitted hex size from the last draw — what the zoom ceiling is in. */
   #fitSize = 0;
+  /**
+   * The un-zoomed fit (extent + size) from the last draw where it was
+   * actually recomputed, and the screen size it was computed FOR — see
+   * `#frontierFit` for why this is not simply "the last fit".
+   */
+  #frontierFit: Layout | null = null;
+  #frontierFor: { readonly w: number; readonly h: number } | null = null;
   #panX = 0;
   #panY = 0;
   /** True while a camera-driven redraw waits on the next animation frame. */
@@ -233,15 +240,31 @@ export class PixiRenderer implements Renderer {
     });
     if (view.cells.length === 0) return;
 
-    const fit = fitLayout(
-      view.cells,
-      app.screen.width,
-      app.screen.height,
-      10,
-      this.#theme.orientation,
-    );
+    const w = app.screen.width;
+    const h = app.screen.height;
+    // The frontier fix (Stage 2, WORKPLAN.md's "fit recomputes every draw"):
+    // recomputing the extent from the full cell set on every draw is right
+    // AT fit — the whole point of FIT is to keep showing everything as the
+    // board grows — and wrong once zoomed in. A placement, or a beacon
+    // drifting into beacon-horizon range, nudges the extent every draw; that
+    // nudge gets multiplied by the zoom, which reads as the world sliding
+    // under a camera that never moved rather than as the camera being asked
+    // to move. Past FIT the frontier — the extent `fit` was last computed
+    // against — is held still until the screen itself resizes (rotation) or
+    // the camera returns to FIT, where a fresh extent is exactly what
+    // "everything" has to mean.
+    const dimsChanged =
+      this.#frontierFor === null || this.#frontierFor.w !== w || this.#frontierFor.h !== h;
+    const fit =
+      this.#zoom <= 1 || this.#frontierFit === null || dimsChanged
+        ? fitLayout(view.cells, w, h, 10, this.#theme.orientation)
+        : this.#frontierFit;
+    if (this.#zoom <= 1 || dimsChanged) {
+      this.#frontierFit = fit;
+      this.#frontierFor = { w, h };
+    }
     this.#fitSize = fit.size;
-    const layout = zoomLayout(fit, this.#zoom, app.screen.width / 2, app.screen.height / 2);
+    const layout = zoomLayout(fit, this.#zoom, w / 2, h / 2);
     this.#layout = layout;
     if (layout.size <= 0) return;
 
@@ -324,6 +347,22 @@ export class PixiRenderer implements Renderer {
   panBy(dx: number, dy: number): void {
     this.#panX += dx;
     this.#panY += dy;
+    this.#applyPan();
+  }
+
+  /**
+   * Pan only — zoom is untouched — so `hex` lands at screen centre. Same
+   * translation-only cost as `panBy` (no rebuild): find where the hex sits
+   * in the CURRENT layout and set the pan that puts it in the middle,
+   * clamped by the same rule every other pan obeys.
+   */
+  centerOn(hex: HexKey): void {
+    const app = this.#app;
+    const layout = this.#layout;
+    if (app === null || layout === null) return;
+    const { x, y } = place(parse(hex), layout);
+    this.#panX = app.screen.width / 2 - x;
+    this.#panY = app.screen.height / 2 - y;
     this.#applyPan();
   }
 

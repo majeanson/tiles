@@ -318,6 +318,10 @@ function runKeeping(
       write: writeProgress,
     },
     debug: debugOn,
+    // The manual's own no-staleness contract: moving the stamp behind
+    // debug.overlay must not make "which build is this" unanswerable
+    // without the flag, so THIS BUILD (game.ts) states the sha directly.
+    buildSha: __BUILD_SHA__.slice(0, 7),
     // Not a GameHooks field — read by main() for the front door's copy only.
     firstVisit,
 
@@ -780,26 +784,36 @@ async function main(): Promise<void> {
   icon.href = ICON_DATA_URI;
   document.head.appendChild(icon);
 
+  // The stamp reclaims the bottom third for everyone but the one audience it
+  // exists for (Stage 2, 2026-08-18: "bottom-third reclaim") — a build sha,
+  // a seed and a feature list on screen at all times was never for a
+  // player, it was for testing against prod with no console. `debug.overlay`
+  // already gates the in-run readout (`#debugLine`); the footer joins it.
+  // The manual's THIS BUILD still names the sha regardless (below), so
+  // "which build is this" stays answerable without the flag.
   const stamp = document.getElementById('stamp');
   if (stamp !== null) {
-    const on = Object.entries(features)
-      .filter(([, enabled]) => enabled)
-      .map(([id]) => id);
-    stamp.textContent = [
-      NAME,
-      `${__BUILD_SHA__.slice(0, 7)}`,
-      `seed ${seed}`,
-      theme.id,
-      ...(facing === null ? [] : [`hex:${facing}`]),
-      ...on,
-    ].join(' · ');
+    const debugOverlayOn = isEnabled(features, 'debug.overlay');
+    stamp.hidden = !debugOverlayOn;
+    if (debugOverlayOn) {
+      const on = Object.entries(features)
+        .filter(([, enabled]) => enabled)
+        .map(([id]) => id);
+      stamp.textContent = [
+        NAME,
+        `${__BUILD_SHA__.slice(0, 7)}`,
+        `seed ${seed}`,
+        theme.id,
+        ...(facing === null ? [] : [`hex:${facing}`]),
+        ...on,
+      ].join(' · ');
+    }
   }
 
   const elements: Elements = {
     board: required('board'),
     stats: required('stats'),
     hint: required('hint'),
-    colours: required('colours'),
     draft: required('draft'),
     harvestTiles: required<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: required<HTMLButtonElement>('harvest-points'),
@@ -811,9 +825,7 @@ async function main(): Promise<void> {
     actionsMore: required('actions-more'),
     controls: required('controls'),
     end: required('end'),
-    zoomIn: required<HTMLButtonElement>('zoom-in'),
-    zoomOut: required<HTMLButtonElement>('zoom-out'),
-    zoomFit: required<HTMLButtonElement>('zoom-fit'),
+    cameraToggle: required<HTMLButtonElement>('camera-toggle'),
     help: required<HTMLButtonElement>('help'),
     helpPanel: required('help-panel'),
     helpManual: required('help-manual'),

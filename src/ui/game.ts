@@ -1,5 +1,5 @@
 import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
-import { distance, parse, type HexKey } from '@engine/hex';
+import { distance, key, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce, startingPerk } from '@engine/reduce';
 import {
   cachePaysAt,
@@ -71,7 +71,6 @@ export type Elements = {
   readonly board: HTMLElement;
   readonly stats: HTMLElement;
   readonly hint: HTMLElement;
-  readonly colours: HTMLElement;
   readonly draft: HTMLElement;
   readonly harvestTiles: HTMLButtonElement;
   readonly harvestPoints: HTMLButtonElement;
@@ -85,9 +84,15 @@ export type Elements = {
   readonly actionsMore: HTMLElement;
   readonly controls: HTMLElement;
   readonly end: HTMLElement;
-  readonly zoomIn: HTMLButtonElement;
-  readonly zoomOut: HTMLButtonElement;
-  readonly zoomFit: HTMLButtonElement;
+  /**
+   * The camera's one control: FIT ⇄ HERE (Stage 2, 2026-08-18). Four buttons
+   * (+, −, FIT, and ? beside them) became two — this and `help` — because
+   * pinch and drag already do continuous zoom, and a phone does not need a
+   * discrete step for what a gesture already does better. The label always
+   * names where a tap goes: HERE jumps in on `state.lastPlaced`, FIT goes
+   * back to seeing everything.
+   */
+  readonly cameraToggle: HTMLButtonElement;
   readonly help: HTMLButtonElement;
   readonly helpPanel: HTMLElement;
   /** The manual's half of the panel. The settings half belongs to main.ts. */
@@ -188,6 +193,14 @@ export type GameHooks = {
    * claimed a moment ago must not read as unclaimed.
    */
   readonly worldStats?: () => { readonly territories: number; readonly knownPct: number };
+  /**
+   * The exact build this page is running, short. The footer stamp that used
+   * to say this at all times moved behind `debug.overlay` (Stage 2,
+   * 2026-08-18: "bottom-third reclaim") — THIS BUILD in the manual states it
+   * unconditionally instead, so "which build is this" stays answerable
+   * without the flag.
+   */
+  readonly buildSha?: string;
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -198,8 +211,13 @@ const POWER_NAMES: Record<Colour, string> = {
   blue: 'tide',
 };
 
-/** One zoom-button step. Three taps from fit to full close-up. */
-const ZOOM_STEP = 1.6;
+/**
+ * HERE's jump-in zoom, from FIT (always 1). Close enough to read worth
+ * numbers on a phone without a second tap; a real board can still clamp
+ * this lower via `zoomMax` (the ceiling rises with the board, never falls
+ * below it, but a very small early board could in principle sit under this).
+ */
+const CAMERA_HERE_ZOOM = 2.4;
 
 /** Movement under this many pixels is still a tap; past it, a drag. */
 const TAP_SLOP = 8;
@@ -236,10 +254,21 @@ export class Game {
   #harvestAt: HexKey | null = null;
 
   /**
-   * The colour lens: the chip currently held down, or null. UI state like the
-   * tapped pocket — the engine never learns a colour was being studied.
+   * The colour lens: the long-pressed draft card's colour, or null. UI state
+   * like the tapped pocket — the engine never learns a colour was being
+   * studied. Set by a `contextmenu` on a draft card (game.ts's `#renderDraft`)
+   * since Stage 2 folded the old standalone chips into the cards themselves.
    */
   #spotlight: Colour | null = null;
+
+  /**
+   * The destination signpost last shown as a TOAST, so a CHANGE — not a
+   * render — is what announces it again (Stage 2, 2026-08-18: the hint line
+   * cut to one clause, and the signpost moved off it). `undefined` until the
+   * first render primes it, so boot (or resuming a run) never greets a
+   * player with a toast about ground they already knew was near.
+   */
+  #lastSignpost: string | null | undefined = undefined;
 
   readonly #hooks: GameHooks;
 
@@ -326,9 +355,8 @@ export class Game {
       el.setAttribute('aria-label', text);
     };
     label(this.#el.help, 'How to play');
-    label(this.#el.zoomIn, 'Zoom in');
-    label(this.#el.zoomOut, 'Zoom out');
-    label(this.#el.zoomFit, 'Show the whole world');
+    // cameraToggle's own aria-label changes with what it does (HERE vs FIT)
+    // and is kept current by `#syncCamera`, called at the end of `start`.
 
     // The two places words appear on their own: the popup and the hint line.
     // aria-live, stated here for the same reason as the labels above — so a
@@ -336,16 +364,19 @@ export class Game {
     this.#el.toast.setAttribute('aria-live', 'polite');
     this.#el.hint.setAttribute('aria-live', 'polite');
 
-    this.#el.zoomIn.addEventListener('click', () => {
-      this.#renderer.zoomBy(ZOOM_STEP);
-      this.#syncCamera();
-    });
-    this.#el.zoomOut.addEventListener('click', () => {
-      this.#renderer.zoomBy(1 / ZOOM_STEP);
-      this.#syncCamera();
-    });
-    this.#el.zoomFit.addEventListener('click', () => {
-      this.#renderer.resetCamera();
+    // FIT ⇄ HERE: two states, not four buttons. At FIT (zoom 1), a tap jumps
+    // in on the torch — the last thing you built, `state.lastPlaced` — the
+    // same point the light already centres on, so "HERE" means the same
+    // place in both. Past FIT, a tap goes back to seeing everything. Pinch
+    // and drag still do continuous zoom and pan; this is the one DISCRETE
+    // decision left on screen, and it is a toggle rather than a step.
+    this.#el.cameraToggle.addEventListener('click', () => {
+      if (this.#renderer.zoomLevel() <= 1.001) {
+        this.#renderer.zoomBy(CAMERA_HERE_ZOOM);
+        this.#renderer.centerOn(this.#state.lastPlaced ?? key(0, 0));
+      } else {
+        this.#renderer.resetCamera();
+      }
       this.#syncCamera();
     });
 
@@ -884,16 +915,19 @@ export class Game {
     }
   }
 
-  /** Zooming out below fit is meaningless, so those two buttons say so. */
+  /**
+   * The toggle's label always names where a tap goes, not where the camera
+   * IS — the same convention the old FIT button kept. At fit, that is HERE;
+   * past it, FIT. Never disabled: unlike the old +/− pair, both states are
+   * always a legal thing to ask for.
+   */
   #syncCamera(): void {
-    const zoom = this.#renderer.zoomLevel();
-    const atFit = zoom <= 1.001;
-    this.#el.zoomOut.disabled = atFit;
-    this.#el.zoomFit.disabled = atFit;
-    // The ceiling rises as the board grows, so it has to be asked for rather
-    // than assumed — a button that is dead at 4x on a small board is live
-    // again at 4x once the world is twice the size.
-    this.#el.zoomIn.disabled = zoom >= this.#renderer.zoomMax() - 0.001;
+    const atFit = this.#renderer.zoomLevel() <= 1.001;
+    this.#el.cameraToggle.textContent = atFit ? 'HERE' : 'FIT';
+    this.#el.cameraToggle.setAttribute(
+      'aria-label',
+      atFit ? 'Zoom in on your last placement' : 'Show everything',
+    );
   }
 
   /**
@@ -1318,6 +1352,12 @@ export class Game {
             systems.length > 0
               ? `In play: ${systems.join(' · ')}.`
               : 'In play: nothing. This is the smallest game there is.',
+            // The footer stamp that used to say this at all times moved
+            // behind ?ff=debug.overlay (Stage 2, 2026-08-18) — this line is
+            // what keeps "which build is this" answerable without it.
+            this.#hooks.buildSha === undefined
+              ? 'Running an unlabelled build.'
+              : `Running build ${this.#hooks.buildSha}.`,
           ],
           detail: [
             `Start with ${t.startingTiles} tiles · a placement costs ${t.baseCost}` +
@@ -1326,7 +1366,7 @@ export class Game {
               (t.runLength > 0 ? ` · ${t.runLength} placements to the expedition` : '') +
               ` · ${t.draftWidth}-card draft${t.holdSlots > 0 ? ' plus the stash' : ''}.`,
             'SETTINGS below switches every system and carries the decision that set each default.',
-            'The stamp at the bottom of the screen names the exact code this page is running.',
+            '?ff=debug.overlay adds a raw readout in the hint line and the footer, for reporting a bug with no console to hand.',
           ],
         },
       ],
@@ -1366,9 +1406,14 @@ export class Game {
     const canBuy = hud.spends.some((s2) => s2.affordable);
     const open = this.#el.purseToggle.getAttribute('aria-expanded') === 'true';
 
+    // The rare-tile odds, moved here from the hint line (Stage 2,
+    // 2026-08-18): they are what luck buys, and this is the one place luck
+    // is already the subject. Closed-state only — open already shows the
+    // priced spends, which is the shop's own answer to "what does luck do".
+    const odds = hud.odds === null || open ? '' : `  ${hud.odds}`;
     this.#el.purseToggle.textContent = open
       ? `${hud.luck} LUCK  ▾`
-      : `${hud.luck} LUCK  ${canBuy ? '· SPEND' : `· next ${cheapest}`}  ▸`;
+      : `${hud.luck} LUCK${odds}  ${canBuy ? '· SPEND' : `· next ${cheapest}`}  ▸`;
     // Written rather than merely read, so the control states its own state
     // even on the first frame — a screen reader should not have to infer it.
     this.#el.purseToggle.setAttribute('aria-expanded', String(open));
@@ -1413,6 +1458,11 @@ export class Game {
 
   #harvest(choice: HarvestChoice): void {
     const at = toHudView(this.#state, this.#harvestAt).harvestAt;
+    // Pan to the pocket BEFORE it pops. The DEFAULT (biggest) pocket prices
+    // the buttons even with nothing tapped, so pressing POP cold — no tap,
+    // straight to the button — could pop tiles the camera was never
+    // pointed at. A press should show what it just did.
+    if (at !== null) this.#renderer.centerOn(at);
     this.#dispatch(at === null ? { type: 'HARVEST', choice } : { type: 'HARVEST', choice, at });
   }
 
@@ -1519,15 +1569,21 @@ export class Game {
   #renderHud(hud: HudView): void {
     this.#renderStats(hud);
     this.#renderDraft(hud);
-    this.#renderColours(hud);
 
-    // The reorientation line: what to do now, then the nearest destination,
-    // then the odds. One string, collapsing to nothing when all are silent.
-    // With a colour chip held down, its calculation takes the line instead —
-    // the lens is exactly a question, and this is its answer, per colour:
-    // the numbers, how much the colour's own power earned of them, and the
-    // power itself. The formula is one channel for everyone by design; what
-    // differs is how each colour builds worth, so that is what the tip says.
+    // The reorientation line, cut to ONE clause (Stage 2, 2026-08-18:
+    // "bottom-third reclaim") — what to do now, full stop. It used to run
+    // three ideas together (the guide, the nearest destination, the odds),
+    // which read as a paragraph nobody actually read. The other two moved
+    // rather than vanished: the destination signpost is announced as a
+    // TOAST when it changes (below), which is louder than a line that sat
+    // there being true the whole time; the odds moved onto the purse
+    // toggle, beside the currency they actually describe.
+    //
+    // A long-pressed draft card takes the line instead — the spotlight is
+    // exactly a question, and this is its answer, per colour: the numbers,
+    // how much the colour's own power earned of them, and the power itself.
+    // The formula is one channel for everyone by design; what differs is how
+    // each colour builds worth, so that is what the tip says.
     const spot = hud.spotlight;
     const spotLine =
       spot === null
@@ -1545,11 +1601,28 @@ export class Game {
               (spot.ripeCount > 0 ? ` · ${spot.ripeWorth} of it ripe now` : '') +
               ` · pts when popped = worth × pocket size × distance`) +
           this.#powerOf(spot.colour);
-    const parts = [spotLine ?? hud.guide, hud.questLine ?? hud.hint, hud.odds];
+    const parts = [spotLine ?? hud.guide];
     if (this.#hooks.debug === true) parts.push(this.#debugLine());
     const hint = parts.filter((s) => s !== null).join(' · ');
     this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
+
+    // The destination signpost, as a TOAST on CHANGE rather than a line that
+    // sat in the hint permanently being true. `#lastSignpost` starts
+    // undefined so the very first render (boot, or a resumed run) primes it
+    // silently — a returning player should not be greeted with a toast about
+    // ground they already knew was near. A claim or a pop's own toast always
+    // wins the same beat; the signpost only speaks when nothing louder just
+    // did (`this.#el.toast.hidden`).
+    if (
+      this.#lastSignpost !== undefined &&
+      hud.hint !== null &&
+      hud.hint !== this.#lastSignpost &&
+      this.#el.toast.hidden
+    ) {
+      this.#showNote(`${hud.hint}.`);
+    }
+    this.#lastSignpost = hud.hint;
 
     // The harvest buttons exist only while the choice does. A pair of dead
     // buttons pricing an impossible harvest at 0 was two decisions on screen
@@ -2112,6 +2185,12 @@ export class Game {
         button.dataset['colour'] = tile.colour;
         button.dataset['rarity'] = tile.rarity;
         button.setAttribute('aria-pressed', String(tile.selected));
+        // The colour lens (2026-08-18: folded off its own row and into the
+        // cards that already carry that colour — "bottom-third reclaim").
+        // The spotlight itself is unchanged: same field, same board dimming,
+        // same calculation in the hint line the standalone chips used to
+        // hold down for.
+        button.classList.toggle('spotlit', hud.spotlight?.colour === tile.colour);
 
         // The direction's name for this colour, or the colour itself when the
         // direction has no fiction. Written into the card rather than left to
@@ -2122,6 +2201,7 @@ export class Game {
           'aria-label',
           tile.rarity === 'common' ? `${name} tile` : `${tile.rarity} ${name} tile`,
         );
+        button.title = `Hold, or right-click, to spotlight ${name} on the board.`;
 
         const art = this.#art[tile.colour];
         if (art !== undefined) {
@@ -2164,6 +2244,17 @@ export class Game {
 
         button.addEventListener('click', () => {
           this.#dispatch({ type: 'SELECT', index });
+        });
+        // Long-press (touch), right-click (mouse), or the keyboard's own
+        // context-menu key (Menu / Shift+F10 on a focused button) all fire
+        // this ONE native event — the browser's own long-press, not a
+        // hand-rolled timer, which is what buys the keyboard path for free
+        // and keeps this in step with whatever hold-time the platform
+        // already trains a thumb to expect.
+        button.addEventListener('contextmenu', (event) => {
+          event.preventDefault();
+          this.#spotlight = this.#spotlight === tile.colour ? null : tile.colour;
+          this.render();
         });
         return button;
       }),
@@ -2219,36 +2310,6 @@ export class Game {
           ? ` · tide: +1 worth per ${t.blueTideEvery} hexes from home`
           : '';
     }
-  }
-
-  /**
-   * The colour lens: one chip per colour, printing that colour's standing
-   * worth — the exact number a points harvest sums. Tapping a chip spotlights
-   * the colour on the board and expands the chip into its calculation in the
-   * hint line; tapping it again lets go.
-   */
-  #renderColours(hud: HudView): void {
-    this.#el.colours.replaceChildren(
-      ...hud.colours.map((c) => {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'chip';
-        chip.dataset['colour'] = c.colour;
-        const active = hud.spotlight?.colour === c.colour;
-        chip.setAttribute('aria-pressed', String(active));
-        const name = this.#theme.terrainNames[c.colour];
-        chip.textContent = `${COLOUR_MARK[c.colour]} ${name} ${c.worth}`;
-        chip.setAttribute(
-          'aria-label',
-          `${name}: ${c.count} tiles standing, total worth ${c.worth}`,
-        );
-        chip.addEventListener('click', () => {
-          this.#spotlight = this.#spotlight === c.colour ? null : c.colour;
-          this.render();
-        });
-        return chip;
-      }),
-    );
   }
 
   /**
