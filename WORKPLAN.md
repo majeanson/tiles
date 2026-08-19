@@ -160,3 +160,21 @@ daily seed are designed in ideas/, unbuilt by choice. Where-you-wake stays
 parked as a failed prototype (see Stage 3 item 4) unless a future session
 wants to take on auditing every distance-based rule for an implicit
 ORIGIN — a bigger job than this one.
+
+## Fresh-eyes review (2026-08-18/19, STATUS: DONE)
+
+An uninvolved reviewer walked the whole pipeline for cross-stage seams —
+the class of bug that bit an earlier, parallel-agent session on this same
+repo. Five commits (`bc2927f` `d70eadd` `4b2404b` `e49b44d` `910c384`):
+two balance numbers relocated into `src/content` that the pipeline itself
+had left outside it, one backwards TITHE-rate copy claim fixed in two
+places, `STATUS.md`/`FOLLOWUP.md` caught up to what Stage 2 and 3
+actually shipped, a regression in the review's own first commit (an old
+save's deep-water near-mix falling through to "shrine" on decode) caught
+and fixed the same session, and one dead field (`firstVisit`, orphaned by
+Stage 2's front door) deleted. One pre-existing, low-severity SETTINGS
+staleness window recorded but left alone — not a pipeline regression, a
+deliberate older trade-off. Full account in `LOG.md`'s addendum. 518
+tests, every gate green, `pnpm sim` unmoved, CI green, `verify-deploy`
+confirmed on
+`main`.

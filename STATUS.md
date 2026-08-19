@@ -5,8 +5,23 @@ re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
 Last checkpoint: **2026-08-18** — Sessions 15–22, the same-day audit's fix
-pass, and the three-stage pipeline (`WORKPLAN.md`) it green-lit, all in one
-run. 515 tests.
+pass, the three-stage pipeline (`WORKPLAN.md`) it green-lit, and the
+fresh-eyes review that closed the pipeline out, all in one run. 518 tests.
+
+- **The fresh-eyes review** (`WORKPLAN.md`'s own final line) read the whole
+  pipeline as one body of work rather than four separate diffs, and found
+  what a stage working alone could not see: two balance numbers (the
+  survey's thresholds, deep water's near-home reward split) had escaped
+  `src/content` into `src/meta` and `src/engine` respectively, in direct
+  contradiction of a rule one of those same files' own docstring restated;
+  TITHE's own tooltip called its rate "worse" than death's when it is
+  2.5× better; TITHE and the survey were both live, on-by-default systems
+  the manual never named; and the fix for the first of those (reading the
+  near-share tuning fields straight off `t`) would have made an old save
+  decode them as `undefined` and silently turn every destination into a
+  shrine — caught before it shipped. `firstVisit`, dead since the front
+  door absorbed its job, is gone. Five commits, full account in `LOG.md`'s
+  addendum; `pnpm sim` byte-identical throughout.
 
 - **The pipeline shipped whole.** Stage 1 (correctness, `1e09a89`) closed the
   triple audit's eighteen bugs. Stage 2 (UI/UX, four commits) rebuilt the

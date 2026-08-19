@@ -2746,3 +2746,102 @@ water's, whose own change is the sweep documented above. `WORKPLAN.md`'s
 pipeline (correctness → UI/UX → new systems) is complete. What is left is
 what was always going to be left: the phone playtest, the stranger test,
 and v1.0 — see `ROADMAP.md` and `FOLLOWUP.md`.
+
+**Addendum, 2026-08-18/19 — the fresh-eyes review.** A reviewer with no
+part in building the pipeline, told to hunt specifically for the seam a
+prior session already got bitten by: work that disagrees with itself at
+the joints between stages. Walked the full `08c36f0..HEAD` diff file by
+file — cross-stage UI (event-card vs. toast tiers, the start-of-run toast
+slot, the TITHE purse row's markup against its siblings, `worldStats`
+freshness), the player-visible payout math end to end (the end screen's
+POPS + REACH×bonus + CLAIMS×bonus breakdown, TITHE against death's
+conversion, deep water's mix arithmetic, a goal's once-only payout across
+an actual encode/decode round trip, not merely one session), engine
+purity and the `src/content`-only rule for balance numbers, decode
+tolerance for every new persisted field, test honesty (no `.skip`/`.only`
+anywhere in `src/`), and the docs against the shipped tree. Five commits,
+each gated (`vitest`, `typecheck`, `lint`, `format:check`, `pnpm sim`) and
+pushed separately:
+
+- `bc2927f` — two balance numbers had escaped `src/content` during the
+  pipeline itself: the survey's three fixed thresholds
+  (`REACH_TARGET`/`TERRITORY_TARGET`/`KNOWN_TARGET`) were hardcoded a
+  second time in `meta/goals.ts`, duplicating what `content/goals.ts`'s
+  own label text already said in words — exactly the drift risk
+  `content/goals.ts`'s docstring warns against. Deep water's near-home
+  split (40/35/17) was the same shape of bug, three bare literals inside
+  `engine/world.ts`'s `blockDestination`. Both moved into
+  `content/goals.ts`/`content/tuning.ts`.
+- `d70eadd` — TITHE's own purse-row tooltip said it converts luck "at a
+  worse rate than what unspent luck banks when the run ends." Backwards:
+  `titheRate` is 25%, `luckToRelics` (what death pays) is 10% —
+  `tuning.ts`'s own comment and this LOG's Stage 3 addendum both already
+  say TITHE is the BETTER rate. Fixed in the purse row and in a
+  concurrently-landed manual line that had copied the same inversion.
+- `4b2404b` — `STATUS.md`'s top checkpoint, the file `CLAUDE.md` sends
+  every reader to first, was rewritten whole at Stage 1's close and never
+  touched again for Stage 2 or 3 (still said "458 tests," named none of
+  the new screen or the four new systems). `FOLLOWUP.md` — the file that
+  exists specifically to route "needs Marc" items — hadn't been touched
+  since before the pipeline started, so deep water's, the survey's and
+  TITHE's three written questions were nowhere a human follow-up session
+  would read them. Both caught up.
+- `e49b44d` — a bug in this review's OWN first commit: promoting the deep
+  water near-mix into required `Tuning` fields, without a fallback, meant
+  a save written before those three fields existed decoded them as
+  `undefined` — and `kind < undefined` is false for every branch of
+  `blockDestination`'s kind-picking ladder, so a resumed old save would
+  have silently turned every destination into a shrine. Caught by the
+  same gate discipline the rest of the pipeline used (`pnpm sim` didn't
+  catch it — the harness always plays fresh tuning, never a decoded one —
+  a targeted decode test did); fixed with the same `> 0`-falls-back-to-
+  `TUNING` shape every other late-arriving dial in that file already
+  uses.
+- `910c384` — `firstVisit`, the field Stage 2's front door commit deleted
+  from `GameHooks` and replaced with the door's own BEGIN/RESUME copy,
+  was still being computed by `runKeeping()` in `main.ts`, with a comment
+  claiming `main()` read it "for the front door's copy." Nothing did —
+  the door reads `keeper.resume`. Dead since the commit that wrote the
+  comment about what would read it; deleted.
+
+**PLAUSIBLE, not fixed — a pre-existing staleness window, not a pipeline
+regression.** `main.ts`'s SETTINGS panel (`mountSettings`, the atlas and
+unlock ledger) reads `loadWorld()` — a fresh `localStorage` read — rather
+than the live in-memory `current` the same file's `worldStats` hook
+already exposes to the end screen's CARRIED OUT strip. World writes
+debounce to every tenth action (`WORLD_WRITE_EVERY`, predating this
+pipeline). A shrine or territory claimed mid-batch can therefore show as
+unclaimed in SETTINGS for up to nine more actions, until the debounce
+flushes or the tab backgrounds — narrower than it sounds, since the
+survey's own goal payouts already force an immediate flush and bypass
+this window entirely, but the ordinary shrine/territory ledger does not.
+Not fixed: the debounce is a deliberate, pre-existing performance
+trade-off (`2745ff8`), not something Stage 2 or 3 introduced, and closing
+it would mean re-plumbing `current` across a function boundary rather
+than correcting a pipeline defect.
+
+**Everything else hunted and NOT confirmed**: the start-of-run toast slot
+(shrine receipt + territory why-line + NEW GROUND) cannot collide — NEW
+GROUND requires actual placements past the world's stored best, which a
+fresh run's opening frame never has. The survey's goal-met announcement
+does ride the toast tier as documented, except when it joins an
+already-event-worthy claim (a find/shrine/territory on the same
+placement), where it rides the event card instead — a looser reading of
+"toast tier" than the addendum's own wording, not a functional collision.
+`decodeRun`/`decodeWorld` fill every new field (`wakeAt`, `claimedFinds`,
+`goalsMet`) correctly; a goal's once-only payout is proven across an
+actual `encodeWorld`/`decodeWorld` round trip, not merely one session. No
+`.skip`/`.todo`/`.only` anywhere in `src/`. Engine purity holds under
+lint; no other stray balance literal found in the changed engine files
+beyond the two fixed above. WORKPLAN.md's specific claims spot-checked
+(TITHE's floor, the commit hashes) all matched the shipped code.
+
+**Verdict: the pipeline is sound.** Two real correctness bugs (both
+copy/data-placement, neither a balance or engine-purity break), one
+review-introduced regression caught and fixed within the same session,
+one dead field deleted, two documentation gaps closed, one pre-existing
+low-severity staleness window recorded but left alone. Final state: 518
+tests, typecheck/lint/format clean, `pnpm sim` 0 stalled/0 capped and
+unmoved from the pipeline's own table (the fixes here were bugs, dead
+code and doc gaps, never balance). Pushed in five commits; CI green on
+`main`; `verify-deploy` confirmed the live site serves the final commit.
