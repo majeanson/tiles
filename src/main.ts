@@ -830,6 +830,9 @@ async function main(): Promise<void> {
     helpPanel: required('help-panel'),
     helpManual: required('help-manual'),
     toast: required('toast'),
+    eventCard: required('event-card'),
+    eventCardText: required('event-card-text'),
+    eventCardDismiss: required<HTMLButtonElement>('event-card-dismiss'),
   };
 
   // The front door: static markup, already painted before any of this runs —

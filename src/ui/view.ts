@@ -527,8 +527,6 @@ export type HudView = {
    * belongs on the button.
    */
   readonly questPays: boolean;
-  /** The bounty in play, as one sentence. Null when there is none. */
-  readonly questLine: string | null;
 
   /**
    * The rare tile the priced pocket would yield as TREASURE, or null when it
@@ -635,7 +633,6 @@ export function toHudView(
     harvestAt: target,
 
     questPays: value.questPays,
-    questLine: questLineFor(state),
     harvestTreasure: value.treasure,
     // The sacrifice pays RELICS now: the between-runs currency, and the only
     // thing on this screen that is not about staying alive.
@@ -798,14 +795,6 @@ function colourPotentials(state: GameState): ColourPotential[] {
   return COLOURS.map((colour) => ({ colour, ...acc.get(colour)! }));
 }
 
-/** The standing bounty, as one sentence with its distance from home. */
-function questLineFor(state: GameState): string | null {
-  const quest = state.quest;
-  if (quest === null) return null;
-  const out = distance(parse(quest.at), { q: 0, r: 0 });
-  return `BOUNTY ${out} out: pop ${quest.need}+ within ${quest.radius} of it as pts → ×${quest.bonus}`;
-}
-
 /**
  * The one-clause "what now". Danger first, then the bounty being collectable
  * right now, then the harvest moment, then the default loop. Deliberately
@@ -825,24 +814,24 @@ function guideFor(state: GameState, ctx: RenderContext): string | null {
   const single = state.tuning.singlePayout;
   if (runwayOf(state) <= RUNWAY_ALARM) {
     if (ripe)
-      return single ? 'Low on tiles — POP a pocket now' : 'Low on tiles — cash a pocket as tiles';
-    return 'Low on tiles — ripen something to cash in';
+      return single ? 'Low on tiles — POP a pocket now' : 'Low on tiles — POP a pocket for tiles';
+    return 'Low on tiles — ripen something to POP';
   }
   if (ripe) {
     // The DEFAULT pocket, deliberately — this line's words must not change
     // because a different pocket happens to be tapped. See `defaultValue`.
     const value = ctx.defaultValue;
-    if (value.questPays) return 'BOUNTY READY — take this pocket as pts';
+    if (value.questPays) return 'BOUNTY READY — POP this pocket as pts';
     // More tiles than the clock can spend: the survival button is dead and
     // saying so is the whole job of this line.
-    if (tilesSpareIn(state)) return 'More tiles than you can spend — take PTS from here on';
+    if (tilesSpareIn(state)) return 'More tiles than you can spend — POP for PTS from here on';
     // POP · N pockets ready: how many separate decisions are sitting on the
     // board right now, not how many tiles — a 12-tile pocket is one of them,
     // same as a 2-tile one. Singular wording stays where there is only one.
     const pockets = ctx.pocketCount > 1 ? `${ctx.pocketCount} pockets ready` : 'Pocket ready';
     return single
       ? `${pockets} — tap one to price it, then POP or sacrifice it`
-      : `${pockets} — tap one, then take tiles or pts`;
+      : `${pockets} — tap one, then POP for tiles or pts`;
   }
   return 'Place tiles — surround one on all six sides to ripen it';
 }
@@ -971,8 +960,8 @@ function epitaphFor(state: GameState): string {
     return (
       `The expedition is over — ${state.placements} placements spent. ` +
       (unripe > 0
-        ? `${unripe} tile${unripe === 1 ? '' : 's'} left standing, never cashed.`
-        : `Everything you built was cashed.`)
+        ? `${unripe} tile${unripe === 1 ? '' : 's'} left standing, never popped.`
+        : `Everything you built was popped.`)
     );
   }
   if (state.death === 'walled') {

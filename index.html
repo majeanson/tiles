@@ -19,12 +19,12 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta
       name="description"
-      content="An expedition into a dark plane. Place, ripen, cash, and push on."
+      content="An expedition into a dark plane. Place, ripen, pop, and push on."
     />
     <meta property="og:title" content="Ashwake" />
     <meta
       property="og:description"
-      content="An expedition into a dark plane. Place, ripen, cash, and push on."
+      content="An expedition into a dark plane. Place, ripen, pop, and push on."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://tiles.marcportal.com/icon-512.png" />
@@ -89,6 +89,25 @@
              board, glyph first, gone on a tap. aria-live so a screen reader
              hears the announcement without focus ever moving. -->
           <div id="toast" aria-live="polite" hidden></div>
+        </div>
+
+        <!-- The event card (Stage 2, 2026-08-18): held, centred, dismissed
+             on purpose — for a find, a shrine or a territory, the things
+             worth stopping for. Everything else (a cache, a site, the
+             arithmetic of a pop) stays the one-line toast above, which
+             times out on its own. A real dialog, like the manual: role,
+             modality, focus in on open, Escape and a tap both dismiss. -->
+        <div id="event-card" hidden>
+          <div
+            id="event-card-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="What just happened"
+            tabindex="-1"
+          >
+            <p id="event-card-text"></p>
+            <button id="event-card-dismiss" type="button">GOT IT</button>
+          </div>
         </div>
 
         <!-- The reorientation line: what to do now, ONE clause (Stage 2,

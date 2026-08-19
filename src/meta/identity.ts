@@ -20,8 +20,14 @@
 
 export const NAME = 'Ashwake';
 
-/** One line, for the page description, the share sheet and the readme. */
-export const TAGLINE = 'An expedition into a dark plane. Place, ripen, cash, and push on.';
+/**
+ * One line, for the page description, the share sheet and the readme. "Pop"
+ * rather than "cash" (2026-08-18, the Stage 2 word pass: one voice for the
+ * one action — cash/take/burn/harvest all meant this and none of them agreed
+ * with what the buttons say) — the tagline is player-facing copy too, and it
+ * was the one place still using the old word.
+ */
+export const TAGLINE = 'An expedition into a dark plane. Place, ripen, pop, and push on.';
 
 /**
  * The mark: a hex with a spark in it, drawn as an inline SVG data URI so it

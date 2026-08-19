@@ -2365,3 +2365,182 @@ depending on it). Typecheck, lint, format clean. `pnpm sim` — 200 seeds,
 table (spender 3,603 ahead of bank20's 3,397, seeker still the top
 claimer): every fix here was a bug or a seam, never a balance number.
 Stage 2 (UI/UX, the audit's big five) is next, on Sonnet, same tree.
+
+**Addendum, 2026-08-18, continuing — Stage 2: the big five, one coherent
+pass.** Layout, hierarchy, flow, feedback and words — no palette, no
+texture, Gate E's torchlit direction untouched, `src/engine` untouched
+except read-only. Four commits, gates green and `pnpm sim` byte-identical
+after each.
+
+**1. A front door.** The board used to be the first thing on screen: no
+name, no BEGIN, the manual sprung open once for a stranger and never
+again. A plain-DOM door now sits over `#app` before the first interaction —
+NAME, TAGLINE, BEGIN (RESUME — PLACEMENT N when a run is saved), a quiet
+HOW TO PLAY. The game boots underneath it exactly as before (`Game.start()`
+runs regardless; BEGIN only lifts a curtain), so first paint is untouched
+and `?seed=` is untouched. `Game#openHelp` went public so the door's HOW TO
+PLAY opens the SAME dialog the in-game `?` does, rather than a second one
+built to match it by hand — and it took an opener argument so focus
+returns to whichever button asked. The harder part was underneath: making
+the manual open FROM the door meant `#help-panel` could not live inside
+`#game-shell`, because `#game-shell` starts `inert` (so a keyboard user
+cannot tab into a board they cannot see yet) and an `inert` ancestor makes
+every descendant unfocusable and untappable regardless of z-index. The
+panel moved to `position: fixed`, outside that wrapper, which also happens
+to be the literal fix for "the help panel becomes truly modal" — it covers
+the whole viewport now, not merely `#board`'s box, which used to leave the
+stats row and the hand in the open beside a panel that was supposed to be
+one. `firstVisit`'s one job (auto-opening the manual, once) moved to the
+door; the `GameHooks` field is deleted, Game no longer touches it.
+
+**2. The end screen becomes a payout.** The score was one number with no
+arithmetic behind it, hidden all run under `hidePoints` and then simply
+printed. It breaks down now into the exact three terms the engine pays it
+in — POPS (everything scored while playing) + REACH × `endReachBonus` +
+CLAIMS × `endClaimBonus` → TOTAL — read off the same fields `endingBonus`
+already computed with (`hud.depthValue` is `reachOf(state)`,
+`hud.summary.claims` counts the identical claimed landmarks), so the
+breakdown cannot drift from what actually happened. This is also where the
+single-payout POP button's points leak got fixed, picked per the brief's
+own instruction to pick one honestly: it printed the points figure on
+itself regardless of `hidePoints`, which defeated the setting outright. It
+shows the pocket's DEPTH multiplier instead when points are hidden — a new
+`harvestDepth` on `HudView`, read from the same `harvestMultiplier` call
+the reducer will actually pay with — and the points themselves are learned
+on this screen, once, honestly, in the breakdown above.
+
+NEW BEST is a headline now, not a restatement beside the score; missing it
+prints how many points SHORT the run fell ("999 short of best"), which is
+the question "best 999 pts" never actually answered. RUN N prints
+(`book.runs`, sitting unused since the record book existed). Facts became
+a fixed 2×3 grid — REACH, PLACEMENTS, POPPED, BIGGEST POP, DESTINATIONS,
+BOUNTIES — LUCK dropped, because `endingBonus` already folds the unspent
+purse into the relics figure and showing both was counting it twice. A new
+CARRIED OUT strip states what actually outlives the run: relics banked, a
+perk found this run (tracked internally — a private field set the moment
+`findLabel` grants one), and, via a new `worldStats` hook read fresh so a
+claim from a moment ago is never shown as unclaimed, territories held and
+how much of the world is known. The shop door is demoted from a bordered
+button to a payout row (RELICS N ▸); SHARE moved up to sit beside the arc;
+NEW RUN is the only thing on the screen still shaped like a button — a new
+`.end-link` style strips the border off everything else, which reads as a
+row or a link rather than a second and third and fourth button competing
+with the one that matters.
+
+The shop face followed: BUY N instead of a bare number; a purchase flashes
+its row and says BOUGHT before the screen redraws under it, instead of a
+price silently going quiet with no other sign; the shelf's four identical
+UNDISCOVERED rows became one line naming the count ("4 more are still out
+there, unnamed"), the mystery intact — no name, no price, still. SACRIFICE
+names what it is for ("· N relics for the shop"). The purse/BACK header on
+the shop's own screen went sticky, matching the manual's tab bar.
+
+**3. Bottom-third reclaim, and a camera that stops sliding.** The footer
+stamp — build sha, seed, feature list, on screen at all times — was never
+for a player, it was for testing prod with no console, and it cost
+everyone else a line of chrome regardless. It moved behind
+`?ff=debug.overlay`; THIS BUILD in the manual now states the sha
+unconditionally (a new `buildSha` hook) so "which build is this" stays
+answerable without the flag — the no-staleness contract, applied to
+itself. The standalone colour-lens row is gone: long-pressing a draft card
+spotlights its colour instead, riding the native `contextmenu` event —
+which a touch long-press, a mouse right-click AND a keyboard's own
+context-menu key (Menu, or Shift+F10 on a focused button) all fire, so the
+gesture bought keyboard parity for free instead of costing an
+accessibility regression to a hand-rolled pointer timer that would not
+have had any. The steer purchase — the other half of what the chips used
+to carry — stays exactly where it was, in the luck purse: a priced spend
+belongs in the one place everything priced is already listed, and
+fragmenting it into a transient gesture would have cost the purse's own
+"everything is visible, whether or not you can afford it" contract for no
+real gain. Decided and written down, not merely defaulted to.
+
+The hint line is cut to one clause: the guide, or — held down — a
+long-pressed card's calculation. The destination signpost used to sit
+there being true the whole run; it fires as a TOAST on CHANGE instead (a
+claim's own toast, or an open event card, always wins the same beat, so
+the signpost never clobbers louder news), and the rare-tile odds moved
+onto the purse toggle, beside the currency that actually describes them.
+
+Camera: FIT ⇄ HERE replaces four buttons (`+`, `−`, FIT, plus `?`) with
+one toggle, moved to the bottom-right thumb arc — pinch and drag already
+do continuous zoom and pan, so a phone did not need a discrete step for
+what a gesture already does better. HERE jumps in on `state.lastPlaced`
+(the same point the torch already centres on) via a new `centerOn` on the
+`Renderer` interface; the same call backs pan-to-pocket — pressing POP
+cold, no tap, now pans to the pocket BEFORE it pops, so a press always
+shows what it just did rather than popping tiles the camera was never
+pointed at.
+
+The frontier fix, the one WORKPLAN flagged by name: `PixiRenderer.draw()`
+recomputed the fit — the extent the whole layout scales against — from the
+full cell set on EVERY draw, zoomed or not. Correct at FIT (the whole
+point is showing everything as the board grows); wrong zoomed in, because
+a placement or a beacon drifting into range nudged the extent every draw,
+and that nudge got multiplied by the zoom — the world sliding under a
+camera that never moved, rather than the camera being asked to move. The
+simplest honest fix: the fit holds still past FIT until the screen itself
+resizes (rotation) or the camera returns to FIT, where a fresh extent is
+exactly what "everything" has to mean again.
+
+**4. Feedback tiers, and one voice.** Two tiers now, where there was one:
+the ordinary toast stays a receipt — one line, gone on its own, for a
+cache, a site, the arithmetic of a pop. A find, a shrine or a territory
+change what the NEXT run starts with, and get an EVENT CARD instead — held
+until dismissed, centred, a real dialog (role, modality, focus in, Escape
+and a tap both dismiss). `#claimNote` returns `{ text, eventWorthy }` now
+rather than a bare string, ranked exactly as the audit's original rewrite
+left it (rarest leads); `eventWorthy` is the leading claim's own call, so
+a placement that claims a cache AND a territory at once reads as a
+territory moment, in full, on the card. NEW BEST did not get a second,
+separate card — the end screen's own held, centred headline (item 2) IS
+its event-card treatment, and layering a transient card on top of the
+very screen already announcing it would have been redundant chrome, not
+better feedback; written down rather than left unexplained.
+
+A one-beat ripen pulse: any tile that just became ripe — whether it sat
+there unripe a moment ago or arrived already surrounded — gets the same
+glow texture the pop uses, quieter and shorter (a pop is a reward, a
+ripen is information), never staggered. POP · N pockets ready rides the
+hint line's guide clause, from a new `pocketCount` on `RenderContext`
+computed free of the clustering pass already running.
+
+One voice: every player-facing "take"/"cash"/"burn" became POP or
+SACRIFICE — the pocket-note lines ("Take tiles:" → "POP for tiles:"), both
+harvest buttons in the dual-payout mode, the manual's own prose ("cashed
+as TREASURE" → "POPPED as TREASURE", "take it as PTS" → "POP it as PTS"),
+the epitaph ("never cashed" → "never popped"), the guide line in
+`view.ts`. Even the game's own TAGLINE ("place, ripen, cash, and push on")
+carried the old word — it is player-facing copy too, shown on the front
+door and in the meta tags, and it was the one place still using it. Traced
+through `identity.ts` and both `index.html` meta tags so nothing quotes a
+retired word back.
+
+**Adapted from the brief, decided and written down:**
+
+- "REACH 12 · best 18" on the live stat row: not done. It needs
+  world-level data (a world's farthest reach) threaded into a row whose
+  test currently pins an exact `String(hud.depthValue)` equality — a small
+  win asking for more plumbing than its size earned this pass.
+- SETTINGS reordered, the theme picker moved into it, the gallery linked
+  from it: not done. None touch the big five, and the stage was already
+  the largest of the three; left whole for a dedicated pass rather than
+  squeezed in at the end.
+- The toast-fires-on-signpost-change path is exercised by real gameplay
+  (a beacon entering the horizon as reach grows, with no competing claim
+  that same placement) but not by an automated test — constructing a
+  deterministic seed for that exact transition, rather than the
+  claim-always-wins case (which IS tested), was judged not worth the
+  engineering cost against a straightforward, type-checked comparison.
+
+**Verified:** 473 tests (was 458 at Stage 1's close — net +15, several
+deletions where behaviour moved outnumbered by new coverage: `firstVisit`'s
+auto-open test died with the behaviour and was replaced by two `openHelp`
+tests; the standalone colour-chip test became a long-press test; the
+camera button test became the FIT/HERE toggle test; `questLine` — left
+unconsumed once the hint line dropped it — was deleted along with its
+computation). Typecheck, lint, format clean at every commit. `pnpm sim` —
+200 seeds, 15 policies — byte-identical to Stage 1's table at every
+commit: `src/engine` was never touched. Stage 3 (new systems — the moments
+pack, deep water, the survey, TITHE, the where-you-wake prototype) is
+next, on Sonnet, same tree.

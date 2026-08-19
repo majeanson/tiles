@@ -101,8 +101,18 @@ export type Elements = {
    * The popup over the board: what you just claimed, or what the glyph you
    * tapped does. Loud enough to be read, gone on a tap or after a few
    * seconds — the hint line was too quiet for something that just happened.
+   * The ordinary tier of two (Stage 2, 2026-08-18: "feedback tiers") — a
+   * receipt, for the things a run does constantly.
    */
   readonly toast: HTMLElement;
+  /**
+   * The other tier: held, centred, dismissed on purpose — for a find, a
+   * shrine or a territory, the things that change what the NEXT run starts
+   * with. A real dialog, like the manual (role, modality, Escape).
+   */
+  readonly eventCard: HTMLElement;
+  readonly eventCardText: HTMLElement;
+  readonly eventCardDismiss: HTMLButtonElement;
 };
 
 /**
@@ -419,6 +429,17 @@ export class Game {
       this.#showNote(null);
     });
 
+    // The event card: the same close-on-any-tap contract as the manual — a
+    // click anywhere inside it, including its own GOT IT button (bubbling,
+    // unstopped), dismisses it. Escape does the same, the keyboard path a
+    // tap never offered.
+    this.#el.eventCard.addEventListener('click', () => {
+      this.#closeEventCard();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !this.#el.eventCard.hidden) this.#closeEventCard();
+    });
+
     this.#el.harvestTiles.addEventListener('click', () => {
       this.#harvest('tiles');
     });
@@ -486,12 +507,13 @@ export class Game {
     // button died on desktop). Anything that is not the bare board or its
     // canvas is somebody else's press.
     const isBoardSurface = (target: EventTarget | null): boolean => {
-      // While the manual is up, the board is behind a curtain and must not
-      // take a single gesture — not a tap, not a drag, not a wheel. The panel
-      // is `position: fixed` and covers the viewport now (2026-08-18), not
-      // merely `#board`'s box, but the explicit check stays: closing the
-      // manual on the SAME gesture that follows must not also place a tile.
-      if (!this.#el.helpPanel.hidden) return false;
+      // While the manual OR an event card is up, the board is behind a
+      // curtain and must not take a single gesture — not a tap, not a drag,
+      // not a wheel. Both panels are `position: fixed` and cover the
+      // viewport (2026-08-18), not merely `#board`'s box, but the explicit
+      // check stays: dismissing one on the SAME gesture that follows must
+      // not also place a tile.
+      if (!this.#el.helpPanel.hidden || !this.#el.eventCard.hidden) return false;
       return target === board || target instanceof HTMLCanvasElement;
     };
 
@@ -655,13 +677,13 @@ export class Game {
 
     const lines = [
       `POCKET OF ${value.count} — total worth ${worth}.`,
-      `Take tiles: +${value.tiles}.`,
-      `Take pts: ${value.points} = worth ${worth} × pocket ${Math.min(value.count, t.harvestSizeCap > 0 ? t.harvestSizeCap : value.count)} × distance ${multiplier}${value.questPays ? ` × bounty ${t.questBonus}` : ''}.`,
+      `POP for tiles: +${value.tiles}.`,
+      `POP for pts: ${value.points} = worth ${worth} × pocket ${Math.min(value.count, t.harvestSizeCap > 0 ? t.harvestSizeCap : value.count)} × distance ${multiplier}${value.questPays ? ` × bounty ${t.questBonus}` : ''}.`,
     ];
     if (value.treasure !== null)
-      lines.push(`Take treasure: a ${value.treasure.toUpperCase()} tile.`);
+      lines.push(`POP for treasure: a ${value.treasure.toUpperCase()} tile.`);
     if (value.questPays)
-      lines.push('★ This pocket collects the bounty — but only if you take PTS.');
+      lines.push('★ This pocket collects the bounty — but only if you POP for PTS.');
     if (rares > 0) {
       lines.push(
         `${rares} rare tile${rares === 1 ? '' : 's'} in here will be spent by popping it.`,
@@ -727,8 +749,13 @@ export class Game {
   }
 
   /**
-   * What a placement just claimed, if anything — announced in the hint line
-   * so the reward is legible at the moment it is earned.
+   * What a placement just claimed, if anything, and whether it is worth an
+   * EVENT CARD rather than the ordinary one-line toast (Stage 2, 2026-08-18:
+   * "feedback tiers"). A find, a shrine and a territory change what the
+   * NEXT run starts with — held, centred, dismissed on purpose; a cache or a
+   * site stays a receipt. `eventWorthy` is the leading (rarest) claim's
+   * call — a placement that claims a cache AND a territory at once is a
+   * territory moment first, and reads as one.
    *
    * One placement can touch more than one unclaimed landmark at once (a
    * cache and a find sharing a frontier, say) — the old version of this
@@ -738,7 +765,7 @@ export class Game {
    * (a find's grant, a shrine's counter) and gets a line in the note; the
    * rarest claim leads, the rest follow after a blank line.
    */
-  #claimNote(before: GameState, after: GameState): string | null {
+  #claimNote(before: GameState, after: GameState): { text: string; eventWorthy: boolean } | null {
     const t = after.tuning;
     const RANK: Record<LandmarkReward, number> = {
       find: 0,
@@ -770,7 +797,7 @@ export class Game {
             rank: RANK.site,
             text:
               `★  SITE CLAIMED\nPoints banked — and this star has set a BOUNTY: ` +
-              `pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it and take it as PTS for ×${t.questBonus}.`,
+              `pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it as PTS for ×${t.questBonus}.`,
           });
           break;
         case 'territory': {
@@ -815,7 +842,10 @@ export class Game {
 
     if (notes.length === 0) return null;
     notes.sort((a, b) => a.rank - b.rank);
-    return notes.map((n) => n.text).join('\n\n');
+    return {
+      text: notes.map((n) => n.text).join('\n\n'),
+      eventWorthy: notes[0]!.rank <= RANK.territory,
+    };
   }
 
   /**
@@ -1095,7 +1125,7 @@ export class Game {
             'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround; none of them match.',
             t.singlePayout
               ? 'Tiles are the only thing keeping you alive, and every placement spends them — so what you decide is WHERE and WHEN, never which button.'
-              : 'Tiles keep you going; points are the score. You take one or the other, never both.',
+              : 'Tiles keep you going; points are the score. You POP for one or the other, never both.',
           ],
           detail: [
             t.costGrace > 0
@@ -1135,7 +1165,7 @@ export class Game {
               : []),
             ...(t.treasureNeed > 0
               ? [
-                  `A pocket of ${t.treasureNeed}+ can be cashed as TREASURE instead: a magic tile into your stash, or a unique one from ${t.treasureUnique}+. You give up the tiles and the score to choose a power instead of waiting for one.`,
+                  `A pocket of ${t.treasureNeed}+ can be POPPED as TREASURE instead: a magic tile into your stash, or a unique one from ${t.treasureUnique}+. You give up the tiles and the score to choose a power instead of waiting for one.`,
                 ]
               : []),
           ],
@@ -1195,7 +1225,7 @@ export class Game {
               : []),
             ...(t.questNeed > 0
               ? [
-                  `The bounty: pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of the site and take it as PTS for ×${t.questBonus}. Take it as tiles and the bounty stays standing. One at a time.`,
+                  `The bounty: POP a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of the site as PTS for ×${t.questBonus}. POP it as tiles and the bounty stays standing. One at a time.`,
                 ]
               : []),
             `A territory’s field reaches ${t.territoryRadius} hexes, and it glows in the colour it will grant.`,
@@ -1298,10 +1328,10 @@ export class Game {
         {
           title: 'HOW IT ENDS, AND WHAT REMAINS',
           lines: [
-            'Out of tiles with nothing ripe to cash: broke. Walking to caches is how you avoid it. A frontier that is all wall: walled in — rare, and worth avoiding on the way past.',
+            'Out of tiles with nothing ripe to POP: broke. Walking to caches is how you avoid it. A frontier that is all wall: walled in — rare, and worth avoiding on the way past.',
             ...(t.runLength > 0
               ? [
-                  'LEFT reaches zero: the expedition is over. Anything already ripe can still be cashed.',
+                  'LEFT reaches zero: the expedition is over. Anything already ripe can still be POPPED.',
                 ]
               : []),
             'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
@@ -1511,9 +1541,15 @@ export class Game {
 
     this.#state = next;
     // A pop outranks a claim in the popup: it is the thing the player just
-    // decided, and its arithmetic is the thing worth learning.
-    const note = popped ?? claimed;
-    if (note !== null) this.#showNote(note);
+    // decided, and its arithmetic is the thing worth learning. A claim that
+    // outranks nothing (no pop happened) routes by its own weight: a find,
+    // a shrine or a territory is an EVENT CARD; a cache or a site stays the
+    // one-line toast every pop already uses.
+    if (popped !== null) this.#showNote(popped);
+    else if (claimed !== null) {
+      if (claimed.eventWorthy) this.#showEventCard(claimed.text);
+      else this.#showNote(claimed.text);
+    }
     // Every real change is offered to the shell to keep. Saving after each
     // action rather than on some timer means the most a crash can eat is one
     // tap — a run is 10-20 minutes of a phone's attention, and phones wander.
@@ -1566,6 +1602,26 @@ export class Game {
     }
   }
 
+  /**
+   * The other feedback tier (Stage 2, 2026-08-18): held until dismissed,
+   * centred, for a find, a shrine or a territory — the claims that change
+   * what the NEXT run starts with. Closes any live toast first: the two
+   * tiers must never show two overlapping surfaces for one action, and the
+   * card is the modal one — `#mountGestures`'s curtain reads it as such the
+   * moment it opens.
+   */
+  #showEventCard(text: string): void {
+    this.#showNote(null);
+    this.#el.eventCardText.textContent = text;
+    this.#el.eventCard.hidden = false;
+    this.#el.eventCardDismiss.focus();
+  }
+
+  #closeEventCard(): void {
+    if (this.#el.eventCard.hidden) return;
+    this.#el.eventCard.hidden = true;
+  }
+
   #renderHud(hud: HudView): void {
     this.#renderStats(hud);
     this.#renderDraft(hud);
@@ -1611,14 +1667,15 @@ export class Game {
     // sat in the hint permanently being true. `#lastSignpost` starts
     // undefined so the very first render (boot, or a resumed run) primes it
     // silently — a returning player should not be greeted with a toast about
-    // ground they already knew was near. A claim or a pop's own toast always
-    // wins the same beat; the signpost only speaks when nothing louder just
-    // did (`this.#el.toast.hidden`).
+    // ground they already knew was near. A claim or a pop's own toast, AND
+    // an open event card, always win the same beat; the signpost only
+    // speaks when nothing louder just did.
     if (
       this.#lastSignpost !== undefined &&
       hud.hint !== null &&
       hud.hint !== this.#lastSignpost &&
-      this.#el.toast.hidden
+      this.#el.toast.hidden &&
+      this.#el.eventCard.hidden
     ) {
       this.#showNote(`${hud.hint}.`);
     }
@@ -1633,8 +1690,8 @@ export class Game {
     // a dead option that looks exactly like a live one is how a player wastes
     // the back half of a run.
     this.#el.harvestTiles.textContent = hud.tilesSpare
-      ? `Take ${hud.harvestTiles} tiles · SPARE`
-      : `Take ${hud.harvestTiles} tiles`;
+      ? `POP ${hud.harvestTiles} tiles · SPARE`
+      : `POP ${hud.harvestTiles} tiles`;
     this.#el.harvestTiles.classList.toggle('spare', hud.tilesSpare);
     // Under the single payout there is nothing to choose between: one POP
     // button that pays tiles and scores, and the points button stops
@@ -1658,8 +1715,8 @@ export class Game {
       // The bounty rides on the button that collects it, with its multiplier
       // shown — the reason to press a button belongs on the button.
       this.#el.harvestPoints.textContent = hud.questPays
-        ? `Take ${hud.harvestPoints} pts ★`
-        : `Take ${hud.harvestPoints} pts`;
+        ? `POP ${hud.harvestPoints} pts ★`
+        : `POP ${hud.harvestPoints} pts`;
       this.#el.harvestPoints.classList.toggle('bounty', hud.questPays);
     }
 
@@ -1676,7 +1733,7 @@ export class Game {
       // for.
       this.#el.harvestBurn.textContent = hud.burnPaysRelics
         ? `SACRIFICE · ${burn} relics for the shop`
-        : `BURN  +${burn} luck`;
+        : `SACRIFICE · +${burn} luck`;
     }
     this.#el.harvestTiles.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;

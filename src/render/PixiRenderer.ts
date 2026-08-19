@@ -696,16 +696,32 @@ export class PixiRenderer implements Renderer {
   #spawnFlashes(previous: BoardView, next: BoardView, layout: Layout): void {
     if (previous.cells.length === 0) return;
 
+    const motion = this.#theme.motion;
+    const texture = this.#flashTextureFor();
+    if (texture === null) return;
+
+    // The ripen pulse (Stage 2, 2026-08-18): one beat, the same glow the pop
+    // already uses — reusing the visual language rather than inventing a
+    // second one — on any tile that just became RIPE, whether it sat there
+    // unripe a moment ago or arrived already surrounded. Checked BEFORE the
+    // pop's own early return below, which is gated on something having BEEN
+    // ripe — a placement with nothing ripe yet must not lose its own pulse
+    // to a guard that has nothing to do with it.
+    const ripeBefore = new Set<HexKey>();
+    for (const cell of previous.cells) {
+      if (cell.kind === 'tile' && cell.ripe) ripeBefore.add(cell.key);
+    }
+    for (const cell of next.cells) {
+      if (cell.kind !== 'tile' || !cell.ripe || ripeBefore.has(cell.key)) continue;
+      this.#spawnPulse(cell, layout, texture, motion);
+    }
+
     // Key to colour, so the jump can wear the popped tile's own surface.
     const wasRipe = new Map<HexKey, CellView>();
     for (const cell of previous.cells) {
       if (cell.kind === 'tile' && cell.ripe) wasRipe.set(cell.key, cell);
     }
     if (wasRipe.size === 0) return;
-
-    const motion = this.#theme.motion;
-    const texture = this.#flashTextureFor();
-    if (texture === null) return;
 
     let index = 0;
     for (const cell of next.cells) {
@@ -794,6 +810,57 @@ export class PixiRenderer implements Renderer {
 
       index++;
     }
+  }
+
+  /**
+   * One beat on a tile that just ripened — quieter and shorter than a pop's
+   * glow (a pop is a reward; a ripen is information), and never staggered:
+   * a placement ripens at most the handful of tiles it just surrounded, and
+   * they light together, not in a queue. Reduced motion keeps the same
+   * held-glow contract as the pop's own fallback: feedback without motion,
+   * not no feedback.
+   */
+  #spawnPulse(cell: CellView, layout: Layout, texture: Texture, motion: Theme['motion']): void {
+    const { x, y } = place(cell, layout);
+    const size = layout.size * 2.6;
+    const peak = motion.popAlpha * 0.7;
+
+    if (this.#reducedMotion) {
+      const still = new Sprite(texture);
+      still.anchor.set(0.5);
+      still.position.set(x, y);
+      still.setSize(size, size);
+      still.alpha = peak;
+      this.#fx.addChild(still);
+      this.#flashes.push({
+        kind: 'hold',
+        sprite: still,
+        delayMs: 0,
+        elapsedMs: 0,
+        lifeMs: REDUCED_POP_MS,
+        peak,
+        baseY: y,
+        liftPx: 0,
+      });
+      return;
+    }
+
+    const glow = new Sprite(texture);
+    glow.anchor.set(0.5);
+    glow.position.set(x, y);
+    glow.setSize(size, size);
+    glow.alpha = 0;
+    this.#fx.addChild(glow);
+    this.#flashes.push({
+      kind: 'glow',
+      sprite: glow,
+      delayMs: 0,
+      elapsedMs: 0,
+      lifeMs: Math.round(motion.popMs * 0.6),
+      peak,
+      baseY: y,
+      liftPx: 0,
+    });
   }
 
   #clearFlashes(): void {

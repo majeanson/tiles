@@ -38,44 +38,71 @@ lint/format clean, `pnpm sim` byte-identical to the last balance sweep (0
 stalled, 0 capped, 200 seeds × 15 policies). Full account in `LOG.md`'s
 2026-08-18 addendum. Pushed; CI green on `main`.
 
-## Stage 2 — UI/UX (STATUS: TODO — next up, on Sonnet)
+## Stage 2 — UI/UX (STATUS: DONE, commits `8e25a63`, `091749c`, `b2edce4`, `<pending>`)
 
-The audit's big five, one coherent pass, plus the small wins:
+The audit's big five, in four commits, plus most of the small wins. Full
+account in `LOG.md`'s 2026-08-18 addendum; the short version:
 
-1. **Front door**: NAME + TAGLINE + BEGIN + quiet HOW TO PLAY over #app;
-   the help panel becomes truly modal (cover #app, not #board); returning
-   players get "RESUMED — placement N".
-2. **End screen as payout**: score broken into pops + reach×40 +
-   claims×60 → TOTAL; CARRIED OUT strip (relics banked, perk found,
-   territories, world % known); facts as 2×3 label/value grid (drop the
-   luck entry — double-counts relics); NEW BEST as headline when true,
-   else "N short of best"; shop door demoted from button to payout row
-   (RELICS 120 ▸); RUN N printed (book.runs exists unused); SHARE moved
-   beside the arc; NEW RUN the only button-shaped thing.
-3. **Bottom-third reclaim**: footer stamp only under ?ff=debug.overlay;
-   colour chips folded into long-press on draft cards (spotlight + the
-   steer purchase can ride the same press); hint line cut to ONE clause
-   (guide only — destination signpost moves to the toast on change; the
-   odds text moves to the hand/shop; kill the constant-odds clause).
-4. **Camera**: cluster bottom-right in thumb arc; FIT ⇄ HERE two-state
-   anchored on lastPlaced; pan-to-pocket before popping an off-screen
-   target.
-5. **Feedback tiers**: event card (held, centred, dismiss) for find/
-   shrine/new-best/territory vs one-line receipts (bottom strip);
-   one-beat ripen pulse on the hex; POP · N pockets ready count.
+1. **Front door** (`8e25a63`): NAME + TAGLINE + BEGIN (RESUME — PLACEMENT N
+   when a run is saved) + quiet HOW TO PLAY over #app, painted as static
+   markup so it costs the first frame nothing. `Game#openHelp` made public
+   so the door opens the SAME manual the in-game ? does. `#help-panel`
+   moved to `position: fixed` and OUT of `#game-shell` (which starts
+   `inert`) — an inert ancestor makes every descendant unfocusable
+   regardless of z-index, so the manual had to sit outside it to still open
+   from the door.
+2. **End screen as payout** (`091749c`): score broken into POPS +
+   REACH×`endReachBonus` + CLAIMS×`endClaimBonus` → TOTAL, read off the
+   exact fields `endingBonus` computed with; CARRIED OUT strip (relics,
+   a perk found this run, territories held and world-known via a new
+   `worldStats` hook); facts as a fixed 2×3 grid, LUCK dropped; NEW BEST a
+   headline, else "N short of best"; RUN N printed; shop door demoted to a
+   payout row; SHARE moved beside the arc; NEW RUN the only button-shaped
+   control. The POP-button points leak fixed here too, picked honestly per
+   the brief: tiles + the pocket's DEPTH multiplier when `hidePoints` is on,
+   never the points figure the setting exists to hide.
+3. **Bottom-third reclaim + camera** (`b2edce4`): footer stamp behind
+   `?ff=debug.overlay` (THIS BUILD states the sha unconditionally instead —
+   the no-staleness contract); colour chips folded into a `contextmenu`
+   long-press on draft cards (the ONE native event a touch hold, a
+   right-click AND a keyboard's context-menu key all fire — free keyboard
+   parity, no hand-rolled timer); the STEER purchase stays in the purse,
+   decided and documented (a priced spend belongs where every other price
+   already lives); hint line cut to one clause, the signpost moved to a
+   toast-on-change, odds moved to the purse toggle. Camera: FIT ⇄ HERE
+   replaces four buttons with one toggle in the bottom-right thumb arc, a
+   new `centerOn` on `Renderer` backs both HERE and pan-to-pocket-before-
+   popping. The frontier fix: `PixiRenderer.draw()` held the fit still past
+   FIT (only a resize or returning to FIT recomputes it), which is what
+   stops the world sliding under a zoomed camera.
+4. **Feedback tiers + words** (`<pending>`): a new event-card dialog (held,
+   centred, dismissed on tap/Escape/button) for find/shrine/territory —
+   `#claimNote` returns `{ text, eventWorthy }` now, ranked exactly as
+   before; cache/site stay the one-line toast. A one-beat ripen pulse
+   (quieter/shorter than the pop glow, reusing its texture) on any tile
+   that just became ripe. One voice: every player-facing "take"/"cash"/
+   "burn" became POP/SACRIFICE, including the game's own TAGLINE.
 
-Small wins: sticky shop purse + BACK at top; BUY 60 labels; buy
-acknowledgment (flash row, "start 22 → 27" effect lines); shelf mystery
-line replaces four UNDISCOVERED rows; POP stops leaking pts (tiles +
-depth instead) OR points return to header — pick one honestly;
-SACRIFICE · 14 relics "for the shop"; REACH 12 · best 18; stash behind a
-divider, narrower; selected-card state stronger; SETTINGS reordered
-(player things first, dev flags under a fold, atlas as grid); theme
-picker moves into SETTINGS; gallery linked from SETTINGS and its play
-links stop force-persisting the flag; one voice: POP/SACRIFICE
-everywhere (kill harvest/cash/take/burn in player-facing copy).
+**Adapted from the brief, decided and written down:**
 
-Tests updated alongside; no palette/art changes; engine untouched.
+- NEW BEST's "event card" treatment IS the end screen's own held, centred
+  headline (item 2) — a second transient card layered on top of the very
+  screen already announcing it would have been redundant chrome, not
+  better feedback.
+- "REACH 12 · best 18" on the LIVE stat row: not done. It would need
+  world-level data threaded into a row whose test currently pins an exact
+  `String(hud.depthValue)` equality, for a small win — the cost didn't
+  clear the bar this pass.
+- SETTINGS reorder, the theme picker moving into SETTINGS, and the gallery
+  link: not done. None touch the big five and the stage was already large;
+  left for a dedicated pass rather than squeezed in.
+
+Tests: 458 → 473 (net +15: several deletions where behaviour moved —
+`firstVisit`'s auto-open, the standalone colour chips, the `+`/`−` zoom
+buttons, `questLine` — outnumbered by new coverage for the front door,
+the payout breakdown, the camera toggle, the long-press and the event
+card). No palette/art changes; engine untouched; `pnpm sim` byte-identical
+to Stage 1's table at every commit.
 
 ## Stage 3 — new systems (STATUS: TODO — Sonnet, after stage 2)
 

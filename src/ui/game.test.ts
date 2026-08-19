@@ -83,6 +83,12 @@ function build(
         <button id="camera-toggle">FIT</button>
       </div>
       <div id="toast" hidden></div>
+      <div id="event-card" hidden>
+        <div id="event-card-panel">
+          <p id="event-card-text"></p>
+          <button id="event-card-dismiss">GOT IT</button>
+        </div>
+      </div>
       <div id="help-panel" hidden>
         <div id="help-manual"></div>
         <div id="help-meta"></div>
@@ -124,6 +130,9 @@ function build(
     helpPanel: pick('help-panel'),
     helpManual: pick('help-manual'),
     toast: pick('toast'),
+    eventCard: pick('event-card'),
+    eventCardText: pick('event-card-text'),
+    eventCardDismiss: pick<HTMLButtonElement>('event-card-dismiss'),
   };
 
   const renderer = new StubRenderer();
@@ -533,7 +542,7 @@ describe('the camera, and staying oriented', () => {
     expect(numbers).toContain(`+1 for every ${t.costRisesEvery}`);
     expect(numbers).toContain(`${t.blueTideEvery} hexes from home`);
     expect(numbers).toContain(`past ${t.harvestSizeCap} tiles`);
-    expect(numbers).toContain(`pop a pocket of ${t.questNeed}+`);
+    expect(numbers).toContain(`POP a pocket of ${t.questNeed}+`);
 
     // A payout a player needs BEFORE deciding where to walk is a fact, not
     // arithmetic, so it stays on the visible line rather than in a fold.
@@ -1172,8 +1181,10 @@ describe('the curtain, and contextual help', () => {
     expect(ctx.el.toast.textContent).toMatch(/spent ground/i);
   });
 
-  it('announces a claim, and names what a shrine woke', () => {
-    // A shrine one hex from a legal spot: placing beside it claims it.
+  it('announces a claim as an EVENT CARD, and names what a shrine woke', () => {
+    // A shrine one hex from a legal spot: placing beside it claims it. A
+    // shrine changes what the NEXT run starts with, so it is event-card
+    // worthy (Stage 2, 2026-08-18) — held, not a timed-out toast.
     const base = newRun(7, TUNING);
     const shrine = key(2, 0);
     const ctx = build(1, TUNING, {
@@ -1188,11 +1199,45 @@ describe('the curtain, and contextual help', () => {
     ctx.renderer.nextHit = key(1, 0);
     tap(ctx.el.board);
 
-    expect(ctx.el.toast.hidden).toBe(false);
-    expect(ctx.el.toast.textContent).toMatch(/◈/);
-    expect(ctx.el.toast.textContent).toMatch(/SHRINE WOKEN/);
-    expect(ctx.el.toast.textContent).toMatch(/A fourth draft card/);
-    expect(ctx.el.toast.textContent).toMatch(/next run/i);
+    expect(ctx.el.toast.hidden).toBe(true);
+    expect(ctx.el.eventCard.hidden).toBe(false);
+    expect(ctx.el.eventCardText.textContent).toMatch(/◈/);
+    expect(ctx.el.eventCardText.textContent).toMatch(/SHRINE WOKEN/);
+    expect(ctx.el.eventCardText.textContent).toMatch(/A fourth draft card/);
+    expect(ctx.el.eventCardText.textContent).toMatch(/next run/i);
+
+    // Held until dismissed — not gone on its own, and gone on a tap.
+    ctx.el.eventCard.click();
+    expect(ctx.el.eventCard.hidden).toBe(true);
+  });
+
+  it('event-cards a territory claim too, and closes it on Escape', () => {
+    const base = newRun(7, TUNING);
+    const territory = key(2, 0);
+    const ctx = build(1, TUNING, {
+      resume: {
+        ...base,
+        cells: {
+          ...base.cells,
+          [territory]: { kind: 'landmark', reward: 'territory', claimed: false, colour: 'green' },
+        },
+      },
+    });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.eventCard.hidden).toBe(false);
+    expect(ctx.el.eventCardText.textContent).toMatch(/TERRITORY CLAIMED/);
+
+    // While it is up, the board takes no gesture — the same curtain the
+    // manual keeps.
+    ctx.renderer.nextHit = key(3, 0);
+    tap(ctx.el.board);
+    expect(ctx.game.state.placements).toBe(1);
+
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(ctx.el.eventCard.hidden).toBe(true);
   });
 });
 
@@ -1242,7 +1287,7 @@ describe('special tiles and what a pop did', () => {
     tap(ctx.el.board);
     const text = ctx.el.toast.textContent ?? '';
     expect(text).toMatch(/POCKET OF 9/);
-    expect(text).toMatch(/Take tiles: \+\d+/);
+    expect(text).toMatch(/POP for tiles: \+\d+/);
     expect(text).toMatch(/worth \d+ × pocket 9 × distance \d+/);
     expect(text).toMatch(/1 rare tile/);
   });
@@ -1419,13 +1464,16 @@ describe('hidden finds in the shell', () => {
     tap(ctx.el.board);
 
     expect(granted).toEqual([ctx.find]);
-    expect(ctx.el.toast.hidden).toBe(false);
-    const text = ctx.el.toast.textContent ?? '';
+    // A find changes what the NEXT run starts with — event-card worthy
+    // (Stage 2, 2026-08-18), not the timed-out toast.
+    expect(ctx.el.toast.hidden).toBe(true);
+    expect(ctx.el.eventCard.hidden).toBe(false);
+    const text = ctx.el.eventCardText.textContent ?? '';
     expect(text).toMatch(/✦/);
     expect(text).toMatch(/FOUND — STONEWALKER/);
     expect(text).toMatch(/THE SHOP/i);
 
-    // Rendering again must not grant again — the toast fired on the claim,
+    // Rendering again must not grant again — the card fired on the claim,
     // not on the frame.
     ctx.game.render();
     ctx.game.render();
@@ -1436,7 +1484,8 @@ describe('hidden finds in the shell', () => {
     // The old `#claimNote` returned on the FIRST claim it saw, which ate a
     // find's grant (or a shrine's counter) whenever the same placement also
     // reached something else. One tile beside a cache AND a find must fire
-    // both: the perk is granted, and the toast says so.
+    // both: the perk is granted, and the card says so — the find leads, so
+    // the WHOLE note (cache included) is event-card worthy.
     const base = newRun(7, TUNING);
     const find = key(2, 0);
     const cache = key(2, -1);
@@ -1461,7 +1510,8 @@ describe('hidden finds in the shell', () => {
     tap(ctx.el.board);
 
     expect(granted).toEqual([find]);
-    const text = ctx.el.toast.textContent ?? '';
+    expect(ctx.el.toast.hidden).toBe(true);
+    const text = ctx.el.eventCardText.textContent ?? '';
     expect(text).toMatch(/FOUND — STONEWALKER/);
     expect(text).toMatch(/CACHE CLAIMED/);
     // The find is the rarer claim (find > shrine > territory > site > cache)
@@ -1473,7 +1523,7 @@ describe('hidden finds in the shell', () => {
     const ctx = withFind({ findLabel: () => null });
     ctx.renderer.nextHit = key(1, 0);
     tap(ctx.el.board);
-    expect(ctx.el.toast.textContent).toMatch(/Nothing new inside/);
+    expect(ctx.el.eventCardText.textContent).toMatch(/Nothing new inside/);
   });
 
   it('describes a tapped find without giving the mystery away', () => {

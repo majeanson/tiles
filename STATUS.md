@@ -322,6 +322,8 @@ Everything above this line has shipped. What has not, honestly:
   flag to start a run at a held territory, harness-first — prove the
   distance multiplier cannot be beelined from a far spawn before any UI
   exists. Not started.
-- **The front-door UI.** Name, tagline, BEGIN, a modal help panel, a
-  RESUMED state for returning players — `WORKPLAN.md` stage 2's first item.
-  Not started; this stage (correctness) intentionally does not touch it.
+- **SETTINGS reorder, the theme picker inside it, and a gallery link.**
+  Stage 2's small wins named these; the big five and most of the small wins
+  shipped (2026-08-18), these three did not — none touch the big five, and
+  the stage was already large. See `WORKPLAN.md` Stage 2 and `LOG.md`'s
+  same-day addendum for what an honest cut looks like.

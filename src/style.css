@@ -817,6 +817,61 @@ button.quiet {
   }
 }
 
+/* -------------------------------------------------------------- event card
+
+   Two feedback tiers (Stage 2, 2026-08-18). The toast above is a RECEIPT:
+   one line, gone on its own, for the things a run does constantly (a cache,
+   a site, the arithmetic of a pop). A find, a shrine or a territory are
+   rarer and change what the next run starts with — those get an EVENT
+   CARD: held until dismissed, centred, impossible to miss mid-placement. */
+#event-card {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 55%);
+}
+
+#event-card-panel {
+  max-width: 320px;
+  padding: 20px;
+  border: 1px solid var(--accent, #c79a4b);
+  border-radius: 8px;
+  background: var(--panel, #1e222b);
+  color: var(--ink, #e8ecf4);
+  font-family: var(--font-body, inherit);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: center;
+  white-space: pre-line;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 55%);
+}
+
+#event-card-dismiss {
+  width: 100%;
+  margin-top: 14px;
+  border-color: var(--accent, #d7b45a);
+  color: var(--accent, #d7b45a);
+}
+
+/* Reduced-motion users get the card exactly the same — held, centred,
+   dismissed on purpose — just without the entrance. */
+@media (prefers-reduced-motion: no-preference) {
+  #event-card-panel {
+    animation: event-card-in 160ms ease-out;
+  }
+
+  @keyframes event-card-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+}
+
 /* A payout that buys nothing looks like it. Still pressable — the rules do
    not forbid it — but never again mistakable for the live option. */
 button.spare {
