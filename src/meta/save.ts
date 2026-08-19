@@ -122,6 +122,7 @@ export function decodeRun(raw: string | null): GameState | null {
   const claimedFinds = parsed['claimedFinds'];
   const bias = parsed['bias'];
   const lastPlaced = parsed['lastPlaced'];
+  const wakeAt = parsed['wakeAt'];
   const quest = parsed['quest'];
   const held = parsed['held'];
 
@@ -133,6 +134,11 @@ export function decodeRun(raw: string | null): GameState | null {
         ? claimedFinds
         : [],
     lastPlaced: typeof lastPlaced === 'string' ? lastPlaced : null,
+    // The where-you-wake prototype's own field (2026-08-18): unreachable
+    // from any UI, so no real save has ever written anything but `null`
+    // here — filled anyway, the same discipline every other field in this
+    // block keeps, so `wakeAt` can never decode as `undefined`.
+    wakeAt: typeof wakeAt === 'string' ? wakeAt : null,
     bias:
       isRecord(bias) && typeof bias['colour'] === 'string' && typeof bias['left'] === 'number'
         ? bias

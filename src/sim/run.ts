@@ -1,7 +1,8 @@
 import { TUNING, type Tuning } from '@content/tuning';
-import { distance, parse } from '@engine/hex';
+import { distance, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { stream, type RngStream } from '@engine/rng';
+import { homeOf } from '@engine/rules';
 import type { DeathCause, GameState } from '@engine/state';
 import type { Policy } from './policy';
 
@@ -62,6 +63,12 @@ export type RunOptions = {
   readonly tuning?: Tuning;
   /** Hard stop. Generous enough that hitting it is itself a finding. */
   readonly maxSteps?: number;
+  /**
+   * The where-you-wake PROTOTYPE (2026-08-18, harness only): start the run
+   * at this hex instead of true origin. Absent or null is every ordinary
+   * sweep — no UI ever sets this.
+   */
+  readonly wakeAt?: HexKey | null;
 };
 
 /**
@@ -93,10 +100,15 @@ function summarise(
 
   let reach = 0;
   let claims = 0;
+  // homeOf(state): true origin for every ordinary run; the where-you-wake
+  // prototype's own wake hex when `RunOptions.wakeAt` set one, so REACH
+  // reports the same "how far past where you started" every other
+  // distance-based number in the engine now measures.
+  const home = homeOf(state);
   for (const [k, cell] of Object.entries(state.cells)) {
     if (cell.kind === 'landmark' && cell.claimed) claims++;
     if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-    reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+    reach = Math.max(reach, distance(parse(k), home));
   }
 
   return {
@@ -123,7 +135,7 @@ export function playRun(policy: Policy, seed: number, options: RunOptions = {}):
   const maxSteps = options.maxSteps ?? 20000;
   const tuning = options.tuning ?? TUNING;
 
-  let state = newRun(seed, tuning);
+  let state = newRun(seed, tuning, [], [], options.wakeAt ?? null);
   // The policy's own randomness, on a stream of its own, so that varying the
   // policy cannot shift the tiles the game deals. Same reason the engine's
   // streams are separate.

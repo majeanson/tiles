@@ -288,21 +288,45 @@ export function worthOf(cells: Cells, k: HexKey, t: Tuning): number {
 const ORIGIN: { q: number; r: number } = { q: 0, r: 0 };
 
 /**
+ * "Home" for every distance-based reward: the where-you-wake prototype's own
+ * hex (`state.wakeAt`) if one was set, else true origin. Guarded the same
+ * way `lastPlaced` is read in `ui/view.ts` (`typeof === 'string'`, not
+ * `!== null`) — an old save decodes an unknown field as `undefined`, and
+ * `undefined !== null` is true, which would walk straight into
+ * `parse(undefined)`. The prototype is harness-only and unreachable from
+ * UI: `wakeAt` is null on every save that exists today, so this returns
+ * `ORIGIN` in the shipped game, always.
+ */
+export const homeOf = (state: Pick<GameState, 'wakeAt'>): { q: number; r: number } =>
+  typeof state.wakeAt === 'string' ? parse(state.wakeAt) : ORIGIN;
+
+/**
  * Rule 6's multiplier at a single hex: 1 + floor(distance from home /
  * distanceStep). What a bonus-points site pays through, so a farther site is
  * worth the longer walk by the same arithmetic as any harvest out there.
+ *
+ * `origin` defaults to true origin for every caller that has no state to
+ * hand (the UI, mostly) — the where-you-wake prototype is the only caller
+ * that ever passes anything else, via `homeOf`.
  */
-export const distanceMultiplierAt = (k: HexKey, t: Tuning): number =>
-  1 + Math.floor(distance(parse(k), ORIGIN) / t.distanceStep);
+export const distanceMultiplierAt = (
+  k: HexKey,
+  t: Tuning,
+  origin: { q: number; r: number } = ORIGIN,
+): number => 1 + Math.floor(distance(parse(k), origin) / t.distanceStep);
 
 /**
  * What a cache at this hex hands over: the base, plus the per-ring grade when
  * the gradual dial is on. One function so the payment, the claim announcement
  * and the tap description can never disagree about the number.
  */
-export const cachePaysAt = (k: HexKey, t: Tuning): number =>
+export const cachePaysAt = (
+  k: HexKey,
+  t: Tuning,
+  origin: { q: number; r: number } = ORIGIN,
+): number =>
   t.cachePays +
-  (t.cachePaysPerRing > 0 ? t.cachePaysPerRing * (distanceMultiplierAt(k, t) - 1) : 0);
+  (t.cachePaysPerRing > 0 ? t.cachePaysPerRing * (distanceMultiplierAt(k, t, origin) - 1) : 0);
 
 /**
  * The points multiplier a harvest of exactly these tiles earns.
@@ -310,11 +334,14 @@ export const cachePaysAt = (k: HexKey, t: Tuning): number =>
  * How far from home the pocket sits: `1 + floor(mean distance / distanceStep)`.
  * Depth is paid for by every placement of the journey out. The MEAN rather than
  * the farthest tile, so a long cluster cannot borrow its tip's multiplier for
- * its whole body.
+ * its whole body. Measured from `homeOf(state)` — the wake hex under the
+ * prototype, true origin everywhere else — so a far spawn cannot inherit a
+ * free multiplier just by starting there.
  */
 export function harvestMultiplier(state: GameState, pops: readonly HexKey[]): number {
   if (pops.length === 0) return 1;
-  const sum = pops.reduce((n, k) => n + distance(parse(k), ORIGIN), 0);
+  const home = homeOf(state);
+  const sum = pops.reduce((n, k) => n + distance(parse(k), home), 0);
   return 1 + Math.floor(sum / pops.length / state.tuning.distanceStep);
 }
 

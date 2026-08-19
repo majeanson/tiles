@@ -239,6 +239,20 @@ export type GameState = {
   readonly lastPlaced: HexKey | null;
 
   /**
+   * The where-you-wake PROTOTYPE (2026-08-18, harness only — see
+   * `WORKPLAN.md` and `LOG.md`'s addendum for the verdict). Null in every
+   * shipped run: the plane is grown from true origin, exactly as it always
+   * was. When set (by `newRun`'s optional 5th argument, which only the sim
+   * ever passes), the run is grown from THIS hex instead, and every
+   * distance-based reward (`rules.ts`'s `homeOf`) measures from it rather
+   * than from `{0,0}` — the prototype's whole question was whether that
+   * measurement can be gamed by spawning far away, so it had to become the
+   * measurement rather than a special case bolted beside it. Engine purity:
+   * a wake point is data about THIS run, so it lives in state, not tuning.
+   */
+  readonly wakeAt: HexKey | null;
+
+  /**
    * Territories this WORLD already holds, from earlier runs (P4a). Plain
    * data handed to `newRun`, never read from storage by the engine: a run
    * stays reproducible from its seed, its tuning and this list. Those

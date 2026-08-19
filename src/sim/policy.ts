@@ -6,6 +6,7 @@ import {
   canPlaceNow,
   costOf,
   harvestValue,
+  homeOf,
   isExhausted,
   legalPlacements,
   placementsLeft,
@@ -111,12 +112,18 @@ function smallestHarvest(state: GameState, choice: 'tiles' | 'points'): Move | n
   return least?.[0] === undefined ? null : [{ type: 'HARVEST', choice, at: least[0] }];
 }
 
-/** How far from home the run has built, in hexes. The endless world's depth. */
+/**
+ * How far from home the run has built, in hexes. The endless world's depth.
+ * `homeOf(state)`: true origin for every ordinary policy run; the
+ * where-you-wake prototype's own wake hex when the sim set one, so a
+ * policy's own sense of "how deep am I" is not thrown off by where it woke.
+ */
 function reachOf(state: GameState): number {
   let reach = 0;
+  const home = homeOf(state);
   for (const [k, cell] of Object.entries(state.cells)) {
     if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-    reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+    reach = Math.max(reach, distance(parse(k), home));
   }
   return reach;
 }
@@ -127,8 +134,9 @@ function reachOf(state: GameState): number {
  */
 function farthestPlacement(state: GameState): Move | null {
   let best: { index: number; hex: string; dist: number; worth: number } | null = null;
+  const home = homeOf(state);
   for (const o of options(state)) {
-    const dist = distance(parse(o.hex), { q: 0, r: 0 });
+    const dist = distance(parse(o.hex), home);
     if (best === null || dist > best.dist || (dist === best.dist && o.worth > best.worth)) {
       best = { ...o, dist };
     }
@@ -346,15 +354,24 @@ export const bank80 = bankAt(80);
 /**
  * The nearest destination not yet claimed, revealed or still over the horizon.
  * What a destination-aware policy walks toward. Null when the system is off.
+ *
+ * Known limitation of the where-you-wake PROTOTYPE (2026-08-18): `destinationsWithin`
+ * always searches blocks around TRUE origin, not around `homeOf(state)` —
+ * changing that would touch the shipped beacon search every UI surface
+ * reads too, well past this harness's scope. For a far wake hex this makes
+ * `seeker` under-perform (the search radius rarely reaches real ground near
+ * the run), never over-perform — a conservative bias against far spawns,
+ * not an exploit risk, so it is left as-is and reported honestly in LOG.md.
  */
 function nearestDestination(state: GameState): { q: number; r: number } | null {
+  const home = homeOf(state);
   const horizon = reachOf(state) + state.tuning.beaconHorizon;
 
   let best: { q: number; r: number; dist: number } | null = null;
   for (const d of destinationsWithin(state.rootSeed, horizon, state.tuning)) {
     const cell = state.cells[key(d.q, d.r)];
     if (cell?.kind === 'landmark' && cell.claimed) continue;
-    const dist = distance(d, { q: 0, r: 0 });
+    const dist = distance(d, home);
     if (best === null || dist < best.dist) best = { ...d, dist };
   }
   return best;

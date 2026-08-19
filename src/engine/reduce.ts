@@ -7,6 +7,7 @@ import {
   canPlaceAt,
   distanceMultiplierAt,
   harvestValue,
+  homeOf,
   isExhausted,
   outOfTime,
   payPlacement,
@@ -230,15 +231,16 @@ function openWorld(
   t: Tuning,
   claimed: readonly HexKey[],
   claimedFinds: readonly HexKey[],
+  origin: { q: number; r: number },
 ): { cells: Record<HexKey, Cell>; draft: Tile[]; rng: RngStreams } {
   const seeded = rollTile(rng.tiles, rng.loot, t, 0);
   const cells: Record<HexKey, Cell> = {
-    [key(0, 0)]: tileCell(seeded.tile.colour, false, seeded.tile.rarity),
+    [key(origin.q, origin.r)]: tileCell(seeded.tile.colour, false, seeded.tile.rarity),
   };
   const held = new Set(claimed);
   const heldFinds = new Set(claimedFinds);
   const fields = claimedFields({ cells, claimed, rootSeed, tuning: t });
-  for (const n of neighbourKeys(0, 0)) {
+  for (const n of neighbourKeys(origin.q, origin.r)) {
     cells[n] = revealCell(rootSeed, n, t, fields, held, heldFinds);
   }
 
@@ -261,15 +263,22 @@ export const startingPerk = (t: Tuning, territories: number): number =>
  * from seed + tuning + these two lists. Kept separate rather than one list:
  * `claimed.length` feeds `startingPerk` below, and a find is not a
  * territory.
+ *
+ * `wakeAt` is the where-you-wake PROTOTYPE's own argument (2026-08-18,
+ * harness only — no UI ever passes it): grow the plane from this hex
+ * instead of true origin, and measure every distance-based reward from it
+ * (`rules.ts`'s `homeOf`). Null means exactly what it always meant: origin.
  */
 export function newRun(
   rootSeed: number,
   tuning: Tuning = TUNING,
   claimed: readonly HexKey[] = [],
   claimedFinds: readonly HexKey[] = [],
+  wakeAt: HexKey | null = null,
 ): GameState {
   const streams = streamsFrom(rootSeed);
-  const opened = openWorld(rootSeed, streams, tuning, claimed, claimedFinds);
+  const origin = wakeAt !== null ? parse(wakeAt) : { q: 0, r: 0 };
+  const opened = openWorld(rootSeed, streams, tuning, claimed, claimedFinds, origin);
 
   return {
     version: 1,
@@ -293,6 +302,7 @@ export function newRun(
     quest: null,
     bias: null,
     lastPlaced: null,
+    wakeAt,
     claimed,
     claimedFinds,
     log: { harvests: [], popped: 0, questsDone: 0 },
@@ -474,9 +484,11 @@ function place(state: GameState, hex: HexKey): GameState {
 
       // Graded by distance since 2026-08-18: the walk that found a cache is
       // priced into what it holds. `cachePaysAt` so the UI says the same.
-      if (c.reward === 'cache') tiles += cachePaysAt(n, t);
+      // `homeOf(state)` rather than true origin — the where-you-wake
+      // prototype's whole question, answered here as everywhere else.
+      if (c.reward === 'cache') tiles += cachePaysAt(n, t, homeOf(state));
       if (c.reward === 'site') {
-        points += t.sitePays * distanceMultiplierAt(n, t);
+        points += t.sitePays * distanceMultiplierAt(n, t, homeOf(state));
         // A site also opens its bounty, if quests are on and none is in play.
         // One at a time: a second goal is not twice the goal, it is none.
         if (t.questNeed > 0 && quest === null) {
@@ -712,10 +724,14 @@ function endingBonus(state: GameState, death: DeathCause): GameState {
 
   let reach = 0;
   let claims = 0;
+  // homeOf(state): true origin in every shipped run; the wake hex under the
+  // where-you-wake prototype, so REACH itself cannot be a free gift of
+  // spawning far away.
+  const home = homeOf(state);
   for (const [k, cell] of Object.entries(state.cells)) {
     if (cell.kind === 'landmark' && cell.claimed) claims++;
     if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-    reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+    reach = Math.max(reach, distance(parse(k), home));
   }
 
   return {
