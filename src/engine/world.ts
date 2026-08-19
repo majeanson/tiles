@@ -1,4 +1,4 @@
-import { COLOURS, type Colour, type Tuning } from '@content/tuning';
+import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import type { LandmarkReward } from './state';
 
 /**
@@ -86,22 +86,37 @@ export function blockDestination(
   // remainder, never a fourth scaled number). Reward kinds ride the presence
   // roll.
   //
+  // Unlike `deepWaterRampBlocks` (an optional TILT with a real "off" state
+  // at 0), the near mix is not optional — every economy has one, deep water
+  // or not. A save from before these three fields existed decodes them as
+  // `undefined`, and `undefined`'s own comparisons are false everywhere
+  // (`kind < undefined` never holds), which would silently turn every
+  // destination into a shrine rather than reproduce the split the save was
+  // actually written under. `> 0` falls back to `TUNING`'s own values — the
+  // exact numbers this split was hardcoded to before it had a name — the
+  // same "resume plays under its own saved economy" contract every other
+  // dial in this file already keeps.
+  const cacheShareNear = t.cacheShareNear > 0 ? t.cacheShareNear : TUNING.cacheShareNear;
+  const siteShareNear = t.siteShareNear > 0 ? t.siteShareNear : TUNING.siteShareNear;
+  const territoryShareNear =
+    t.territoryShareNear > 0 ? t.territoryShareNear : TUNING.territoryShareNear;
+
   // Deep water (2026-08-18): past `deepWaterRampBlocks` blocks the cache
   // share has tilted all the way to `cacheShareFar`, and site/territory
   // thicken to fill what cache gave up — each SCALED, so they keep their
   // near-water ratio to one another and to shrine (float-drift-proof: the
-  // three thresholds below always sum to under 1). `> 0` is the whole gate:
-  // an old save's `deepWaterRampBlocks` decodes as `undefined`, which fails
-  // it and reproduces the original fixed split untouched.
-  let cacheShare = t.cacheShareNear;
-  let siteShare = t.siteShareNear;
-  let territoryShare = t.territoryShareNear;
+  // three thresholds always sum to under 1). `> 0` is the whole gate: an old
+  // save's `deepWaterRampBlocks` decodes as `undefined`, which fails it and
+  // reproduces the original fixed split untouched.
+  let cacheShare = cacheShareNear;
+  let siteShare = siteShareNear;
+  let territoryShare = territoryShareNear;
   if (t.deepWaterRampBlocks > 0) {
     const deepRamp = Math.min(1, hexDistance(bq, br) / t.deepWaterRampBlocks);
-    cacheShare = t.cacheShareNear + (t.cacheShareFar - t.cacheShareNear) * deepRamp;
-    const scale = (1 - cacheShare) / (1 - t.cacheShareNear);
-    siteShare = t.siteShareNear * scale;
-    territoryShare = t.territoryShareNear * scale;
+    cacheShare = cacheShareNear + (t.cacheShareFar - cacheShareNear) * deepRamp;
+    const scale = (1 - cacheShare) / (1 - cacheShareNear);
+    siteShare = siteShareNear * scale;
+    territoryShare = territoryShareNear * scale;
   }
 
   const kind = roll / chance;

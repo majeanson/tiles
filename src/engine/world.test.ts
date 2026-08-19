@@ -187,6 +187,37 @@ describe('destinations', () => {
       delete stale['cacheShareFar'];
       expect(() => destinationsWithin(1, 90, stale as unknown as typeof TUNING)).not.toThrow();
     });
+
+    it('guards the near mix itself for a save older than deep water entirely', () => {
+      // A save from before `cacheShareNear`/`siteShareNear`/`territoryShareNear`
+      // existed at all decodes all three as `undefined` — unlike
+      // `deepWaterRampBlocks`, the near mix has no "off" state a `> 0` check
+      // can safely read as "nothing happens": `kind < undefined` is false for
+      // every comparison, which would silently turn every destination into a
+      // shrine rather than reproduce anything. Not merely "must not throw" —
+      // the split itself must still be the original fixed one.
+      const stale = { ...TUNING } as Record<string, unknown>;
+      delete stale['deepWaterRampBlocks'];
+      delete stale['cacheShareFar'];
+      delete stale['cacheShareNear'];
+      delete stale['siteShareNear'];
+      delete stale['territoryShareNear'];
+      const oldTuning = stale as unknown as typeof TUNING;
+
+      const counts: Record<string, number> = { cache: 0, site: 0, territory: 0, shrine: 0 };
+      let total = 0;
+      for (let seed = 1; seed <= 30; seed++) {
+        for (const d of destinationsWithin(seed, 90, oldTuning)) {
+          counts[d.reward] = (counts[d.reward] ?? 0) + 1;
+          total++;
+        }
+      }
+      expect(total).toBeGreaterThan(100);
+      expect(counts['cache']! / total).toBeCloseTo(0.4, 1);
+      expect(counts['site']! / total).toBeCloseTo(0.35, 1);
+      expect(counts['territory']! / total).toBeCloseTo(0.17, 1);
+      expect(counts['shrine']! / total).toBeCloseTo(0.08, 1);
+    });
   });
 });
 
