@@ -267,6 +267,18 @@ export type GameHooks = {
    * CARRIED OUT strip. Null when nothing was newly met.
    */
   readonly checkGoals?: () => string | null;
+  /**
+   * The crossing (Marc, 2026-08-19): once this world is fully awake, a
+   * further shrine reached OFFERS passage to a fresh world, paid in relics
+   * for what is left behind. The shell owns both halves — `dowry()` prices
+   * the current world live (territories change mid-run), `cross()` banks it
+   * and leaves — because leaving a world outlives any run. Absent on
+   * replays and dailies, which are not this device's world to leave.
+   */
+  readonly crossing?: {
+    readonly dowry: () => number;
+    readonly cross: () => void;
+  };
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -460,6 +472,15 @@ export class Game {
    */
   #helpOpener: HTMLButtonElement;
 
+  /**
+   * The event card's optional second button (2026-08-19, for the crossing):
+   * a card is dismiss-only except when the moment carries a CHOICE — then
+   * this button acts and GOT IT reads as staying. Created once in `start`,
+   * hidden between choices; the handler is swapped per card.
+   */
+  #eventAction: HTMLButtonElement | null = null;
+  #eventActionRun: (() => void) | null = null;
+
   constructor(
     renderer: Renderer,
     elements: Elements,
@@ -572,6 +593,17 @@ export class Game {
     this.#el.eventCard.addEventListener('click', () => {
       this.#closeEventCard();
     });
+    // The optional ACT button (the crossing): runs its moment's handler,
+    // then the same bubbling click closes the card — no second dismiss path.
+    const act = document.createElement('button');
+    act.type = 'button';
+    act.id = 'event-card-action';
+    act.hidden = true;
+    act.addEventListener('click', () => {
+      this.#eventActionRun?.();
+    });
+    this.#el.eventCardDismiss.insertAdjacentElement('beforebegin', act);
+    this.#eventAction = act;
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !this.#el.eventCard.hidden) this.#closeEventCard();
     });
@@ -942,7 +974,14 @@ export class Game {
    * (a find's grant, a shrine's counter) and gets a line in the note; the
    * rarest claim leads, the rest follow after a blank line.
    */
-  #claimNote(before: GameState, after: GameState): { text: string; eventWorthy: boolean } | null {
+  #claimNote(
+    before: GameState,
+    after: GameState,
+  ): {
+    text: string;
+    eventWorthy: boolean;
+    action?: { readonly label: string; readonly run: () => void };
+  } | null {
     const t = after.tuning;
     const RANK: Record<LandmarkReward, number> = {
       find: 0,
@@ -958,6 +997,8 @@ export class Game {
     // held card: the bounty changes how the next few pops are played, and a
     // timed toast is too quiet for a rule change.
     let firstSite = false;
+    // The crossing's CROSS button, when a fully-awake shrine offered one.
+    let action: { readonly label: string; readonly run: () => void } | undefined;
 
     for (const [k, cell] of Object.entries(after.cells)) {
       if (cell.kind !== 'landmark' || !cell.claimed) continue;
@@ -1002,6 +1043,23 @@ export class Game {
           this.#markMet('shrine');
           const label = this.#hooks.unlockLabel?.(this.#shrinesClaimed) ?? null;
           this.#shrinesClaimed++;
+          // The crossing (Marc, 2026-08-19): a shrine past the ledger's end
+          // used to say "fully awake" and give nothing — a dead reward. It
+          // is the way onward now: cross to a fresh world carrying relics
+          // for what this one holds, or stay and keep building it.
+          const crossing = this.#hooks.crossing;
+          if (label === null && crossing !== undefined && this.#hooks.replay !== true) {
+            const dowry = crossing.dowry();
+            action = { label: `CROSS — carry ${dowry} relics`, run: crossing.cross };
+            notes.push({
+              rank: RANK.shrine,
+              text:
+                '◈  THE WORLD IS AWAKE\nEvery unlock is yours — and this shrine is a way onward. ' +
+                `Cross to a NEW WORLD and carry ${dowry} relics out for what you leave: the ground and the territories stay behind; your shop and your perks travel. ` +
+                'This run ends at the crossing. Or stay, and keep building this world.',
+            });
+            break;
+          }
           notes.push({
             rank: RANK.shrine,
             text:
@@ -1049,6 +1107,7 @@ export class Game {
     return {
       text: notes.map((n) => n.text).join('\n\n'),
       eventWorthy: notes[0]!.rank <= RANK.territory || firstSite,
+      ...(action === undefined ? {} : { action }),
     };
   }
 
@@ -1081,9 +1140,13 @@ export class Game {
       }
       if (reward === 'shrine') {
         const next = this.#hooks.unlockLabel?.(this.#shrinesClaimed) ?? null;
-        return claimed
-          ? '◈ SHRINE — woken. It switched a system on for this world.'
-          : `◈ SHRINE — claim it to unlock ${next ?? 'a system'} for this world, permanently.`;
+        if (claimed) return '◈ SHRINE — woken. It switched a system on for this world.';
+        // Fully awake with the crossing available: the shrine's remaining
+        // gift is the way onward, and its tap explanation says so.
+        if (next === null && this.#hooks.crossing !== undefined && this.#hooks.replay !== true) {
+          return `◈ SHRINE — this world is fully awake, so reaching it offers the crossing: a NEW WORLD, with ${this.#hooks.crossing.dowry()} relics carried for what you leave.`;
+        }
+        return `◈ SHRINE — claim it to unlock ${next ?? 'a system'} for this world, permanently.`;
       }
       if (reward === 'find') {
         // Mysterious but honest: what a find gives is the one thing the
@@ -1629,7 +1692,12 @@ export class Game {
                 ]
               : []),
             'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
-            'SETTINGS shows what your world has seen, and can abandon it for a fresh one.',
+            ...(this.#hooks.crossing !== undefined && show('shrine')
+              ? [
+                  'Once every shrine unlock is woken, any further shrine is a crossing: step through to a NEW WORLD, carrying relics for what you leave behind.',
+                ]
+              : []),
+            'SETTINGS shows what your world has seen, and can start a NEW WORLD outright — unpaid, but your shop and perks always travel.',
           ],
           detail: [
             ...(t.territoryTiles > 0
@@ -1902,7 +1970,7 @@ export class Game {
         this.#showNote(`${popped}${goalLine}`);
       }
     } else if (claimed !== null) {
-      if (claimed.eventWorthy) this.#showEventCard(`${claimed.text}${goalLine}`);
+      if (claimed.eventWorthy) this.#showEventCard(`${claimed.text}${goalLine}`, claimed.action);
       else this.#showNote(`${claimed.text}${goalLine}`);
     } else if (goalNote !== null) {
       this.#showNote(`GOAL MET — ${goalNote}`);
@@ -1992,11 +2060,21 @@ export class Game {
    * card is the modal one — `#mountGestures`'s curtain reads it as such the
    * moment it opens.
    */
-  #showEventCard(text: string): void {
+  #showEventCard(
+    text: string,
+    action?: { readonly label: string; readonly run: () => void },
+  ): void {
     this.#showNote(null);
     const match = EVENT_GLYPH.exec(text);
     this.#el.eventCardGlyph.textContent = match?.[1] ?? '';
     this.#el.eventCardText.textContent = match?.[2] ?? text;
+    // A card with a choice grows its second button; GOT IT reads as staying.
+    if (this.#eventAction !== null) {
+      this.#eventAction.hidden = action === undefined;
+      this.#eventAction.textContent = action?.label ?? '';
+      this.#eventActionRun = action?.run ?? null;
+    }
+    this.#el.eventCardDismiss.textContent = action === undefined ? 'GOT IT' : 'STAY';
     this.#el.eventCard.hidden = false;
     this.#el.eventCardDismiss.focus();
   }
@@ -2004,6 +2082,8 @@ export class Game {
   #closeEventCard(): void {
     if (this.#el.eventCard.hidden) return;
     this.#el.eventCard.hidden = true;
+    if (this.#eventAction !== null) this.#eventAction.hidden = true;
+    this.#eventActionRun = null;
   }
 
   /* --------------------------------------------------------------- teaching

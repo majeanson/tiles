@@ -47,10 +47,17 @@
         <img id="front-door-logo" alt="" width="56" height="56" />
         <p id="front-door-name"></p>
         <p id="front-door-tagline"></p>
+        <!-- The playstyle menu (2026-08-19): main.ts names which game BEGIN
+             opens — your world, the daily, or a shared run — and shows the
+             other doors beside it. The mode line and the two quiet buttons
+             start hidden; the shell reveals what applies. -->
+        <p id="front-door-mode" class="flag-note" hidden></p>
         <button id="front-door-begin" type="button">BEGIN</button>
+        <button id="front-door-daily" type="button" class="quiet" hidden>DAILY</button>
+        <button id="front-door-home" type="button" class="quiet" hidden>YOUR WORLD</button>
         <button id="front-door-help" type="button" class="quiet">HOW TO PLAY</button>
         <!-- The one true wipe: run, world, shop, records, settings — the
-             stranger-handing-back-the-phone control. Two taps, like ABANDON. -->
+             stranger-handing-back-the-phone control. Two taps, like NEW WORLD. -->
         <button id="front-door-reset" type="button">RESET ALL</button>
       </div>
 

@@ -2372,6 +2372,90 @@ describe('teaching, drop by drop (2026-08-19)', () => {
   });
 });
 
+describe('the crossing (2026-08-19)', () => {
+  /** A run one placement from an unclaimed shrine, under the given hooks. */
+  const shrineAt = (hooks: GameHooks) => {
+    const base = newRun(7, TUNING);
+    const ctx = build(1, TUNING, {
+      ...hooks,
+      resume: {
+        ...base,
+        cells: {
+          ...base.cells,
+          [key(2, 0)]: { kind: 'landmark', reward: 'shrine', claimed: false },
+        },
+      },
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    return ctx;
+  };
+
+  const actionButton = (): HTMLButtonElement =>
+    document.getElementById('event-card-action') as HTMLButtonElement;
+
+  it('offers the crossing on a fully-awake shrine — priced, actionable, refusable', () => {
+    let crossed = 0;
+    const ctx = shrineAt({
+      unlockLabel: () => null, // every rung woken: the ledger is done
+      crossing: {
+        dowry: () => 100,
+        cross: () => {
+          crossed++;
+        },
+      },
+    });
+
+    expect(ctx.el.eventCard.hidden).toBe(false);
+    const text = ctx.el.eventCardText.textContent ?? '';
+    expect(text).toMatch(/THE WORLD IS AWAKE/);
+    expect(text).toMatch(/100 relics/);
+    expect(text).toMatch(/NEW WORLD/);
+
+    // The card grew its choice: CROSS acts, and the dismiss reads as STAY.
+    const act = actionButton();
+    expect(act.hidden).toBe(false);
+    expect(act.textContent).toContain('100');
+    expect(ctx.el.eventCardDismiss.textContent).toBe('STAY');
+
+    act.click();
+    expect(crossed).toBe(1);
+    // The same bubbling click that dismisses every card closed this one too.
+    expect(ctx.el.eventCard.hidden).toBe(true);
+  });
+
+  it('stays a plain fully-awake card on a replay — a detour has no world to leave', () => {
+    const ctx = shrineAt({
+      unlockLabel: () => null,
+      replay: true,
+      crossing: {
+        dowry: () => 9,
+        cross: () => {
+          throw new Error('a replay must never cross');
+        },
+      },
+    });
+    expect(ctx.el.eventCardText.textContent).toMatch(/fully awake/);
+    expect(actionButton().hidden).toBe(true);
+    expect(ctx.el.eventCardDismiss.textContent).toBe('GOT IT');
+  });
+
+  it('never competes with a real unlock — rungs first, the way onward after', () => {
+    const ctx = shrineAt({
+      unlockLabel: () => 'A fourth draft card',
+      crossing: {
+        dowry: () => 9,
+        cross: () => {
+          throw new Error('an unfinished ledger must never cross');
+        },
+      },
+    });
+    expect(ctx.el.eventCardText.textContent).toMatch(/A fourth draft card/);
+    expect(actionButton().hidden).toBe(true);
+  });
+});
+
 describe('fog memory, and the divining rod it must not be (2026-08-19)', () => {
   /** A hashed destination beyond the beacon horizon of a fresh run, if any. */
   const farDestination = (seed: number): HexKey | null => {

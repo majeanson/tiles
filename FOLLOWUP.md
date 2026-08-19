@@ -75,4 +75,13 @@ shrines and finds are their own progression. Not a bug to fix.
   successor question.
 - **Sound** — you chose a silent 1.0; the pop, the claim and running dry are
   the three moments that most want a noise.
+- **The daily is LIVE** (built 2026-08-19 on your call): DAILY on the front
+  door's new playstyle menu, one shared plain world per local date, counted
+  retries, the sparkline share. Worth a play: does the plain economy hold a
+  daily's attention, and does the share line read right in a chat?
+- **The crossing is LIVE** (your design, same day): once a world is fully
+  awake, any further shrine offers a NEW WORLD with relics carried for the
+  territories left behind — and SETTINGS' old ABANDON is now the unpaid
+  NEW WORLD. Your all-shrines world is one shrine-walk from testing it.
+- **Waypoints** stay parked behind the origin audit (`ideas/waypoints.md`).
 - The rest of the parking lot is at the bottom of `ROADMAP.md`.

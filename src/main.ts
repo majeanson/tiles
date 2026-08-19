@@ -1,5 +1,17 @@
 import { TUNING, type Tuning } from '@content/tuning';
-import { GOALS } from '@content/goals';
+import { CROSSING, GOALS } from '@content/goals';
+import { distance, parse } from '@engine/hex';
+import {
+  arcSparkline,
+  dailyNumber,
+  dailySeed,
+  dailyStreak,
+  decodeDailyBook,
+  encodeDailyBook,
+  isDailyDate,
+  ordinal,
+  recordDaily,
+} from '@meta/daily';
 import { newlyMetGoals } from '@meta/goals';
 import {
   decodeFeatures,
@@ -96,6 +108,38 @@ const SHRINE_RECEIPT_KEY = 'tiles.shrinereceipt.v1';
  * the screen). Written by `showFailure`, shown under SETTINGS ▸ DEVELOPER.
  */
 const ERROR_STORAGE_KEY = 'tiles.lasterror.v1';
+/** The daily ladder: best and tries per date, plus the streak they imply. */
+const DAILY_STORAGE_KEY = 'tiles.daily.v1';
+
+/** Today, as the LOCAL date string the daily is named after (Marc's Wordle
+ *  rule, `ideas/daily.md`: the ritual is "new one when I wake up"). */
+function localToday(): string {
+  const now = new Date();
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** `?daily=YYYY-MM-DD`, validated — garbage in the URL is not a daily. */
+function askedDaily(): string | null {
+  const asked = new URLSearchParams(location.search).get('daily');
+  return asked !== null && isDailyDate(asked) ? asked : null;
+}
+
+function readDailyBook(): ReturnType<typeof decodeDailyBook> {
+  try {
+    return decodeDailyBook(localStorage.getItem(DAILY_STORAGE_KEY));
+  } catch {
+    return {};
+  }
+}
+
+function writeDailyBook(book: ReturnType<typeof decodeDailyBook>): void {
+  try {
+    localStorage.setItem(DAILY_STORAGE_KEY, encodeDailyBook(book));
+  } catch {
+    // Private mode: the daily still plays, the ladder just is not kept.
+  }
+}
 
 /**
  * Flags are resolved once, here at the edge, and passed downward as data. The
@@ -285,15 +329,19 @@ function saveWorld(world: WorldMemory): void {
 function runKeeping(
   world: WorldMemory,
   debugOn: boolean,
+  dailyDate: string | null,
 ): GameHooks & { savedSeed: number | null } {
   // Asked once: the URL cannot change mid-session without a reload, and this
   // used to construct fresh URLSearchParams three times per action across
   // the hooks below.
   const replaySeed = askedSeed();
+  // A detour: somebody else's seed, or the daily. Neither is this device's
+  // world — nothing banks, nothing merges, nothing overwrites the home run.
+  const detour = replaySeed !== null || dailyDate !== null;
 
   let saved = null;
   try {
-    saved = replaySeed === null ? decodeRun(localStorage.getItem(RUN_STORAGE_KEY)) : null;
+    saved = detour ? null : decodeRun(localStorage.getItem(RUN_STORAGE_KEY));
   } catch {
     // Private mode. Every run is its own life; that is also a game.
   }
@@ -361,13 +409,13 @@ function runKeeping(
     // without the flag, so THIS BUILD (game.ts) states the sha directly.
     buildSha: __BUILD_SHA__.slice(0, 7),
 
-    // A `?seed=` replay is somebody else's world: every start-of-run moment
-    // that speaks about THIS world stays quiet on one.
-    replay: replaySeed !== null,
+    // A `?seed=` replay is somebody else's world, and a daily is nobody's:
+    // every start-of-run moment that speaks about THIS world stays quiet.
+    replay: detour,
     // Read once, right here — before the game this receipt is FOR has even
     // been constructed — and cleared the moment it is read, so a shrine
     // named on this run's first frame is never named again on the next.
-    shrineReceipt: replaySeed === null ? readShrineReceipt() : [],
+    shrineReceipt: detour ? [] : readShrineReceipt(),
 
     // Which unlock the next shrine gives, so the game can NAME it at the
     // moment it is woken. The ledger lives out here with the world; the game
@@ -385,7 +433,7 @@ function runKeeping(
     // engine's own "already claimed" cannot see, because the grant lives out
     // here.
     findLabel: (hex) => {
-      if (replaySeed !== null) return null;
+      if (detour) return null;
       if (current.finds.includes(hex)) return null;
       const granted = grantFind(readProgress(), world.worldSeed, hex);
       if (granted === null) return null;
@@ -399,7 +447,7 @@ function runKeeping(
     // and known% all read the same live facts the atlas does. A replay is
     // somebody else's world and must neither pay nor mark anything met.
     checkGoals: () => {
-      if (replaySeed !== null) return null;
+      if (detour) return null;
       const progress = readProgress();
       const newly = newlyMetGoals(current, progress);
       if (newly.length === 0) return null;
@@ -428,13 +476,53 @@ function runKeeping(
     // moment ago must not read as unclaimed, and `farthestReach` (2026-08-18)
     // updates mid-run the instant THIS run passes the world's old best, the
     // same merge that already keeps the atlas honest.
-    worldStats: () => ({
-      territories: current.territories.length,
-      knownPct: knownFraction(current),
-      farthestReach: current.farthestReach,
-    }),
+    // On a detour the world's own facts stay off screen — a daily's REACH
+    // must not read "best 18" from a home world it is not being played on.
+    ...(detour
+      ? {}
+      : {
+          worldStats: () => ({
+            territories: current.territories.length,
+            knownPct: knownFraction(current),
+            farthestReach: current.farthestReach,
+          }),
+        }),
+
+    // The crossing (Marc, 2026-08-19): a fully-awake world's shrines offer
+    // the way onward. Shell-owned whole, because leaving a world outlives
+    // any run: the dowry prices the CURRENT world live, and crossing banks
+    // it, drops the world and its run, and boots onto unbroken ground.
+    ...(detour
+      ? {}
+      : {
+          crossing: {
+            dowry: () =>
+              CROSSING.baseRelics + current.territories.length * CROSSING.relicsPerTerritory,
+            cross: () => {
+              const dowry =
+                CROSSING.baseRelics + current.territories.length * CROSSING.relicsPerTerritory;
+              const progress = readProgress();
+              writeProgress({ ...progress, relics: progress.relics + dowry });
+              try {
+                localStorage.removeItem(WORLD_STORAGE_KEY);
+                localStorage.removeItem(RUN_STORAGE_KEY);
+                localStorage.removeItem(SHRINE_RECEIPT_KEY);
+              } catch {
+                // A storage that refuses the wipe still reloads into the old
+                // world — with the dowry banked, which errs kind.
+              }
+              location.href = new URL(location.pathname, location.href).toString();
+            },
+          },
+        }),
 
     onChange: (state) => {
+      // Detours never touch the home save: before 2026-08-19 this write was
+      // unconditional, so playing somebody's `?seed=` link OVERWROTE the run
+      // in progress and an abandoned replay could be resumed as your own —
+      // exactly what `ideas/daily.md`'s scouting note believed was already
+      // guarded. The daily depends on the guard, so now it exists.
+      if (detour) return;
       try {
         localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
         askPersistence();
@@ -476,6 +564,42 @@ function runKeeping(
     },
 
     finish: (state) => {
+      // The daily lives on its own ladder (`ideas/daily.md`): tries counted
+      // and confessed, best kept per date, and NOTHING of the home economy
+      // touched — a daily run can earn relics in play, and banking them
+      // would make the plain shared game a meta farm. The end screen's
+      // RUN N / best lines read naturally as try N / today's best.
+      if (dailyDate !== null) {
+        const result = recordDaily(readDailyBook(), dailyDate, state.points);
+        writeDailyBook(result.book);
+        return {
+          runs: result.record.tries,
+          best: result.record.best,
+          isNewBest: result.isNewBest,
+          previousBest: result.previousBest,
+        };
+      }
+
+      // A `?seed=` replay is somebody else's run: nothing banks and nothing
+      // records — the book is READ so the end screen can still say where
+      // this device's standing best sits, but a replayed score never writes
+      // it. (Before 2026-08-19 a replay recorded into the home book.)
+      if (replaySeed !== null) {
+        let standing: RecordBook;
+        try {
+          standing = decodeRecords(localStorage.getItem(BEST_STORAGE_KEY));
+        } catch {
+          standing = {};
+        }
+        const held = standing[ONLY_WORLD] ?? EMPTY_RECORDS;
+        return {
+          runs: held.runs,
+          best: held.bestPoints,
+          isNewBest: false,
+          previousBest: held.bestPoints,
+        };
+      }
+
       // Relics bank before anything else reads the purse: the shop renders
       // on this very screen, and a shop that opened before the run it is
       // paid for had been counted would be showing yesterday's money.
@@ -544,14 +668,19 @@ function runKeeping(
     },
 
     newRun: () => {
-      try {
-        localStorage.removeItem(RUN_STORAGE_KEY);
-      } catch {
-        // Nothing to clear is fine too.
+      // A detour never wrote the save, so there is nothing of ITS to clear —
+      // and the home save must survive it (the same guard onChange keeps).
+      if (!detour) {
+        try {
+          localStorage.removeItem(RUN_STORAGE_KEY);
+        } catch {
+          // Nothing to clear is fine too.
+        }
       }
       const url = new URL(location.href);
       url.searchParams.delete('seed');
       url.searchParams.delete('ff');
+      url.searchParams.delete('daily');
       location.href = url.toString();
     },
 
@@ -560,11 +689,30 @@ function runKeeping(
      * same world and seed. No backend and no account — a seed IS the record,
      * which is the whole reason the engine has been deterministic since
      * Session 0. Falls back to the clipboard where there is no share sheet.
+     * A daily shares its own line instead (`ideas/daily.md`): the number,
+     * the arc as blocks, the confessed retry, and a link that opens the same
+     * DATE — so it stays the same world on every phone that taps it.
      */
     share: async (state) => {
       const url = new URL(location.href);
-      url.searchParams.set('seed', String(state.rootSeed));
-      const text = `${NAME}: ${state.points} pts in ${state.placements} placements. Beat my run:`;
+      let text: string;
+      if (dailyDate !== null) {
+        url.searchParams.delete('seed');
+        url.searchParams.set('daily', dailyDate);
+        let reach = 0;
+        for (const [k, cell] of Object.entries(state.cells)) {
+          if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
+          reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+        }
+        const tries = readDailyBook()[dailyDate]?.tries ?? 1;
+        const arc = arcSparkline(state.log.harvests);
+        text =
+          `${NAME} #${dailyNumber(dailyDate)} · ${state.points} pts · reach ${reach}` +
+          `${arc === '' ? '' : ` · ${arc}`} · ${ordinal(tries)} try · beat it:`;
+      } else {
+        url.searchParams.set('seed', String(state.rootSeed));
+        text = `${NAME}: ${state.points} pts in ${state.placements} placements. Beat my run:`;
+      }
 
       try {
         if (typeof navigator.share === 'function') {
@@ -788,19 +936,24 @@ function mountSettings(
     }),
   );
 
-  // Abandoning is the only destructive control in the game, so it confirms
-  // — and it takes the ground and the territories with it, which is the
-  // point. Kept beside the world it abandons, not buried under DEVELOPER.
+  // Starting over is still the one destructive control in the game, so it
+  // confirms — but it is an INVITATION now, not a punishment (Marc,
+  // 2026-08-19: "a friendlier fresh start"): NEW WORLD, with the words
+  // saying what travels (shop, perks, teaching) and what stays (the map,
+  // the territories, the shrines). The paid way out is the crossing — a
+  // fully-awake world's shrines offer it with a relic dowry; this button is
+  // the unpaid anytime version.
   let armed = false;
   const abandon = document.createElement('button');
   abandon.type = 'button';
   abandon.id = 'abandon-world';
   abandon.className = 'quiet';
-  abandon.textContent = 'ABANDON THIS WORLD';
+  abandon.textContent = 'NEW WORLD — leave this one behind';
   abandon.addEventListener('click', () => {
     if (!armed) {
       armed = true;
-      abandon.textContent = 'TAP AGAIN — this forgets the map and the territories';
+      abandon.textContent =
+        'TAP AGAIN — the map, territories and shrines stay behind; your shop and perks travel';
       return;
     }
     live.abandon();
@@ -1027,11 +1180,17 @@ async function main(): Promise<void> {
     // right answer for a device that keeps nothing anyway.
   }
 
-  const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'));
-  // Resumed run > shared seed link > THIS DEVICE'S WORLD. The last is P4a:
-  // without a link or a run in progress you go back to your own plane, which
-  // is what makes the fog memory and the held territories mean anything.
-  const seed = keeper.savedSeed ?? askedSeed() ?? world.worldSeed;
+  // The daily (`ideas/daily.md`, built 2026-08-19): `?daily=YYYY-MM-DD`
+  // opens that date's shared world, strictly plain, on its own ladder.
+  const dailyDate = askedDaily();
+  const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'), dailyDate);
+  // Resumed run > the daily > shared seed link > THIS DEVICE'S WORLD. The
+  // last is P4a: without a link or a run in progress you go back to your own
+  // plane, which is what makes the fog memory and territories mean anything.
+  const seed =
+    keeper.savedSeed ??
+    (dailyDate !== null ? dailySeed(dailyDate) : askedSeed()) ??
+    world.worldSeed;
   const facing = resolveFacing();
   const picked = resolveTheme(resolveThemeId());
   // The facing override rides on top of the theme as data, so every consumer —
@@ -1136,13 +1295,59 @@ async function main(): Promise<void> {
   });
   const frontDoorBegin = required<HTMLButtonElement>('front-door-begin');
   const frontDoorHelp = required<HTMLButtonElement>('front-door-help');
-  // A run already in progress gets named rather than a generic BEGIN — the
-  // same fact the end screen states as "RUN N", read here from the state
-  // this device is about to resume.
-  frontDoorBegin.textContent =
-    keeper.resume === null || keeper.resume === undefined
-      ? 'BEGIN'
-      : `RESUME — PLACEMENT ${keeper.resume.placements}`;
+  const frontDoorMode = required('front-door-mode');
+  const frontDoorDaily = required<HTMLButtonElement>('front-door-daily');
+  const frontDoorHome = required<HTMLButtonElement>('front-door-home');
+
+  // The front door is the playstyle MENU (Marc, 2026-08-19: "a proper menu
+  // for all playstyles — seed vs real game"): it names which game BEGIN
+  // opens — your world, the daily, or somebody else's shared run — and
+  // offers the other doors beside it, so a mode is entered on purpose and
+  // never by accident of what was in the address bar.
+  const today = localToday();
+  frontDoorHome.addEventListener('click', () => {
+    location.href = new URL(location.pathname, location.href).toString();
+  });
+  if (dailyDate !== null) {
+    frontDoorBegin.textContent = `BEGIN DAILY #${dailyNumber(dailyDate)}`;
+    frontDoorMode.hidden = false;
+    frontDoorMode.textContent =
+      'The daily: one shared world for this date, played plain — no upgrades, no perk. ' +
+      'Tries are counted and confessed; your own world is untouched.';
+    frontDoorHome.hidden = false;
+  } else if (askedSeed() !== null) {
+    frontDoorBegin.textContent = 'BEGIN — SHARED RUN';
+    frontDoorMode.hidden = false;
+    frontDoorMode.textContent =
+      'A shared link: somebody else’s world and seed, played plain. ' +
+      'Nothing here is kept; your own world is untouched.';
+    frontDoorHome.hidden = false;
+  } else {
+    // A run already in progress gets named rather than a generic BEGIN — the
+    // same fact the end screen states as "RUN N", read here from the state
+    // this device is about to resume.
+    frontDoorBegin.textContent =
+      keeper.resume === null || keeper.resume === undefined
+        ? 'BEGIN'
+        : `RESUME — PLACEMENT ${keeper.resume.placements}`;
+    frontDoorMode.hidden = false;
+    frontDoorMode.textContent = 'Your world — remembered ground, your shop, whatever you carry.';
+    const dailyBook = readDailyBook();
+    const todayRecord = dailyBook[today];
+    const streak = dailyStreak(dailyBook, today);
+    frontDoorDaily.hidden = false;
+    frontDoorDaily.textContent =
+      `DAILY #${dailyNumber(today)}` +
+      (todayRecord === undefined
+        ? ''
+        : ` · best ${todayRecord.best} · ${todayRecord.tries} ${todayRecord.tries === 1 ? 'try' : 'tries'}`) +
+      (streak > 1 ? ` · streak ${streak}` : '');
+    frontDoorDaily.addEventListener('click', () => {
+      const url = new URL(location.pathname, location.href);
+      url.searchParams.set('daily', today);
+      location.href = url.toString();
+    });
+  }
   frontDoorBegin.addEventListener('click', () => {
     frontDoor.hidden = true;
     gameShell.inert = false;
@@ -1202,7 +1407,8 @@ async function main(): Promise<void> {
   // A shared `?seed=` link is somebody else's run and plays the plain
   // economy, because a replay scored under this device's upgrades would not
   // be a replay of anything.
-  const tuning = askedSeed() === null ? applyProgress(unlocked, readProgress()) : unlocked;
+  const tuning =
+    askedSeed() === null && dailyDate === null ? applyProgress(unlocked, readProgress()) : unlocked;
   // Territories (and, since 2026-08-18, finds) the world already holds
   // arrive as plain data — the engine still knows nothing about storage, and
   // a replay is reproducible from seed + tuning + these two lists.

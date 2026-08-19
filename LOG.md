@@ -3672,3 +3672,57 @@ byte-identical.
 
 554 tests green (new: the last-gasp toast, the fog gate both ways, no
 BEST badge renders); typecheck, lint, format clean; build green.
+
+**Addendum, same day — fresh worlds, answered three ways: the daily, the
+crossing, and a front door that is finally a menu.**
+
+Marc, still playing: "I'm just unsure why we would not want a new seed or
+world every time to explore." The answer was laid out (the one-world
+design is what shrines, territories, the survey and the fog memory hang
+from) and the itch answered on his picks — build the parked daily, make
+the fresh start friendly, and his own third door: "a shrine you can reach
+that asks you — go to new world? — with a bonus that carries on."
+
+- **The daily seed is BUILT** (`ideas/daily.md`, decided 2026-08-18,
+  called today): `meta/daily.ts` is pure civil-calendar math — the date
+  hash pinned by value (changing it silently would hand every phone a
+  different "same" daily), Hinnant day-counting for the #number and the
+  streak walk, the ladder (best + confessed tries per date) in the record
+  book pattern, and the arc-as-blocks sparkline. `?daily=YYYY-MM-DD`
+  opens that date's world strictly plain on its own ladder; the share
+  line is `ASHWAKE #N · pts · reach · ▂▁▅ · 2nd try · beat it: <link>`,
+  and the link carries the DATE, so it is the same world on every phone.
+- **The build fixed the bug the scout note had believed away**: the run
+  autosave was written UNCONDITIONALLY, so playing any `?seed=` link
+  overwrote the home run in progress, and an abandoned replay could be
+  resumed as your own. Detours (replays and dailies) now write nothing:
+  no save, no world merge, no banked relics, no record-book entry (a
+  replay's score no longer writes this device's best — it only reads
+  where the standing best sits), no world stats on the HUD.
+- **The crossing** (his design, forks settled on option sets: fully-awake
+  shrines; relics scaled by what you leave): once every unlock is woken,
+  any further shrine reached offers passage — the event card grew an
+  optional ACT button (`CROSS — carry N relics`, dismiss reads STAY), the
+  dowry is `CROSSING.baseRelics + perTerritory × territories`
+  (content/goals.ts: 40 + 15/territory — a finished four-territory world
+  pays 100, two-three shop levels), and crossing banks it, leaves the
+  world and its run behind, and boots onto unbroken ground. A dead reward
+  became the world's endpoint: those shrines used to say "fully awake"
+  and give nothing. Guarded off replays and dailies whole.
+- **SETTINGS' ABANDON is now NEW WORLD** — same two-tap arm, but an
+  invitation that says what travels (shop, perks, teaching) and what
+  stays; the crossing is the paid way out, this is the unpaid anytime one.
+- **The front door is the playstyle menu** (Marc: "a proper menu for all
+  playstyles — seed vs real game"): it names which game BEGIN opens (YOUR
+  WORLD with its resume, BEGIN DAILY #N, or BEGIN — SHARED RUN), states
+  each mode's contract in one line, offers DAILY (with #, best, tries and
+  streak) beside the home game, and YOUR WORLD as the way back out of any
+  detour — so a mode is entered on purpose, never by accident of what the
+  address bar held.
+
+567 tests green (28 files — `meta/daily.test.ts` pins the date math, the
+hash by value, the ladder, the streak and the sparkline; the crossing has
+its offer, its refusal and its replay-guard pinned; the fully-awake and
+unfinished-ledger cards are pinned unchanged). `pnpm sim` byte-identical
+by stash-and-rerun — the crossing's numbers live in content but nothing
+engine-reachable moved. Typecheck, lint, format, build green.

@@ -1,9 +1,19 @@
-# The daily seed — designed 2026-08-18, not yet built
+# The daily seed — designed 2026-08-18, BUILT 2026-08-19
 
 Marc picked this path to scout on 2026-08-18, then settled every fork the
-scout surfaced, on option sets, the same day. This file is the decided
-design; building it is a small session whenever he says so. **No backend** —
-which is the whole reason it fits this game.
+scout surfaced, on option sets, the same day — and called the build on
+2026-08-19, answering the fresh-worlds question ("why would we not want a
+new seed every time?") with this plus the crossing. **No backend** — which
+is the whole reason it fits this game. As built: `meta/daily.ts` (pure
+civil-date math, the seed hash, the ladder, the sparkline — all pinned by
+test), `?daily=YYYY-MM-DD` in the shell, and a DAILY door on the front
+door's new playstyle menu. The open UX question below answered itself: the
+front door IS the title screen now, and the daily lives on it.
+
+One thing the build corrected: the scouting note claimed replay seeds
+already bypassed the autosave path. They did not — the run save was written
+unconditionally, so a `?seed=` detour could overwrite the home run. The
+guard exists now, for replays and dailies both.
 
 ## The decisions (all Marc's, 2026-08-18)
 

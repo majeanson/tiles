@@ -40,3 +40,19 @@ export const GOALS: readonly Goal[] = [
   { id: 'shrinesAll', label: 'Wake every shrine', reward: 35 },
   { id: 'perksAll', label: 'Find every perk', reward: 60 },
 ];
+
+/**
+ * The crossing (Marc, 2026-08-19: "a shrine you can reach that asks you —
+ * go to new world? — with a bonus that carries on"). Once a world is fully
+ * awake, every FURTHER shrine reached offers passage to a fresh world; what
+ * carries is relics, scaled by the world being left behind, so finishing a
+ * world thoroughly pays better than rushing its exit. A finished world with
+ * four territories pays 40 + 60 = 100 relics — two or three shop levels,
+ * a real dowry beside the goals above without dwarfing them. Balance
+ * numbers, so they live here; the offer itself is shell work (`main.ts`),
+ * because leaving a world outlives any run.
+ */
+export const CROSSING = {
+  baseRelics: 40,
+  relicsPerTerritory: 15,
+};
