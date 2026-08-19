@@ -158,6 +158,15 @@ export const TEACH_IDS = [
   'rare',
   'luck',
   'relic',
+  // The four colour personalities (2026-08-19, same day — Marc: "the colors
+  // are not explained"): each teaches itself once, at the FIRST placement of
+  // that colour. Added after the first deploy, so a ledger seeded full that
+  // morning re-arms exactly these four — one toast each, once, which is the
+  // right cost for words nobody had been shown.
+  'colourGreen',
+  'colourYellow',
+  'colourRed',
+  'colourBlue',
 ] as const;
 
 export type TeachId = (typeof TEACH_IDS)[number];

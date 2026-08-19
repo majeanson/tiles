@@ -831,6 +831,37 @@ export class PixiRenderer implements Renderer {
       );
     }
 
+    /**
+     * The rare mark (2026-08-19, Marc: "make sure unique and magic are
+     * identified on the map too, clearly, after placed"): the quiet accent
+     * edge was the only sign, and it vanishes into a full board. A placed
+     * rare tile now wears a star above its centre — four points for MAGIC,
+     * five and larger for UNIQUE — on a small disc of the board's own dark
+     * so the accent reads on pale terrain. Geometry, not text, so it
+     * survives FIT zoom where labels stay unreadable; offset upward so a
+     * ripe tile's worth number keeps the centre. Same accent every theme
+     * already has; wiring here, judged on the phone — nothing visual is
+     * tested by this repository.
+     */
+    if (
+      cell.kind === 'tile' &&
+      cell.rarity !== null &&
+      cell.rarity !== 'common' &&
+      !cell.remembered &&
+      layout.size > 4
+    ) {
+      const unique = cell.rarity === 'unique';
+      const r = layout.size * (unique ? 0.22 : 0.18);
+      const my = y - layout.size * 0.52;
+      const mark = new Graphics()
+        .circle(x, my, r * 1.3)
+        .fill({ color: theme.board.background, alpha: 0.55 })
+        .star(x, my, unique ? 5 : 4, r, r * (unique ? 0.5 : 0.42))
+        .fill({ color: theme.ink.accent, alpha: 0.95 });
+      mark.alpha = cell.dimmed ? 0.25 : 1;
+      group.addChild(mark);
+    }
+
     const label = labelFor(cell);
     if (label !== null && layout.size > 12 && !cell.dimmed && !cell.remembered) {
       group.addChild(this.#drawLabel(label, x, y, layout.size));

@@ -277,6 +277,20 @@ const POWER_NAMES: Record<Colour, string> = {
 };
 
 /**
+ * The teaching id each colour's first placement marks (Marc, 2026-08-19,
+ * hours after the pack shipped: "the colors are not explained") — each
+ * personality taught once, at the moment that colour first lands on the
+ * player's own board, where the manual's always-on section and the
+ * long-press lens both wait to be found rather than arriving.
+ */
+const COLOUR_TEACH: Record<Colour, TeachId> = {
+  green: 'colourGreen',
+  yellow: 'colourYellow',
+  red: 'colourRed',
+  blue: 'colourBlue',
+};
+
+/**
  * HERE's jump-in zoom, from FIT (always 1). Close enough to read worth
  * numbers on a phone without a second tap; a real board can still clamp
  * this lower via `zoomMax` (the ceiling rises with the board, never falls
@@ -1122,8 +1136,13 @@ export class Game {
       case 'tile': {
         const worth = worthOf(this.#state.cells, hex, t);
         const power = this.#rarityLine(cell.rarity);
+        // The colour's personality rides along (2026-08-19, "the colors are
+        // not explained") — a tapped tile is the cheapest place to learn
+        // what its colour wants, right where it is wanting it.
+        const personality = this.#colourLesson(cell.colour);
         return (
           `${name(cell.colour)} tile, worth ${worth}. It ripens when all six sides are covered.` +
+          (personality === null ? '' : `\n${personality}`) +
           (power === null ? '' : `\n${power}`)
         );
       }
@@ -1504,7 +1523,7 @@ export class Game {
                 lines: [
                   'MAGIC is wild: it matches every neighbour whatever the colour, and they match it back.',
                   'UNIQUE is wild and heavy: every match it makes counts DOUBLE, for both sides.',
-                  'The card says which it is, and rare tiles keep an accent edge once placed. A unique’s ground match counts double too.',
+                  'The card says which it is, and a placed rare tile wears a star on the board — four points for magic, five for unique — so its power stays findable on a full map. A unique’s ground match counts double too.',
                   ...(t.holdSlots > 0
                     ? [
                         'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap again to trade it back.',
@@ -2045,8 +2064,8 @@ export class Game {
           id: 'rare',
           text:
             rare.rarity === 'unique'
-              ? '⬢  UNIQUE\nWild, and heavy: every match it is part of counts DOUBLE, for both sides. The card in your hand says which it is — spend it where many tiles touch.'
-              : '⬢  MAGIC\nWild: it matches every neighbouring tile, whatever the colour, and they match it back. The card in your hand says which it is — spend it where many tiles touch.',
+              ? '⬢  UNIQUE\nWild, and heavy: every match it is part of counts DOUBLE, for both sides. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.'
+              : '⬢  MAGIC\nWild: it matches every neighbouring tile, whatever the colour, and they match it back. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.',
         };
       }
     }
@@ -2061,6 +2080,20 @@ export class Game {
 
     if (!met.has('relic') && next.relics > 0) {
       return { tier: 'card', id: 'relic', text: RELIC_LESSON };
+    }
+
+    // A colour teaches itself at its FIRST placement — after the cards
+    // above (a personality can wait one action; a first ripe tile cannot)
+    // and before the other toasts, so tap one is usually a colour lesson.
+    if (action.type === 'PLACE') {
+      const placed = next.cells[action.hex];
+      if (placed?.kind === 'tile') {
+        const id = COLOUR_TEACH[placed.colour];
+        if (!met.has(id)) {
+          const lesson = this.#colourLesson(placed.colour);
+          if (lesson !== null) return { tier: 'toast', id, text: lesson };
+        }
+      }
     }
 
     if (!met.has('costRise') && costOf(next.placements, t) > costOf(before.placements, t)) {
@@ -2961,6 +2994,19 @@ export class Game {
         }
 
         button.addEventListener('click', () => {
+          // A second tap on the already-selected card used to be a silent
+          // no-op (the engine returns the same state) — it is now the
+          // question it looks like: what IS this card? Sticky, like every
+          // explanation asked for by hand (2026-08-19, "the colors are not
+          // explained").
+          if (tile.selected) {
+            const rare = this.#rarityLine(tile.rarity);
+            const lesson =
+              this.#colourLesson(tile.colour) ??
+              `${name} — worth one per matching neighbour when it ripens.`;
+            this.#showNote(rare === null ? lesson : `${lesson}\n${rare}`, true);
+            return;
+          }
           this.#dispatch({ type: 'SELECT', index });
         });
         // Long-press (touch), right-click (mouse), or the keyboard's own
@@ -3001,6 +3047,36 @@ export class Game {
       (s.death === null ? '' : ` · ${s.death}`) +
       ` · relics${s.relics} · perk:${worn} · sense${s.tuning.findSense} · claims${claims}`
     );
+  }
+
+  /**
+   * One colour's personality as a whole sentence, in the theme's own words
+   * and the live tuning's numbers — the text the colour's first-contact
+   * toast, the selected card's second tap and a tapped placed tile all
+   * share, so the three doors cannot drift apart. Null while that colour's
+   * power dial is zeroed: a personality that is off must not be taught.
+   */
+  #colourLesson(colour: Colour): string | null {
+    const t = this.#state.tuning;
+    const n = this.#theme.terrainNames[colour];
+    switch (colour) {
+      case 'green':
+        return t.greenCrowdBonus > 0
+          ? `${n} — CROWDS. Wants one big mob of its own colour: +${t.greenCrowdBonus} worth per ${n} neighbour past the first.`
+          : null;
+      case 'yellow':
+        return t.yellowCompanyBonus > 0
+          ? `${n} — COMPANY. Scores in messy mixed ground: +${t.yellowCompanyBonus} worth per ${t.yellowCompanyAll ? 'differently-coloured neighbour' : 'different colour beside it'}.`
+          : null;
+      case 'red':
+        return t.redAshMatches
+          ? `${n} — ASH. Stone${t.redAshWalls ? ' and walls' : ''} count as matches for it: it feeds on the spent ground everyone else abandons.`
+          : null;
+      case 'blue':
+        return t.blueTideEvery > 0
+          ? `${n} — TIDE. Worth little at home, a lot on the frontier: +1 worth per ${t.blueTideEvery} hexes from home.`
+          : null;
+    }
   }
 
   /**

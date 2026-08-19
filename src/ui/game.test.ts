@@ -1652,10 +1652,14 @@ describe('the moments pack (2026-08-18)', () => {
       (cards[1] as HTMLButtonElement).click();
       expect(ctx.el.toast.textContent).toBe('UNIQUE — every match counts double, both ways.');
 
-      // Once only: it does not fire again once the toast has cleared.
+      // Once only: it does not fire again once the toast has cleared. The
+      // row is rebuilt on every render, so the card is re-queried — a tap
+      // on a NOT-selected card, since tapping the selected one is the
+      // colour question now (2026-08-19), not a re-select.
       vi.advanceTimersByTime(6000);
       expect(ctx.el.toast.hidden).toBe(true);
-      (cards[0] as HTMLButtonElement).click();
+      const fresh = [...ctx.el.draft.children].filter((c) => !c.classList.contains('hold'));
+      (fresh[0] as HTMLButtonElement).click();
       expect(ctx.el.toast.hidden).toBe(true);
     } finally {
       vi.useRealTimers();
@@ -2292,5 +2296,64 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     const manual = ctx.el.helpManual.textContent ?? '';
     expect(manual).toContain('LUCK IS A PURSE');
     expect(manual).not.toContain('More appears here as you meet it.');
+  });
+
+  it('teaches a colour’s personality at its first placement — once, per colour', () => {
+    // Biomes off so a native field cannot take the toast; a pinned all-green
+    // draft so the placed colour is the test's, not the seed's.
+    const T2: Tuning = { ...T, biomeEvery: 0 };
+    const dev = device();
+    const greens = ['a', 'b', 'c'].map((id) => ({
+      id,
+      colour: 'green' as const,
+      rarity: 'common' as const,
+    }));
+    const place = () => {
+      const base = newRun(7, T2);
+      const ctx = build(1, T2, {
+        shop: dev.shop,
+        resume: { ...base, draft: greens, selected: 0 },
+      });
+      ctx.game.start();
+      ctx.renderer.nextHit = key(1, 0);
+      tap(ctx.el.board);
+      return ctx;
+    };
+
+    const first = place();
+    expect(first.el.toast.hidden).toBe(false);
+    expect(first.el.toast.textContent).toMatch(/CROWDS/);
+    expect(dev.current().met).toContain('colourGreen');
+
+    // The same colour on a taught device teaches nothing more.
+    const second = place();
+    expect(second.el.toast.textContent ?? '').not.toMatch(/CROWDS/);
+  });
+
+  it('explains the selected card’s colour on a second tap', () => {
+    const ctx = build();
+    ctx.game.start();
+    const selected = ctx.el.draft.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+    expect(selected).not.toBeNull();
+    selected!.click();
+    expect(ctx.el.toast.hidden).toBe(false);
+    expect(ctx.el.toast.textContent).toMatch(/CROWDS|COMPANY|ASH|TIDE/);
+    // A question, not an action: the selection did not move.
+    expect(ctx.game.state.selected).toBe(0);
+  });
+
+  it('names a tapped placed tile’s personality where it sits', () => {
+    const base = newRun(7, T);
+    const ctx = build(1, T, {
+      resume: {
+        ...base,
+        cells: { ...base.cells, [key(2, 0)]: { kind: 'tile', colour: 'blue' } },
+      },
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(2, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toMatch(/TIDE/);
+    expect(ctx.el.toast.textContent).toMatch(/hexes from home/);
   });
 });

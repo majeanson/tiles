@@ -3541,3 +3541,44 @@ clean; `pnpm sim` byte-identical before/after by actual comparison;
 production build green. The written question now waits on the phone:
 **can a stranger's first run teach itself?** RESET TEACHING is how Marc
 answers it without borrowing a stranger.
+
+**Addendum, same day — the two gaps Marc caught in the built pack, closed
+within hours.**
+
+Marc, playing the deployed drip: "the colors are not explained (each
+tiles)" and "make sure unique and magic are identified on the map too,
+clearly, after placed." Both true, both fixed the same afternoon
+(`ideas/teaching.md`'s own addendum carries the design):
+
+- **The four colour personalities join the ledger** (`colourGreen/Yellow/
+Red/Blue`, TEACH_IDS is 17 now): each teaches itself as a toast at its
+  FIRST placement — after the cards in priority (a personality can wait
+  one action; a first ripe tile cannot), before the other toasts, so tap
+  one is usually a colour lesson. One sentence per colour
+  (`#colourLesson`), shared by three doors so they cannot drift: the
+  toast, a second tap on the already-selected card (a silent no-op until
+  now — it is the question it looks like), and a tap on any placed tile,
+  whose explanation now names its colour's personality beside its worth.
+  A zeroed power dial teaches nothing. Devices seeded ALL MET this
+  morning re-arm exactly these four — one toast each, once, the right
+  price for words nobody had been shown.
+- **Placed rares wear a star.** The quiet accent edge was the only mark
+  and it vanishes into a full board. `#drawCell` now draws a star above a
+  rare tile's centre — four points for MAGIC, five and larger for
+  UNIQUE — on a small disc of the board's own dark so the accent reads
+  on pale terrain. Geometry, not text, so it survives FIT zoom where
+  labels stay unreadable (the label threshold is size > 12; the mark
+  holds to size > 4); offset upward so a ripe tile's worth number keeps
+  the centre. The rare card and the manual's RARE TILES line both say
+  the star exists, so the mark is taught by the moment that introduces
+  the tile. Wiring verified; the picture itself is the phone's to judge,
+  per this repository's own rule that nothing visual is tested here.
+
+One test honestly moved: the first-unique explainer used to click a STALE
+draft node (the row is rebuilt every render) and leaned on that click
+being a no-op; it re-queries now and taps a not-selected card, which is
+what its comment always meant. 552 tests green (three new: the colour
+toast fires once per colour and never for a taught one, the selected
+card's second tap explains without moving the selection, a tapped placed
+tile names its personality). Lint, format, typecheck clean; `pnpm sim`
+byte-identical by stash-and-rerun again; build green.

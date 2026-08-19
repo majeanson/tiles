@@ -59,6 +59,7 @@ occurrence. At most one teaching card per action, ever.
 | `rare`      | first magic or unique card in hand                    | card  |
 | `luck`      | first luck in the purse                               | card  |
 | `relic`     | first relic earned                                    | card  |
+| `colour*`   | first placement of each of the four colours           | toast |
 
 Shrines and finds already have their cards; death already has the end
 screen. Each text is one or two lines, plain words, present tense, in the
@@ -171,3 +172,29 @@ first becomes real.
 
 Each stage lands alone and leaves the game whole. Stage 1 is the one that
 must exist before the stranger test; 2 and 3 make it honest.
+
+---
+
+## Addendum, same day — two gaps Marc caught in the built pack
+
+**"The colors are not explained (each tiles)."** True: the pack taught every
+system and never the four personalities a stranger holds from tap one — the
+manual section is pull, and the long-press lens is a gesture nobody is told
+about. Four moments joined the ledger (`colourGreen/Yellow/Red/Blue`): each
+colour teaches itself as a toast at its FIRST placement, in one sentence
+shared by three doors so they cannot drift — the toast, a second tap on the
+already-selected card (which used to be a silent no-op and is now the
+question it looks like), and a tap on any placed tile, which now names its
+colour's personality beside its worth. A colour whose power dial is zeroed
+teaches nothing. Devices seeded ALL MET that morning re-arm exactly these
+four — one toast each, once, the right cost for words nobody had been shown.
+
+**"Make sure unique and magic are identified on the map too, clearly, after
+placed."** The quiet accent edge was the only sign and it vanishes into a
+full board. A placed rare tile now wears a STAR above its centre — four
+points for magic, five and larger for unique — on a small disc of the
+board's own dark so the accent reads on pale terrain. Geometry, not text,
+so it survives FIT zoom where labels stay unreadable; offset upward so a
+ripe tile's worth number keeps the centre. The rare card and the manual's
+RARE TILES line both say the star exists, so the mark is taught by the same
+moment that introduces the tile.
