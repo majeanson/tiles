@@ -38,6 +38,11 @@ export const COLD_SURVEY: Theme = {
     ripeEdge: 0xdce3e1,
     ripeEdgeWidth: 0.11,
     vignette: { colour: 0x05080a, strength: 0.82 },
+    // The sensible default (2026-08-19): the survey reserves warmth for loss
+    // alone (`ink.danger`, "never used decoratively") so home is not warm here
+    // — it reuses the direction's own `accent`, at a width well under
+    // `ripeEdgeWidth`.
+    home: { ring: 0xaec0c4, ringWidth: 0.055 },
   },
 
   ink: {

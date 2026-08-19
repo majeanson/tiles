@@ -99,6 +99,26 @@ describe('the board view', () => {
     const spent = reduce(full, { type: 'HARVEST', choice: 'tiles', at });
     expect(toBoardView(spent).cells.map((c) => c.kind)).toContain('stone');
   });
+
+  // Home (2026-08-19): the origin — what REACH and every distance-based
+  // reward measure from — gets exactly one marked cell, always.
+  it('marks exactly the origin cell as home', () => {
+    const s = newRun(1, TINY);
+    const home = toBoardView(s).cells.filter((c) => c.home);
+    expect(home.map((c) => c.key)).toEqual([key(0, 0)]);
+  });
+
+  it('keeps marking home even once the origin itself has popped to stone', () => {
+    // Built directly rather than played to that state: the origin popping is
+    // rare and seed-dependent, and the view's job here has nothing to do with
+    // how a tile got to be stone — only that `home` tracks the HEX, not the
+    // kind sitting on it.
+    const s = newRun(1, TINY);
+    const stoned: GameState = { ...s, cells: { ...s.cells, [key(0, 0)]: { kind: 'stone' } } };
+    const origin = toBoardView(stoned).cells.find((c) => c.key === key(0, 0));
+    expect(origin?.kind).toBe('stone');
+    expect(origin?.home).toBe(true);
+  });
 });
 
 describe('the hud', () => {

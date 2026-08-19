@@ -31,6 +31,11 @@ export const PLACEHOLDER: Theme = {
     ripeEdge: 0xe8ecf4,
     ripeEdgeWidth: 0.1,
     vignette: null,
+    // The sensible default (2026-08-19): the placeholder has no mood to carry a
+    // bespoke hue with, so home reuses the direction's own `accent` at a width
+    // well under `ripeEdgeWidth` — a marker every theme renders something for,
+    // not a fifth colour invented for one token.
+    home: { ring: 0xe8ecf4, ringWidth: 0.07 },
   },
 
   ink: {

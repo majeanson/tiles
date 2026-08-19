@@ -180,6 +180,14 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
     expect(luma(theme.board.legalEdge)).toBeGreaterThan(luma(theme.board.edge));
   });
 
+  // Home (2026-08-19): a quiet PERMANENT marker, not a live one — it must
+  // never read as louder than any state the stroke ladder actually decides
+  // between, or the origin would compete with the harvest decision instead
+  // of sitting quietly under it.
+  it('keeps home quieter than ripe, which is quieter than a targeted pocket', () => {
+    expect(theme.board.home.ringWidth).toBeLessThan(theme.board.ripeEdgeWidth);
+  });
+
   it('reads its own text against its own background', () => {
     // Not a WCAG audit — a floor. Ink that vanishes into the board is the one
     // failure that makes a direction untestable rather than merely ugly.

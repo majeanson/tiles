@@ -77,6 +77,14 @@ export type CellView = {
   readonly worth: number;
 
   /**
+   * This cell is the origin — home, the thing REACH and every distance-based
+   * reward measure from. Drawn as a quiet permanent ring, lowest priority in
+   * the stroke ladder: a live state (targeted, ripe, an unclaimed landmark, a
+   * rare tile) always wins the edge. True for at most one cell on any board.
+   */
+  readonly home: boolean;
+
+  /**
    * How brightly to draw this hex, 0-1: the torch, already resolved. Computed
    * in the view because it is pure distance arithmetic and testable there;
    * the renderer only paints it.

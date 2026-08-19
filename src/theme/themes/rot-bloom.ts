@@ -38,6 +38,10 @@ export const ROT_BLOOM: Theme = {
     ripeEdge: 0xc8f0a8,
     ripeEdgeWidth: 0.12,
     vignette: { colour: 0x040605, strength: 0.88 },
+    // The sensible default (2026-08-19): reuses the direction's own `accent`
+    // at a width well under `ripeEdgeWidth` — see `placeholder.ts`'s home
+    // token for the reasoning this and cold-survey's both follow.
+    home: { ring: 0xc8f0a8, ringWidth: 0.055 },
   },
 
   ink: {

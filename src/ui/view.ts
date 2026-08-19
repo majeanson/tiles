@@ -7,6 +7,7 @@ import {
   costOf,
   harvestMultiplier,
   harvestValue,
+  homeOf,
   isRipe,
   legalPlacements,
   placementsLeft,
@@ -276,6 +277,12 @@ export function toBoardView(
     );
   const band = (q: number, r: number): number =>
     elevationBandAt(state.rootSeed, q, r, state.tuning);
+  // The hearth marker (2026-08-19): the origin cell, always a `tile` or a
+  // `stone` (the run's own seed tile, possibly since popped) and so always a
+  // member of `state.cells` — it can never be memory, a beacon or a shimmer,
+  // which is why only the loop below ever sets this `true`.
+  const home = homeOf(state);
+  const homeKey = key(home.q, home.r);
   const previews = ctx.previews[state.selected];
   // The tile actually in hand — the ghost used to draw as one fixed tint no
   // matter what you were holding. `?? null` covers the edge a full stash
@@ -305,6 +312,7 @@ export function toBoardView(
       // back so one colour's holdings read as a single shape on the board.
       dimmed: spotlight !== null && cell.kind === 'tile' && cell.colour !== spotlight,
       worth: worthOf(state.cells, k, state.tuning),
+      home: k === homeKey,
       light: lit(q, r),
       band: band(q, r),
       legal,
@@ -342,6 +350,7 @@ export function toBoardView(
       targeted: false,
       dimmed: false,
       worth: 0,
+      home: false,
       legal: false,
       preview: null,
       previewColour: null,
@@ -372,6 +381,7 @@ export function toBoardView(
       targeted: false,
       dimmed: false,
       worth: 0,
+      home: false,
       legal: false,
       preview: null,
       previewColour: null,
@@ -412,6 +422,7 @@ export function toBoardView(
         targeted: false,
         dimmed: false,
         worth: 0,
+        home: false,
         legal: false,
         preview: null,
         previewColour: null,

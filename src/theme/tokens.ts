@@ -267,6 +267,19 @@ export type Board = {
    * `null` switches it off entirely.
    */
   readonly vignette: { readonly colour: Rgb; readonly strength: number } | null;
+  /**
+   * Home (2026-08-19): the origin hex — the thing REACH and every distance-based
+   * reward measure from — had no visual identity of its own. A quiet permanent
+   * ring, drawn by `PixiRenderer`'s stroke ladder at the LOWEST priority that
+   * ladder has: it never competes with a targeted, ripe, unclaimed-landmark or
+   * rare-tile edge, all of which are checked first and return before home is
+   * ever asked. Every theme gets a value — there is no "off" here, the way there
+   * is for the vignette — because a marker every direction can render is the
+   * whole point; torchlit's is its own warm ember tone, the rest reuse their own
+   * accent, which is the "sensible default" this token exists to make possible
+   * without inventing a new colour for directions that never asked for one.
+   */
+  readonly home: { readonly ring: Rgb; readonly ringWidth: number };
 };
 
 /**

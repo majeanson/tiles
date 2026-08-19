@@ -213,6 +213,9 @@ export class PixiRenderer implements Renderer {
   #drawnKeys: ReadonlySet<HexKey> = new Set();
   #flashTexture: Texture | null = null;
   #vignetteKey = '';
+  /** The one vignette sprite currently baked, so its alpha can be nudged by
+   * `#vignetteFactor` every draw without rebaking the gradient underneath it. */
+  #vignetteSprite: Sprite | null = null;
   #flashes: Flash[] = [];
 
   /**
@@ -801,6 +804,12 @@ export class PixiRenderer implements Renderer {
       return { width: Math.max(1, size * board.edgeWidth * 1.5), colour: this.#theme.ink.accent };
     if (cell.legal) return { width: Math.max(1, size * board.edgeWidth), colour: board.legalEdge };
     if (cell.kind === 'empty') return null;
+    // Home (2026-08-19): the quietest permanent mark on the board, checked
+    // last of all so it never wins against anything above it — a home cell
+    // that ripens, gets targeted, or rolls rare wears THAT edge instead, and
+    // goes back to its ring the moment the louder state ends.
+    if (cell.home)
+      return { width: Math.max(1, size * board.home.ringWidth), colour: board.home.ring };
     return { width: Math.max(1, size * board.edgeWidth), colour: board.edge };
   }
 
@@ -1350,37 +1359,68 @@ export class PixiRenderer implements Renderer {
         c.destroy();
       });
       this.#vignetteKey = '';
+      this.#vignetteSprite = null;
       return;
     }
 
     const nextKey = `${Math.round(width)}x${Math.round(height)}:${spec.colour}:${spec.strength}`;
-    if (nextKey === this.#vignetteKey) return;
+    if (nextKey !== this.#vignetteKey) {
+      this.#vignette.removeChildren().forEach((c) => {
+        c.destroy();
+      });
+      this.#vignetteSprite = null;
 
-    this.#vignette.removeChildren().forEach((c) => {
-      c.destroy();
-    });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width));
+      canvas.height = Math.max(1, Math.round(height));
+      const ctx = canvas.getContext('2d');
+      if (ctx === null) return;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(width));
-    canvas.height = Math.max(1, Math.round(height));
-    const ctx = canvas.getContext('2d');
-    if (ctx === null) return;
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const outer = Math.hypot(cx, cy);
+      // Baked at the theme's own ceiling strength, unscaled — `#vignetteFactor`
+      // is applied below as a plain alpha multiply, not folded into the
+      // gradient, so honouring "strength is a ceiling" costs nothing further:
+      // the drawn strength can only ever be at or under what is baked here.
+      const gradient = ctx.createRadialGradient(cx, cy, outer * 0.42, cx, cy, outer);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0.72, rgba(spec.colour, spec.strength * 0.45));
+      gradient.addColorStop(1, rgba(spec.colour, spec.strength));
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const outer = Math.hypot(cx, cy);
-    const gradient = ctx.createRadialGradient(cx, cy, outer * 0.42, cx, cy, outer);
-    gradient.addColorStop(0, 'rgba(0,0,0,0)');
-    gradient.addColorStop(0.72, rgba(spec.colour, spec.strength * 0.45));
-    gradient.addColorStop(1, rgba(spec.colour, spec.strength));
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const sprite = new Sprite(Texture.from(canvas));
+      sprite.width = width;
+      sprite.height = height;
+      this.#vignette.addChild(sprite);
+      this.#vignetteSprite = sprite;
+      this.#vignetteKey = nextKey;
+    }
 
-    const sprite = new Sprite(Texture.from(canvas));
-    sprite.width = width;
-    sprite.height = height;
-    this.#vignette.addChild(sprite);
-    this.#vignetteKey = nextKey;
+    // The double-dip (audit finding, 2026-08-19): this screen-space vignette
+    // and the world-space torch (`ui/view.ts`'s `structureDistances`) both
+    // darken the same board at once — full vignette AND full light falloff
+    // over the same dark plane says the same thing twice. `#zoom` is a free,
+    // already-computed proxy for how much of the fitted extent the viewport
+    // is showing: at FIT (zoom 1) the whole grown world — mostly unlit ground
+    // and beacons past the torch — fills the screen, and the vignette earns
+    // its full ceiling; zoomed in on a lit structure, that SAME fitted extent
+    // has been magnified well past the screen, so the vignette eases rather
+    // than doubling what the torch is already doing to the same pixels.
+    // Never below a third of the ceiling — this is atmosphere, not a
+    // blackout. Applied as a plain alpha multiply on the one sprite that
+    // already exists, every draw: no rebake, so a live pinch (which redraws
+    // every frame) costs one number instead of a canvas re-render, and
+    // reduced motion never touches it — this is a per-draw value derived
+    // from the camera, not an animation.
+    if (this.#vignetteSprite !== null) this.#vignetteSprite.alpha = this.#vignetteFactor();
+  }
+
+  /** See `#drawVignette`'s own comment for what this proxies and why. */
+  #vignetteFactor(): number {
+    const FLOOR = 0.3;
+    return FLOOR + (1 - FLOOR) * Math.min(1, 1 / this.#zoom);
   }
 }
 

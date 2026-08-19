@@ -43,6 +43,14 @@ export const TORCHLIT: Theme = {
     ripeEdge: 0xf7e6be,
     ripeEdgeWidth: 0.12,
     vignette: { colour: 0x070503, strength: 0.72 },
+    // The hearth (2026-08-19): a warm ember ring on the origin cell, distinct
+    // from the gold `accent` every OTHER stroke on this board already wears —
+    // torchlit is the one direction where "home" gets its own hue rather than
+    // reusing the signature colour, because a torch's own coals read as
+    // exactly that. Quiet on purpose: `ringWidth` sits well under
+    // `ripeEdgeWidth`, and the stroke ladder in `PixiRenderer.ts` never draws
+    // it over anything louder regardless.
+    home: { ring: 0xe0803c, ringWidth: 0.065 },
   },
 
   ink: {
