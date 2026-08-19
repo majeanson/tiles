@@ -3429,3 +3429,43 @@ work, no balance numbers involved.
 Nothing built this session; this is the record of the debrief and the
 FOLLOWUP.md ledger updated to match. The stranger test remains the v1.0
 blocker.
+
+**Addendum, same day — teaching designed to done (`ideas/teaching.md`).**
+
+Marc, straight after the debrief: "this game will be mega confusing for a
+stranger — concepts and context should be given drop by drop. Even our
+NUMBERS expandables are often meaningless." The inventory agreed: the
+shrine ledger gates four QoL dials but every CONCEPT is live from
+placement one — ~15 ideas in a stranger's first run, explained only by a
+manual they must choose to open. The game teaches by pull; a stranger
+needs push.
+
+Designed on Marc's option-set answers (mechanisms: first-contact cards +
+the manual grows with the world + HUD appears as it matters — NOT gating
+systems themselves; NUMBERS: demote to tap-the-thing, keep only the real
+numbers that price a decision, otherwise prose; queue: design now, build
+next session). The full design is `ideas/teaching.md`; its spine:
+
+- **A `met` ledger in `Progress`** (per DEVICE — confusion is a property
+  of the player, not the world). Twelve first-contact moments, each
+  firing one short card ONCE, at the moment the concept first happens,
+  through the existing toast/card tiers. Off-by-default honored the dial
+  way: old saves decode `met` as ALL MET, so every existing player sees
+  nothing — the FOUND-perk contract paid in data, plus the fresh-eyes
+  review's decode lesson applied on purpose.
+- **The manual keyed to the same ledger** — sections appear as met;
+  START stays whole; one quiet foot line where something is hidden. HAND
+  gains WHAT YOU CARRY (the worn perk's name and sentence), which is the
+  second debrief's perk-inspection fix put where a player already looks.
+- **LUCK, the shop door and the survey row materialize on first
+  relevance**, paired with their cards so the appearance IS the event.
+- **NUMBERS folds pruned** to the cost curve, the depth step, and the
+  two between-runs numbers; spend prices and pocket arithmetic demoted to
+  the buttons that already print them; tapping a STAT explains it in
+  place, closing the loop that tap-a-symbol opened.
+
+The written question, set before the build: **can a stranger's first run
+teach itself — no manual opened, no concept met unexplained?** Measured
+at the stranger test, which was already the v1.0 blocker. Three build
+stages, next session; no balance number moves and the engine is
+untouched throughout.

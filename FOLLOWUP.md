@@ -20,7 +20,11 @@ code.
   pop-vs-burn-vs-wait reads as a real *timing* decision is still open.
 - **The stranger test — OPEN, and now the only §1 blocker.** Someone who is
   not you, on their own phone, unaided: do they finish a run and start
-  another? The v1.0 tag stays blocked on it.
+  another? The v1.0 tag stays blocked on it. **Your own call (2026-08-19):
+  don't run it yet** — "mega confusing for a stranger, concepts should be
+  given drop by drop." The teaching pack (`ideas/teaching.md`, designed to
+  done the same day) builds first; the test happens against the build that
+  teaches itself.
 
 ## 2. Hidden finds — FIRST CONTACT MADE, one defect found
 
@@ -29,9 +33,9 @@ noticed, so the moment half-landed. **The defect:** "I didn't know where to
 equip, unequip, check what it does." The card's one line is dismissable and
 unrepeatable, mid-run there is nowhere to inspect the carried perk, and if
 the find auto-equipped, the card's "Equip it in THE SHOP" describes a step
-that already happened. **This is the next code session's target** (LOG.md,
-Session 26): mid-run visibility for the carried perk — UI/structure only,
-no balance numbers. Still open in play: does a hidden find change how you
+that already happened. **Folded into the teaching pack** (`ideas/teaching.md`
+§2, WHAT YOU CARRY, plus the find card's own fix) — the next code session's
+target, UI/structure only, no balance numbers. Still open in play: does a hidden find change how you
 GROW your ground, does KEEN NOSE feel worth 40 relics, and does the worn
 perk change your next placement the way a unique should?
 
