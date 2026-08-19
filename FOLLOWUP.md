@@ -1,39 +1,39 @@
 # Human follow-up
 
-Rewritten 2026-08-18 — the 2026-08-15 version described a game that has since
-been rebalanced twice (the clock is gone, the payout is single, run one is
-deliberately lean). Everything here needs Marc, not code. Ordered by what
-unblocks the most.
+Updated 2026-08-19 — Marc played two full runs and answered the standing
+prompts (LOG.md, Session 26). What was answered is marked ANSWERED and kept
+for the record; what remains open leads. Everything here needs Marc, not
+code.
 
-## 1. Play a run on the phone. Still the only blocker.
+## 1. Play a run on the phone — PLAYED 2026-08-19. One blocker left.
 
-**https://tiles.marcportal.com** — the bare URL, on the phone, in portrait.
-What rides on it now:
+**https://tiles.marcportal.com** — two long runs, 11k and 4k, "I had fun."
 
-- **The rebalance verdict.** Run one came down hard on your ask (22 tiles,
-  cost rises every 22 placements, caches 6 + 4 a ring, sparse near-world):
-  does it feel earned rather than punishing? Does STEADY PACE feel worth its
-  30 relics? Do the far caches pull you outward?
-- **Gate B's successor question.** The gate itself is retired — `singlePayout`
-  was its own prescribed fallback and it shipped. The open question is yours
-  to answer in play: **is pop-vs-burn-vs-wait a real timing decision?** You
-  said waiting should be the score line and popping should buy small
-  advantages — with tiles scarce now, are the advantages (luck, steering,
-  the reroll/steer/forge prices) finally worth taking?
-- **The stranger test.** Someone who is not you, on their own phone, unaided:
-  do they finish a run and start another? The v1.0 tag stays blocked on it.
+- **The rebalance verdict — ANSWERED, positive.** Both runs were long and
+  fun; the 11k run went longer *because of the tile caches* (Marc's own
+  attribution). The lean start did not read as punishing; the far caches
+  fund the push outward exactly as built. Still unremarked: STEADY PACE —
+  whether 30 relics feels worth it has not come up yet.
+- **Gate B's successor question — HALF-ANSWERED.** Luck was spent in play
+  and TITHE was taken deliberately at a run's end, so the advantages ARE
+  getting bought — the half the harness could never show. Whether
+  pop-vs-burn-vs-wait reads as a real *timing* decision is still open.
+- **The stranger test — OPEN, and now the only §1 blocker.** Someone who is
+  not you, on their own phone, unaided: do they finish a run and start
+  another? The v1.0 tag stays blocked on it.
 
-## 2. Hidden finds are built — the question is yours to play
+## 2. Hidden finds — FIRST CONTACT MADE, one defect found
 
-You resolved `ideas/uniques.md` on 2026-08-18 and the build shipped the same
-day: perks are found, never bought — a rare hidden landmark (rarer than a
-shrine, never glowing) grants an unowned perk when your ground stumbles onto
-it; the shop sells only KEEN NOSE, the shimmer; one perk carried, the second
-slot refunded. The written question waits on the phone: **does a hidden find
-change how a player grows their ground?** Sub-questions while you play — did
-the first find land as an event, does KEEN NOSE feel worth 40 relics, and do
-Stonewalker/Wallbreaker/Open Hand each change your next placement the way a
-unique should?
+The first find happened (game two, 2026-08-19) and the event card fired —
+noticed, so the moment half-landed. **The defect:** "I didn't know where to
+equip, unequip, check what it does." The card's one line is dismissable and
+unrepeatable, mid-run there is nowhere to inspect the carried perk, and if
+the find auto-equipped, the card's "Equip it in THE SHOP" describes a step
+that already happened. **This is the next code session's target** (LOG.md,
+Session 26): mid-run visibility for the carried perk — UI/structure only,
+no balance numbers. Still open in play: does a hidden find change how you
+GROW your ground, does KEEN NOSE feel worth 40 relics, and does the worn
+perk change your next placement the way a unique should?
 
 ## 3. Stage 3 shipped three more written questions — same phone, same run
 
@@ -48,9 +48,14 @@ them answerable by the harness:
   40%, wake every shrine, find every perk), each paying relics once and
   listed in SETTINGS' YOUR WORLD — does a legible ledger of what the world
   has proven change the line you take through it?
-- **TITHE.** A fourth luck price: convert the whole purse to relics on the
-  spot, at a better rate than death pays on what's left unspent — does
-  having a live way to cash out make hoarding the purse an actual decision?
+- **TITHE — ANSWERED YES (2026-08-19).** Marc took it deliberately at a
+  run's end ("sacrificed some at the end"). The cash-out is a live
+  decision in human hands; question closed on first contact.
+
+Also settled the same day, one level up: **score and feel are two separate
+rewards, by ruling.** A run rich in caches/shrines/finds may feel better
+than its score says, and that is fine — score is the points axis; relics,
+shrines and finds are their own progression. Not a bug to fix.
 
 ## 4. Standing decisions that remain one line to reverse
 

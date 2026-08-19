@@ -3375,3 +3375,57 @@ temporary Playwright driver and the `debugDispatch`/`debugAutoPlace`
 hooks it used live only in the session's scratch directory and were
 reverted from the repo before committing — confirmed by `grep -rn
 "TEMPORARY\|debug"` on `src/` returning nothing.
+
+---
+
+### Session 26 — The second debrief: two long runs, TITHE taken, a perk nobody can inspect
+
+**Question (FOLLOWUP.md §1, standing since the rebalance):** does the lean
+run-one economy feel earned, and are the luck prices finally worth taking?
+
+Marc played two full runs on the phone against prod (2026-08-19) and
+answered the follow-up prompts. The evidence, pinned down over four
+clarifying questions:
+
+- **"I had fun."** Both runs, and both were LONG — the first human verdict
+  on the 2026-08-18 rebalance, and it is positive. The lean start did not
+  read as punishing.
+- **Caches are lifelines in human hands, not just the harness's.** The
+  runs scored 11k and 4k; the 11k run went longer *because of the tile
+  caches* — Marc's own attribution, unprompted. The gradual 6 + 4/ring
+  curve doing exactly what the rebalance built it to do: funding the
+  push outward.
+- **TITHE was taken, deliberately.** "Sacrificed some at the end" =
+  converted the purse to relics at the run's close. Stage 3's written
+  question — does a live cash-out make hoarding the purse an actual
+  decision? — gets its first human YES. Luck was also spent during play
+  ("used some luck"), so at least two of the four luck prices are live.
+  Gate B's successor question (pop-vs-burn-vs-wait) is not fully
+  answered, but the advantages are getting bought, which is the half the
+  harness could never show.
+- **"Very good shrines."** The unlock ledger carried the second run's
+  good feeling alongside the find. No defect named; logged as the system
+  working.
+- **Score vs feel — ruled, by the arbiter.** Asked directly whether a run
+  rich in caches/shrines/finds should also tend to score higher, Marc
+  chose: **fine as is — two separate rewards.** Score is the points axis;
+  relics, shrines and finds are their own progression, and they do not
+  need to agree. The observation that felt-quality and score can diverge
+  is now a design decision, not an open question.
+
+**The one defect: a found perk cannot be inspected.** Marc found a unique
+in game two. The find *was* noticed — the event card fired — but then:
+"I didn't know where to equip, unequip, check what it does." The card's
+one line ("Equip it in THE SHOP, on the end screen") is dismissable and
+unrepeatable; mid-run there is nowhere to see what you carry or what it
+does. Worse, if the find auto-equipped (it does when nothing is worn),
+the card is instructing a step that already happened. The shelf in THE
+SHOP (`game.ts`, THE SHELF block) has the name, sentence and toggle — but
+it lives behind the end screen, a full run away from the moment of
+finding. **Next session's target:** mid-run visibility for the carried
+perk — what it is, what it does, without waiting for death. UI/structure
+work, no balance numbers involved.
+
+Nothing built this session; this is the record of the debrief and the
+FOLLOWUP.md ledger updated to match. The stranger test remains the v1.0
+blocker.
