@@ -97,6 +97,20 @@ body {
   text-align: center;
 }
 
+/* The global `button { flex: 1 1 0 }` was written for rows of siblings that
+   share a line; inside this centred COLUMN it made BEGIN and HOW TO PLAY
+   split the whole screen height into two giant squares (Marc's screenshot,
+   2026-08-18). Every child of the door keeps its natural height. */
+#front-door > * {
+  flex: 0 0 auto;
+}
+
+#front-door-logo {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 2px;
+}
+
 #front-door-name {
   margin: 0;
   font-family: var(--font-display, inherit);
@@ -107,7 +121,7 @@ body {
 }
 
 #front-door-tagline {
-  margin: 0 0 12px;
+  margin: 0 0 18px;
   max-width: 26em;
   font-size: 0.8125rem;
   color: var(--ink-dim, #8a91a0);
@@ -125,6 +139,31 @@ body {
   letter-spacing: 0.08em;
   border-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
+}
+
+#front-door-help {
+  min-height: 44px;
+}
+
+/* Detached from the ceremony above it: the wipe is a doorway-out control,
+   not part of starting a run. Text-quiet but still a 44px target. */
+#front-door-reset {
+  position: absolute;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  min-height: 44px;
+  padding: 0 18px;
+  border-color: transparent;
+  background: none;
+  font-size: 0.625rem;
+  color: var(--ink-faint, #767d8d);
+}
+
+#front-door-reset.armed {
+  border-color: var(--danger, #c1362b);
+  color: var(--danger, #c1362b);
 }
 
 /* min-height:0 lets this flex child actually shrink, which is what allows the

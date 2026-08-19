@@ -994,8 +994,32 @@ async function main(): Promise<void> {
   // cannot tab into a board they cannot see yet; BEGIN lifts both at once.
   const frontDoor = required('front-door');
   const gameShell = required<HTMLElement>('game-shell');
+  required<HTMLImageElement>('front-door-logo').src = ICON_DATA_URI;
   required('front-door-name').textContent = NAME;
   required('front-door-tagline').textContent = TAGLINE;
+
+  // RESET ALL: the one true wipe — run, world, shop, records, settings, the
+  // lot. Everything this game keeps lives under one prefix, so the wipe is
+  // enumerated rather than listed and cannot go stale when a key is added.
+  // Two taps, the same arming contract ABANDON THIS WORLD keeps.
+  const frontDoorReset = required<HTMLButtonElement>('front-door-reset');
+  let resetArmed = false;
+  frontDoorReset.addEventListener('click', () => {
+    if (!resetArmed) {
+      resetArmed = true;
+      frontDoorReset.classList.add('armed');
+      frontDoorReset.textContent = 'TAP AGAIN — forgets everything on this device';
+      return;
+    }
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('tiles.')) localStorage.removeItem(key);
+      }
+    } catch {
+      // Storage refused the wipe; the reload below still starts clean-ish.
+    }
+    location.href = '/';
+  });
   const frontDoorBegin = required<HTMLButtonElement>('front-door-begin');
   const frontDoorHelp = required<HTMLButtonElement>('front-door-help');
   // A run already in progress gets named rather than a generic BEGIN — the

@@ -44,10 +44,14 @@
            this screen, so dismissing it costs nothing. Quiet HOW TO PLAY
            opens the same manual the in-game ? does, via Game#openHelp. -->
       <div id="front-door" role="dialog" aria-modal="true" tabindex="-1">
+        <img id="front-door-logo" alt="" width="56" height="56" />
         <p id="front-door-name"></p>
         <p id="front-door-tagline"></p>
         <button id="front-door-begin" type="button">BEGIN</button>
         <button id="front-door-help" type="button" class="quiet">HOW TO PLAY</button>
+        <!-- The one true wipe: run, world, shop, records, settings — the
+             stranger-handing-back-the-phone control. Two taps, like ABANDON. -->
+        <button id="front-door-reset" type="button">RESET ALL</button>
       </div>
 
       <!-- The manual and the switchboard, OUTSIDE #game-shell on purpose: an
