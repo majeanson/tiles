@@ -848,10 +848,13 @@ export class PixiRenderer implements Renderer {
       cell.rarity !== null &&
       cell.rarity !== 'common' &&
       !cell.remembered &&
-      layout.size > 4
+      layout.size > 3
     ) {
       const unique = cell.rarity === 'unique';
-      const r = layout.size * (unique ? 0.22 : 0.18);
+      // Floored like the labels (2026-08-19): far out, the star stops
+      // shrinking with the hex and rides it like a pin — the whole point is
+      // finding rares from a distance.
+      const r = Math.max(3, layout.size * (unique ? 0.22 : 0.18));
       const my = y - layout.size * 0.52;
       const mark = new Graphics()
         .circle(x, my, r * 1.3)
@@ -862,8 +865,13 @@ export class PixiRenderer implements Renderer {
       group.addChild(mark);
     }
 
+    // The 12px gate is gone (2026-08-19): it silenced every glyph and number
+    // at exactly the zoom where "where is everything?" is the question being
+    // asked. `labelPx`'s floor keeps the text legible instead of letting it
+    // shrink into mush; only sub-3px hexes — where even a floored label is
+    // paint noise over paint noise — stay wordless.
     const label = labelFor(cell);
-    if (label !== null && layout.size > 12 && !cell.dimmed && !cell.remembered) {
+    if (label !== null && layout.size > 3 && !cell.dimmed && !cell.remembered) {
       group.addChild(this.#drawLabel(label, x, y, layout.size));
     }
 
@@ -1533,8 +1541,16 @@ export class PixiRenderer implements Renderer {
  * Label font size for a hex of circumradius `size`, in device-independent
  * pixels. One function because three places must agree on it exactly: the
  * Text style, the cache key, and the eviction's keep prefix.
+ *
+ * FLOORED at 8px (2026-08-19, Marc: "all symbols and numbers can be read
+ * whatever the zoom — most of the time it disappears when zoomed out and we
+ * can't do much more than zoom back in to check"). Below the floor a glyph
+ * physically cannot resolve; above it, a label simply stops shrinking with
+ * the hex and spills a little instead — a map pin's behaviour, not a
+ * texture's. The floor also collapses every far-out zoom level onto one
+ * cached texture per glyph, which is cheaper, not dearer.
  */
-const labelPx = (size: number): number => Math.round(size * 0.7);
+const labelPx = (size: number): number => Math.max(8, Math.round(size * 0.7));
 
 function labelFor(cell: CellView): { text: string; faint: boolean } | null {
   // A shimmer carries `landmark: null` and must stay wordless — printing any

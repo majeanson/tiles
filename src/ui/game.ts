@@ -1501,7 +1501,7 @@ export class Game {
                   'Your SCORE is deliberately off screen while you play. It is what the run is worth when it ends, not a number to play against.',
                 ]
               : []),
-            'Worth numbers on tiles appear as you zoom in.',
+            'Worth numbers and the map’s marks stay drawn at every zoom — small when far out, but always there.',
           ],
         },
       ],

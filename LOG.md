@@ -3582,3 +3582,32 @@ toast fires once per colour and never for a taught one, the selected
 card's second tap explains without moving the selection, a tapped placed
 tile names its personality). Lint, format, typecheck clean; `pnpm sim`
 byte-identical by stash-and-rerun again; build green.
+
+**Addendum, same day — nothing on the board goes silent at distance.**
+
+Marc, third catch of the afternoon: "can we make it so all symbols and
+numbers can be read whatever the zoom, even if very small? most of the
+time it disappears when zoomed out and we can't do much more than zoom
+back in to check." The cause was a 12px gate in `#drawCell`: below that
+hex size no label drew at all — every landmark glyph, worth number and
+preview vanished at exactly the zoom where "where is everything?" is the
+question being asked.
+
+Two changes, both in `PixiRenderer` and nowhere else:
+
+- **`labelPx` is floored at 8px.** A label stops shrinking with its hex
+  and spills a little instead — a map pin's behaviour, not a texture's.
+  The floor also collapses every far-out zoom level onto one cached
+  texture per glyph, so the change is cheaper on the cache, not dearer.
+- **The 12px gate is gone** (labels now draw above 3px hexes — below
+  that even a floored label is paint over paint), and the rare star's
+  radius is floored at 3px for the same reason: the whole point of the
+  mark is finding rares from a distance.
+
+The manual's THE SCREEN line that promised the old behaviour ("worth
+numbers appear as you zoom in") now states the new one. Render layer
+only: the engine, content and sim are unreachable from this file by the
+machine-enforced layering, so the economy cannot have moved. 552 tests
+green, typecheck/lint/format clean, build green; the picture itself — do
+floored labels read as presence rather than clutter at FIT on a big
+board — is the phone's to judge, like everything visual here.
