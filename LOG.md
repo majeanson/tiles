@@ -3848,3 +3848,42 @@ anyone listens. The written question, for the phone with the flag on:
 byte-identical across the whole program. Nothing here needs the phone to
 be correct — and three things now wait on it: the drip (RESET TEACHING),
 the crossing, and `?ff=ui.sound`.
+
+**Addendum, same day, evening — THE iOS crash, captured and closed.**
+
+The new error overlay did its job on its first night out: Marc's
+screenshot carried the actual error — `TypeError: null is not an object
+(evaluating 't.alphaMode')`, inside Pixi's instruction build, fired WHEN
+HE POPPED, seen ×2 — which matches yesterday's "reload storms right
+after pops" pattern exactly. The chain, confirmed in the code:
+
+1. A pop spawns its flash cascade — sprites holding the CURRENT layout
+   size's baked textures — and the pop's own card reflows `#controls`.
+2. The reflow fires the ResizeObserver; the redraw lands on a slightly
+   different layout size; and `onResize` then called `#evictStale()`,
+   destroying the OLD size's textures —
+3. — under flash sprites that Session 25 DELIBERATELY keeps alive across
+   sibling reflows. A sprite whose texture is destroyed takes Pixi's
+   whole render down with it, every frame, which is "lots of please
+   reload errors" in one sentence. The bug is older than yesterday; the
+   overlay is why it finally has a name.
+
+Fixed as `#safeEvict()`: eviction now DEFERS while any flash is alive
+(the cascade is under two seconds and eviction was never urgent) — both
+the resize path and the zoom-settle path go through it. Two more of the
+same species found by looking where that one lived: the label cache used
+to `clear()` itself MID-DRAW when it crossed 256 entries, destroying
+textures that sprites added earlier in the same draw still held (a full
+cache now just stops caching — the caller falls back to its plain
+per-sprite Text, slow and safe — and settle-time eviction empties it
+honestly); and the context-restore handler would have dropped the flash
+texture under the BEACON sprites that share it (they clear and resync
+now).
+
+Marc's "after reload, all black" screenshot is the context-loss
+aftermath on a build that predates the restore handler: iOS reclaimed
+the WebGL context under the crash storm's memory pressure and nothing
+opted into restoration. The f525cca build (DPR cap + contextrestored)
+plus this fix are the treatment; killing the Safari tab outright clears
+the GPU pressure meanwhile. 568 tests green; render layer only, sim
+unreachable by layering.

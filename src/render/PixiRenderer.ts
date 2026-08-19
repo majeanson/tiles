@@ -294,6 +294,13 @@ export class PixiRenderer implements Renderer {
       event.preventDefault();
     });
     app.canvas.addEventListener('webglcontextrestored', () => {
+      // Every sprite that OUTLIVES a draw goes first — flashes, and the
+      // beacons that share the flash texture — because a sprite over a
+      // destroyed texture is the captured alphaMode crash all over again.
+      // The redraw below resyncs the beacons onto a fresh bake.
+      this.#clearFlashes();
+      for (const { sprite } of this.#beacons.values()) sprite.destroy();
+      this.#beacons.clear();
       this.#surfaces.clear();
       this.#labels.clear();
       this.#flashTexture?.destroy(true);
@@ -332,7 +339,7 @@ export class PixiRenderer implements Renderer {
     // `onResize` below cannot tell apart from a sibling's reflow on its own.
     const onResize = (): void => {
       this.draw(this.#view);
-      this.#evictStale();
+      this.#safeEvict();
     };
     const onWindowResize = (): void => {
       // Flashes are positioned in the layout that was current when they were
@@ -452,14 +459,40 @@ export class PixiRenderer implements Renderer {
     if (this.#zoomSettle !== null) clearTimeout(this.#zoomSettle);
     this.#zoomSettle = setTimeout(() => {
       this.#zoomSettle = null;
-      this.#evictStale();
+      this.#safeEvict();
     }, 250);
+  }
+
+  /**
+   * Evict ONLY when no flash is alive — THE captured iOS crash (2026-08-19,
+   * Marc's overlay screenshot: `t.alphaMode` on null, at a pop). The chain:
+   * a pop spawns flash sprites holding the current textures AND its own
+   * card reflows the controls; the ResizeObserver fires, the redraw lands
+   * on a slightly different layout size, and eviction then destroyed the
+   * OLD size's textures — under sprites that Session 25 deliberately keeps
+   * alive across sibling reflows. A sprite whose texture is destroyed takes
+   * Pixi's whole instruction build down with it, every frame. So: while
+   * anything is still burning, defer; the cascade is under two seconds and
+   * the eviction was never urgent.
+   */
+  #safeEvict(): void {
+    if (this.#flashes.length > 0) {
+      if (this.#zoomSettle !== null) clearTimeout(this.#zoomSettle);
+      this.#zoomSettle = setTimeout(() => {
+        this.#zoomSettle = null;
+        this.#safeEvict();
+      }, 400);
+      return;
+    }
+    this.#evictStale();
   }
 
   /**
    * Drop the textures baked for sizes nobody is drawing at any more — the
    * surfaces and the labels together, keyed by the same settled size, so the
-   * two caches cannot drift apart in what they consider current.
+   * two caches cannot drift apart in what they consider current. Callers go
+   * through `#safeEvict`; only `destroy` and the context-restore path (which
+   * both clear the flashes first) may call this directly.
    */
   #evictStale(): void {
     const size = this.#layout?.size ?? 0;
@@ -991,9 +1024,14 @@ export class PixiRenderer implements Renderer {
     if (app === null) return null;
 
     // A hard bound, defensively: the vocabulary is small by construction, so
-    // growing past this means something is generating unbounded strings, and
-    // rebaking beats hoarding GPU memory while it happens.
-    if (this.#labels.size > 256) this.#labels.clear();
+    // growing past it means something is generating unbounded strings. The
+    // old answer — `clear()` the whole cache and carry on — destroyed
+    // textures that sprites added EARLIER IN THIS SAME DRAW still held,
+    // which is the same species as the captured alphaMode crash. Now a full
+    // cache simply stops caching: `null` sends the caller down its plain
+    // per-sprite Text fallback (slower, never shared, perfectly safe), and
+    // the settle-time eviction empties the cache without a live referent.
+    if (this.#labels.size > 256) return null;
 
     const key = `${labelPx(size)}:${label.faint ? 'faint' : 'ink'}:${label.text}`;
     return this.#labels.get(key, () => {
