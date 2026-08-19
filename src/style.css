@@ -210,7 +210,12 @@ body {
   opacity: 0.9;
 }
 
-#camera-toggle {
+/* `#camera button` (one id + one type) outweighs a bare `#camera-toggle`
+   (one id) in specificity regardless of source order, so this used to lose
+   its own font-size to the 40px icon buttons beside it — found on the
+   phone as HERE overflowing its own button, clipped by the border. Scoped
+   under `#camera` to win outright rather than tie on source order. */
+#camera #camera-toggle {
   font-size: 0.5625rem;
 }
 

@@ -294,14 +294,25 @@ export class PixiRenderer implements Renderer {
 
     // `resizeTo` resizes the canvas but knows nothing about board layout, so the
     // fit has to be recomputed and the board redrawn on every resize. On a phone
-    // this fires for rotation and for the URL bar collapsing on scroll.
+    // this fires for rotation and for the URL bar collapsing on scroll — but it
+    // ALSO fires for every ordinary reflow of the controls beside the board (a
+    // harvest button appearing or hiding, a hint line wrapping to a second line,
+    // the very toast a pop itself shows), because the host is a flex child whose
+    // box shrinks and grows with its siblings. `#clearFlashes` used to run on
+    // every one of those too — found by driving a real browser and watching a
+    // freshly spawned pop's flash and embers vanish before the next frame,
+    // wiped by the ResizeObserver its own toast had just triggered. Flashes now
+    // only drop on a true window-level resize (rotation, the URL bar), which
+    // `onResize` below cannot tell apart from a sibling's reflow on its own.
     const onResize = (): void => {
+      this.draw(this.#view);
+      this.#evictStale();
+    };
+    const onWindowResize = (): void => {
       // Flashes are positioned in the layout that was current when they were
       // spawned, so a rotation mid-harvest would leave them burning over the
       // wrong hexes. They last a third of a second; dropping them is right.
       this.#clearFlashes();
-      this.draw(this.#view);
-      this.#evictStale();
     };
     const onTick = (ticker: Ticker): void => {
       this.#advanceFlashes(ticker.deltaMS);
@@ -310,10 +321,12 @@ export class PixiRenderer implements Renderer {
     };
 
     app.renderer.on('resize', onResize);
+    window.addEventListener('resize', onWindowResize);
     app.ticker.add(onTick);
     this.#detach = () => {
       observer?.disconnect();
       app.renderer.off('resize', onResize);
+      window.removeEventListener('resize', onWindowResize);
       app.ticker.remove(onTick);
     };
 
