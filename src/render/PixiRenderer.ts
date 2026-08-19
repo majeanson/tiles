@@ -869,10 +869,21 @@ export class PixiRenderer implements Renderer {
     // at exactly the zoom where "where is everything?" is the question being
     // asked. `labelPx`'s floor keeps the text legible instead of letting it
     // shrink into mush; only sub-3px hexes — where even a floored label is
-    // paint noise over paint noise — stay wordless.
+    // paint noise over paint noise — stay wordless. Remembered ground stays
+    // unlabelled EXCEPT its landmarks (same day, Marc's fog-memory call:
+    // memory shows what it saw) — a remembered shrine or cache draws its
+    // glyph faint, so walking back is an informed decision instead of a
+    // guess the tap explanation then confirms.
     const label = labelFor(cell);
-    if (label !== null && layout.size > 3 && !cell.dimmed && !cell.remembered) {
-      group.addChild(this.#drawLabel(label, x, y, layout.size));
+    if (
+      label !== null &&
+      layout.size > 3 &&
+      !cell.dimmed &&
+      (!cell.remembered || cell.kind === 'landmark')
+    ) {
+      group.addChild(
+        this.#drawLabel(cell.remembered ? { ...label, faint: true } : label, x, y, layout.size),
+      );
     }
 
     return group;

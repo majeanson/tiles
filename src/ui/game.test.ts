@@ -2,9 +2,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COLOUR_MARK } from '@theme/tokens';
 import { BARE_TUNING, TUNING, type Tuning } from '@content/tuning';
-import { key, neighbourKeys, type HexKey } from '@engine/hex';
+import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
+import { destinationAt } from '@engine/world';
 import type { Cell, GameState } from '@engine/state';
 import { EMPTY_PROGRESS, TEACH_IDS, UPGRADES, type Progress } from '@meta/progress';
 import type { BoardView, Renderer } from '@render/Renderer';
@@ -281,17 +282,11 @@ describe('the game loop', () => {
     expect(ctx.el.harvestPoints.disabled).toBe(true);
   });
 
-  it('marks exactly the draft card whose placement pays the most', () => {
-    // Seed 4's opening draft holds the seed tile's colour (asserted by the
-    // select test above), so next to a lone seed exactly one card can pay —
-    // and exactly one card carries the BEST word.
+  it('marks no card BEST — the board’s preview numbers are the advice now', () => {
+    // The badge was removed on Marc's call (2026-08-19): the previews print
+    // every card's worth where it would land, and the extra word was noise.
     const marked = [...ctx.el.draft.children].filter((c) => (c.textContent ?? '').includes('BEST'));
-    expect(marked).toHaveLength(1);
-    const seedCell = ctx.game.state.cells[key(0, 0)];
-    const index = [...ctx.el.draft.children].indexOf(marked[0]!);
-    expect(ctx.game.state.draft[index]?.colour).toBe(
-      seedCell?.kind === 'tile' ? seedCell.colour : 'never',
-    );
+    expect(marked).toHaveLength(0);
   });
 
   it('shows the epitaph and goes dead once the run ends', () => {
@@ -2355,5 +2350,59 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     tap(ctx.el.board);
     expect(ctx.el.toast.textContent).toMatch(/TIDE/);
     expect(ctx.el.toast.textContent).toMatch(/hexes from home/);
+  });
+
+  it('teaches the last-gasp rule the first time a placement costs more than you hold', () => {
+    // Everything else met, so the one toast in question owns the beat.
+    const dev = device({
+      ...EMPTY_PROGRESS,
+      met: TEACH_IDS.filter((id) => id !== 'lastGasp'),
+    });
+    const fixture = nearlyRipe();
+    // 200 placements in: the cost curve is far past the single tile held.
+    const broke: GameState = { ...fixture.state, tiles: 1, placements: 200 };
+    const ctx = build(1, T, { resume: broke, shop: dev.shop });
+    ctx.game.start();
+    ctx.renderer.nextHit = fixture.lastSide;
+    tap(ctx.el.board);
+
+    expect(ctx.game.state.tiles).toBe(0);
+    expect(ctx.el.toast.textContent).toMatch(/forgiven at zero/);
+    expect(dev.current().met).toContain('lastGasp');
+  });
+});
+
+describe('fog memory, and the divining rod it must not be (2026-08-19)', () => {
+  /** A hashed destination beyond the beacon horizon of a fresh run, if any. */
+  const farDestination = (seed: number): HexKey | null => {
+    for (let q = -40; q <= 40; q++) {
+      for (let r = -40; r <= 40; r++) {
+        if (distance({ q, r }, { q: 0, r: 0 }) <= TUNING.beaconHorizon + 2) continue;
+        if (destinationAt(seed, q, r, TUNING) !== null) return key(q, r);
+      }
+    }
+    return null;
+  };
+
+  it('keeps unseen fog dark on tap, and names what memory has actually seen', () => {
+    const far = farDestination(7);
+    expect(far).not.toBeNull();
+    const { q, r } = parse(far!);
+    expect(distance({ q, r }, { q: 0, r: 0 })).toBeGreaterThan(TUNING.beaconHorizon);
+
+    // Never seen, beyond the horizon: tap-scanning must not identify it.
+    const dark = build(1, TUNING, { resume: newRun(7, TUNING) });
+    dark.game.start();
+    dark.renderer.nextHit = far;
+    tap(dark.el.board);
+    expect(dark.el.toast.textContent).toMatch(/Dark ground/);
+    expect(dark.el.toast.textContent).not.toMatch(/CACHE|SITE|SHRINE|TERRITORY/);
+
+    // Remembered from an earlier run: memory shows what it saw.
+    const seen = build(1, TUNING, { resume: newRun(7, TUNING), memory: [far!] });
+    seen.game.start();
+    seen.renderer.nextHit = far;
+    tap(seen.el.board);
+    expect(seen.el.toast.textContent).toMatch(/CACHE|SITE|SHRINE|TERRITORY/);
   });
 });

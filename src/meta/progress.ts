@@ -167,6 +167,10 @@ export const TEACH_IDS = [
   'colourYellow',
   'colourRed',
   'colourBlue',
+  // The last-gasp rule (2026-08-19, Marc: "1 tile left but cost is 6, I can
+  // still play — is that normal?"): deliberate since DESIGN.md, illegible
+  // until taught at the moment it first happens.
+  'lastGasp',
 ] as const;
 
 export type TeachId = (typeof TEACH_IDS)[number];

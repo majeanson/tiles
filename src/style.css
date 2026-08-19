@@ -553,18 +553,6 @@ button.quiet {
   color: var(--accent, #d7b45a);
 }
 
-/* The card whose best placement pays the most right now. A word, not a
-   glow — it is advice, and advice should never outshine the choice. Made to
-   actually read (2026-08-19): 0.5rem in the dim ink measured as invisible
-   at arm's length, so this borrows `.tile-rarity`'s own proven-legible
-   treatment (size, colour) rather than inventing a third. Advice that
-   cannot be read is not quiet, it is absent. */
-.tile-best {
-  font-size: 0.625rem;
-  letter-spacing: 0.12em;
-  color: var(--accent, #d7b45a);
-}
-
 /* The stash: one more card, behind a divider and narrower than a draft card
    (Stage 2, 2026-08-18: "bottom-third reclaim") — it is not a fourth choice,
    it is a place to put one aside, and the row should read that difference

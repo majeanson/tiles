@@ -8,6 +8,7 @@ import {
   harvestMultiplier,
   harvestValue,
   isRipe,
+  placementCostAt,
   worthOf,
 } from '@engine/rules';
 import type {
@@ -1101,9 +1102,24 @@ export class Game {
       // Not on the board: a destination glowing through the dark, a find's
       // shimmer, or ground this world remembers from an earlier run.
       const { q, r } = parse(hex);
+      const remembered = this.#hooks.memory?.includes(hex) ?? false;
       const dest = destinationAt(this.#state.rootSeed, q, r, t);
       if (dest !== null) {
-        return `${destination(dest.reward, dest.colour, false)} Build your chain out to it.`;
+        // Named only where the world has actually SHOWN it (Marc,
+        // 2026-08-19: memory shows what it saw): ground this world
+        // remembers, or a beacon inside the live horizon — the same rule
+        // `beaconsFor` draws by. Anything darker stays dark: the old
+        // unconditional answer let tap-scanning the void identify
+        // destinations no run had ever seen, the exact divining rod the
+        // finds were guarded against from day one.
+        const withinHorizon =
+          distance({ q, r }, { q: 0, r: 0 }) <= this.#reachOf(this.#state) + t.beaconHorizon;
+        if (remembered || withinHorizon) {
+          const claimed = this.#state.claimed.includes(hex);
+          return claimed
+            ? destination(dest.reward, dest.colour, true)
+            : `${destination(dest.reward, dest.colour, false)} Build your chain out to it.`;
+        }
       }
       // Only a hex the shimmer is actually drawing gets this answer — with
       // no sense, or out of range, a hidden find stays exactly that, and
@@ -1114,7 +1130,9 @@ export class Game {
         );
         if (near) return 'Something shimmers here. Grow your ground to it.';
       }
-      return 'Remembered from an earlier run — this run has not grown here yet.';
+      return remembered
+        ? 'Remembered from an earlier run — this run has not grown here yet.'
+        : 'Dark ground — nothing any run has seen yet. Grow toward it.';
     }
 
     switch (cell.kind) {
@@ -1366,12 +1384,12 @@ export class Game {
             t.singlePayout
               ? 'Tiles are the only thing keeping you alive, and every placement spends them — so what you decide is WHERE and WHEN, never which button.'
               : 'Tiles keep you going; points are the score. You POP for one or the other, never both.',
-            'BEST marks the card whose strongest placement pays most right now. Advice, not an order.',
           ],
           detail: [
             t.costGrace > 0
               ? `A placement costs ${t.baseCost} tiles for the first ${t.costGrace}, then +1 for every ${t.costRisesEvery} after. It never comes back down — that is the clock that ends every run.`
               : `A placement costs ${t.baseCost} tiles, +1 for every ${t.costRisesEvery} you have ever placed this run. It never comes back down — that is the clock that ends every run.`,
+            'You may place while you hold ANY tiles, even fewer than the cost — the difference is forgiven at zero, which can only happen once.',
           ],
         },
         {
@@ -2080,6 +2098,24 @@ export class Game {
 
     if (!met.has('relic') && next.relics > 0) {
       return { tier: 'card', id: 'relic', text: RELIC_LESSON };
+    }
+
+    // The last-gasp rule, taught the first time it fires (Marc, 2026-08-19:
+    // "1 tile left but cost is 6, I can still play — is that normal?"). It
+    // is — `canAfford` is deliberately `tiles > 0` and the overdraft floors
+    // at zero (DESIGN.md's "at zero: one last tile") — but a COST the TILES
+    // cannot cover reads as a bug to anyone it has not been explained to,
+    // including the game's own designer.
+    if (
+      !met.has('lastGasp') &&
+      action.type === 'PLACE' &&
+      before.tiles < placementCostAt(before.cells, action.hex, before.placements, t)
+    ) {
+      return {
+        tier: 'toast',
+        id: 'lastGasp',
+        text: 'That cost more tiles than you had — allowed, by design: you may place while ANY tiles remain, and the difference is forgiven at zero. It can only happen once; at zero with nothing ripe to pop, the run is over.',
+      };
     }
 
     // A colour teaches itself at its FIRST placement — after the cards
@@ -2917,7 +2953,7 @@ export class Game {
           t.costGrace > 0
             ? `It stays ${t.baseCost} for the first ${t.costGrace} placements, then rises +1 every ${t.costRisesEvery} placed`
             : `It rises +1 every ${t.costRisesEvery} placed`;
-        return `COST — the next placement's price: ${hud.cost}. ${curve}, and it never comes back down — the clock that ends every run.`;
+        return `COST — the next placement's price: ${hud.cost}. ${curve}, and it never comes back down — the clock that ends every run. You may place while you hold ANY tiles, even fewer than the cost: the difference is forgiven at zero, once.`;
       }
       case 'left':
         return 'LEFT — placements remaining in the expedition. At zero it ends; anything already ripe can still be popped.';
@@ -2983,15 +3019,10 @@ export class Game {
           button.append(badge);
         }
 
-        // The card whose best placement pays the most, marked so choosing a
-        // card starts from an answer instead of an audit. The selector decides
-        // which one from the same previews the board draws.
-        if (tile.best) {
-          const badge = document.createElement('span');
-          badge.className = 'tile-best';
-          badge.textContent = 'BEST';
-          button.append(badge);
-        }
+        // The BEST badge lived here until 2026-08-19 (Marc: "remove the best
+        // indicator on the tile") — the board's own preview numbers already
+        // say where every card pays, and the badge was an answer to a
+        // question the numbers answer better.
 
         button.addEventListener('click', () => {
           // A second tap on the already-selected card used to be a silent

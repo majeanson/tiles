@@ -89,6 +89,13 @@ const BEST_STORAGE_KEY = 'tiles.records.v2';
  * the opening of the run it changed.
  */
 const SHRINE_RECEIPT_KEY = 'tiles.shrinereceipt.v1';
+/**
+ * The last uncaught error, kept so a phone can REPORT it (2026-08-19: Marc
+ * hit "lots of please reload errors" on iOS and could say nothing more,
+ * because iOS has no console and the old panel showed no detail and nuked
+ * the screen). Written by `showFailure`, shown under SETTINGS ▸ DEVELOPER.
+ */
+const ERROR_STORAGE_KEY = 'tiles.lasterror.v1';
 
 /**
  * Flags are resolved once, here at the edge, and passed downward as data. The
@@ -897,7 +904,61 @@ function mountSettings(
     'teaches itself again from its next moment. How a veteran device previews ' +
     'what a stranger will see.';
 
-  developer.append(developerSummary, ...flagElements, resetTeaching, resetTeachingNote);
+  // LAST ERROR (2026-08-19): whatever `showFailure` last caught, readable
+  // and selectable here — the report channel for a phone with no console.
+  // Absent entirely when nothing has ever broken, which is the good day.
+  const errorElements: HTMLElement[] = [];
+  try {
+    const raw = localStorage.getItem(ERROR_STORAGE_KEY);
+    const parsed: unknown = raw === null ? null : JSON.parse(raw);
+    if (parsed !== null && typeof parsed === 'object') {
+      const { text, sha, at, count } = parsed as {
+        text?: unknown;
+        sha?: unknown;
+        at?: unknown;
+        count?: unknown;
+      };
+      if (typeof text === 'string' && text.length > 0) {
+        const errorHead = document.createElement('p');
+        errorHead.className = 'flag-label';
+        errorHead.textContent = 'LAST ERROR';
+        const errorBody = document.createElement('p');
+        errorBody.className = 'flag-note';
+        errorBody.style.userSelect = 'text';
+        errorBody.style.whiteSpace = 'pre-wrap';
+        errorBody.textContent =
+          `${typeof sha === 'string' ? `build ${sha}` : ''}` +
+          `${typeof at === 'string' ? ` · ${at}` : ''}` +
+          `${typeof count === 'number' ? ` · seen ×${count}` : ''}\n${text}`;
+        const errorClear = document.createElement('button');
+        errorClear.type = 'button';
+        errorClear.id = 'clear-last-error';
+        errorClear.className = 'quiet';
+        errorClear.textContent = 'CLEAR LAST ERROR';
+        errorClear.addEventListener('click', () => {
+          try {
+            localStorage.removeItem(ERROR_STORAGE_KEY);
+          } catch {
+            // Unwritable storage will simply show it again; harmless.
+          }
+          errorHead.remove();
+          errorBody.remove();
+          errorClear.remove();
+        });
+        errorElements.push(errorHead, errorBody, errorClear);
+      }
+    }
+  } catch {
+    // A corrupt record is not worth a row.
+  }
+
+  developer.append(
+    developerSummary,
+    ...flagElements,
+    resetTeaching,
+    resetTeachingNote,
+    ...errorElements,
+  );
 
   // A fresh run under whatever the switches now say — the same path as the
   // end screen's button, so it also clears the saved run and drops ?seed and
@@ -1190,9 +1251,14 @@ async function main(): Promise<void> {
   // empty today and the procedural surfaces are a complete board; a bitmap that
   // arrives late simply replaces one, and a bitmap that never arrives costs
   // nothing. The game must never wait on a picture.
-  void AssetBook.load(theme.id).then((assets) => {
-    if (assets.size > 0) renderer.useAssets(assets);
-  });
+  void AssetBook.load(theme.id)
+    .then((assets) => {
+      if (assets.size > 0) renderer.useAssets(assets);
+    })
+    // A manifest that fails to fetch (flaky network, a hostile cache) must
+    // not become an unhandled rejection — before 2026-08-19 that was one of
+    // the ways the failure panel could fire over a perfectly playable game.
+    .catch(() => undefined);
 }
 
 /**
@@ -1216,47 +1282,128 @@ function showUpdateNote(): void {
   else document.body.appendChild(note);
 }
 
+/** One line a human can send: name, message, and the top of the stack. */
+function describeError(error: unknown): string {
+  if (error instanceof Error) {
+    const stack = (error.stack ?? '')
+      .split('\n')
+      .slice(0, 4)
+      .map((line) => line.trim())
+      .join('\n');
+    return `${error.name}: ${error.message}\n${stack}`.slice(0, 700);
+  }
+  try {
+    return String(error).slice(0, 300);
+  } catch {
+    return 'unknown error';
+  }
+}
+
+let failureCount = 0;
+
+function rememberError(text: string): void {
+  try {
+    localStorage.setItem(
+      ERROR_STORAGE_KEY,
+      JSON.stringify({
+        text,
+        sha: __BUILD_SHA__.slice(0, 7),
+        at: new Date().toISOString(),
+        count: failureCount,
+      }),
+    );
+  } catch {
+    // A browser that cannot keep the error is the browser this feature
+    // cannot help. The panel below still shows it live.
+  }
+}
+
 /**
  * The failure panel: plain DOM, no Pixi, no framework — because it exists for
  * exactly the moments those things are broken (a WebGL context that will not
- * come up, a bundle half-loaded on a bad connection, a bug in the loop). The
- * one promise it makes is the one the autosave already keeps: every action is
- * saved the moment it happens, so a reload resumes the run.
+ * come up, a bundle half-loaded on a bad connection, a bug in the loop).
+ *
+ * Rebuilt 2026-08-19 after Marc's iOS session ("lots of please reload
+ * errors... my end game screen got cancelled"): the old panel REPLACED the
+ * whole body — one transient throw destroyed a perfectly good end screen —
+ * and said nothing about what broke, on the one platform with no console.
+ * It is an OVERLAY now, with CONTINUE beside RELOAD (a transient error is
+ * survivable; the autosave means RELOAD loses nothing either way), it shows
+ * the actual error so a phone can report it, it counts repeats instead of
+ * stacking, and it remembers the last error for SETTINGS ▸ DEVELOPER.
  */
-function showFailure(): void {
-  if (document.getElementById('boot-failure') !== null) return;
+function showFailure(error?: unknown): void {
+  failureCount++;
+  const detail = error === undefined ? '' : describeError(error);
+  if (detail !== '') rememberError(detail);
+
+  const existing = document.getElementById('boot-failure');
+  if (existing !== null) {
+    const count = existing.querySelector('#boot-failure-count');
+    if (count !== null) count.textContent = `seen ×${failureCount}`;
+    if (detail !== '') {
+      const shown = existing.querySelector('#boot-failure-detail');
+      if (shown !== null) shown.textContent = detail;
+    }
+    return;
+  }
+
   const panel = document.createElement('div');
   panel.id = 'boot-failure';
   panel.setAttribute('role', 'alert');
   panel.style.cssText =
     'position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;gap:12px;' +
-    'align-items:center;justify-content:center;background:#14161c;color:#e6e9f0;' +
+    'align-items:center;justify-content:center;background:rgba(16,18,24,0.94);color:#e6e9f0;' +
     'font-family:system-ui,sans-serif;padding:24px;text-align:center;';
   const words = document.createElement('p');
-  words.textContent = 'Something broke. Your run is saved — reloading picks it up where it was.';
+  words.textContent =
+    'Something broke. Your run is saved — CONTINUE if the game still works underneath, RELOAD if it does not.';
+  const count = document.createElement('p');
+  count.id = 'boot-failure-count';
+  count.textContent = `seen ×${failureCount}`;
+  count.style.cssText = 'opacity:0.6;font-size:0.75rem;margin:0;';
+  const shown = document.createElement('p');
+  shown.id = 'boot-failure-detail';
+  shown.textContent = detail;
+  shown.style.cssText =
+    'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.6875rem;opacity:0.8;' +
+    'max-width:100%;overflow-wrap:anywhere;white-space:pre-wrap;text-align:left;' +
+    'user-select:text;-webkit-user-select:text;margin:0;';
+  const buttonCss =
+    'min-height:44px;padding:0 24px;font:inherit;color:inherit;' +
+    'background:#262b36;border:1px solid #3a4150;border-radius:6px;';
+  const go = document.createElement('button');
+  go.type = 'button';
+  go.textContent = 'CONTINUE';
+  go.style.cssText = buttonCss;
+  go.addEventListener('click', () => {
+    panel.remove();
+  });
   const reload = document.createElement('button');
   reload.type = 'button';
   reload.textContent = 'RELOAD';
-  reload.style.cssText =
-    'min-height:44px;padding:0 24px;font:inherit;color:inherit;' +
-    'background:#262b36;border:1px solid #3a4150;border-radius:6px;';
+  reload.style.cssText = buttonCss;
   reload.addEventListener('click', () => {
     location.reload();
   });
-  panel.replaceChildren(words, reload);
-  document.body.replaceChildren(panel);
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:12px;';
+  row.append(go, reload);
+  panel.replaceChildren(words, count, shown, row);
+  document.body.appendChild(panel);
 }
 
 // A boot that dies (WebGL refused, an element missing, a bundle truncated)
 // used to be a silent blank page. The listeners catch what escapes later —
 // one uncaught throw in a pointer handler froze the loop with no signal.
+// Both hand the error itself across now, so the panel can say it.
 window.addEventListener('error', (event) => {
-  if (event.error !== undefined && event.error !== null) showFailure();
+  if (event.error !== undefined && event.error !== null) showFailure(event.error);
 });
-window.addEventListener('unhandledrejection', () => {
-  showFailure();
+window.addEventListener('unhandledrejection', (event) => {
+  showFailure(event.reason);
 });
 
-void main().catch(() => {
-  showFailure();
+void main().catch((error: unknown) => {
+  showFailure(error);
 });

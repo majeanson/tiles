@@ -3611,3 +3611,64 @@ machine-enforced layering, so the economy cannot have moved. 552 tests
 green, typecheck/lint/format clean, build green; the picture itself — do
 floored labels read as presence rather than clutter at FIT on a big
 board — is the phone's to judge, like everything visual here.
+
+**Addendum, same day — the phone-session batch: five reports, one sweep.**
+
+Marc kept playing and kept reporting; everything below shipped as one
+audited batch. The economy MOVED this time — deliberately, on his answers
+to the option sets — so the sim was swept before/after rather than proven
+byte-identical.
+
+- **Rare odds halved at the base** (`magicChance` 0.05 → 0.025,
+  `uniqueChance` 0.01 → 0.005; his pick: "halve the base"). His own setup
+  (luck shrine + KEENER EYE 1) reads 7%/1.5% where it read 12%/2.5%.
+- **Shrines thinned 8% → 5%** of destinations (his pick: stretch "a bit"
+  after waking all four in three games) — the freed share went to cache
+  and site, so the near world got slightly kinder, not thinner. **Finds
+  rescaled with them** (`findChance` 0.14 → 0.085): the finds test itself
+  caught that thinning only the shrines silently inverted the "rarest
+  thing out there" brief — the two ladders slow together.
+- **The sweep** (200 runs/policy, before vs after): 0 stalled, 0 capped
+  both sides; scoring policies down ~15-25% (fewer wilds = smaller
+  pockets — the asked-for tone-down, measured); structure intact — rush
+  still deepest (15), the bank family still leads and still plateaus,
+  seeker still claims 3, reach held at 10-12, arc unchanged.
+- **Fog memory shows what it saw** (his pick on the option set):
+  remembered landmarks draw their glyph faint through the fog, tapping
+  one names it (and now says CLAIMED honestly — the old path always said
+  unclaimed), and **the divining rod is closed**: tapping never-seen fog
+  beyond the beacon horizon used to identify any hashed destination;
+  it now says "Dark ground" until memory or the horizon has actually
+  shown it. Pinned by test both ways.
+- **The last-gasp rule is taught** ("1 tile left, cost 6, I can still
+  play — is that normal?"). It is — `canAfford` is deliberately
+  `tiles > 0`, DESIGN.md's "at zero: one last tile" — but it read as a
+  bug to its own designer, so it joined the teaching ledger
+  (`lastGasp`, TEACH_IDS is 18): one toast, the first time a placement
+  costs more than the purse holds, plus a sentence in the COST stat's
+  tap note and the manual's cost fold.
+- **BEST is gone from the draft cards** (his ask): the badge, its manual
+  line, its CSS and the selector chain (`bestDraftIndex`, the
+  `draft[].best` field) all removed — the board's preview numbers were
+  already the better answer.
+- **The failure panel became a diagnostic instead of a guillotine**
+  ("lots of please reload errors" on iOS, end screen destroyed,
+  nothing reportable). It is an overlay now — CONTINUE beside RELOAD, so
+  a transient error no longer nukes a live end screen — it shows the
+  actual error text, counts repeats instead of stacking, and persists
+  the last error to `tiles.lasterror.v1`, surfaced selectable under
+  SETTINGS ▸ DEVELOPER with a CLEAR button: the report channel for the
+  one platform with no console. `AssetBook.load` gained the missing
+  `.catch` (an asset-manifest fetch failure was an unhandled rejection —
+  one real way the old panel could fire over a playable game). The
+  crash's ROOT CAUSE is still unidentified — his pattern (pops, spends,
+  pinch, scattered) smells like iOS WebGL under memory pressure, and the
+  next report will carry the actual error text.
+- **Waypoints recorded, not built** (`ideas/waypoints.md`): his
+  new-drop-point idea collides with where-you-wake's FAILED prototype —
+  the engine's distance rules read an implicit origin — so the idea is
+  written down with the audit it requires and the score-anchor fork only
+  Marc can call.
+
+554 tests green (new: the last-gasp toast, the fog gate both ways, no
+BEST badge renders); typecheck, lint, format clean; build green.

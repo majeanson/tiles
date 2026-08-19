@@ -717,10 +717,14 @@ const PLANE: Tuning = {
   // changing your mind for; swept in Session 11.
   questNeed: 8,
 
-  // Base odds are felt but rare: roughly one magic tile per two drafts' worth
-  // of placements, uniques an event. Luck at its cap roughly triples magic.
-  magicChance: 0.05,
-  uniqueChance: 0.01,
+  // Halved 2026-08-19 (Marc, after three runs with the luck shrine and one
+  // KEENER EYE level: "magic 12% and unique 2.5% feels like a lot — tone down
+  // the initial values"; his pick on the option set was halve-the-base). A
+  // rare tile should be an event, and the shrine's ×2 and the shop's
+  // +2%/+0.5% a level only feel like growth if the floor is low — his own
+  // setup now reads 7% / 1.5% instead of 12% / 2.5%.
+  magicChance: 0.025,
+  uniqueChance: 0.005,
   luckMagicPerPop: 0.0008,
   luckUniquePerPop: 0.0002,
 
@@ -928,11 +932,14 @@ export const TUNING: Tuning = {
   popTilesPerRing: 0.25,
   destinationRampBlocks: 2,
 
-  // 40% cache, 35% site, 17% territory near home — caches carry survival so
-  // they lead close in; shrine is always the remainder (8%), never a fourth
-  // scaled number.
-  cacheShareNear: 0.4,
-  siteShareNear: 0.35,
+  // 42% cache, 36% site, 17% territory near home — caches carry survival so
+  // they lead close in; shrine is always the remainder (5%), never a fourth
+  // scaled number. Shrines thinned 8% → 5% on 2026-08-19 (Marc, after waking
+  // all four in three games: stretch them out "a bit") — the ledger should
+  // pace a world's first week, not its first evening; the freed points went
+  // to cache and site so the near world got slightly kinder, not thinner.
+  cacheShareNear: 0.42,
+  siteShareNear: 0.36,
   territoryShareNear: 0.17,
 
   /**
@@ -942,35 +949,35 @@ export const TUNING: Tuning = {
    * are at full density the mix has barely moved (20% of the way at block
    * distance 2), so the near world plays exactly as it did before this
    * dial existed, and the tilt is a DEEP-run fact rather than an early one.
-   * `cacheShareFar` 0.2 (down from 0.4 near home) hands its other 20 points
-   * to site/territory/shrine in their existing 35:17:8 ratio to each other —
-   * a maxed-out deep block runs roughly 20% cache / 47% site / 23%
-   * territory / 11% shrine, so a pushed run meets more of the interesting
+   * `cacheShareFar` 0.2 (down from 0.42 near home) hands its points to
+   * site/territory/shrine in their near-mix ratio to each other — a
+   * maxed-out deep block runs roughly 20% cache / 50% site / 23%
+   * territory / 7% shrine, so a pushed run meets more of the interesting
    * things and fewer plain lifelines exactly where survival is least in
-   * question. Swept at 40 seeds against bank20/spender/seeker: no stalls,
-   * skill spread and the clock held; see LOG for the claims-curve note.
+   * question. Swept at 40 seeds against bank20/spender/seeker on the
+   * original split: no stalls, skill spread and the clock held; re-swept
+   * 2026-08-19 with the thinned shrines (see LOG).
    */
   deepWaterRampBlocks: 10,
   cacheShareFar: 0.2,
 
   /**
    * HIDDEN FINDS EXIST, AND ARE RARER THAN SHRINES (2026-08-18, first
-   * values). The yardstick is the rarest thing already out there: shrines
-   * are 8% of destinations at one per ~6-hex block and 0.45 chance —
-   * 0.45 × 0.08 / 36 ≈ 0.0010 shrines per hex at full ramp. A find block of
-   * 12 hexes at 0.14 is 0.14 / 144 ≈ 0.0010 per hex BEFORE the deep-world
-   * exclusion (nothing within a block-width of home) carves out the whole
-   * ground a short run ever sees — so where runs actually happen, finds come
-   * up rarer than shrines. Measured over seeds 1-40: a disc of radius 14
-   * holds ~0.15 finds a world against ~0.5 shrines, radius 20 holds ~0.9
-   * against ~1.2, radius 30 ~2.5 against ~3.0 — under the shrine line at
-   * every depth. A run that pushes to reach 14+ reveals a strip of that
-   * disc, so a find lands every few pushing runs: a lottery ticket, not a
-   * checklist. Swept beside 10/0.12 (crosses ABOVE the shrine line past
-   * radius 20) and 12/0.2 (outnumbers shrines everywhere deep); 12/0.14 is
-   * the one that stays rarest without vanishing. `findSense` stays 0 — the
-   * shop sells the nose.
+   * values; rescaled 2026-08-19 when the shrine share thinned 8% → 5%). The
+   * yardstick is the rarest thing already out there: shrines at 5% of
+   * destinations, one per ~6-hex block at 0.45 chance, are
+   * 0.45 × 0.05 / 36 ≈ 0.000625 shrines per hex at full ramp. A find block
+   * of 12 hexes at 0.085 is 0.085 / 144 ≈ 0.00059 per hex BEFORE the
+   * deep-world exclusion (nothing within a block-width of home) carves out
+   * the whole ground a short run ever sees — so where runs actually happen,
+   * finds stay rarer than shrines, the same just-under margin the original
+   * 0.14-against-8% pair kept (its whole sweep record lives in git). The
+   * ratio moved with the shrines ON PURPOSE: Marc asked for the unlock
+   * ledger stretched "a bit", and the perk shelf is the same kind of ladder
+   * — both slow together or the brief ("the rarest thing out there")
+   * silently inverts, which is exactly what the finds test caught when only
+   * the shrines thinned. `findSense` stays 0 — the shop sells the nose.
    */
   findEvery: 12,
-  findChance: 0.14,
+  findChance: 0.085,
 };

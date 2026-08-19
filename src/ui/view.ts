@@ -567,17 +567,15 @@ export type HudView = {
    * direction's name for it (`CRYPT`) and its CSS variable, and both of those are
    * exhaustive maps that a stray string would silently miss.
    */
+  // The BEST marker used to ride here (the card whose strongest placement
+  // pays most). Removed on Marc's call, 2026-08-19: the previews on the
+  // board already print every card's numbers where they land, and the badge
+  // was one more word on an already-worded card.
   readonly draft: readonly {
     readonly id: string;
     readonly colour: Colour;
     readonly rarity: Rarity;
     readonly selected: boolean;
-    /**
-     * The card whose best placement pays the most right now. The UI taking a
-     * decision off the player's plate: you still choose, but you never have
-     * to audit three cards to find out which one is worth looking at.
-     */
-    readonly best: boolean;
   }[];
 
   /** Whether the stash exists at all (`tuning.holdSlots > 0`). */
@@ -693,7 +691,6 @@ export function toHudView(
 ): HudView {
   const target = ctx.target;
   const value = ctx.value;
-  const best = bestDraftIndex(ctx);
   const colours = colourPotentials(state);
 
   return {
@@ -714,7 +711,6 @@ export function toHudView(
       colour: tile.colour,
       rarity: tile.rarity,
       selected: i === state.selected,
-      best: i === best,
     })),
 
     canHold: state.tuning.holdSlots > 0,
@@ -1052,27 +1048,6 @@ export function whatGlows(state: GameState, reach: number): string | null {
   const { reward, dist, at } = best;
   const beyond = Math.max(0, dist - reach);
   return `${capitalize(nameDestination(reward, at, state.tuning))} still glows ${beyond} past your edge.`;
-}
-
-/**
- * Which draft card's best placement pays the most, or null when nothing pays
- * anything — a marker on every draw would be noise, and a tie at zero is not
- * a recommendation. Read off the context's previews — the SAME numbers the
- * board prints — so the marked card and the lit-up hexes cannot disagree,
- * now by construction rather than by re-derivation.
- */
-function bestDraftIndex(ctx: RenderContext): number | null {
-  if (ctx.previews.length === 0) return null;
-
-  let best: { index: number; worth: number } | null = null;
-  ctx.previews.forEach((previews, index) => {
-    for (const worth of previews.values()) {
-      if (best === null || worth > best.worth) best = { index, worth };
-    }
-  });
-  return best !== null && (best as { worth: number }).worth > 0
-    ? (best as { index: number }).index
-    : null;
 }
 
 /** "magic 6% · unique 1.2%", or null while the rarity system is off. */
