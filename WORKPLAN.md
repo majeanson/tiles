@@ -38,7 +38,7 @@ lint/format clean, `pnpm sim` byte-identical to the last balance sweep (0
 stalled, 0 capped, 200 seeds × 15 policies). Full account in `LOG.md`'s
 2026-08-18 addendum. Pushed; CI green on `main`.
 
-## Stage 2 — UI/UX (STATUS: DONE — `8e25a63` `091749c` `b2edce4` `478c6cb` `<pending>`)
+## Stage 2 — UI/UX (STATUS: DONE — `8e25a63` `091749c` `b2edce4` `478c6cb` `b50b38d`)
 
 The audit's big five, in four commits, plus every small win named in the
 brief. Full account in `LOG.md`'s 2026-08-18 addendum; the short version:
@@ -82,7 +82,7 @@ brief. Full account in `LOG.md`'s 2026-08-18 addendum; the short version:
    (quieter/shorter than the pop glow, reusing its texture) on any tile
    that just became ripe. One voice: every player-facing "take"/"cash"/
    "burn" became POP/SACRIFICE, including the game's own TAGLINE.
-5. **The last four small wins** (`<pending>`, on Marc's "finish them now"):
+5. **The last four small wins** (`b50b38d`, on Marc's "finish them now"):
    REACH · best N on the LIVE stat row, threaded through `worldStats`
    (which already carried `farthestReach`) — no prior best prints plain
    REACH N. SETTINGS reordered: player things first (YOUR WORLD's atlas,
