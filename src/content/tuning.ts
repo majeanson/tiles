@@ -104,6 +104,22 @@ export type Tuning = {
   readonly destinationRampBlocks: number;
 
   /**
+   * Deep water (2026-08-18): the destination reward MIX tilts with distance,
+   * not just its density. Near home the split is the original fixed one —
+   * 40% cache, 35% site, 17% territory, 8% shrine — because caches carry
+   * survival and the near world has to stay a lifeline. Past
+   * `deepWaterRampBlocks` blocks the cache share has fully tilted to
+   * `cacheShareFar`, with site, territory and shrine THICKENING — each
+   * keeping its own ratio to the other two, just scaled up to fill what
+   * cache gave up. `deepWaterRampBlocks` 0 (the bare default, and every save
+   * from before this dial existed) keeps the flat original split exactly —
+   * guarded with `> 0` rather than reading `cacheShareFar` unconditionally,
+   * so an old save's `undefined` cannot reach the arithmetic at all.
+   */
+  readonly deepWaterRampBlocks: number;
+  readonly cacheShareFar: number;
+
+  /**
    * Hidden finds (Marc, 2026-08-18, resolving `ideas/uniques.md`): a rare
    * landmark that grants an unowned PERK when growing ground reveals it. It
    * never beacons — no glow through the dark, no atlas entry, no hint. "Theyre
@@ -525,6 +541,8 @@ export const BARE_TUNING: Tuning = {
   cachePaysPerRing: 0,
   popTilesPerRing: 0,
   destinationRampBlocks: 0,
+  deepWaterRampBlocks: 0,
+  cacheShareFar: 0,
 
   findEvery: 0,
   findChance: 0,
@@ -868,6 +886,24 @@ export const TUNING: Tuning = {
   cachePaysPerRing: 4,
   popTilesPerRing: 0.25,
   destinationRampBlocks: 2,
+
+  /**
+   * DEEP WATER (2026-08-18, first values): the mix, not just the density,
+   * tilts with distance. `deepWaterRampBlocks` 10 keeps the tilt behind the
+   * existing density ramp (2 blocks) on purpose — by the time destinations
+   * are at full density the mix has barely moved (20% of the way at block
+   * distance 2), so the near world plays exactly as it did before this
+   * dial existed, and the tilt is a DEEP-run fact rather than an early one.
+   * `cacheShareFar` 0.2 (down from 0.4 near home) hands its other 20 points
+   * to site/territory/shrine in their existing 35:17:8 ratio to each other —
+   * a maxed-out deep block runs roughly 20% cache / 47% site / 23%
+   * territory / 11% shrine, so a pushed run meets more of the interesting
+   * things and fewer plain lifelines exactly where survival is least in
+   * question. Swept at 40 seeds against bank20/spender/seeker: no stalls,
+   * skill spread and the clock held; see LOG for the claims-curve note.
+   */
+  deepWaterRampBlocks: 10,
+  cacheShareFar: 0.2,
 
   /**
    * HIDDEN FINDS EXIST, AND ARE RARER THAN SHRINES (2026-08-18, first

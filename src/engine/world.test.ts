@@ -119,6 +119,75 @@ describe('destinations', () => {
     expect(destinationsWithin(9, 60, none)).toEqual([]);
     expect(destinationAt(9, 12, 12, none)).toBeNull();
   });
+
+  // Deep water (2026-08-18): the MIX tilts with distance, never the
+  // POSITIONS. `blockDestination` picks where before it ever asks which
+  // kind, so switching the tilt on or off must never move a single hex —
+  // only relabel some of them.
+  describe('deep water', () => {
+    const flat = { ...TUNING, deepWaterRampBlocks: 0 };
+    const tilted = TUNING; // deepWaterRampBlocks/cacheShareFar already shipped
+
+    it('never relocates a destination — only its kind can change', () => {
+      for (let seed = 1; seed <= 10; seed++) {
+        const before = destinationsWithin(seed, 90, flat);
+        const after = destinationsWithin(seed, 90, tilted);
+        expect(after.map((d) => key(d.q, d.r)).sort()).toEqual(
+          before.map((d) => key(d.q, d.r)).sort(),
+        );
+      }
+    });
+
+    it('keeps the near-water split exactly the original fixed one when the ramp is off', () => {
+      const counts: Record<string, number> = { cache: 0, site: 0, territory: 0, shrine: 0 };
+      let total = 0;
+      for (let seed = 1; seed <= 30; seed++) {
+        // Far blocks too — with the ramp off, distance must not matter at all.
+        for (const d of destinationsWithin(seed, 150, flat)) {
+          counts[d.reward] = (counts[d.reward] ?? 0) + 1;
+          total++;
+        }
+      }
+      expect(total).toBeGreaterThan(200);
+      expect(counts['cache']! / total).toBeCloseTo(0.4, 1);
+      expect(counts['site']! / total).toBeCloseTo(0.35, 1);
+      expect(counts['territory']! / total).toBeCloseTo(0.17, 1);
+      expect(counts['shrine']! / total).toBeCloseTo(0.08, 1);
+    });
+
+    it('thins caches and thickens site/territory/shrine the deeper a destination sits', () => {
+      const cacheFraction = (lo: number, hi: number): number => {
+        let cache = 0;
+        let total = 0;
+        for (let seed = 1; seed <= 30; seed++) {
+          for (const d of destinationsWithin(seed, hi, tilted)) {
+            const dist = distance(d, { q: 0, r: 0 });
+            if (dist < lo || dist > hi) continue;
+            total++;
+            if (d.reward === 'cache') cache++;
+          }
+        }
+        expect(total).toBeGreaterThan(30);
+        return cache / total;
+      };
+
+      const near = cacheFraction(0, 15);
+      const deep = cacheFraction(120, 150);
+      expect(deep).toBeLessThan(near);
+      // Near the near-water constant (0.4); deep near cacheShareFar (0.2).
+      expect(near).toBeCloseTo(0.4, 1);
+      expect(deep).toBeCloseTo(tilted.cacheShareFar, 1);
+    });
+
+    it('guards `deepWaterRampBlocks` for a save older than the dial', () => {
+      // An older save decodes the new field as `undefined` — `> 0` reads
+      // that as off rather than throwing or tilting on NaN.
+      const stale = { ...TUNING } as Record<string, unknown>;
+      delete stale['deepWaterRampBlocks'];
+      delete stale['cacheShareFar'];
+      expect(() => destinationsWithin(1, 90, stale as unknown as typeof TUNING)).not.toThrow();
+    });
+  });
 });
 
 describe('native ground', () => {
