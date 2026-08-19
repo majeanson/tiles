@@ -204,6 +204,10 @@ export function toBoardView(
   const band = (q: number, r: number): number =>
     elevationBandAt(state.rootSeed, q, r, state.tuning);
   const previews = ctx.previews[state.selected];
+  // The tile actually in hand — the ghost used to draw as one fixed tint no
+  // matter what you were holding. `?? null` covers the edge a full stash
+  // swap can leave for one render: `selected` unchanged, `draft` shorter.
+  const heldColour = state.draft[state.selected]?.colour ?? null;
 
   const cells: CellView[] = Object.entries(state.cells).map(([k, cell]) => {
     const { q, r } = parse(k);
@@ -232,6 +236,7 @@ export function toBoardView(
       band: band(q, r),
       legal,
       preview: legal ? (previews?.get(k) ?? null) : null,
+      previewColour: legal ? heldColour : null,
     };
   });
 
@@ -266,6 +271,7 @@ export function toBoardView(
       worth: 0,
       legal: false,
       preview: null,
+      previewColour: null,
     });
   }
 
@@ -295,6 +301,7 @@ export function toBoardView(
       worth: 0,
       legal: false,
       preview: null,
+      previewColour: null,
     });
   }
 
@@ -334,11 +341,12 @@ export function toBoardView(
         worth: 0,
         legal: false,
         preview: null,
+        previewColour: null,
       });
     }
   }
 
-  return { cells };
+  return { cells, targetHex: ctx.target };
 }
 
 /**

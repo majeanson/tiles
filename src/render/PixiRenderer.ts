@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from 'pixi.js';
-import { key, parse, type HexKey } from '@engine/hex';
+import { distance, key, parse, type HexKey } from '@engine/hex';
 import {
   BAND_LIFT,
   LANDMARK_GLYPH,
@@ -7,6 +7,7 @@ import {
   hex,
   mix,
   rgba,
+  type Orientation,
   type Surface,
   type Theme,
 } from '@theme/tokens';
@@ -50,9 +51,38 @@ const HEX_PX_MAX = 34;
  */
 const REDUCED_POP_MS = 200;
 
+/**
+ * One full breath of a beacon's halo, in milliseconds — slow, so it reads as
+ * a distant light rather than a strobe: "a lighthouse in fog." A renderer
+ * constant rather than a theme one, because the pace exists so the pulse
+ * never competes with placement, not to carry any direction's mood.
+ */
+const BEACON_PULSE_MS = 2600;
+
 // BAND_LIFT — how much brighter one contour band draws than the one below —
 // moved to @theme/tokens (2026-08-18) so the gallery can draw the bands with
 // the same number the board uses.
+
+/**
+ * Elevation edges (2026-08-18): which of `corners()`' six edges face the
+ * torch and which face away from it, so a band's rim can light one side of a
+ * hex rather than stroke the whole outline at one flat alpha — the six-edge
+ * version read as noise where it read at all. Edge `i` runs from corner `i`
+ * to corner `i + 1`; both orientations are fixed shapes at any position, so
+ * this is computed once by hand from `corners()`'s own angles rather than
+ * per cell. Flat-top splits cleanly in half (three edges above the centre
+ * line, three below); pointy-top has two edges dead level with the centre
+ * (the left and right sides), assigned to whichever half their shared
+ * corner belongs to.
+ */
+const EDGE_LIGHT: Readonly<Record<Orientation, readonly number[]>> = {
+  flat: [3, 4, 5],
+  pointy: [5, 0, 1],
+};
+const EDGE_SHADE: Readonly<Record<Orientation, readonly number[]>> = {
+  flat: [0, 1, 2],
+  pointy: [2, 3, 4],
+};
 
 /**
  * The board, drawn from a theme.
@@ -96,7 +126,7 @@ export class PixiRenderer implements Renderer {
   readonly #fx = new Container();
   readonly #vignette = new Container();
 
-  #view: BoardView = { cells: [] };
+  #view: BoardView = { cells: [], targetHex: null };
   #layout: Layout | null = null;
   #detach: (() => void) | null = null;
 
@@ -146,6 +176,17 @@ export class PixiRenderer implements Renderer {
   #flashTexture: Texture | null = null;
   #vignetteKey = '';
   #flashes: Flash[] = [];
+
+  /**
+   * Beacon halos: a soft additive glow, breathing slowly, over every
+   * unrevealed destination in range. Kept keyed by cell rather than rebuilt
+   * with `#cells` every draw — `#cells` is torn down wholesale on every
+   * action, but the breath has to keep going between actions too, so the
+   * sprites live beside the flashes in `#fx` (already ticked every frame)
+   * and `draw()` only adds, moves and removes them.
+   */
+  readonly #beacons = new Map<HexKey, { readonly sprite: Sprite; readonly peak: number }>();
+  #beaconClock = 0;
 
   /**
    * `reducedMotion` is read once at construction rather than per frame. A player
@@ -210,6 +251,7 @@ export class PixiRenderer implements Renderer {
     };
     const onTick = (ticker: Ticker): void => {
       this.#advanceFlashes(ticker.deltaMS);
+      this.#advanceBeacons(ticker.deltaMS);
     };
 
     app.renderer.on('resize', onResize);
@@ -270,6 +312,7 @@ export class PixiRenderer implements Renderer {
 
     for (const cell of view.cells) this.#cells.addChild(this.#drawCell(cell, layout));
 
+    this.#syncBeacons(view.cells, layout);
     this.#applyPan();
     this.#spawnFlashes(previous, view, layout);
     this.#drawVignette(app.screen.width, app.screen.height);
@@ -420,6 +463,8 @@ export class PixiRenderer implements Renderer {
     this.#detach?.();
     this.#detach = null;
     this.#clearFlashes();
+    for (const { sprite } of this.#beacons.values()) sprite.destroy();
+    this.#beacons.clear();
     this.#surfaces.destroy();
     this.#labels.clear();
     this.#flashTexture?.destroy(true);
@@ -528,11 +573,46 @@ export class PixiRenderer implements Renderer {
       // toward the board's own dark reads as light falling away from you.
       // Height rides on the same channel: a hex a band higher catches a little
       // more of the light, which is what makes contours visible at all.
-      if (cell.light < 1 || cell.band > 0) {
+      if (cell.light < 1 || cell.band > 0 || cell.remembered) {
         const lift = 1 + cell.band * BAND_LIFT;
-        sprite.tint = mix(this.#theme.board.background, 0xffffff, Math.min(1, cell.light * lift));
+        let tint = mix(this.#theme.board.background, 0xffffff, Math.min(1, cell.light * lift));
+        // The fog veil (2026-08-18): the alpha drop alone left every colour
+        // and every hue intact, just faint — a dark version of the real
+        // thing rather than a memory of it. Mixing the whole sprite further
+        // toward the board's own background flattens the hue too, on top of
+        // the dimming below, which is the procedural floor `fog.soft` (an
+        // empty slot) would otherwise be doing.
+        if (cell.remembered) tint = mix(tint, this.#theme.board.background, 0.45);
+        sprite.tint = tint;
       }
       group.addChild(sprite);
+    }
+
+    /**
+     * The landmark plinth (2026-08-18): wall-texture-plus-dots read as a
+     * speckle, not a THING. An unclaimed, on-board destination gets an
+     * inset base of its own — darker than the ground it sits on, with a
+     * crisp rim in the accent at low alpha — so it reads as something BUILT
+     * standing on the plane before the glyph is even drawn. A beacon has no
+     * ground to stand on yet (it glows through fog that has not grown), a
+     * shimmer must say nothing at all, and a claimed landmark goes quiet —
+     * the existing stone treatment already carries that, so it gets no
+     * plinth and keeps its plain edge.
+     */
+    if (
+      cell.kind === 'landmark' &&
+      !cell.claimed &&
+      !cell.beacon &&
+      !cell.shimmer &&
+      layout.size > 6
+    ) {
+      const plinth = corners(x, y, layout.size * 0.62, layout.orientation);
+      group.addChild(
+        new Graphics()
+          .poly(plinth)
+          .fill({ color: mix(theme.wall.fill, 0x000000, 0.35), alpha: 0.6 })
+          .stroke({ width: Math.max(1, layout.size * 0.05), color: theme.ink.accent, alpha: 0.35 }),
+      );
     }
 
     /**
@@ -548,6 +628,13 @@ export class PixiRenderer implements Renderer {
      * Not tinted by the torch: it marks where you may act, and a legal cell is
      * by definition next to what you have just built, so it is never far enough
      * out for full strength to look wrong.
+     *
+     * Outline-forward (2026-08-18): the fill alone read as a smudge — a
+     * second, fainter sprite at a flat colour, indistinguishable from "this
+     * hex is slightly wrong". A stroke in the HELD TILE'S OWN colour, at a
+     * decent alpha, says PROPOSED — the shape of what would land, without
+     * pretending it already has — and the fill drops further so the stroke
+     * is what carries the promise.
      */
     if (cell.legal && cell.preview !== null && cell.preview > 0 && !cell.remembered) {
       const ghost = this.#assets.get(theme.ghost.asset);
@@ -560,24 +647,55 @@ export class PixiRenderer implements Renderer {
         const wide = layout.orientation === 'pointy' ? Math.sqrt(3) : 2;
         const tall = layout.orientation === 'pointy' ? 2 : Math.sqrt(3);
         over.setSize(layout.size * wide, layout.size * tall);
-        over.alpha = theme.ghost.alpha;
+        over.alpha = theme.ghost.alpha * 0.55;
         group.addChild(over);
       }
+
+      const proposed =
+        cell.previewColour !== null ? theme.terrain[cell.previewColour].fill : theme.ink.accent;
+      group.addChild(
+        new Graphics()
+          .poly(corners(x, y, layout.size * (1 - theme.ghost.inset), layout.orientation))
+          .stroke({
+            width: Math.max(1.5, layout.size * theme.board.ripeEdgeWidth * 0.8),
+            color: proposed,
+            alpha: 0.75,
+            alignment: 1,
+          }),
+      );
     }
 
-    // Contours: a hex that sits higher than the board's floor gets a light
-    // rim on its upper edges, so a slope reads as a slope rather than as a
-    // colour change. Cosmetic by Marc's decision — nothing in the rules has
+    // Contours (2026-08-18): a hex that sits higher than the board's floor
+    // used to get a light rim on ALL SIX edges at one flat alpha — noise
+    // where it read at all, since a slope has no single side under a stroke
+    // that treats every edge the same. Only the three edges that face the
+    // torch get the light rim now; the three that face away get a quieter
+    // dark rim instead, so the hex has a lit side and a shadowed one, the
+    // way an actual step would. `EDGE_LIGHT`/`EDGE_SHADE` pick the subsets
+    // by orientation; cosmetic by Marc's decision — nothing in the rules has
     // ever heard of height.
     if (cell.band > 0 && layout.size > 8 && !cell.remembered) {
       const pts = corners(x, y, layout.size * (1 - surface.inset), layout.orientation);
-      group.addChild(
-        new Graphics().poly(pts).stroke({
-          width: Math.max(0.5, layout.size * 0.045),
-          color: mix(this.#theme.board.background, 0xffffff, 0.55),
-          alpha: 0.1 * cell.band * cell.light,
-          alignment: 1,
-        }),
+      const width = Math.max(0.5, layout.size * 0.045);
+      const rim = (edges: readonly number[], color: number, alpha: number): void => {
+        const g = new Graphics();
+        for (const i of edges) {
+          const a = i * 2;
+          const b = ((i + 1) % 6) * 2;
+          g.moveTo(pts[a] ?? 0, pts[a + 1] ?? 0).lineTo(pts[b] ?? 0, pts[b + 1] ?? 0);
+        }
+        g.stroke({ width, color, alpha, alignment: 1 });
+        group.addChild(g);
+      };
+      rim(
+        EDGE_LIGHT[layout.orientation],
+        mix(this.#theme.board.background, 0xffffff, 0.55),
+        0.16 * cell.band * cell.light,
+      );
+      rim(
+        EDGE_SHADE[layout.orientation],
+        mix(this.#theme.board.background, 0x000000, 0.5),
+        0.08 * cell.band * cell.light,
       );
     }
 
@@ -723,10 +841,23 @@ export class PixiRenderer implements Renderer {
     }
     if (wasRipe.size === 0) return;
 
-    let index = 0;
-    for (const cell of next.cells) {
-      if (cell.kind !== 'stone' || !wasRipe.has(cell.key)) continue;
+    // Cascade order (2026-08-18): a 12-hex harvest used to stagger by object-key
+    // order — a scatter, not a harvest. `previous.targetHex` is the pocket the
+    // player actually tapped (or the default biggest pocket, when nothing was
+    // tapped), from the frame just before this one popped, so sorting the
+    // popped cells by hex distance from it makes the flash ripple outward from
+    // the point of contact instead of from board-generation order. Falls back
+    // to the existing board order when there is nothing to ripple from — a
+    // stub renderer's synthetic frame, say — rather than guessing an origin.
+    const popped = next.cells.filter((cell) => cell.kind === 'stone' && wasRipe.has(cell.key));
+    const originKey = previous.targetHex;
+    if (originKey !== null) {
+      const origin = parse(originKey);
+      popped.sort((a, b) => distance(a, origin) - distance(b, origin));
+    }
 
+    let index = 0;
+    for (const cell of popped) {
       const { x, y } = place(cell, layout);
 
       // Reduced motion is not NO FEEDBACK — that was the bug: the early
@@ -861,6 +992,68 @@ export class PixiRenderer implements Renderer {
       baseY: y,
       liftPx: 0,
     });
+  }
+
+  /**
+   * Beacon halos, reconciled against the cells this draw actually has.
+   *
+   * A soft additive glow over every unrevealed destination in range — "a
+   * lighthouse in fog, not a strobe": tinted by the destination's own colour
+   * where it has one (a territory's field), the theme's accent otherwise,
+   * the same fallback `#surfaceFor` already uses for a beacon's dots. Kept
+   * as a diff (add / move / drop) rather than rebuilt, so the breath started
+   * on an earlier draw keeps its phase instead of restarting every action.
+   * A shimmer is never a beacon (`cell.beacon` is false for one) and gets no
+   * halo at all — it has to stay clearly dimmer and vaguer than a promise.
+   */
+  #syncBeacons(cells: readonly CellView[], layout: Layout): void {
+    const texture = this.#flashTextureFor();
+    const seen = new Set<HexKey>();
+
+    for (const cell of cells) {
+      if (cell.kind !== 'landmark' || !cell.beacon || cell.claimed) continue;
+      seen.add(cell.key);
+
+      const { x, y } = place(cell, layout);
+      const tint =
+        cell.colour !== null ? this.#theme.terrain[cell.colour].fill : this.#theme.ink.accent;
+
+      let entry = this.#beacons.get(cell.key);
+      if (entry === undefined) {
+        if (texture === null) continue;
+        const sprite = new Sprite(texture);
+        sprite.anchor.set(0.5);
+        sprite.blendMode = 'add';
+        entry = { sprite, peak: 0.42 };
+        this.#beacons.set(cell.key, entry);
+        this.#fx.addChild(sprite);
+        // Reduced motion: a fixed soft glow, no pulse — the same contract as
+        // the pop's held fallback, feedback without motion rather than none.
+        if (this.#reducedMotion) entry.sprite.alpha = entry.peak * 0.8;
+      }
+      entry.sprite.position.set(x, y);
+      entry.sprite.setSize(layout.size * 2.4, layout.size * 2.4);
+      entry.sprite.tint = tint;
+    }
+
+    for (const [k, entry] of this.#beacons) {
+      if (seen.has(k)) continue;
+      entry.sprite.destroy();
+      this.#beacons.delete(k);
+    }
+  }
+
+  /** The slow breath: skipped entirely under reduced motion, which keeps its
+   * static alpha from `#syncBeacons` instead. */
+  #advanceBeacons(deltaMs: number): void {
+    if (this.#reducedMotion || this.#beacons.size === 0) return;
+    this.#beaconClock = (this.#beaconClock + deltaMs) % BEACON_PULSE_MS;
+    const wave = 0.5 + 0.5 * Math.sin((this.#beaconClock / BEACON_PULSE_MS) * Math.PI * 2);
+    // Floor kept well above zero — dim, never dark, the same rule the torch
+    // itself follows — so a beacon never reads as switched off mid-breath.
+    for (const { sprite, peak } of this.#beacons.values()) {
+      sprite.alpha = peak * (0.35 + 0.65 * wave);
+    }
   }
 
   #clearFlashes(): void {

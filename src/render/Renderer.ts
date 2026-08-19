@@ -96,10 +96,24 @@ export type CellView = {
    * before committing. Null where the question does not apply.
    */
   readonly preview: number | null;
+  /**
+   * The selected draft tile's own colour, mirrored wherever `preview` is —
+   * the ghost used to draw as one fixed tint regardless of what you were
+   * actually holding. Null everywhere `preview` is.
+   */
+  readonly previewColour: Colour | null;
 };
 
 export type BoardView = {
   readonly cells: readonly CellView[];
+  /**
+   * The pocket a harvest would pop right now — the tapped ripe tile's key,
+   * or the default (biggest) pocket's. Board-level rather than per-cell: the
+   * renderer reads it once, from the PREVIOUS frame, to know where a harvest
+   * that just happened was centred, so the pop cascade can ripple outward
+   * from the hex the player actually touched instead of from board order.
+   */
+  readonly targetHex: HexKey | null;
 };
 
 export interface Renderer {
