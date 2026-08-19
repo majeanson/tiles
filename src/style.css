@@ -629,6 +629,15 @@ button.quiet {
   stroke-width: 1;
 }
 
+/* The ghost baseline: the world's standing best, so a new best is visible
+   as the tallest bar reaching past a line it used to fall short of. */
+.end-arc-ghost {
+  stroke: var(--accent, #d7b45a);
+  stroke-opacity: 0.4;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
 .end-arc-bar {
   fill: var(--ink-dim, #8a91a0);
 }

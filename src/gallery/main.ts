@@ -1,5 +1,6 @@
 import { COLOURS } from '@content/tuning';
-import { bakeSurface } from '@render/bake';
+import { bakeSurface, OVERSAMPLE } from '@render/bake';
+import { corners } from '@render/layout';
 import { ASSET_SLOTS, decodeManifest, manifestHas, type AssetManifest } from '@theme/assets';
 import { themeCssVars } from '@theme/css';
 import { THEMES } from '@theme/index';
@@ -11,6 +12,8 @@ import {
   hex,
   luma,
   mix,
+  rgba,
+  type Rgb,
   type Surface,
   type Theme,
 } from '@theme/tokens';
@@ -146,14 +149,53 @@ function elevationStrip(theme: Theme): HTMLElement {
   return row;
 }
 
-/** The five destination glyphs over the ground they stand on, lit and spent. */
+/**
+ * The five destination glyphs over the ground they stand on, lit and spent.
+ *
+ * Unclaimed ones carry the plinth (2026-08-18): an inset, darker base with a
+ * crisp accent rim, drawn under the glyph the same way `PixiRenderer`
+ * layers it — so a destination reads as a THING standing on the plane
+ * rather than a wall-textured speckle.
+ */
 function landmarkRow(theme: Theme): HTMLElement {
   const row = el('div', 'row');
   for (const [reward, glyph] of Object.entries(LANDMARK_GLYPH)) {
     for (const claimed of [false, true]) {
       const box = el('div', 'surface landmark');
+      box.style.position = 'relative';
       const canvas = bakeSurface(claimed ? theme.stone : theme.wall, 23, theme.orientation);
       if (canvas !== null) box.appendChild(canvas);
+
+      if (!claimed) {
+        const w = canvas?.width ?? Math.ceil(23 * 2 * OVERSAMPLE);
+        const h = canvas?.height ?? w;
+        const plinth = document.createElement('canvas');
+        plinth.width = w;
+        plinth.height = h;
+        plinth.style.position = 'absolute';
+        plinth.style.inset = '0';
+        if (canvas !== null) {
+          plinth.style.width = canvas.style.width;
+          plinth.style.height = canvas.style.height;
+        }
+        const pctx = plinth.getContext('2d');
+        if (pctx !== null) {
+          const pts = corners(w / 2, h / 2, 23 * OVERSAMPLE * 0.62, theme.orientation);
+          pctx.beginPath();
+          pctx.moveTo(pts[0] ?? 0, pts[1] ?? 0);
+          for (let i = 2; i < pts.length; i += 2) pctx.lineTo(pts[i] ?? 0, pts[i + 1] ?? 0);
+          pctx.closePath();
+          pctx.fillStyle = hex(mix(theme.wall.fill, 0x000000, 0.35));
+          pctx.globalAlpha = 0.6;
+          pctx.fill();
+          pctx.globalAlpha = 0.35;
+          pctx.strokeStyle = hex(theme.ink.accent);
+          pctx.lineWidth = Math.max(2, 23 * 0.05 * OVERSAMPLE);
+          pctx.stroke();
+        }
+        box.appendChild(plinth);
+      }
+
       const mark = el('span', 'landmark-glyph', glyph);
       mark.style.color = hex(claimed ? theme.ink.inkFaint : theme.ink.accent);
       box.appendChild(mark);
@@ -175,6 +217,134 @@ function fieldRow(theme: Theme): HTMLElement {
   for (const c of COLOURS) {
     const surface: Surface = { ...theme.empty, pattern: fieldPattern(theme, c) };
     row.appendChild(surfaceCard(`${theme.terrainNames[c]} FIELD`, surface, theme, false));
+  }
+  return row;
+}
+
+/**
+ * The beacon halo (2026-08-18), as one held frame of its breath.
+ *
+ * `PixiRenderer#advanceBeacons` animates this on the board (an additive
+ * sprite pulsing 0.35–1× of its peak over 2.6s); a static gallery page
+ * cannot show a pulse, so this is the mid-breath frame — enough to argue the
+ * colour and the size, which is what a phone needs settled here. Plain 2D
+ * canvas has no additive blend mode, so the gradient is approximated as a
+ * soft fill over the board background rather than composited exactly as the
+ * board draws it.
+ */
+function beaconHaloStrip(theme: Theme): HTMLElement {
+  const row = el('div', 'row');
+  const states: readonly (readonly [string, Rgb])[] = [
+    ['NO FIELD', theme.ink.accent],
+    ...COLOURS.map((c) => [`${theme.terrainNames[c]} TERRITORY`, theme.terrain[c].fill] as const),
+  ];
+  for (const [name, tint] of states) {
+    const box = el('div', 'surface');
+    const size = 46;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.width = '23px';
+    canvas.style.height = '23px';
+    const ctx = canvas.getContext('2d');
+    if (ctx !== null) {
+      ctx.fillStyle = hex(theme.board.background);
+      ctx.fillRect(0, 0, size, size);
+      const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      g.addColorStop(0, 'rgba(255,255,255,0.9)');
+      g.addColorStop(0.3, rgba(tint, 0.75));
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+    }
+    box.appendChild(canvas);
+    box.appendChild(el('span', 'surface-name', name));
+    row.appendChild(box);
+  }
+  return row;
+}
+
+/**
+ * The ghost (placement preview), outline-forward since 2026-08-18: a
+ * fainter fill (`theme.ghost`, same as the board) plus a stroke in the held
+ * tile's own colour — over PLAIN ground, since the ghost draws on top of
+ * whatever is actually there. The stroke's geometry mirrors `bakeSurface`'s
+ * own sizing exactly (`OVERSAMPLE`, the same `corners()` the renderer
+ * strokes with) so the outline sits where the board's does.
+ */
+function ghostStrip(theme: Theme): HTMLElement {
+  const row = el('div', 'row');
+  for (const c of COLOURS) {
+    const box = el('div', 'surface ghost-sample');
+    const ground = bakeSurface(theme.empty, 23, theme.orientation);
+    const fill = bakeSurface(theme.ghost, 23, theme.orientation);
+    if (ground !== null) {
+      if (fill !== null) {
+        fill.style.position = 'absolute';
+        fill.style.inset = '0';
+        fill.style.opacity = String(theme.ghost.alpha * 0.55);
+        box.style.position = 'relative';
+        box.appendChild(ground);
+        box.appendChild(fill);
+      } else {
+        box.appendChild(ground);
+      }
+
+      const halfW = theme.orientation === 'pointy' ? (Math.sqrt(3) / 2) * 23 : 23;
+      const halfH = theme.orientation === 'pointy' ? 23 : (Math.sqrt(3) / 2) * 23;
+      const w = Math.ceil(halfW * 2 * OVERSAMPLE);
+      const h = Math.ceil(halfH * 2 * OVERSAMPLE);
+      const outline = document.createElement('canvas');
+      outline.width = w;
+      outline.height = h;
+      outline.style.position = 'absolute';
+      outline.style.inset = '0';
+      outline.style.width = ground.style.width;
+      outline.style.height = ground.style.height;
+      const octx = outline.getContext('2d');
+      if (octx !== null) {
+        const drawn = 23 * OVERSAMPLE * (1 - theme.ghost.inset);
+        const pts = corners(w / 2, h / 2, drawn, theme.orientation);
+        octx.beginPath();
+        octx.moveTo(pts[0] ?? 0, pts[1] ?? 0);
+        for (let i = 2; i < pts.length; i += 2) octx.lineTo(pts[i] ?? 0, pts[i + 1] ?? 0);
+        octx.closePath();
+        octx.strokeStyle = hex(theme.terrain[c].fill);
+        octx.globalAlpha = 0.75;
+        octx.lineWidth = Math.max(3, 23 * theme.board.ripeEdgeWidth * 0.8 * OVERSAMPLE);
+        octx.stroke();
+      }
+      box.style.position = 'relative';
+      box.appendChild(outline);
+    }
+    box.appendChild(el('span', 'surface-name', theme.terrainNames[c]));
+    row.appendChild(box);
+  }
+  return row;
+}
+
+/**
+ * Remembered ground (P4a's fog), the same two-step arithmetic
+ * `PixiRenderer#drawCell` runs for `cell.remembered`: the sprite is tinted
+ * 45% toward the theme's own background (desaturating the hue, on top of
+ * whatever the torch was already doing — full light here, the strip's
+ * neutral case), THEN the whole thing draws at 30% alpha. Two steps, not
+ * one, because the veil and the dimming answer different questions — is
+ * this ground memory, and how hard should it compete with the live board.
+ */
+function fogStrip(theme: Theme): HTMLElement {
+  const row = el('div', 'row');
+  const veilTint = mix(0xffffff, theme.board.background, 0.45);
+  for (const c of COLOURS) {
+    const box = el('div', 'surface');
+    const canvas = bakeSurface(theme.terrain[c], 23, theme.orientation);
+    if (canvas !== null) {
+      const veiled = tinted(canvas, veilTint);
+      veiled.style.opacity = '0.3';
+      box.appendChild(veiled);
+    }
+    box.appendChild(el('span', 'surface-name', theme.terrainNames[c]));
+    row.appendChild(box);
   }
   return row;
 }
@@ -309,12 +479,20 @@ function themeCard(theme: Theme, manifest: AssetManifest): HTMLElement {
     grey,
     labelled('THE TORCH · BRIGHTNESS BY DISTANCE, THE MULTIPLIER UNDER EACH'),
     lightStrip(theme),
-    labelled('ELEVATION · FIVE BANDS AT THE LIGHT FLOOR, WHERE CONTOURS LIVE'),
+    labelled(
+      'ELEVATION · FIVE BANDS AT THE LIGHT FLOOR, WHERE CONTOURS LIVE (the board strokes a lit and a shadowed edge; this strip shows the flat lift)',
+    ),
     elevationStrip(theme),
-    labelled('DESTINATIONS · UNCLAIMED AND SPENT'),
+    labelled('DESTINATIONS · UNCLAIMED (WITH ITS PLINTH) AND SPENT'),
     landmarkRow(theme),
+    labelled('BEACONS · ONE FRAME OF THE HALO’S BREATH (0.35–1× OVER 2.6s ON THE BOARD)'),
+    beaconHaloStrip(theme),
     labelled('NATIVE FIELDS · THE SHAPE EACH COLOUR GROWS'),
     fieldRow(theme),
+    labelled('THE GHOST · OUTLINE-FORWARD, IN THE HELD TILE’S OWN COLOUR'),
+    ghostStrip(theme),
+    labelled('REMEMBERED GROUND · THE FOG VEIL (TINT + 30% ALPHA)'),
+    fogStrip(theme),
     labelled('INK'),
     inkRow(theme),
     labelled('TYPE'),

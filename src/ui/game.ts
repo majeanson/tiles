@@ -137,6 +137,13 @@ export type GameHooks = {
     readonly runs: number;
     readonly best: number;
     readonly isNewBest: boolean;
+    /**
+     * The standing best BEFORE this run was folded in — `undefined` where
+     * the caller has none to give. `best` above is the book's number
+     * AFTER folding, which equals this run's own score on a new best; the
+     * arc chart wants the OLD one, to draw where it used to stand.
+     */
+    readonly previousBest?: number;
   };
   /** Start a fresh run under the current settings. Wired to the end screen. */
   readonly newRun?: () => void;
@@ -358,6 +365,14 @@ export class Game {
   #recordLines: string[] | null = null;
   /** `book.runs`, alongside `#recordLines` — RUN N on the end screen. */
   #runNumber: number | null = null;
+  /**
+   * The world's standing best TOTAL score, from before this run was folded
+   * in — `null` where there is none yet (a first run, or no `finish` hook at
+   * all, as the headless tests and the gallery run bare). The arc chart's
+   * ghost baseline: no new storage, just a field the `finish` hook already
+   * had the number for and had never handed across.
+   */
+  #recordBest: number | null = null;
   /**
    * Which face of the end surface is showing: the run's picture, or the shop.
    * Split on 2026-08-18 (Marc: "split the end screen and the spend screen") —
@@ -1278,7 +1293,7 @@ export class Game {
         {
           title: 'THE WORLD',
           lines: [
-            'Dotted ground is a NATIVE FIELD — a tile of that colour placed there gains a match. Whole regions of one colour are BIOMES: chasing a colour means walking to where it grows.',
+            'Textured ground is a NATIVE FIELD — a tile of that colour placed there gains a match. Whole regions of one colour are BIOMES: chasing a colour means walking to where it grows.',
             t.wallBuildCostMult > 0
               ? 'Walls surround but never match — and your perk lets you build ON them, at a price.'
               : 'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
@@ -1916,6 +1931,18 @@ export class Game {
    * end?") answered by a picture instead of a percentage buried in a fact
    * line. Inline SVG so it costs no asset, inherits the theme through CSS,
    * and survives a screenshot at any width.
+   *
+   * The ghost baseline (2026-08-18): when a standing best exists, the chart's
+   * own scale stretches to include it — `scale` is whichever is bigger, this
+   * run's own biggest pop or the world's best TOTAL score — and that total is
+   * drawn as a faint horizontal line. No new storage: `#recordBest` is
+   * `meta/records.ts`'s own `bestPoints`, read from the SAME `finish` call
+   * that already prints "NEW BEST" or "N short of best" beside the score;
+   * this is the first thing that draws it rather than only saying it. A run
+   * whose single biggest pocket beats an entire past run outright — which
+   * this economy's bank-and-cash shape makes plausible, not rare — shows
+   * exactly that: the tallest bar reaching past a line it used to fall short
+   * of.
    */
   #arcChart(): SVGSVGElement | null {
     const harvests = this.#state.log.harvests;
@@ -1923,6 +1950,9 @@ export class Game {
     const biggest = harvests.reduce((n, h) => Math.max(n, h.points), 0);
     const span = Math.max(1, this.#state.placements);
     if (biggest <= 0) return null;
+
+    const previousBest = this.#recordBest ?? 0;
+    const scale = Math.max(biggest, previousBest);
 
     const NS = 'http://www.w3.org/2000/svg';
     const W = 280;
@@ -1936,7 +1966,8 @@ export class Game {
       'aria-label',
       `every pop of the run in order; the biggest landed ${Math.round(
         ((harvests.find((h) => h.points === biggest)?.at ?? 0) / span) * 100,
-      )}% of the way through`,
+      )}% of the way through` +
+        (previousBest > 0 ? `; your standing best run scored ${previousBest}` : ''),
     );
 
     const base = document.createElementNS(NS, 'line');
@@ -1947,9 +1978,20 @@ export class Game {
     base.setAttribute('class', 'end-arc-base');
     svg.appendChild(base);
 
+    if (previousBest > 0) {
+      const y = BASE - (previousBest / scale) * (H - 8);
+      const ghost = document.createElementNS(NS, 'line');
+      ghost.setAttribute('x1', '0');
+      ghost.setAttribute('y1', String(y));
+      ghost.setAttribute('x2', String(W));
+      ghost.setAttribute('y2', String(y));
+      ghost.setAttribute('class', 'end-arc-ghost');
+      svg.appendChild(ghost);
+    }
+
     for (const h of harvests) {
       const x = 3 + (h.at / span) * (W - 6);
-      const height = Math.max(2, (h.points / biggest) * (H - 8));
+      const height = Math.max(2, (h.points / scale) * (H - 8));
       const bar = document.createElementNS(NS, 'rect');
       bar.setAttribute('x', String(x - 1.5));
       bar.setAttribute('y', String(BASE - height));
@@ -1981,6 +2023,7 @@ export class Game {
           book.isNewBest ? 'NEW BEST' : `${Math.max(0, book.best - hud.points)} short of best`,
         );
         this.#runNumber = book.runs;
+        this.#recordBest = book.previousBest ?? null;
       }
     }
 

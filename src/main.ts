@@ -528,6 +528,10 @@ function runKeeping(
         runs: now.runs,
         best: now.bestPoints,
         isNewBest: state.points > before.bestPoints && state.points > 0,
+        // The arc chart's ghost baseline: the standing best BEFORE this run
+        // folded in, so a new best can be drawn as a line it climbed past
+        // rather than a line sitting exactly on this run's own score.
+        previousBest: before.bestPoints,
       };
     },
 

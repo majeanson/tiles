@@ -2845,3 +2845,138 @@ tests, typecheck/lint/format clean, `pnpm sim` 0 stalled/0 capped and
 unmoved from the pipeline's own table (the fixes here were bugs, dead
 code and doc gaps, never balance). Pushed in five commits; CI green on
 `main`; `verify-deploy` confirmed the live site serves the final commit.
+
+---
+
+### Session 23 — The visual pass, while Marc plays
+
+**No pinned question.** Marc was playing the live game; this session worked
+the standing UI audit's visual items (LOG's own earlier packages had queued
+"stone's texture, the end screen as a picture, gallery strips" and left the
+rest deliberately held) — green-lit now, pure render/theme/ui-visual work
+only. `src/content` and `src/engine` untouched throughout; `pnpm sim` byte-
+identical after every commit. Three commits, each independently deployed
+and verified mid-session.
+
+**Commit 1 — board effects.** Four changes, all in `render/PixiRenderer.ts`
+plus the view-level plumbing they needed:
+
+- **Pop cascade order.** `#spawnFlashes` used to stagger by object-key
+  order — a 12-hex harvest scattered rather than rippled. `BoardView` now
+  carries `targetHex` (the tapped pocket, or the default biggest one, from
+  the PREVIOUS frame); the popped cells sort by hex distance from it before
+  staggering, so a harvest ripples outward from the point of contact. Falls
+  back to board order when there is nothing to ripple from.
+- **Beacon glow.** An unrevealed destination gets a soft additive radial
+  halo (`Sprite.blendMode = 'add'`, the same flash texture the pop reuses),
+  breathing 0.35–1× of its peak over a 2.6s sine, tinted by the
+  destination's own colour where it has one. Reduced motion gets the same
+  fixed glow the pop's held fallback uses — feedback without motion, never
+  none. A shimmer (`cell.beacon` is false for one) gets no halo at all, so
+  it stays clearly vaguer than a beacon's promise. Halo sprites live beside
+  the flashes in `#fx`, diffed rather than rebuilt each draw, so the breath
+  keeps its phase across actions instead of restarting on every tap.
+- **The ghost.** Outline-forward now: a stroke in the HELD TILE'S OWN
+  colour at 0.75 alpha, with the fill dropped to ~55% of what it was.
+  `CellView` carries `previewColour` (mirrored wherever `preview` is) so
+  the renderer reads the actual held colour instead of one fixed tint.
+- **Elevation edges.** The band contour used to stroke all six edges at one
+  flat alpha — noise where it read at all. `EDGE_LIGHT`/`EDGE_SHADE` pick
+  three of `corners()`'s six edges per orientation (computed by hand from
+  the corner angles, flat-top splitting cleanly in half); the three facing
+  the torch get a light rim, the three facing away get a quieter dark one,
+  so a raised hex has a lit side.
+
+**Commit 2 — the torchlit wall.** 4px bands read as a barber pole at phone
+scale. Torchlit's own wall pattern only: bands widened to 10px (at most one
+seam per hex) and the two band colours pulled closer together (a 0.043 L*
+gap down to about 0.02), reading as a near-solid dark mass with a whisper of
+banding. Both colours still clear `MIN_WALL_CLEARANCE` by a wide margin
+(0.093 / 0.074 against the 0.045 floor) — a contrast change within the
+existing test, not a relaxation of it. Cold Survey and Rot Bloom's walls
+are untouched, as asked.
+
+**Also folded into commit 1 (the file was already open):** remembered
+ground's fog veil, and the landmark plinth — both ended up as small edits
+to the same cell-drawing method the four headline items were already
+touching, so they shipped a commit early rather than waiting on their own.
+
+- **Remembered ground.** Used to be a flat 0.3 alpha — a dark version of
+  the real thing, not a memory of it. Now the sprite tints 45% toward the
+  theme's own background (desaturating the hue) BEFORE the existing 0.3
+  alpha dimming, so memory reads as a veil rather than as dark live ground.
+  `fog.soft` stays an empty slot; this is the procedural floor under it.
+- **Landmark plinth.** An unclaimed, on-board destination now draws an
+  inset, darker base (mixed 35% toward black from the wall fill) with a
+  crisp accent rim underneath its glyph, so it reads as something BUILT
+  rather than a wall-texture-plus-dots speckle. Claimed landmarks are
+  untouched — quiet was already right there.
+
+**Commit 3 — the end screen and the gallery.**
+
+- **Arc chart ghost baseline.** When a standing best exists, `#arcChart`
+  draws it as a faint dashed horizontal line, and stretches the chart's own
+  scale to `max(this run's biggest pop, the standing best)` so the line has
+  somewhere honest to sit. No new storage: `GameHooks.finish` gained an
+  optional `previousBest` field carrying `meta/records.ts`'s own
+  `bestPoints` from BEFORE this run folded in — a number the record book
+  already had and had never handed across. On a run whose one dominant
+  pocket beats an entire past run outright (plausible under this economy's
+  bank-and-cash shape, not rare), the tallest bar visibly crosses the line;
+  otherwise the line simply shows how far this run's peak moment stood
+  against the whole best run, which is its own honest picture.
+- **The gallery caught up.** Three new strips per direction — BEACONS (one
+  held frame of the halo's breath; canvas has no additive blend, so it's
+  approximated as a soft radial fill, captioned as such), THE GHOST
+  (outline-forward over plain ground, one swatch per colour), REMEMBERED
+  GROUND (the same tint-then-alpha arithmetic the renderer runs, not a
+  fresh guess) — plus the existing DESTINATIONS strip now carries the
+  plinth on every unclaimed swatch, and the ELEVATION caption now says the
+  strip shows the flat lift while the board strokes a lit and shadowed
+  edge (the strip itself wasn't worth rebuilding around six-edge geometry
+  for a caption's sake).
+- **The manual's stale line, fixed.** "Dotted ground is a NATIVE FIELD"
+  predated 2026-08-18's per-colour field textures (moss diagonal, ash dots,
+  tide horizontals, ember verticals) and had never been swept — the exact
+  no-staleness gap this pass was told to close. Now "Textured ground."
+
+**What to look for on the phone:**
+
+- Pop a big pocket (8+) and watch it — the flash should visibly start
+  nearest the tile you tapped and spread outward, not scatter.
+- Look at an unrevealed destination glow at the beacon horizon: it should
+  breathe slowly, not blink, and a territory's glow should carry that
+  colour's own tint.
+- Hold a tile over legal ground: the outline should read as YOUR tile's
+  colour, distinctly shaped, rather than one generic amber smudge.
+- Find a raised patch of ground (a contour band) and check it has a
+  lit-looking edge on the side toward you and a darker one away from it.
+- Walk back over ground your world remembers from an earlier run — it
+  should read as a memory (paler, flatter) rather than as dim live ground.
+- Reach an unclaimed cache or site and see whether it now reads as a small
+  built thing rather than a texture with dots on it.
+- In torchlit, look at a wall cell up close: it should read as rubble, not
+  stripes.
+- Finish a run with a standing best on the books and check the end
+  screen's arc chart for the dashed ghost line.
+
+**Deliberately toned down or skipped:**
+
+- The beacon halo's additive blend is approximated in the gallery as a
+  soft radial fill (plain 2D canvas has no additive compositing) — the
+  real thing is judged on the board, not the workbench.
+- The elevation strip was NOT rebuilt to show the new two-sided rim
+  geometry; it still shows the old flat brightness lift, now captioned
+  honestly rather than silently going stale.
+- Considered animating the beacon halo's breath in the gallery via CSS;
+  skipped — the workbench's job here is arguing colour and size, and a
+  second animation clock competing with the reader's eye against six
+  theme cards was not obviously better than one held frame.
+- Cold Survey and Rot Bloom's walls were left exactly as they were, per
+  the brief — only torchlit's barber pole was quieted.
+
+**Verified:** 520 tests green (was 518); typecheck, lint, format clean;
+`pnpm sim` byte-identical across all three commits (0 stalled, 0 capped,
+same table throughout — `src/content` and `src/engine` were never touched).
+Each commit pushed and deployed independently; `gh run watch` confirmed CI
+green and `verify-deploy` passing before the next commit started.

@@ -897,6 +897,65 @@ describe('keeping the run, and ending it properly', () => {
     expect(svg!.querySelectorAll('rect.best')).toHaveLength(1);
   });
 
+  it('draws a ghost baseline for the standing best, and stretches the scale to fit it', () => {
+    const base = newRun(9, TUNING);
+    const ended: GameState = {
+      ...base,
+      phase: 'ended',
+      death: 'broke',
+      placements: 100,
+      points: 430,
+      log: {
+        ...base.log,
+        harvests: [
+          { at: 20, count: 3, choice: 'tiles', tiles: 5, points: 40 },
+          { at: 90, count: 8, choice: 'tiles', tiles: 12, points: 300 },
+        ],
+      },
+    };
+    // A standing best bigger than this run's own biggest pop: the ghost
+    // line has to sit ABOVE the tallest bar rather than coincide with it.
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      finish: () => ({ runs: 3, best: 900, isNewBest: false, previousBest: 900 }),
+    });
+    ctx.game.start();
+
+    const svg = ctx.el.end.querySelector('svg.end-arc');
+    expect(svg).not.toBeNull();
+    const ghost = svg!.querySelector('line.end-arc-ghost');
+    expect(ghost).not.toBeNull();
+
+    const ghostY = Number(ghost!.getAttribute('y1'));
+    const bestBar = svg!.querySelector('rect.best')!;
+    const barTop = Number(bestBar.getAttribute('y'));
+    // The run's own biggest pop (300) is short of the standing best (900):
+    // the bar's top must sit BELOW (numerically greater y than) the line.
+    expect(barTop).toBeGreaterThan(ghostY);
+  });
+
+  it('draws no ghost baseline without a standing best to show', () => {
+    const ended: GameState = {
+      ...newRun(9, TUNING),
+      phase: 'ended',
+      death: 'broke',
+      placements: 100,
+      log: {
+        ...newRun(9, TUNING).log,
+        harvests: [
+          { at: 20, count: 3, choice: 'tiles', tiles: 5, points: 40 },
+          { at: 90, count: 8, choice: 'tiles', tiles: 12, points: 300 },
+        ],
+      },
+    };
+    // No `finish` hook at all — the gallery and headless callers' own case.
+    const ctx = build(1, TUNING, { resume: ended });
+    ctx.game.start();
+    const svg = ctx.el.end.querySelector('svg.end-arc');
+    expect(svg).not.toBeNull();
+    expect(svg!.querySelector('line.end-arc-ghost')).toBeNull();
+  });
+
   it('skips the arc chart when one pop could not make a shape', () => {
     const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
     const ctx = build(1, TUNING, { resume: ended });
