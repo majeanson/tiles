@@ -4,9 +4,25 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-18** — Sessions 15–22 plus the same-day audit's
-fix pass, in one run. 458 tests.
+Last checkpoint: **2026-08-18** — Sessions 15–22, the same-day audit's fix
+pass, and the three-stage pipeline (`WORKPLAN.md`) it green-lit, all in one
+run. 515 tests.
 
+- **The pipeline shipped whole.** Stage 1 (correctness, `1e09a89`) closed the
+  triple audit's eighteen bugs. Stage 2 (UI/UX, four commits) rebuilt the
+  screen without touching balance: a front door before the board, the end
+  screen broken into its exact payout (POPS + REACH×bonus + CLAIMS×bonus),
+  bottom-third chrome reclaimed behind a FIT⇄HERE camera toggle, and two
+  feedback tiers (a one-line toast vs. a held event card for anything that
+  changes the next run). Stage 3 (new systems, four commits) shipped the
+  moments pack (seven once-per-run truths), deep water (the destination
+  reward MIX tilting with depth, not just its density), the survey (five
+  world-scale goals paying relics once each) and TITHE (a fourth luck price,
+  converting the whole purse at 25% — better than death's 10%). Full account
+  in `LOG.md`'s 2026-08-18 addenda; `WORKPLAN.md` carries the commit hashes.
+- **Where-you-wake was prototyped and FAILED** (`42c9ec8`, harness only —
+  see "Not started" below for the verdict). Kept as dead engine code on
+  purpose, so the negative result can be re-run.
 - **Gate B is RETIRED, not passed.** The gate asked whether tiles-or-points
   was a real choice; it failed twice in human hands (94-98% tiles either
   way), and `singlePayout` — the gate's OWN written fallback, "cut it to a

@@ -35,7 +35,24 @@ the first find land as an event, does KEEN NOSE feel worth 40 relics, and do
 Stonewalker/Wallbreaker/Open Hand each change your next placement the way a
 unique should?
 
-## 3. Standing decisions that remain one line to reverse
+## 3. Stage 3 shipped three more written questions — same phone, same run
+
+The 2026-08-18 pipeline's new-systems stage (`WORKPLAN.md`, `LOG.md`'s Stage
+3 addendum) added three systems each with its own open question, none of
+them answerable by the harness:
+
+- **Deep water.** The destination reward MIX now tilts with how far you've
+  pushed, not just how often one shows up — does that give the middle of a
+  run a shape the income ramp alone didn't?
+- **The survey.** Five world-scale goals (reach 20, hold 4 territories, know
+  40%, wake every shrine, find every perk), each paying relics once and
+  listed in SETTINGS' YOUR WORLD — does a legible ledger of what the world
+  has proven change the line you take through it?
+- **TITHE.** A fourth luck price: convert the whole purse to relics on the
+  spot, at a better rate than death pays on what's left unspent — does
+  having a live way to cash out make hoarding the purse an actual decision?
+
+## 4. Standing decisions that remain one line to reverse
 
 - **The name: ASHWAKE** (`src/meta/identity.ts`).
 - **The art direction: torchlit** (`DEFAULT_THEME_ID` in `src/theme/index.ts`;
@@ -43,7 +60,7 @@ unique should?
 - **The points scale.** Good runs score tens of thousands; one constant
   divides it if you ever want human-sized numbers.
 
-## 4. What is ready and waiting
+## 5. What is ready and waiting
 
 - **v1.0 tag** — one command, blocked on §1's stranger test and Gate B's
   successor question.
