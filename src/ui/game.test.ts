@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COLOUR_MARK } from '@theme/tokens';
-import { TUNING, type Tuning } from '@content/tuning';
+import { BARE_TUNING, TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
@@ -587,6 +587,27 @@ describe('the camera, and staying oriented', () => {
     const text = ctx.el.helpPanel.textContent ?? '';
     expect(text).toContain(`seed ${ctx.game.state.rootSeed}`);
     expect(text).toMatch(/In play: .*destinations/);
+  });
+
+  // TITHE (2026-08-18) is the fourth luck spend, and the LUCK IS A PURSE
+  // section named the other three by price without it — a manual that
+  // describes a purse and leaves out one of the four things it does is
+  // exactly the staleness this section otherwise guards against.
+  it('names TITHE among what luck buys, at its live rate and floor', () => {
+    ctx.el.help.click();
+    const t = ctx.game.state.tuning;
+    const text = ctx.el.helpPanel.textContent ?? '';
+    expect(text).toContain(
+      `TITHE — convert your whole purse to relics on the spot, at ${Math.round(t.titheRate * 100)}%`,
+    );
+    expect(text).toContain(`disabled below ${t.titheMin} luck`);
+  });
+
+  it('says nothing about TITHE when its dial is zeroed, same as the other spends', () => {
+    const off = build(7, BARE_TUNING);
+    off.game.start();
+    off.el.help.click();
+    expect(off.el.helpPanel.textContent ?? '').not.toContain('TITHE');
   });
 
   // The footer stamp moved behind ?ff=debug.overlay (Stage 2, 2026-08-18) —

@@ -1377,6 +1377,11 @@ export class Game {
                   `REDRAW (${t.luckRerollCost}) — throw this hand away for a new one.`,
                   `A COLOUR’S NAME (${t.luckSteerCost}) — draw a new hand leaning that way, and keep the next ${t.colourBiasDraws} draws leaning with it. How you go and get the colour a pocket needs.`,
                   `FORGE (${t.luckForgeCost}) — turn the selected card UNIQUE. The only way to have a rare exactly when you want one.`,
+                  ...(t.titheRate > 0 && t.titheMin > 0
+                    ? [
+                        `TITHE — convert your whole purse to relics on the spot, at ${Math.round(t.titheRate * 100)}%. Better than what unspent luck still banks when the run ends, spent now instead of banked at the end; disabled below ${t.titheMin} luck so a token tithe cannot be a trap.`,
+                      ]
+                    : []),
                 ],
               },
             ]
@@ -1450,6 +1455,12 @@ export class Game {
     if (t.holdSlots > 0) systems.push('the stash');
     if (t.findEvery > 0 && t.findChance > 0) systems.push('hidden finds');
     if (t.findSense > 0) systems.push('a keen nose');
+    if (t.titheRate > 0 && t.titheMin > 0) systems.push('TITHE');
+    // The survey has no dial that zeroes it — five world-scale goals exist
+    // wherever GOALS does, which is always. Named here so THIS BUILD's own
+    // "what this game is" cannot leave out the one system it has no way to
+    // turn off.
+    systems.push('the survey');
 
     // THIS BUILD rides at the end of AFTER rather than owning a tab: one
     // section did not earn a sixth of the tab bar.
@@ -1558,8 +1569,8 @@ export class Game {
         if (spend.on === 'tithe') {
           button.textContent = `TITHE — all luck → ${spend.relics ?? 0} relics`;
           button.title =
-            'Convert your whole luck purse to relics, on the spot — a worse rate than what ' +
-            'unspent luck banks when the run ends, but yours to spend right now.';
+            'Convert your whole luck purse to relics, on the spot — a better rate than what ' +
+            'unspent luck banks when the run ends, spent now instead of banked at the end.';
           return button;
         }
 
