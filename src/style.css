@@ -329,6 +329,18 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Tappable since 2026-08-19 (teaching: tap a stat, learn it where it
+     sits) — a div wearing the button role, so the global button chrome
+     cannot restyle the row. The inset pseudo-element below grows each one
+     to a thumbable target without moving a pixel of the layout. */
+  position: relative;
+  cursor: pointer;
+}
+
+.stat::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
 }
 
 /* Map and cost read right-aligned, so the four numbers sit against the screen

@@ -10,34 +10,34 @@ code.
 **https://tiles.marcportal.com** — two long runs, 11k and 4k, "I had fun."
 
 - **The rebalance verdict — ANSWERED, positive.** Both runs were long and
-  fun; the 11k run went longer *because of the tile caches* (Marc's own
+  fun; the 11k run went longer _because of the tile caches_ (Marc's own
   attribution). The lean start did not read as punishing; the far caches
   fund the push outward exactly as built. Still unremarked: STEADY PACE —
   whether 30 relics feels worth it has not come up yet.
 - **Gate B's successor question — HALF-ANSWERED.** Luck was spent in play
   and TITHE was taken deliberately at a run's end, so the advantages ARE
   getting bought — the half the harness could never show. Whether
-  pop-vs-burn-vs-wait reads as a real *timing* decision is still open.
+  pop-vs-burn-vs-wait reads as a real _timing_ decision is still open.
 - **The stranger test — OPEN, and now the only §1 blocker.** Someone who is
   not you, on their own phone, unaided: do they finish a run and start
-  another? The v1.0 tag stays blocked on it. **Your own call (2026-08-19):
-  don't run it yet** — "mega confusing for a stranger, concepts should be
-  given drop by drop." The teaching pack (`ideas/teaching.md`, designed to
-  done the same day) builds first; the test happens against the build that
-  teaches itself.
+  another? The v1.0 tag stays blocked on it. **The teaching pack is BUILT**
+  (same day — `ideas/teaching.md`, all three stages, LOG.md's build
+  addendum): first-contact cards, the growing manual, HUD that appears as
+  it matters, NUMBERS pruned, stats tappable. **Your move before the
+  stranger: SETTINGS ▸ DEVELOPER ▸ RESET TEACHING** on your own phone, then
+  play a run one — that is the stranger's exact first minute, and the
+  written question ("can a stranger's first run teach itself?") is yours to
+  answer before handing anyone a link.
 
-## 2. Hidden finds — FIRST CONTACT MADE, one defect found
+## 2. Hidden finds — first contact's defect FIXED (built 2026-08-19)
 
-The first find happened (game two, 2026-08-19) and the event card fired —
-noticed, so the moment half-landed. **The defect:** "I didn't know where to
-equip, unequip, check what it does." The card's one line is dismissable and
-unrepeatable, mid-run there is nowhere to inspect the carried perk, and if
-the find auto-equipped, the card's "Equip it in THE SHOP" describes a step
-that already happened. **Folded into the teaching pack** (`ideas/teaching.md`
-§2, WHAT YOU CARRY, plus the find card's own fix) — the next code session's
-target, UI/structure only, no balance numbers. Still open in play: does a hidden find change how you
-GROW your ground, does KEEN NOSE feel worth 40 relics, and does the worn
-perk change your next placement the way a unique should?
+The defect from game two ("I didn't know where to equip, unequip, check
+what it does") is closed in the teaching pack's build: the find card now
+says what the perk DOES and whether it is already worn, and **WHAT YOU
+CARRY** in the ? panel's HAND tab reads the worn perk mid-run — the shop
+shelf stays where it changes. Still open in play: does a hidden find change
+how you GROW your ground, does KEEN NOSE feel worth 40 relics, and does the
+worn perk change your next placement the way a unique should?
 
 ## 3. Stage 3 shipped three more written questions — same phone, same run
 

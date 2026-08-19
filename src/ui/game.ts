@@ -4,6 +4,7 @@ import { newRun, reduce, startingPerk } from '@engine/reduce';
 import {
   cachePaysAt,
   canPlaceAt,
+  costOf,
   harvestMultiplier,
   harvestValue,
   isRipe,
@@ -25,9 +26,12 @@ import {
   buy,
   canAfford,
   equip,
+  hasMet,
   levelOf,
+  meet,
   priceOf,
   type Progress,
+  type TeachId,
 } from '@meta/progress';
 import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
@@ -65,6 +69,13 @@ type HelpTab = {
   readonly id: string;
   readonly label: string;
   readonly sections: readonly HelpSection[];
+  /**
+   * True when the teaching ledger is still hiding something here
+   * (`ideas/teaching.md`: the manual grows with the world). The tab's panel
+   * says so in one quiet foot line, so a short manual reads as a promise
+   * rather than the whole book.
+   */
+  readonly grows?: boolean;
 };
 
 export type Elements = {
@@ -294,6 +305,15 @@ const EVENT_GLYPH = /^(\S+)\s\s([\s\S]*)$/;
 const HAND_HEX_SIZE = 24;
 
 /**
+ * The relic lesson (`ideas/teaching.md`), said from wherever the first relic
+ * actually arrives: mid-run for a sacrifice or a claim's own relics, or at
+ * the ended transition when the first ones only came home in the ending
+ * bonus. One string, so the two doors cannot drift apart.
+ */
+const RELIC_LESSON =
+  '⬢  RELICS\nRelics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.';
+
+/**
  * The end screen's board portrait: bounds the longest side of the raster
  * `Renderer.snapshot` returns. Large enough to read as a picture of the run
  * rather than a smear once CSS frames it at up to 40% of a phone's viewport
@@ -502,14 +522,7 @@ export class Game {
     // meets them, with its numbers read from the LIVE tuning so the text can
     // never disagree with the economy it describes. It closes on any tap
     // because the only thing to do with it is stop reading it.
-    const title = document.createElement('p');
-    title.id = 'help-name';
-    title.textContent = NAME;
-    const tagline = document.createElement('p');
-    tagline.className = 'flag-note';
-    tagline.textContent = TAGLINE;
-
-    this.#el.helpManual.replaceChildren(title, tagline, ...this.#buildManual());
+    this.#paintManual();
 
     // The panel IS a dialog — it sits over the board and takes every gesture —
     // so it says so: role, modality, a name, and a keyboard path (Escape, and
@@ -722,9 +735,25 @@ export class Game {
    * focus finds its way back to a button this class never mounted itself.
    */
   openHelp(opener: HTMLButtonElement = this.#el.help): void {
+    // Repainted on every open, not just at start: the manual GROWS with the
+    // ledger now (`ideas/teaching.md`), and a cache claimed a moment ago has
+    // to be in here the moment you go and look — the same freshness contract
+    // main.ts already keeps for the settings half of this panel.
+    this.#paintManual();
     this.#helpOpener = opener;
     this.#el.helpPanel.hidden = false;
     this.#el.helpPanel.focus();
+  }
+
+  /** The manual's half of the panel, rebuilt from the live tuning and ledger. */
+  #paintManual(): void {
+    const title = document.createElement('p');
+    title.id = 'help-name';
+    title.textContent = NAME;
+    const tagline = document.createElement('p');
+    tagline.className = 'flag-note';
+    tagline.textContent = TAGLINE;
+    this.#el.helpManual.replaceChildren(title, tagline, ...this.#buildManual());
   }
 
   #closeHelp(): void {
@@ -908,6 +937,12 @@ export class Game {
       cache: 4,
     };
     const notes: { rank: number; text: string }[] = [];
+    // Teaching (`ideas/teaching.md`): a claim IS its own first-contact card —
+    // the note below already says what each kind is — so a first claim only
+    // marks the ledger, except a first SITE, which upgrades itself to the
+    // held card: the bounty changes how the next few pops are played, and a
+    // timed toast is too quiet for a rule change.
+    let firstSite = false;
 
     for (const [k, cell] of Object.entries(after.cells)) {
       if (cell.kind !== 'landmark' || !cell.claimed) continue;
@@ -920,12 +955,17 @@ export class Game {
       // appeared".
       switch (cell.reward) {
         case 'cache':
+          this.#markMet('cache');
           notes.push({
             rank: RANK.cache,
             text: `+  CACHE CLAIMED\n+${cachePaysAt(k, t)} tiles, on the spot.`,
           });
           break;
         case 'site':
+          if (!this.#met('site')) {
+            firstSite = true;
+            this.#markMet('site');
+          }
           notes.push({
             rank: RANK.site,
             text:
@@ -934,6 +974,7 @@ export class Game {
           });
           break;
         case 'territory': {
+          this.#markMet('territory');
           const owns =
             cell.colour === undefined ? 'its colour' : this.#theme.terrainNames[cell.colour];
           notes.push({
@@ -943,6 +984,7 @@ export class Game {
           break;
         }
         case 'shrine': {
+          this.#markMet('shrine');
           const label = this.#hooks.unlockLabel?.(this.#shrinesClaimed) ?? null;
           this.#shrinesClaimed++;
           notes.push({
@@ -961,12 +1003,26 @@ export class Game {
           // only grants what you do not own, on your own world.
           const label = this.#hooks.findLabel?.(k) ?? null;
           if (label !== null) this.#foundThisRun = label;
+          // The 2026-08-19 debrief's one defect: the old card said "Equip it
+          // in THE SHOP" even when the grant had ALREADY auto-equipped
+          // itself, and never said what the perk DOES — Marc found one and
+          // had nowhere to learn either fact. The card now carries the
+          // perk's own sentence, and tells the truth about whether it is
+          // worn: WHAT YOU CARRY in the ? panel keeps the words mid-run;
+          // THE SHOP on the end screen is where it changes.
+          const perk = label === null ? undefined : PERKS.find((p) => p.name === label);
+          const worn =
+            perk !== undefined && (this.#hooks.shop?.read().equipped.includes(perk.id) ?? false);
           notes.push({
             rank: RANK.find,
             text:
               label === null
                 ? '✦  A HIDDEN FIND\nNothing new inside — a find grants only what you do not already carry, and only on your own world.'
-                : `✦  FOUND — ${label}\nYours for good, on every world. Equip it in THE SHOP, on the end screen.`,
+                : `✦  FOUND — ${label}\n` +
+                  (perk === undefined ? '' : `${perk.note}\n`) +
+                  (worn
+                    ? 'Already worn — it works from here on. WHAT YOU CARRY, in the ? panel, keeps the words; THE SHOP, on the end screen, is where it changes.'
+                    : 'Yours for good, on every world. WEAR it in THE SHOP, on the end screen.'),
           });
           break;
         }
@@ -977,7 +1033,7 @@ export class Game {
     notes.sort((a, b) => a.rank - b.rank);
     return {
       text: notes.map((n) => n.text).join('\n\n'),
-      eventWorthy: notes[0]!.rank <= RANK.territory,
+      eventWorthy: notes[0]!.rank <= RANK.territory || firstSite,
     };
   }
 
@@ -1123,6 +1179,14 @@ export class Game {
       panel.className = 'help-panel-body';
       panel.hidden = index !== 0;
       panel.replaceChildren(...tab.sections.flatMap((section) => this.#helpSection(section)));
+      // One quiet line where the ledger is still hiding something — never a
+      // per-section placeholder, never a count (`ideas/teaching.md`).
+      if (tab.grows === true) {
+        const foot = document.createElement('p');
+        foot.className = 'flag-note';
+        foot.textContent = 'More appears here as you meet it.';
+        panel.append(foot);
+      }
       return panel;
     });
 
@@ -1195,6 +1259,23 @@ export class Game {
     // the reducer pays with — so a balance change rewrites the manual by
     // itself and the text can never describe an economy nobody is playing.
 
+    // The manual grows with the world (`ideas/teaching.md`, 2026-08-19):
+    // sections and lines about a concept this device has not MET stay out,
+    // and each first-contact card carries the words the manual will grow, so
+    // the two can never disagree. No ledger (no shop hook — the gallery, a
+    // bare test) shows everything, the same degradation the drip itself keeps.
+    const met = this.#metSet();
+    const show = (id: TeachId): boolean => met === null || met.has(id);
+    const grew = (...ids: TeachId[]): boolean => met !== null && ids.some((id) => !met.has(id));
+
+    // WHAT YOU CARRY reads the worn perk off the shelf, never off tuning —
+    // and stays out of a `?seed=` replay, which plays the plain economy and
+    // must not claim a perk is working when it is not.
+    const wornPerk =
+      this.#hooks.replay === true
+        ? undefined
+        : PERKS.find((p) => this.#hooks.shop?.read().equipped.includes(p.id) ?? false);
+
     // The quick start (Marc, 2026-08-18: "here is what you see, here is what
     // you do, here is how you make points — then the advanced sections", and
     // later the same day: "explain the whys and how the full game vs seed
@@ -1247,9 +1328,16 @@ export class Game {
     // six tabs and nineteen sections became four and thirteen. Nothing was
     // deleted — sections that said one thing each were merged into sections
     // that say one SUBJECT each, and the arithmetic stayed in its folds.
+    // The NUMBERS folds were pruned on Marc's 2026-08-19 ruling ("only the
+    // relevant real ones that matter and are numbers, otherwise prose"): a
+    // fold keeps only numbers that price a DECISION and have no on-screen
+    // referent — the cost curve, the depth step, the between-runs numbers,
+    // the spend prices a phone cannot hover for. Everything a button, a
+    // receipt or a tapped symbol already prices lives THERE, not here.
     const play: HelpTab = {
       id: 'play',
       label: 'PLAY',
+      grows: grew('field', 'wall', 'cache', 'site', 'territory', 'shrine'),
       sections: [
         {
           title: 'PLACE AND RIPEN',
@@ -1259,19 +1347,12 @@ export class Game {
             t.singlePayout
               ? 'Tiles are the only thing keeping you alive, and every placement spends them — so what you decide is WHERE and WHEN, never which button.'
               : 'Tiles keep you going; points are the score. You POP for one or the other, never both.',
+            'BEST marks the card whose strongest placement pays most right now. Advice, not an order.',
           ],
           detail: [
             t.costGrace > 0
               ? `A placement costs ${t.baseCost} tiles for the first ${t.costGrace}, then +1 for every ${t.costRisesEvery} after. It never comes back down — that is the clock that ends every run.`
               : `A placement costs ${t.baseCost} tiles, +1 for every ${t.costRisesEvery} you have ever placed this run. It never comes back down — that is the clock that ends every run.`,
-            `You start with ${t.startingTiles} tiles on one endless plane; a good or lucky run simply goes farther.`,
-            ...(t.stoneDiscount > 0
-              ? [
-                  `Your perk: a placement with stone beside it costs ${t.stoneDiscount} less, down to free. The COST stat shows the base price; the discount comes off as you pay.`,
-                ]
-              : []),
-            'Dotted ground native to a tile’s own colour counts as one extra match, and one tile can raise the worth of up to six neighbours at once. That is the whole craft.',
-            'BEST marks the card whose strongest placement pays most right now. Advice, not an order.',
           ],
         },
         {
@@ -1284,12 +1365,10 @@ export class Game {
               : 'Wait too long and you can die broke with a fortune still in the ground.',
           ],
           detail: [
-            `A pop pays ${t.tilesPerPop} tile per popped tile, plus 1 more per ${t.worthPerExtraTile} worth.`,
-            ...(t.popTilesPerRing > 0
-              ? [
-                  `Depth pays: a pocket adds ${t.popTilesPerRing} tile per popped tile for every distance ring it sits from home.`,
-                ]
-              : []),
+            // What a pop PAYS is printed on the buttons and said again by the
+            // receipt every pop leaves — the fold keeps only the numbers a
+            // player steers a run by, not the arithmetic the game already
+            // shows at the moment it happens.
             `It scores the pocket’s summed worth × its size bonus × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`,
             ...(t.harvestSizeCap > 0
               ? [
@@ -1328,58 +1407,81 @@ export class Game {
           : []),
         {
           title: 'THE WORLD',
+          // Each destination kind earns its line when it is first CLAIMED —
+          // its claim note carries the same fact at the moment it happens —
+          // and the hidden-find tease stays always: the mystery is the design.
+          // Site pay, bounty numbers and the territory radius left the fold
+          // for the places that already price them where they sit: the claim
+          // notes, and a tap on the symbol itself.
           lines: [
-            'Textured ground is a NATIVE FIELD — a tile of that colour placed there gains a match. Whole regions of one colour are BIOMES: chasing a colour means walking to where it grows.',
-            t.wallBuildCostMult > 0
-              ? 'Walls surround but never match — and your perk lets you build ON them, at a price.'
-              : 'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
+            'The plane only exists where you have grown it — every placement reveals the ground around itself.',
+            ...(show('field')
+              ? [
+                  'Textured ground is a NATIVE FIELD — a tile of that colour placed there gains a match. Whole regions of one colour are BIOMES: chasing a colour means walking to where it grows.',
+                ]
+              : []),
+            ...(show('wall')
+              ? [
+                  t.wallBuildCostMult > 0
+                    ? 'Walls surround but never match — and your perk lets you build ON them, at a price.'
+                    : 'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
+                ]
+              : []),
             'The glows beyond your ground are destinations, shining through land you have not reached. Touch one with a tile to claim it; each pays once.',
-            t.cachePaysPerRing > 0
-              ? `+ CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} more per ring out. ★ SITE — points, and it opens a bounty.`
-              : `+ CACHE — ${t.cachePays} tiles on the spot. ★ SITE — points, and it opens a bounty.`,
-            '◆ TERRITORY — the ground around it becomes your field, for good. ◈ SHRINE — a system switched on for your world, permanently.',
+            ...(t.destinationRampBlocks > 0
+              ? [
+                  'The near world is deliberately sparse. The deeper you push, the thicker the lights — and the richer the caches.',
+                ]
+              : []),
+            ...(show('cache')
+              ? [
+                  t.cachePaysPerRing > 0
+                    ? `+ CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} more per ring out. Caches and sites re-arm every run, so ground you know stays worth walking.`
+                    : `+ CACHE — ${t.cachePays} tiles on the spot. Caches and sites re-arm every run, so ground you know stays worth walking.`,
+                ]
+              : []),
+            ...(show('site') ? ['★ SITE — points, and it opens a bounty.'] : []),
+            ...(show('territory')
+              ? ['◆ TERRITORY — the ground around it becomes your field, for good.']
+              : []),
+            ...(show('shrine')
+              ? ['◈ SHRINE — a system switched on for your world, permanently.']
+              : []),
             ...(t.findEvery > 0 && t.findChance > 0
               ? [
                   'And something else is hidden out there, deep and unmarked. It never glows. You stumble onto it, or you never know it was there.',
                 ]
               : []),
           ],
-          detail: [
-            `A site pays ${t.sitePays} pts × the distance multiplier at its hex.`,
-            ...(t.findSense > 0
-              ? [
+          ...(t.findSense > 0
+            ? {
+                detail: [
                   `Your nose is keen: hidden things shimmer faintly when your ground grows within ${t.findSense} hexes of them.`,
-                ]
-              : []),
-            ...(t.destinationRampBlocks > 0
-              ? [
-                  'The near world is deliberately sparse. The deeper you push, the thicker the lights — and the richer the caches.',
-                ]
-              : []),
-            ...(t.questNeed > 0
-              ? [
-                  `The bounty: POP a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of the site as PTS for ×${t.questBonus}. POP it as tiles and the bounty stays standing. One at a time.`,
-                ]
-              : []),
-            `A territory’s field reaches ${t.territoryRadius} hexes, and it glows in the colour it will grant.`,
-            'Caches and sites re-arm every run, so ground you know stays worth walking. The plane only exists where you have grown it — every placement reveals the ground around itself.',
-          ],
+                ],
+              }
+            : {}),
         },
         {
           title: 'THE SCREEN',
+          // The fold dissolved (2026-08-19): nothing here was a number to
+          // steer by — the score-off-screen line matters to everyone and
+          // moved up; the hint-line anatomy described chrome that already
+          // explains itself. The stat line names LUCK only once luck exists.
           lines: [
             t.hidePoints
-              ? 'TILES keeps you alive · LUCK is what pops pay and the shop spends · REACH is how far you have built · COST is the next placement.'
+              ? [
+                  'TILES keeps you alive',
+                  ...(show('luck') ? ['LUCK is what pops pay and the shop spends'] : []),
+                  'REACH is how far you have built',
+                  'COST is the next placement.',
+                ].join(' · ')
               : 'TILES keeps you alive · POINTS is your score · REACH is how far you have built · COST is the next placement.',
-            'Zoom with + and −, pinch, or drag to pan. FIT shows everything. Tapping any symbol on the map explains it where it sits.',
-          ],
-          detail: [
+            'Zoom with + and −, pinch, or drag to pan. FIT shows everything. Tapping any symbol on the map — or any stat up top — explains it where it sits.',
             ...(t.hidePoints
               ? [
                   'Your SCORE is deliberately off screen while you play. It is what the run is worth when it ends, not a number to play against.',
                 ]
               : []),
-            'The line above your hand reads: what to do now · the nearest destination · your odds.',
             'Worth numbers on tiles appear as you zoom in.',
           ],
         },
@@ -1389,33 +1491,31 @@ export class Game {
     const hand: HelpTab = {
       id: 'hand',
       label: 'HAND',
+      grows: grew('rare', 'luck'),
       sections: [
-        {
-          title: 'RARE TILES AND THE STASH',
-          lines: [
-            'MAGIC is wild: it matches every neighbour whatever the colour, and they match it back.',
-            'UNIQUE is wild and heavy: every match it makes counts DOUBLE, for both sides.',
-            ...(t.holdSlots > 0
-              ? [
-                  'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap again to trade it back.',
-                ]
-              : []),
-            ...(t.draftWidth >= 5 && t.holdSlots === 0
-              ? [
-                  `Your perk: ${t.draftWidth} cards to choose from, and no stash. Wide choice now, no saving for later — that is the trade.`,
-                ]
-              : []),
-          ],
-          detail: [
-            'The card says which it is, and rare tiles keep an accent edge once placed. A unique’s ground match counts double too.',
-            ...(t.holdSlots > 0
-              ? [
-                  'Held tiles survive rerolls — save a rare tile, or the right colour, for the moment it is worth something.',
-                ]
-              : []),
-          ],
-        },
-        ...(t.luckRerollCost > 0
+        // Rare tiles earn their section when the first one reaches the hand —
+        // the moment's own card says the same words. The old fold dissolved
+        // into prose (no number in it priced anything); the OPEN HAND perk
+        // line moved to WHAT YOU CARRY, where every worn perk speaks now.
+        ...(show('rare')
+          ? [
+              {
+                title: 'RARE TILES AND THE STASH',
+                lines: [
+                  'MAGIC is wild: it matches every neighbour whatever the colour, and they match it back.',
+                  'UNIQUE is wild and heavy: every match it makes counts DOUBLE, for both sides.',
+                  'The card says which it is, and rare tiles keep an accent edge once placed. A unique’s ground match counts double too.',
+                  ...(t.holdSlots > 0
+                    ? [
+                        'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap again to trade it back.',
+                        'Held tiles survive rerolls — save a rare tile, or the right colour, for the moment it is worth something.',
+                      ]
+                    : []),
+                ],
+              },
+            ]
+          : []),
+        ...(t.luckRerollCost > 0 && show('luck')
           ? [
               {
                 title: 'LUCK IS A PURSE',
@@ -1437,14 +1537,35 @@ export class Game {
               },
             ]
           : []),
+        // WHAT YOU CARRY (the 2026-08-19 debrief's fix): the worn perk, its
+        // own sentence, and where it changes — readable MID-RUN, in the one
+        // place a player already looks for answers, instead of a whole run
+        // away behind the end screen. Absent while nothing is worn; absent
+        // on a replay, which plays the plain economy.
+        ...(wornPerk !== undefined
+          ? [
+              {
+                title: 'WHAT YOU CARRY',
+                lines: [
+                  `${wornPerk.name} — ${wornPerk.note}`,
+                  'Found out in the world, yours for good. One perk is worn at a time; THE SHOP, on the end screen, is where it changes.',
+                ],
+              },
+            ]
+          : []),
       ],
     };
 
     const after: HelpTab = {
       id: 'after',
       label: 'AFTER',
+      grows: t.burnRelics > 0 && grew('relic'),
       sections: [
-        ...(t.burnRelics > 0
+        // Relics earn their section with the first relic — the moment's card
+        // (or the ended transition's) says the same words. The fold keeps the
+        // two numbers weighed BETWEEN runs; what the shop sells is read off
+        // the shop itself, and the shelf's mystery line already lives above.
+        ...(t.burnRelics > 0 && show('relic')
           ? [
               {
                 title: 'RELICS AND THE SHOP',
@@ -1457,8 +1578,6 @@ export class Game {
                 detail: [
                   `A sacrifice pays ${t.burnRelics} relics per tile in the pocket, and reaching somewhere new pays ${t.claimRelics} for nothing — the half of the meta that costs no sacrifice.`,
                   `When a run ends, ${Math.round(t.luckToRelics * 100)}% of the luck still in your purse comes home, so hoarding luck is a real alternative to spending it.`,
-                  'The shop sells the steady floor: a deeper purse, keener odds, richer worlds, a gentler cost curve, and a nose for what is hidden.',
-                  'What a perk does is written on the shelf once you own it. Before that it is a mystery, on purpose.',
                 ],
               },
             ]
@@ -1473,6 +1592,7 @@ export class Game {
                 ]
               : []),
             'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
+            'SETTINGS shows what your world has seen, and can abandon it for a fresh one.',
           ],
           detail: [
             ...(t.territoryTiles > 0
@@ -1485,7 +1605,6 @@ export class Game {
                   `This run started with +${startingPerk(t, this.#state.claimed.length)} tiles from territories held.`,
                 ]
               : []),
-            'SETTINGS shows what your world has seen, and can abandon it for a fresh one.',
           ],
         },
       ],
@@ -1564,8 +1683,13 @@ export class Game {
    * surprise. The row hides entirely where luck has no prices.
    */
   #renderSpends(hud: HudView): void {
-    this.#el.purse.hidden = hud.spends.length === 0;
-    if (hud.spends.length === 0) {
+    // The purse fold arrives WITH the purse (`ideas/teaching.md`): until this
+    // device has earned its first luck — or been taught what luck is — a row
+    // of prices for a currency that does not exist yet is chrome explaining
+    // itself to nobody. Same gate as the LUCK stat, so they appear together.
+    const luckVisible = hud.luck > 0 || this.#met('luck');
+    this.#el.purse.hidden = hud.spends.length === 0 || !luckVisible;
+    if (hud.spends.length === 0 || !luckVisible) {
       this.#el.spends.replaceChildren();
       return;
     }
@@ -1682,6 +1806,7 @@ export class Game {
   #dispatch(action: Action): void {
     // Priced BEFORE the pop, because after it the pocket is stone and the
     // sum cannot be shown any more.
+    const before = this.#state;
     const harvested = action.type === 'HARVEST' ? harvestValue(this.#state, action.at) : null;
 
     const next = reduce(this.#state, action);
@@ -1725,22 +1850,44 @@ export class Game {
     // (2026-08-18) fall in behind both: the first unique tile to enter the
     // hand, then new ground — neither worth interrupting a pop or a claim
     // for, both worth saying the one time they are true.
-    if (popped !== null) this.#showNote(`${popped}${goalLine}`);
-    else if (claimed !== null) {
+    if (popped !== null) {
+      // The first pop is a teaching moment AND a receipt (`ideas/teaching.md`):
+      // the held card carries the lesson — stone, and the pressure it makes —
+      // with this pop's own arithmetic under it, so nothing is lost to the
+      // card that the toast would have said.
+      if (!this.#met('pop')) {
+        this.#markMet('pop');
+        this.#showEventCard(
+          '⬢  YOUR FIRST POP\nThe pocket turned to STONE — it still surrounds, but never matches, so popped ground grows poorer. The world stays rich farther out; that is the pressure to keep moving.' +
+            `\n\n${popped}${goalLine}`,
+        );
+      } else {
+        this.#showNote(`${popped}${goalLine}`);
+      }
+    } else if (claimed !== null) {
       if (claimed.eventWorthy) this.#showEventCard(`${claimed.text}${goalLine}`);
       else this.#showNote(`${claimed.text}${goalLine}`);
     } else if (goalNote !== null) {
       this.#showNote(`GOAL MET — ${goalNote}`);
-    } else if (!this.#uniqueExplained && next.draft.some((tile) => tile.rarity === 'unique')) {
-      this.#uniqueExplained = true;
-      this.#showNote('UNIQUE — every match counts double, both ways.');
-    } else if (
-      !this.#newGroundShown &&
-      this.#hooks.replay !== true &&
-      this.#reachOf(next) > this.#startFarthestReach
-    ) {
-      this.#newGroundShown = true;
-      this.#showNote('NEW GROUND — farther than this world has ever reached.');
+    } else {
+      // Nothing louder spoke: a quiet action is where an armed, unmet,
+      // currently-true teaching moment gets its card or its toast.
+      const lesson = this.#teachCheck(before, next, action);
+      if (lesson !== null) {
+        this.#markMet(lesson.id);
+        if (lesson.tier === 'card') this.#showEventCard(lesson.text);
+        else this.#showNote(lesson.text);
+      } else if (!this.#uniqueExplained && next.draft.some((tile) => tile.rarity === 'unique')) {
+        this.#uniqueExplained = true;
+        this.#showNote('UNIQUE — every match counts double, both ways.');
+      } else if (
+        !this.#newGroundShown &&
+        this.#hooks.replay !== true &&
+        this.#reachOf(next) > this.#startFarthestReach
+      ) {
+        this.#newGroundShown = true;
+        this.#showNote('NEW GROUND — farther than this world has ever reached.');
+      }
     }
     this.render();
   }
@@ -1822,6 +1969,130 @@ export class Game {
     this.#el.eventCard.hidden = true;
   }
 
+  /* --------------------------------------------------------------- teaching
+   *
+   * Drop by drop (`ideas/teaching.md`, 2026-08-19): the first time this
+   * DEVICE meets a concept, one short card or toast says what it is — at the
+   * moment it happens, once, never again. The ledger is `Progress.met`, per
+   * device (confusion is a property of the player, not the world), read and
+   * written through the same shop hook the shelf already uses. No hook — the
+   * gallery, a bare test build — means no ledger, and no ledger teaches
+   * nothing: there is nowhere to write "already said", and a card that
+   * repeats forever is worse than none.
+   *
+   * Claims teach through their own notes (`#claimNote` marks the ledger and
+   * upgrades a first site to the held card); the glow fires from
+   * `#renderHud`, where the signpost already lives; a run that ends with
+   * relics and the moment unmet fires from `#renderEnd`. Everything else
+   * fires below, on the first QUIET action after it becomes true — an armed
+   * moment never evicts a pop receipt, a claim or a goal.
+   */
+
+  #metSet(): ReadonlySet<TeachId> | null {
+    const store = this.#hooks.shop;
+    return store === undefined ? null : new Set(store.read().met);
+  }
+
+  /** Whether a moment has been taught. No store reads as "yes, all of it". */
+  #met(id: TeachId): boolean {
+    const store = this.#hooks.shop;
+    return store === undefined || hasMet(store.read(), id);
+  }
+
+  #markMet(id: TeachId): void {
+    const store = this.#hooks.shop;
+    if (store === undefined) return;
+    store.write(meet(store.read(), id));
+  }
+
+  /**
+   * The moments `#dispatch` fires itself, in priority order — the first
+   * unmet-and-true one speaks and the rest stay ARMED. A state-shaped
+   * trigger (a wall on the board, luck in the purse) fires on the next quiet
+   * action; a transient one (a cost tick, a native placement) waits for its
+   * next natural occurrence. Cards outrank toasts because a card is the
+   * bigger lesson.
+   */
+  #teachCheck(
+    before: GameState,
+    next: GameState,
+    action: Action,
+  ): { readonly tier: 'card' | 'toast'; readonly id: TeachId; readonly text: string } | null {
+    const t = next.tuning;
+    const met = this.#metSet();
+    if (met === null) return null;
+
+    if (!met.has('ripe') && Object.keys(next.cells).some((k) => isRipe(next.cells, k))) {
+      return {
+        tier: 'card',
+        id: 'ripe',
+        text: '⬢  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to see what its pocket pays, then POP.',
+      };
+    }
+
+    if (!met.has('rare')) {
+      const inHand = next.held === null ? next.draft : [...next.draft, next.held];
+      const rare =
+        inHand.find((tile) => tile.rarity === 'unique') ??
+        inHand.find((tile) => tile.rarity === 'magic');
+      if (rare !== undefined) {
+        // The once-a-run unique toast covers repeat runs; the device-wide
+        // card covers the first ever. Both firing for one tile would say
+        // the same thing twice.
+        if (rare.rarity === 'unique') this.#uniqueExplained = true;
+        return {
+          tier: 'card',
+          id: 'rare',
+          text:
+            rare.rarity === 'unique'
+              ? '⬢  UNIQUE\nWild, and heavy: every match it is part of counts DOUBLE, for both sides. The card in your hand says which it is — spend it where many tiles touch.'
+              : '⬢  MAGIC\nWild: it matches every neighbouring tile, whatever the colour, and they match it back. The card in your hand says which it is — spend it where many tiles touch.',
+        };
+      }
+    }
+
+    if (!met.has('luck') && next.luck > 0) {
+      return {
+        tier: 'card',
+        id: 'luck',
+        text: '⬢  LUCK\nEvery pop pays a little of it. Luck is a purse, not a score — the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.',
+      };
+    }
+
+    if (!met.has('relic') && next.relics > 0) {
+      return { tier: 'card', id: 'relic', text: RELIC_LESSON };
+    }
+
+    if (!met.has('costRise') && costOf(next.placements, t) > costOf(before.placements, t)) {
+      return {
+        tier: 'toast',
+        id: 'costRise',
+        text: `The placement cost just rose — it rises every ${t.costRisesEvery} placed and never comes back down. That is the clock that ends every run.`,
+      };
+    }
+
+    if (!met.has('wall') && Object.values(next.cells).some((cell) => cell.kind === 'wall')) {
+      return {
+        tier: 'toast',
+        id: 'wall',
+        text: 'That dark ridge is a WALL — it cannot be built on. It surrounds (so it helps things ripen) but never matches. A frontier that is all wall can end a run; build around.',
+      };
+    }
+
+    if (!met.has('field') && action.type === 'PLACE') {
+      const was = before.cells[action.hex];
+      if (was?.kind === 'empty' && was.native !== undefined) {
+        return {
+          tier: 'toast',
+          id: 'field',
+          text: 'Dotted ground is a NATIVE FIELD: a tile of its own colour placed there counts the ground as one extra match. Whole regions lean one colour — chase a colour to where it grows.',
+        };
+      }
+    }
+
+    return null;
+  }
+
   #renderHud(hud: HudView): void {
     this.#renderStats(hud);
     this.#renderDraft(hud);
@@ -1871,6 +2142,21 @@ export class Game {
     // an open event card, always win the same beat; the signpost only
     // speaks when nothing louder just did.
     if (
+      this.#lastSignpost !== undefined &&
+      hud.hint !== null &&
+      !this.#met('glow') &&
+      this.#el.toast.hidden &&
+      this.#el.eventCard.hidden
+    ) {
+      // The first light this device has ever had a signpost to
+      // (`ideas/teaching.md`): the held card, where the recurring signpost
+      // toast below is the receipt every later light gets. Same quiet-beat
+      // guard, same priming rule — boot never greets anyone with it.
+      this.#markMet('glow');
+      this.#showEventCard(
+        '⬢  A LIGHT IN THE DARK\nThat glow is a real place, shining through ground you have not reached. Build your chain out and touch it with a tile to claim it — each kind explains itself when you first arrive.',
+      );
+    } else if (
       this.#lastSignpost !== undefined &&
       hud.hint !== null &&
       hud.hint !== this.#lastSignpost &&
@@ -2068,6 +2354,19 @@ export class Game {
       // end screen (opening the shop and coming back, say), which is what
       // guarding it behind `#recordLines`'s own null-check buys for free.
       this.#snapshot = this.#renderer.snapshot(SNAPSHOT_MAX_PX);
+
+      // A run can end with the relic moment still unmet — its first relics
+      // arriving only in the ending bonus, after the last quiet action that
+      // could have taught them. Said here, once, at the same transition that
+      // banked them (`finish` above), so the door below never appears
+      // unexplained (`ideas/teaching.md`).
+      if (!this.#met('relic')) {
+        const banked = this.#hooks.shop?.read().relics ?? 0;
+        if (banked > 0 || hud.relics > 0) {
+          this.#markMet('relic');
+          this.#showEventCard(RELIC_LESSON);
+        }
+      }
     }
 
     const line = (cls: string, text: string): HTMLElement => {
@@ -2288,8 +2587,14 @@ export class Game {
     // The shop door, demoted from a button to a payout row: the purse total
     // (not this run's take above — the whole thing you can spend), tappable,
     // wearing the accent when anything inside is affordable — the same
-    // advertising contract the in-run luck fold keeps.
-    if (this.#hooks.shop !== undefined) {
+    // advertising contract the in-run luck fold keeps. Hidden entirely until
+    // this device has relics to spend or has met them (`ideas/teaching.md`) —
+    // a door to a shop priced in a currency you have never seen is the exact
+    // kind of unexplained chrome the drip exists to remove.
+    if (
+      this.#hooks.shop !== undefined &&
+      (this.#met('relic') || this.#hooks.shop.read().relics > 0 || hud.relics > 0)
+    ) {
       const progress = this.#hooks.shop.read();
       const door = row('end-payout-row end-link', 'RELICS', `${progress.relics} ▸`, {
         link: () => {
@@ -2483,13 +2788,21 @@ export class Game {
         ? `${hud.depthValue} · best ${world.farthestReach}`
         : String(hud.depthValue);
 
+    // LUCK holds its slot only once this device has luck to hold, or has
+    // already been taught what luck is (`ideas/teaching.md`: the HUD appears
+    // as it matters, paired with the card so the appearance IS the event).
+    // Real money is never hidden — `hud.luck > 0` shows the stat unmet.
+    const luckVisible = hud.luck > 0 || this.#met('luck');
+
     const stats: readonly Stat[] = [
       { id: 'tiles', label: 'TILES', value: String(hud.tiles) },
       // Score where it is worth watching; otherwise the purse, which is the
       // number this game is actually played against.
-      hud.showPoints
-        ? ({ id: 'points', label: 'POINTS', value: String(hud.points) } satisfies Stat)
-        : ({ id: 'luck', label: 'LUCK', value: String(hud.luck) } satisfies Stat),
+      ...(hud.showPoints
+        ? [{ id: 'points', label: 'POINTS', value: String(hud.points) } satisfies Stat]
+        : luckVisible
+          ? [{ id: 'luck', label: 'LUCK', value: String(hud.luck) } satisfies Stat]
+          : []),
       { id: 'map', label: 'REACH', value: reachValue },
       { id: 'cost', label: 'COST', value: `−${hud.cost}` },
       // The clock, where there is one. Last on the row because it is the
@@ -2520,9 +2833,64 @@ export class Game {
         value.textContent = stat.value;
 
         box.append(label, value);
+
+        // Tap a stat, learn it where it sits — the same contract a tapped
+        // symbol on the board already keeps, extended to the numbers up top
+        // (`ideas/teaching.md`: the board is the manual). A div wearing the
+        // button role rather than a <button>, because the global button
+        // chrome (panel, border, flex) would restyle the whole row; the
+        // keyboard path is stated by hand for the same reason.
+        box.setAttribute('role', 'button');
+        box.tabIndex = 0;
+        const explain = (): void => {
+          this.#showNote(this.#statNote(stat.id, hud), true);
+        };
+        box.addEventListener('click', explain);
+        box.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            explain();
+          }
+        });
         return box;
       }),
     );
+  }
+
+  /**
+   * One stat, explained in this run's own numbers — the tap-a-symbol
+   * contract, kept by the stat row. Sticky, like every explanation you asked
+   * for by hand: you are reading it deliberately, and a timer would be a
+   * race against your own eyes.
+   */
+  #statNote(id: string, hud: HudView): string {
+    const t = this.#state.tuning;
+    switch (id) {
+      case 'tiles':
+        return 'TILES — what keeps you alive. Every placement spends them; pops, caches and territories pay them back. At zero with nothing ripe to pop, the run ends.';
+      case 'points':
+        return 'POINTS — the score. A pocket popped for points pays its worth × its size × its distance from home.';
+      case 'luck':
+        return (
+          'LUCK — a purse, not a score. The row under your hand spends it' +
+          (t.luckToRelics > 0
+            ? `; whatever is left when the run ends comes home as relics, at ${Math.round(t.luckToRelics * 100)}%.`
+            : '.')
+        );
+      case 'map':
+        return `REACH — how far from home you have built. Every ${t.distanceStep} hexes out raises the distance multiplier by 1, so the same pocket scores more the deeper it pops.`;
+      case 'cost': {
+        const curve =
+          t.costGrace > 0
+            ? `It stays ${t.baseCost} for the first ${t.costGrace} placements, then rises +1 every ${t.costRisesEvery} placed`
+            : `It rises +1 every ${t.costRisesEvery} placed`;
+        return `COST — the next placement's price: ${hud.cost}. ${curve}, and it never comes back down — the clock that ends every run.`;
+      }
+      case 'left':
+        return 'LEFT — placements remaining in the expedition. At zero it ends; anything already ripe can still be popped.';
+      default:
+        return '';
+    }
   }
 
   #renderDraft(hud: HudView): void {

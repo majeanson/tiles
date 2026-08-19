@@ -4,8 +4,34 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-18** — Sessions 15–22, the same-day audit's fix
-pass, the three-stage pipeline (`WORKPLAN.md`) it green-lit, and the
+Last checkpoint: **2026-08-19** — the second debrief, and the game learned
+to teach itself. 549 tests.
+
+- **Marc's second debrief (two long runs, 11k/4k, "I had fun") moved three
+  written questions**: the rebalance verdict is positive (caches confirmed
+  as lifelines in human hands), TITHE's question closed YES on first
+  contact, and score-vs-feel was RULED two separate rewards. One defect: a
+  found perk could not be inspected mid-run. Full record: LOG.md Session 26.
+- **The teaching pack shipped whole the same day** (`ideas/teaching.md`,
+  designed on Marc's option-set answers and built in one pass): a per-device
+  `met` ledger in `Progress` fires thirteen first-contact moments once each
+  — cards for ripe/pop/glow/rare/luck/relic, toasts for cost-rise/wall/
+  native-field, claims teaching through their own notes with a first SITE
+  upgraded to the held card; the manual GROWS with the ledger (one quiet
+  foot line where something is hidden) and repaints on every open; the LUCK
+  stat, purse fold, shop door and survey row appear on first relevance;
+  NUMBERS folds pruned to decision numbers only; every stat tappable to
+  explain itself in place. Old saves decode the ledger as ALL MET — no
+  existing player sees any of it (the FOUND-perk dial contract, paid in
+  data); RESET TEACHING in the developer fold previews the stranger's first
+  minute. The find card now says what the perk does and whether it is
+  already worn, and WHAT YOU CARRY in the manual closes the debrief's
+  defect. Engine and content untouched; `pnpm sim` byte-identical by
+  stash-and-rerun. **The stranger test waits on Marc's own RESET TEACHING
+  pass**: can a stranger's first run teach itself?
+
+Previous checkpoint: **2026-08-18** — Sessions 15–22, the same-day audit's
+fix pass, the three-stage pipeline (`WORKPLAN.md`) it green-lit, and the
 fresh-eyes review that closed the pipeline out, all in one run. 518 tests.
 
 - **The fresh-eyes review** (`WORKPLAN.md`'s own final line) read the whole
@@ -100,7 +126,7 @@ shipped. **Gate B's retirement and the stranger test are the two things
 code cannot produce — they lead the human follow-up**, alongside the open
 pop-vs-burn-vs-wait question above.
 
-Previous checkpoint: **2026-08-15** — **the game is ASHWAKE, and M1–M6 of
+Earlier — **2026-08-15** — **the game is ASHWAKE, and M1–M6 of
 `ROADMAP.md` were built.** Sessions 11–16 in one run: Gate B fixed
 structurally at the time (a hard 260-placement clock, survival funded by
 caches, a cap on the size bonus — the tiles share of harvests fell from

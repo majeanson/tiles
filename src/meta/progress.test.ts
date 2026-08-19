@@ -3,6 +3,7 @@ import { TUNING } from '@content/tuning';
 import {
   EMPTY_PROGRESS,
   PERKS,
+  TEACH_IDS,
   UPGRADES,
   applyProgress,
   buy,
@@ -10,7 +11,9 @@ import {
   encodeProgress,
   equip,
   grantFind,
+  hasMet,
   levelOf,
+  meet,
   priceOf,
   slotsOf,
   type PerkId,
@@ -240,6 +243,47 @@ describe('storage', () => {
     );
     expect(decoded.equipped).toEqual([]);
     expect(decoded.found).toEqual(['stonewalker']);
+  });
+});
+
+describe('teaching, drop by drop (2026-08-19)', () => {
+  /**
+   * The `met` ledger: concepts this DEVICE has been taught, once each
+   * (`ideas/teaching.md`). The decode rules are the whole contract — a
+   * pre-teaching save means a veteran, not a stranger, and must decode as
+   * having met everything; only a genuinely fresh device gets the drip.
+   */
+  it('meets a concept once, and a second meeting changes nothing', () => {
+    const once = meet(EMPTY_PROGRESS, 'ripe');
+    expect(once.met).toEqual(['ripe']);
+    expect(hasMet(once, 'ripe')).toBe(true);
+    expect(hasMet(once, 'pop')).toBe(false);
+    // Idempotent — the same object back, the contract every write here keeps.
+    expect(meet(once, 'ripe')).toBe(once);
+  });
+
+  it('decodes a pre-teaching blob as having met everything', () => {
+    // No `met` field at all: a save from before the ledger existed. The
+    // device has played; it is not a stranger; nothing is re-taught.
+    const veteran = decodeProgress('{"relics":10,"bought":{"tiles":2}}');
+    expect([...veteran.met].sort()).toEqual([...TEACH_IDS].sort());
+  });
+
+  it('starts a fresh device with everything unmet', () => {
+    expect(decodeProgress(null).met).toEqual([]);
+    expect(EMPTY_PROGRESS.met).toEqual([]);
+  });
+
+  it('keeps only moments this build knows, deduplicated', () => {
+    const decoded = decodeProgress(
+      '{"relics":0,"bought":{},"met":["ripe","ripe","banana","pop",7]}',
+    );
+    expect(decoded.met).toEqual(['ripe', 'pop']);
+  });
+
+  it('round-trips the ledger with the rest of the purse', () => {
+    const taught = meet(meet(withRelics(50), 'ripe'), 'luck');
+    expect(decodeProgress(encodeProgress(taught))).toEqual(taught);
   });
 });
 

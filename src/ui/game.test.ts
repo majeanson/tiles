@@ -6,7 +6,7 @@ import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
 import type { Cell, GameState } from '@engine/state';
-import { UPGRADES } from '@meta/progress';
+import { EMPTY_PROGRESS, TEACH_IDS, UPGRADES, type Progress } from '@meta/progress';
 import type { BoardView, Renderer } from '@render/Renderer';
 import { Game, type Elements, type GameHooks } from './game';
 
@@ -579,7 +579,11 @@ describe('the camera, and staying oriented', () => {
     expect(numbers).toContain(`+1 for every ${t.costRisesEvery}`);
     expect(numbers).toContain(`${t.blueTideEvery} hexes from home`);
     expect(numbers).toContain(`past ${t.harvestSizeCap} tiles`);
-    expect(numbers).toContain(`POP a pocket of ${t.questNeed}+`);
+    // The bounty's numbers left the fold on Marc's 2026-08-19 ruling — they
+    // are priced where they happen now: the site's claim note and the tapped
+    // pocket's own line. The fold keeps only decision numbers with no
+    // on-screen referent, and the bounty is not one any more.
+    expect(numbers).not.toContain(`POP a pocket of ${t.questNeed}+`);
 
     // A payout a player needs BEFORE deciding where to walk is a fact, not
     // arithmetic, so it stays on the visible line rather than in a fold.
@@ -849,14 +853,16 @@ describe('keeping the run, and ending it properly', () => {
   it('acknowledges a shop purchase before the screen redraws under it', () => {
     vi.useFakeTimers();
     try {
-      let progress = { relics: 999, bought: {}, found: [] as never[], equipped: [] as never[] };
+      // A taught device (met: everything), so the teaching pack stays quiet
+      // and this test keeps proving only what it always proved.
+      let progress: Progress = { ...EMPTY_PROGRESS, relics: 999, met: [...TEACH_IDS] };
       const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
       const ctx = build(1, TUNING, {
         resume: ended,
         shop: {
           read: () => progress,
           write: (p) => {
-            progress = p as typeof progress;
+            progress = p;
           },
         },
       });
@@ -1689,13 +1695,13 @@ describe('the moments pack (2026-08-18)', () => {
 
   it('names the cheapest unbought upgrade on the end screen, with the relics gap', () => {
     const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
-    let progress = { relics: 5, bought: {}, found: [] as never[], equipped: [] as never[] };
+    let progress: Progress = { ...EMPTY_PROGRESS, relics: 5, met: [...TEACH_IDS] };
     const ctx = build(1, TUNING, {
       resume: ended,
       shop: {
         read: () => progress,
         write: (p) => {
-          progress = p as typeof progress;
+          progress = p;
         },
       },
     });
@@ -1708,13 +1714,13 @@ describe('the moments pack (2026-08-18)', () => {
 
   it('shows just the price once the cheapest upgrade is affordable', () => {
     const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
-    let progress = { relics: 999, bought: {}, found: [] as never[], equipped: [] as never[] };
+    let progress: Progress = { ...EMPTY_PROGRESS, relics: 999, met: [...TEACH_IDS] };
     const ctx = build(1, TUNING, {
       resume: ended,
       shop: {
         read: () => progress,
         write: (p) => {
-          progress = p as typeof progress;
+          progress = p;
         },
       },
     });
@@ -1908,11 +1914,13 @@ describe('hidden finds in the shell', () => {
 describe('the shelf', () => {
   /** An ended run whose shop reads a live progress object. */
   const shelf = (found: string[], equipped: string[]) => {
-    let progress = {
-      relics: 0,
-      bought: {},
-      found: found as never[],
-      equipped: equipped as never[],
+    let progress: Progress = {
+      ...EMPTY_PROGRESS,
+      found: found as Progress['found'],
+      equipped: equipped as Progress['equipped'],
+      // A taught device, so the shelf tests stay about the shelf — and the
+      // shop door stays rendered for the walk-through below even at 0 relics.
+      met: [...TEACH_IDS],
     };
     const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
     const ctx = build(1, TUNING, {
@@ -1920,7 +1928,7 @@ describe('the shelf', () => {
       shop: {
         read: () => progress,
         write: (p) => {
-          progress = p as typeof progress;
+          progress = p;
         },
       },
     });
@@ -1972,5 +1980,317 @@ describe('the shelf', () => {
     wear!.click();
 
     expect(ctx.current().equipped).toEqual(['wallbreaker']);
+  });
+});
+
+describe('teaching, drop by drop (2026-08-19)', () => {
+  /**
+   * The drip (`ideas/teaching.md`): a fresh device meets each concept once,
+   * as a card or a toast, at the moment it first happens — and the ledger,
+   * the manual and the HUD all read the same `met` list. The quiet economy
+   * below (no stray landmarks, walls or rares) keeps every trigger in the
+   * test's own hands.
+   */
+  const T: Tuning = {
+    ...TUNING,
+    destinationChance: 0,
+    magicChance: 0,
+    uniqueChance: 0,
+    worldWalls: 0,
+  };
+
+  /** A live progress store, the same shape main.ts lends the game. */
+  const device = (progress: Progress = EMPTY_PROGRESS) => {
+    let current = progress;
+    return {
+      shop: {
+        read: () => current,
+        write: (p: Progress) => {
+          current = p;
+        },
+      },
+      current: () => current,
+    };
+  };
+
+  /**
+   * A run one placement from its first ripe tile: `pocket` has five of six
+   * neighbours tiled, and placing `lastSide` surrounds it. `spare` is plain
+   * materialised ground beside a filler tile, for the quiet placement an
+   * armed moment fires on.
+   */
+  const nearlyRipe = () => {
+    const base = newRun(7, T);
+    const pocket = key(3, 0);
+    const sides = neighbourKeys(3, 0);
+    const lastSide = sides[5]!;
+    const cells: Record<HexKey, Cell> = {
+      ...base.cells,
+      [pocket]: { kind: 'tile', colour: 'green' },
+    };
+    for (const side of sides.slice(0, 5)) cells[side] = { kind: 'tile', colour: 'green' };
+    cells[lastSide] = { kind: 'empty' };
+    const spare = neighbourKeys(4, 0).find((k) => !(k in cells))!;
+    cells[spare] = { kind: 'empty' };
+    return { state: { ...base, cells }, lastSide, spare };
+  };
+
+  const setup = (progress?: Progress, extraHooks: GameHooks = {}) => {
+    const fixture = nearlyRipe();
+    const dev = device(progress);
+    const ctx = build(1, T, { resume: fixture.state, shop: dev.shop, ...extraHooks });
+    ctx.game.start();
+    return { ...ctx, lastSide: fixture.lastSide, spare: fixture.spare, dev };
+  };
+
+  it('teaches RIPE on the placement that makes the first ripe tile — once, ever', () => {
+    const s = setup();
+    s.renderer.nextHit = s.lastSide;
+    tap(s.el.board);
+
+    expect(s.el.eventCard.hidden).toBe(false);
+    expect(s.el.eventCardText.textContent).toMatch(/RIPENS and lights up/);
+    expect(s.dev.current().met).toContain('ripe');
+
+    // The same moment on a taught device says nothing of the sort — and the
+    // quiet beat goes back to the moments that were always there (this board
+    // out-reaches a fresh world, so NEW GROUND rightly takes the slot).
+    const again = setup(s.dev.current());
+    again.renderer.nextHit = again.lastSide;
+    tap(again.el.board);
+    expect(again.el.eventCard.hidden).toBe(true);
+    expect(again.el.toast.textContent ?? '').not.toMatch(/RIPENS/);
+  });
+
+  it('folds the first pop’s receipt into its own card, then gets out of the way', () => {
+    const s = setup();
+    s.renderer.nextHit = s.lastSide;
+    tap(s.el.board);
+    s.el.eventCard.click(); // dismiss the RIPE card
+
+    s.el.harvestTiles.click(); // the first pop this device has ever made
+    expect(s.el.eventCard.hidden).toBe(false);
+    const text = s.el.eventCardText.textContent ?? '';
+    expect(text).toMatch(/YOUR FIRST POP/);
+    // The receipt rode along on the card — the arithmetic was not lost to it.
+    expect(text).toMatch(/POPPED/);
+    expect(s.dev.current().met).toContain('pop');
+
+    // A second pop, taught, is the ordinary receipt toast.
+    const later = setup(s.dev.current());
+    later.renderer.nextHit = later.lastSide;
+    tap(later.el.board);
+    later.el.harvestTiles.click();
+    expect(later.el.eventCard.hidden).toBe(true);
+    expect(later.el.toast.textContent).toMatch(/POPPED/);
+  });
+
+  it('keeps LUCK armed through the pop that earned it, and speaks on the next quiet action', () => {
+    const s = setup();
+    s.renderer.nextHit = s.lastSide;
+    tap(s.el.board);
+    s.el.eventCard.click();
+    s.el.harvestTiles.click(); // pays the first luck; the pop card wins the beat
+    expect(s.game.state.luck).toBeGreaterThan(0);
+    expect(s.dev.current().met).not.toContain('luck');
+    s.el.eventCard.click();
+
+    s.renderer.nextHit = s.spare; // a quiet placement
+    tap(s.el.board);
+    expect(s.el.eventCard.hidden).toBe(false);
+    expect(s.el.eventCardText.textContent).toMatch(/LUCK/);
+    expect(s.dev.current().met).toContain('luck');
+  });
+
+  it('hides the LUCK stat and the purse fold until luck exists — and never hides real money', () => {
+    const s = setup();
+    expect(s.el.stats.querySelector('[data-stat="luck"]')).toBeNull();
+    expect(s.el.purse.hidden).toBe(true);
+
+    // Earned luck shows the stat at once, taught or not.
+    s.renderer.nextHit = s.lastSide;
+    tap(s.el.board);
+    s.el.eventCard.click();
+    s.el.harvestTiles.click();
+    expect(s.el.stats.querySelector('[data-stat="luck"]')).not.toBeNull();
+
+    // A taught device shows both from frame one, even at zero.
+    const taught = setup({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] });
+    expect(taught.el.stats.querySelector('[data-stat="luck"]')).not.toBeNull();
+    expect(taught.el.purse.hidden).toBe(false);
+  });
+
+  it('grows the manual with the ledger, and says so in one quiet foot line', () => {
+    const s = setup();
+    s.game.openHelp();
+    const fresh = s.el.helpManual.textContent ?? '';
+    expect(fresh).not.toContain('RARE TILES');
+    expect(fresh).not.toContain('LUCK IS A PURSE');
+    expect(fresh).not.toContain('RELICS AND THE SHOP');
+    expect(fresh).not.toContain('+ CACHE');
+    expect(fresh).toContain('More appears here as you meet it.');
+    // START stays whole — it is the stranger's tab.
+    expect(fresh).toContain('WHAT YOU SEE');
+
+    // Met everything: today's manual, whole, no foot line.
+    s.dev.shop.write({ ...s.dev.current(), met: [...TEACH_IDS] });
+    s.game.openHelp();
+    const grown = s.el.helpManual.textContent ?? '';
+    expect(grown).toContain('RARE TILES');
+    expect(grown).toContain('LUCK IS A PURSE');
+    expect(grown).toContain('RELICS AND THE SHOP');
+    expect(grown).toContain('+ CACHE');
+    expect(grown).not.toContain('More appears here as you meet it.');
+  });
+
+  it('names the worn perk under WHAT YOU CARRY, mid-run — and not on a replay', () => {
+    const worn: Progress = {
+      ...EMPTY_PROGRESS,
+      found: ['stonewalker'],
+      equipped: ['stonewalker'],
+      met: [...TEACH_IDS],
+    };
+    const s = setup(worn);
+    s.game.openHelp();
+    const text = s.el.helpManual.textContent ?? '';
+    expect(text).toContain('WHAT YOU CARRY');
+    expect(text).toContain('STONEWALKER');
+    expect(text).toMatch(/beside stone cost 1 less/i);
+
+    // A replay plays the plain economy; claiming the perk works would lie.
+    const replayed = setup(worn, { replay: true });
+    replayed.game.openHelp();
+    expect(replayed.el.helpManual.textContent ?? '').not.toContain('WHAT YOU CARRY');
+  });
+
+  it('says what a found perk DOES on its card, and that it is already worn', () => {
+    const dev = device({
+      ...EMPTY_PROGRESS,
+      found: ['stonewalker'],
+      equipped: ['stonewalker'],
+      met: [...TEACH_IDS],
+    });
+    const base = newRun(7, T);
+    const find = key(2, 0);
+    const ctx = build(1, T, {
+      findLabel: () => 'STONEWALKER',
+      shop: dev.shop,
+      resume: {
+        ...base,
+        cells: { ...base.cells, [find]: { kind: 'landmark', reward: 'find', claimed: false } },
+      },
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+
+    const text = ctx.el.eventCardText.textContent ?? '';
+    expect(text).toMatch(/FOUND — STONEWALKER/);
+    expect(text).toMatch(/beside stone cost 1 less/i);
+    expect(text).toMatch(/Already worn/);
+  });
+
+  it('tells an unworn find where WEAR lives instead', () => {
+    const dev = device({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] });
+    const base = newRun(7, T);
+    const find = key(2, 0);
+    const ctx = build(1, T, {
+      findLabel: () => 'STONEWALKER',
+      shop: dev.shop,
+      resume: {
+        ...base,
+        cells: { ...base.cells, [find]: { kind: 'landmark', reward: 'find', claimed: false } },
+      },
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+
+    const text = ctx.el.eventCardText.textContent ?? '';
+    expect(text).toMatch(/WEAR it in THE SHOP/);
+    expect(text).not.toMatch(/Already worn/);
+  });
+
+  it('explains a tapped stat where it sits, in the run’s own numbers', () => {
+    const ctx = build();
+    ctx.game.start();
+    const cost = ctx.el.stats.querySelector<HTMLElement>('[data-stat="cost"]');
+    expect(cost).not.toBeNull();
+    // A div wearing the button role — the global button chrome must not
+    // restyle the stat row, but the keyboard path still has to exist.
+    expect(cost!.getAttribute('role')).toBe('button');
+    expect(cost!.tabIndex).toBe(0);
+
+    cost!.click();
+    expect(ctx.el.toast.hidden).toBe(false);
+    expect(ctx.el.toast.textContent).toMatch(/clock that ends every run/);
+  });
+
+  it('keeps the shop door off the end screen until relics have ever existed', () => {
+    const dev = device();
+    const ended: GameState = { ...newRun(9, T), phase: 'ended', death: 'broke' };
+    const ctx = build(1, T, { resume: ended, shop: dev.shop });
+    ctx.game.start();
+
+    expect(ctx.el.end.querySelector('#end-shop-open')).toBeNull();
+    expect(ctx.el.eventCard.hidden).toBe(true);
+  });
+
+  it('teaches relics at the ended transition that banked the first ones, and opens the door', () => {
+    const dev = device({ ...EMPTY_PROGRESS, relics: 5 });
+    const ended: GameState = { ...newRun(9, T), phase: 'ended', death: 'broke' };
+    const ctx = build(1, T, { resume: ended, shop: dev.shop });
+    ctx.game.start();
+
+    expect(ctx.el.eventCard.hidden).toBe(false);
+    expect(ctx.el.eventCardText.textContent).toMatch(/RELICS/);
+    expect(dev.current().met).toContain('relic');
+    expect(ctx.el.end.querySelector('#end-shop-open')).not.toBeNull();
+  });
+
+  it('upgrades the FIRST site claim to the held card; later sites stay toasts', () => {
+    const claimSite = (progress?: Progress) => {
+      const dev = device(progress);
+      const base = newRun(7, T);
+      const ctx = build(1, T, {
+        shop: dev.shop,
+        resume: {
+          ...base,
+          cells: {
+            ...base.cells,
+            [key(2, 0)]: { kind: 'landmark', reward: 'site', claimed: false },
+          },
+        },
+      });
+      ctx.game.start();
+      ctx.renderer.nextHit = key(1, 0);
+      tap(ctx.el.board);
+      return { ctx, dev };
+    };
+
+    const first = claimSite();
+    expect(first.ctx.el.eventCard.hidden).toBe(false);
+    expect(first.ctx.el.eventCardText.textContent).toMatch(/SITE CLAIMED/);
+    expect(first.dev.current().met).toContain('site');
+
+    const second = claimSite(first.dev.current());
+    expect(second.ctx.el.eventCard.hidden).toBe(true);
+    expect(second.ctx.el.toast.textContent).toMatch(/SITE CLAIMED/);
+  });
+
+  it('teaches nothing at all where no ledger exists to remember it', () => {
+    // No shop hook — the gallery, a bare build. A card that repeats forever
+    // is worse than none, so the drip stays silent and everything shows.
+    const fixture = nearlyRipe();
+    const ctx = build(1, T, { resume: fixture.state });
+    ctx.game.start();
+    ctx.renderer.nextHit = fixture.lastSide;
+    tap(ctx.el.board);
+    expect(ctx.el.eventCard.hidden).toBe(true);
+
+    ctx.game.openHelp();
+    const manual = ctx.el.helpManual.textContent ?? '';
+    expect(manual).toContain('LUCK IS A PURSE');
+    expect(manual).not.toContain('More appears here as you meet it.');
   });
 });

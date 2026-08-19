@@ -3391,8 +3391,8 @@ clarifying questions:
   on the 2026-08-18 rebalance, and it is positive. The lean start did not
   read as punishing.
 - **Caches are lifelines in human hands, not just the harness's.** The
-  runs scored 11k and 4k; the 11k run went longer *because of the tile
-  caches* — Marc's own attribution, unprompted. The gradual 6 + 4/ring
+  runs scored 11k and 4k; the 11k run went longer _because of the tile
+  caches_ — Marc's own attribution, unprompted. The gradual 6 + 4/ring
   curve doing exactly what the rebalance built it to do: funding the
   push outward.
 - **TITHE was taken, deliberately.** "Sacrificed some at the end" =
@@ -3414,7 +3414,7 @@ clarifying questions:
   is now a design decision, not an open question.
 
 **The one defect: a found perk cannot be inspected.** Marc found a unique
-in game two. The find *was* noticed — the event card fired — but then:
+in game two. The find _was_ noticed — the event card fired — but then:
 "I didn't know where to equip, unequip, check what it does." The card's
 one line ("Equip it in THE SHOP, on the end screen") is dismissable and
 unrepeatable; mid-run there is nowhere to see what you carry or what it
@@ -3469,3 +3469,75 @@ teach itself — no manual opened, no concept met unexplained?** Measured
 at the stranger test, which was already the v1.0 blocker. Three build
 stages, next session; no balance number moves and the engine is
 untouched throughout.
+
+**Addendum, same day — the teaching pack, BUILT: all three stages in one
+pass, on Marc's "build all now, be thorough, no cut corners."**
+
+Everything `ideas/teaching.md` designed this morning is in the tree, plus
+the tests that pin it. The engine and `src/content/` are untouched —
+`pnpm sim` proven byte-identical by stash-and-rerun, not assumed — and no
+balance number moved.
+
+**Stage 1 — the ledger and the cards.** `Progress.met`
+(`meta/progress.ts`): thirteen moment ids, `meet`/`hasMet`, and the decode
+contract that carries the whole off-by-default promise — a blob with no
+`met` field predates the ledger and decodes as ALL MET (a device that has
+played is not a stranger), a fresh device decodes empty and gets the drip,
+a present array keeps only ids this build knows. `main.ts` adds the one
+case decode cannot see: a device whose world has RUNS but whose purse was
+never written gets its ledger seeded full at boot. The moments themselves
+fire from three doors in `game.ts`: `#teachCheck` on the first QUIET
+action (ripe, rare, luck, relic as held cards; cost-rise, wall, native
+field as toasts — an armed moment never evicts a pop receipt, a claim or
+a goal), `#claimNote` for the claims (which already teach through their
+own notes; they mark the ledger, and a FIRST site upgrades itself to the
+held card because the bounty changes the next few pops), the signpost
+beat in `#renderHud` for the first glow, and the ended transition in
+`#renderEnd` for relics that only arrive in the ending bonus. The first
+pop's card carries its own receipt aboard, so the lesson costs no
+arithmetic. RESET TEACHING sits in SETTINGS' developer fold — how Marc's
+own phone previews what a stranger sees.
+
+**Stage 2 — the manual grows, the HUD appears, the perk speaks.**
+`#helpSections` reads the same ledger: THE WORLD's destination lines,
+RARE TILES, LUCK IS A PURSE and RELICS AND THE SHOP appear as met; START
+stays whole; a tab still hiding something says so in ONE quiet foot line
+("More appears here as you meet it"), and the manual repaints on every
+open so it grows mid-session. HAND gains **WHAT YOU CARRY** — the worn
+perk's name and its own sentence, readable MID-RUN — which closes the
+second debrief's defect, together with the find card's fix: it now says
+what the perk DOES and tells the truth about auto-equip ("Already worn"
+vs "WEAR it in THE SHOP"). The LUCK stat and the purse fold arrive with
+the first luck (real money is never hidden — earned luck shows unmet);
+the end screen's shop door waits for relics to have ever existed; the
+survey row in SETTINGS appears at first nonzero progress toward any goal.
+
+**Stage 3 — NUMBERS pruned, stats tappable.** Folds now keep only
+decision numbers with no on-screen referent: the cost curve, the depth
+step, the size cap and treasure threshold, the spend prices a phone
+cannot hover for, and the two between-runs numbers (territory tiles, the
+end-of-run luck %). The pop-payout formula, site pay, bounty numbers,
+territory radius and "you start with N tiles" left for the buttons,
+receipts, claim notes and tapped symbols that already price them where
+they sit. And the loop closed: **tapping any STAT explains it in place**
+(`#statNote` — role=button divs with a real keyboard path and a grown hit
+target, because the global button chrome would restyle the row).
+
+**Honest costs and calls.** One old pin moved with the design: the manual
+test asserting the bounty's numbers live in a fold now asserts they do
+NOT (they are priced at the site and the pocket instead). The RIPE test
+found real behaviour worth keeping: on a taught device the quiet beat
+goes back to the moments that were always there (NEW GROUND took the
+slot), and the test pins that rather than silencing it. Teaching without
+a progress store (the gallery, bare tests) deliberately teaches nothing
+and shows the whole manual — nowhere to write "already said" means a
+card that repeats forever, which is worse than none.
+
+**Verified:** 549 tests green (was 531 — five new ledger pins in
+`progress.test.ts`, thirteen new wiring tests in `game.test.ts`, and the
+compile-breaking `Progress` literals in old tests seeded ALL MET so they
+keep proving only what they always proved); typecheck, lint, format
+clean; `pnpm sim` byte-identical before/after by actual comparison;
+production build green. The written question now waits on the phone:
+**can a stranger's first run teach itself?** RESET TEACHING is how Marc
+answers it without borrowing a stranger.

@@ -23,6 +23,7 @@ import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
 import {
   EMPTY_PROGRESS,
   PERKS,
+  TEACH_IDS,
   applyProgress,
   decodeProgress,
   encodeProgress,
@@ -753,6 +754,17 @@ function mountSettings(
   // The survey (2026-08-18): five world-scale goals, legible from run one —
   // met vs unmet, facts rather than places (never a find's location, never a
   // hidden perk's name — the same reticence the shrine ledger keeps).
+  // Since 2026-08-19 it APPEARS at the first nonzero progress toward any
+  // goal (Marc's own wording, `ideas/teaching.md`): a stranger who opens
+  // SETTINGS before their first placement is not greeted by a ledger of
+  // five locked goals for systems they have not met.
+  const surveyStarted =
+    w.farthestReach > 0 ||
+    w.territories.length > 0 ||
+    w.shrines.length > 0 ||
+    w.goalsMet.length > 0 ||
+    w.revealed.length > 0 ||
+    readProgress().found.length > 0;
   const surveyHeading = document.createElement('p');
   surveyHeading.className = 'help-title';
   surveyHeading.textContent = 'THE SURVEY';
@@ -864,7 +876,28 @@ function mountSettings(
   developer.className = 'help-more';
   const developerSummary = document.createElement('summary');
   developerSummary.textContent = 'DEVELOPER';
-  developer.append(developerSummary, ...flagElements);
+
+  // RESET TEACHING (`ideas/teaching.md`, 2026-08-19): replay the drip on a
+  // device that has met everything — the only way Marc's own phone ever sees
+  // what a stranger sees. Harmless (it forgets no relics, no perks, only
+  // which concepts have been explained), so it needs no arming tap.
+  const resetTeaching = document.createElement('button');
+  resetTeaching.type = 'button';
+  resetTeaching.id = 'reset-teaching';
+  resetTeaching.className = 'quiet';
+  resetTeaching.textContent = 'RESET TEACHING';
+  resetTeaching.addEventListener('click', () => {
+    writeProgress({ ...readProgress(), met: [] });
+    resetTeaching.textContent = 'TEACHING RESET';
+  });
+  const resetTeachingNote = document.createElement('p');
+  resetTeachingNote.className = 'flag-note';
+  resetTeachingNote.textContent =
+    'Forgets which concepts have been explained — nothing else — so the game ' +
+    'teaches itself again from its next moment. How a veteran device previews ' +
+    'what a stranger will see.';
+
+  developer.append(developerSummary, ...flagElements, resetTeaching, resetTeachingNote);
 
   // A fresh run under whatever the switches now say — the same path as the
   // end screen's button, so it also clears the saved run and drops ?seed and
@@ -884,8 +917,7 @@ function mountSettings(
     ledger,
     shrineHint,
     perksLine,
-    surveyHeading,
-    survey,
+    ...(surveyStarted ? [surveyHeading, survey] : []),
     abandon,
     developer,
     restart,
@@ -918,6 +950,22 @@ function applyUnlocks(base: Tuning, unlocked: readonly string[]): Tuning {
 async function main(): Promise<void> {
   const features = resolveFeatures();
   const world = loadWorld();
+
+  // Teaching (`ideas/teaching.md`, 2026-08-19): `decodeProgress` already
+  // treats a pre-teaching PROGRESS blob as a veteran's, but a device that has
+  // finished runs without ever writing progress (no relics banked, nothing
+  // found) has no blob to migrate — its world remembers the runs even though
+  // its purse never existed. Seed the ledger full for it here, once, so only
+  // a genuinely fresh device gets the drip.
+  try {
+    if (localStorage.getItem(PROGRESS_STORAGE_KEY) === null && world.runs > 0) {
+      writeProgress({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] });
+    }
+  } catch {
+    // Private mode. decodeProgress(null) starts the drip, which is the
+    // right answer for a device that keeps nothing anyway.
+  }
+
   const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'));
   // Resumed run > shared seed link > THIS DEVICE'S WORLD. The last is P4a:
   // without a link or a run in progress you go back to your own plane, which

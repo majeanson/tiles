@@ -135,6 +135,39 @@ export const PERKS: readonly Perk[] = [
 
 export const perkById = (id: PerkId): Perk | undefined => PERKS.find((p) => p.id === id);
 
+/**
+ * Teaching, drop by drop (`ideas/teaching.md`, 2026-08-19): the concepts this
+ * DEVICE has met, each explained exactly once, at the moment it first
+ * happens. Per device rather than per world because confusion is a property
+ * of the player, not the map — abandoning a world must not re-teach; a new
+ * phone does. The list is the union the UI fires from AND the migration
+ * seed: a save from before teaching existed decodes as having met all of
+ * them, so every existing player sees nothing, with no flag to flip.
+ */
+export const TEACH_IDS = [
+  'ripe',
+  'pop',
+  'costRise',
+  'glow',
+  'cache',
+  'site',
+  'territory',
+  'shrine',
+  'wall',
+  'field',
+  'rare',
+  'luck',
+  'relic',
+] as const;
+
+export type TeachId = (typeof TEACH_IDS)[number];
+
+export const hasMet = (progress: Progress, id: TeachId): boolean => progress.met.includes(id);
+
+/** Mark a concept met. Idempotent, like every write in this module. */
+export const meet = (progress: Progress, id: TeachId): Progress =>
+  hasMet(progress, id) ? progress : { ...progress, met: [...progress.met, id] };
+
 export type Progress = {
   readonly relics: number;
   /** Levels bought, by upgrade. Absent means none. */
@@ -143,9 +176,17 @@ export type Progress = {
   readonly found: readonly PerkId[];
   /** The perk being carried. Never longer than the one slot there is. */
   readonly equipped: readonly PerkId[];
+  /** Concepts this device has been taught, in the order it met them. */
+  readonly met: readonly TeachId[];
 };
 
-export const EMPTY_PROGRESS: Progress = { relics: 0, bought: {}, found: [], equipped: [] };
+export const EMPTY_PROGRESS: Progress = {
+  relics: 0,
+  bought: {},
+  found: [],
+  equipped: [],
+  met: [],
+};
 
 export const levelOf = (progress: Progress, id: UpgradeId): number => progress.bought[id] ?? 0;
 
@@ -299,11 +340,12 @@ export function decodeProgress(raw: string | null): Progress {
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== 'object' || parsed === null) return EMPTY_PROGRESS;
 
-    const { relics, bought, found, equipped } = parsed as {
+    const { relics, bought, found, equipped, met } = parsed as {
       relics?: unknown;
       bought?: unknown;
       found?: unknown;
       equipped?: unknown;
+      met?: unknown;
     };
     if (typeof relics !== 'number' || !Number.isFinite(relics)) return EMPTY_PROGRESS;
     if (typeof bought !== 'object' || bought === null) return EMPTY_PROGRESS;
@@ -335,11 +377,31 @@ export function decodeProgress(raw: string | null): Progress {
         )
       : [];
 
+    // Teaching (2026-08-19): a blob with no `met` field predates the ledger,
+    // and a device that has already played is not a stranger — it decodes as
+    // having met EVERYTHING, so shipping the drip changed nothing for anyone
+    // current (the same dial-form off-by-default the FOUND perks wear, paid
+    // in data instead of a boolean). The deliberate value matters: reading
+    // the field raw would decode `undefined` and re-teach every veteran,
+    // the exact save-decode failure the fresh-eyes review caught in the
+    // near-share fields. A present array keeps only ids this build knows.
+    const knownTeach = new Set<string>(TEACH_IDS);
+    const taught: TeachId[] = Array.isArray(met)
+      ? [
+          ...new Set(
+            (met as unknown[]).filter(
+              (id): id is TeachId => typeof id === 'string' && knownTeach.has(id),
+            ),
+          ),
+        ]
+      : [...TEACH_IDS];
+
     return {
       relics: Math.max(0, Math.floor(relics)) + refund,
       bought: clean,
       found: [...owned],
       equipped: worn.slice(0, slotsOf()),
+      met: taught,
     };
   } catch {
     return EMPTY_PROGRESS;
