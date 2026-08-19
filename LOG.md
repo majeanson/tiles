@@ -3256,3 +3256,122 @@ format clean; `pnpm sim` byte-identical across all three commits (0
 stalled, 0 capped, same table throughout). Each commit pushed and
 deployed independently; `gh run watch --exit-status` confirmed CI green
 before the next commit started.
+
+---
+
+### Session 25 — Looked at with real eyes
+
+**Question:** Sessions 23-24 landed three fast visual passes and nobody had
+looked at the combined result — this repo's tests are DOM-only, happy-dom
+has no canvas, so nothing here has ever rendered the board. Does the actual
+picture match what those sessions say they built?
+
+**Method.** A real Chromium (Playwright, downloaded fresh — not a repo
+dependency) driven against `pnpm dev`, 390×844, portrait. A temporary hook
+on `Game` (`debugDispatch`/`debugAutoPlace`, calling the same private
+`#dispatch` a real tap does) let the harness grow real boards, pop real
+pockets and reach a real ended state fast, without reimplementing the
+engine's own legality rules — reverted before committing, confirmed absent
+by grep. Every state the brief named was inspected: the front door fresh
+and with a save, first placements and the ghost preview, a ripe pocket and
+pocket bar, a pop watched frame-by-frame through its animation, beacon
+halos at the fog edge, remembered ground (a fresh run dropped into a world
+whose memory already held 47 revealed keys from an earlier session), the
+event card (DOM-seeded, since a live find/shrine/territory claim never
+landed in the budget available), the end screen (a real state pushed to
+`phase: 'ended'` and reloaded, so `Game`'s own ended-transition code —
+banking relics, writing records, capturing the board snapshot — ran for
+real rather than being faked), the shop face, SETTINGS' atlas grid and
+DEVELOPER fold, and `/gallery.html` (51,026px tall — sliced by finding
+`.section-label` offsets rather than screenshotting blind).
+
+**Two confirmed defects, found in the pixels and fixed at the code that
+caused them:**
+
+1. **A pop's own toast was erasing the pop's own animation.** The embers
+   and flash Session 24 shipped were invisible in real play almost every
+   time — confirmed first by eye (a popped cluster with nothing burning
+   over it, frame after frame), then by instrumenting `PixiRenderer`
+   directly: a pop's `#spawnFlashes` correctly created 18 flashes and 49
+   embers, and by the very next render — sometimes the very next line of
+   the trace — both counts were back to zero. The cause: `PixiRenderer`'s
+   `ResizeObserver` on the board's host element calls `#clearFlashes()` on
+   every `'resize'` the renderer emits, a rule written for device rotation
+   and the URL bar collapsing on scroll (the comment says so). But the
+   host is a flex child sized by its siblings, and `#controls` reflows on
+   nearly every action — a harvest button hiding once nothing is left
+   ripe, a hint line wrapping, and above all the pop's OWN payout toast
+   appearing, which nudged the host's box by tens of pixels in the
+   observed trace. Every one of those fired the same observer that a true
+   rotation would, and `onResize` could not tell the difference. Split in
+   two: the `ResizeObserver`-driven `onResize` still resizes and redraws
+   the canvas on every host change, exactly as before; a new
+   `window`-level `resize` listener is the one that clears flashes, since
+   a window resize is the actual, narrower signal for the rotation and
+   URL-bar cases the original comment cared about. Re-measured after the
+   fix: flashes decayed 18 → 17 → 14 → 11 → 9 → 6 over roughly a second,
+   instead of 18 → 0 in under 50ms. Screenshot pair
+   (`08-pop-frame-1-80ms.png` before / after) shows a bright warm bloom
+   and falling coloured tiles where before there was flat stone.
+2. **HERE overflowed its own button.** `#camera-toggle`'s font-size rule
+   (one id, 0.5625rem) was losing to `#camera button`'s (one id + one
+   type, 0.9375rem) on CSS specificity, regardless of which came later in
+   the file — the four-letter label rendered at 15px in a 40px box and
+   clipped against the border, visible on the phone the moment a pocket
+   was ripe (`crop-14-camera.png`). Rescoped to `#camera #camera-toggle`
+   to win outright rather than tie on source order.
+
+**Everything else checked out, judged against Sessions 23-24's own stated
+intent — no further fixes:**
+
+- The home ring reads correctly under a ripe outline, under stone after a
+  pop, and distinct from ordinary tile edges.
+- Beacon halos are visibly present at the fog edge (a soft warm blur
+  around the dotted hex, not a crisp plain outline) once the board is
+  built out far enough for the additive blend to read against the black;
+  a `NO FIELD` swatch and four territory tints all present correctly in
+  the gallery's own approximation.
+- Remembered ground reads as a veil — paler, flatter, readable as memory
+  rather than as dim live ground — around a freshly begun run in a world
+  whose memory already held 47 keys.
+- The event card, DOM-inspected directly (glyph large above the words,
+  2px accent border, background dimmed behind it): clean, no clipping.
+- The end screen's board portrait is framed and letterboxed correctly for
+  the (roughly square) test board; the payout breakdown, arc line,
+  CARRIED OUT strip and the `RELICS N ▸` shop door all render without
+  overlap, scrolled to the bottom of `#end`'s own internal scroll.
+- The shop face opens over the same board, BACK/RELICS row and five buys
+  all legible.
+- SETTINGS' atlas grid (SEED/RUNS/KNOWN/SEEN/TERRITORIES/BEST/FARTHEST)
+  and the DEVELOPER fold (both toggles, THE GALLERY link) are clean.
+- The gallery's BEACONS/GHOST/REMEMBERED GROUND/DESTINATIONS strips read
+  as Session 23 described them.
+- Reduced-motion: embers and the pop's held glow both behave as
+  documented (`reduced-motion-pop.png`).
+
+**Judgment call, not a defect, left for Marc:** the RESUME button's own
+label (`RESUME — PLACEMENT 22`) wraps to two lines on a fresh device's
+first resume. Reads fine centred; a shorter phrasing is a taste question,
+not a bug.
+
+**Not reached in the time available:** a live-triggered event card (find,
+shrine or territory) — the automated grower fills a tight blob near the
+seed tile rather than ranging outward, so 400+ scripted placements/pops
+never happened to touch an unclaimed landmark; the DOM-seeded inspection
+above stands in, per the brief's own fallback. A live device-rotation
+mid-pop (the actual scenario defect 1's comment was written for) was not
+recreated on a real phone — the fix's correctness rests on the code
+reading (window resize is the narrower, correct signal) and the restored
+flash timing, not on reproducing a rotation in the harness.
+
+**Verified:** 531 tests green (unchanged — this pass touched
+`src/render` and `src/style.css` only, no engine or content, so no test
+surface moved); typecheck, lint, format clean; `pnpm sim` byte-identical
+before and after (same table, 0 stalled, 0 capped — confirmed by rerun,
+not assumed, since neither changed file is reachable from `src/engine` or
+`src/content`). One commit, pushed and deployed; `gh run watch
+--exit-status` confirmed CI green and `verify-deploy` passing. The
+temporary Playwright driver and the `debugDispatch`/`debugAutoPlace`
+hooks it used live only in the session's scratch directory and were
+reverted from the repo before committing — confirmed by `grep -rn
+"TEMPORARY\|debug"` on `src/` returning nothing.
