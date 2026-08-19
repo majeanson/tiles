@@ -277,7 +277,7 @@ function saveWorld(world: WorldMemory): void {
 function runKeeping(
   world: WorldMemory,
   debugOn: boolean,
-): GameHooks & { savedSeed: number | null; firstVisit: boolean } {
+): GameHooks & { savedSeed: number | null } {
   // Asked once: the URL cannot change mid-session without a reload, and this
   // used to construct fresh URLSearchParams three times per action across
   // the hooks below.
@@ -289,13 +289,6 @@ function runKeeping(
   } catch {
     // Private mode. Every run is its own life; that is also a game.
   }
-
-  // A device that has never finished anything and has no world behind it is
-  // a stranger. `runs` rather than a flag of its own: the world already
-  // knows whether this device has played. No longer a GameHooks field
-  // (Stage 2: the front door in `main()` reads it directly, for its own
-  // copy — the manual itself is never auto-opened any more).
-  const firstVisit = world.runs === 0 && world.revealed.length === 0 && saved === null;
 
   // The world as it stands right now, kept current between actions so the
   // atlas and the next merge both read the truth rather than the snapshot
@@ -359,8 +352,6 @@ function runKeeping(
     // debug.overlay must not make "which build is this" unanswerable
     // without the flag, so THIS BUILD (game.ts) states the sha directly.
     buildSha: __BUILD_SHA__.slice(0, 7),
-    // Not a GameHooks field — read by main() for the front door's copy only.
-    firstVisit,
 
     // A `?seed=` replay is somebody else's world: every start-of-run moment
     // that speaks about THIS world stays quiet on one.
