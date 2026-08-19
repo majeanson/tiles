@@ -67,7 +67,11 @@ export const TORCHLIT: Theme = {
 
   // "80ms per link easing to 60 ... falls back to gloom over 700ms with embers."
   // The longest tail of the three: here the pop is a room lighting up, and a room
-  // that relights instantly is a strobe rather than a bell.
+  // that relights instantly is a strobe rather than a bell. The embers half of
+  // that sentence was unbuilt for a long time — the flash alone carried it —
+  // until `PixiRenderer.ts`'s pooled ember burst (2026-08-19), which every
+  // theme gets, not only this one; the document's own words just named it
+  // first.
   motion: {
     popMs: 420,
     popStaggerMs: 80,

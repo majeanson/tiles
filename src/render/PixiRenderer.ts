@@ -59,6 +59,25 @@ const REDUCED_POP_MS = 200;
  */
 const BEACON_PULSE_MS = 2600;
 
+/**
+ * The ember burst (2026-08-19). Torchlit's own motion note promised a pop
+ * "falls back to gloom over 700ms with embers" and the flash sprite was
+ * carrying that alone. A handful of tiny warm particles per popped hex,
+ * riding the existing distance-ordered stagger.
+ */
+const EMBER_MIN = 4;
+const EMBER_MAX = 7;
+/**
+ * Hard ceiling on sprites the ember pool will ever hold, across every hex
+ * popping at once. A big pocket can be dozens of hexes cashed together; at
+ * up to 7 embers a hex that is easily an unbounded storm if every hex got
+ * its own allocation, so the pool caps TOTAL concurrent particles rather
+ * than trusting every harvest to stay small — once spent, the rest of a
+ * huge pop simply throws no more embers, which is the render layer degrading
+ * quietly instead of a phone's GPU finding out the hard way.
+ */
+const EMBER_CAP = 140;
+
 // BAND_LIFT — how much brighter one contour band draws than the one below —
 // moved to @theme/tokens (2026-08-18) so the gallery can draw the bands with
 // the same number the board uses.
@@ -120,6 +139,25 @@ type Flash = {
   readonly liftPx: number;
 };
 
+/**
+ * One ember, pooled rather than allocated per burst — see `#acquireEmber`.
+ * Gravity-less: a straight-line drift from the popped hex to `start + drift`
+ * over its life, no acceleration, so it reads as light rising and thinning
+ * rather than something falling.
+ */
+type Ember = {
+  readonly sprite: Sprite;
+  /** Milliseconds until it starts — the same stagger the hex's own flash uses. */
+  delayMs: number;
+  elapsedMs: number;
+  readonly lifeMs: number;
+  readonly startX: number;
+  readonly startY: number;
+  readonly driftX: number;
+  readonly driftY: number;
+  readonly peak: number;
+};
+
 export class PixiRenderer implements Renderer {
   #app: Application | null = null;
   readonly #cells = new Container();
@@ -176,6 +214,19 @@ export class PixiRenderer implements Renderer {
   #flashTexture: Texture | null = null;
   #vignetteKey = '';
   #flashes: Flash[] = [];
+
+  /**
+   * The ember pool. `#emberFree` holds recycled sprites ready to be reused —
+   * checked before `#acquireEmber` ever creates a new one — and
+   * `#emberSpriteCount` is the running total ever created, capped at
+   * `EMBER_CAP`. The same shape as `#labels`' cache-by-what-changes-the-pixels
+   * discipline, applied to a moving sprite instead of a baked texture: create
+   * once, reuse forever, never per pop.
+   */
+  #embersActive: Ember[] = [];
+  #emberFree: Sprite[] = [];
+  #emberSpriteCount = 0;
+  #emberTexture: Texture | null = null;
 
   /**
    * Beacon halos: a soft additive glow, breathing slowly, over every
@@ -251,6 +302,7 @@ export class PixiRenderer implements Renderer {
     };
     const onTick = (ticker: Ticker): void => {
       this.#advanceFlashes(ticker.deltaMS);
+      this.#advanceEmbers(ticker.deltaMS);
       this.#advanceBeacons(ticker.deltaMS);
     };
 
@@ -465,10 +517,15 @@ export class PixiRenderer implements Renderer {
     this.#clearFlashes();
     for (const { sprite } of this.#beacons.values()) sprite.destroy();
     this.#beacons.clear();
+    for (const sprite of this.#emberFree) sprite.destroy();
+    this.#emberFree = [];
+    this.#emberSpriteCount = 0;
     this.#surfaces.destroy();
     this.#labels.clear();
     this.#flashTexture?.destroy(true);
     this.#flashTexture = null;
+    this.#emberTexture?.destroy(true);
+    this.#emberTexture = null;
     this.#app?.destroy(true, { children: true });
     this.#app = null;
     this.#layout = null;
@@ -856,6 +913,11 @@ export class PixiRenderer implements Renderer {
       popped.sort((a, b) => distance(a, origin) - distance(b, origin));
     }
 
+    // The ember tint: the pop's own flash colour, pulled toward the theme's
+    // accent — computed once for the whole harvest rather than per particle,
+    // since every ember in one pop shares it.
+    const emberTint = mix(motion.popColour, this.#theme.ink.accent, 0.35);
+
     let index = 0;
     for (const cell of popped) {
       const { x, y } = place(cell, layout);
@@ -887,6 +949,8 @@ export class PixiRenderer implements Renderer {
       }
 
       const delayMs = index * motion.popStaggerMs;
+
+      this.#spawnEmbers(x, y, layout, delayMs, emberTint);
 
       const glow = new Sprite(texture);
       glow.anchor.set(0.5);
@@ -1059,6 +1123,141 @@ export class PixiRenderer implements Renderer {
   #clearFlashes(): void {
     for (const flash of this.#flashes) flash.sprite.destroy();
     this.#flashes = [];
+    this.#resetEmbers();
+  }
+
+  /**
+   * Return every live ember to the pool rather than destroying it — a
+   * resize or a zoom happens far more often than a harvest, and a sprite
+   * recycled here is one `#acquireEmber` does not have to create fresh a
+   * moment later. Kills them exactly where flashes are killed, for the same
+   * reason: they were positioned in a layout that just stopped being current.
+   */
+  #resetEmbers(): void {
+    if (this.#embersActive.length === 0) return;
+    for (const ember of this.#embersActive) {
+      ember.sprite.alpha = 0;
+      this.#emberFree.push(ember.sprite);
+    }
+    this.#embersActive = [];
+  }
+
+  /**
+   * A burst of tiny warm particles from one popped hex — 4 to 7, each a
+   * straight-line drift away from the hex with no gravity, additive-blended
+   * so they read as light rather than confetti. `delayMs` rides the same
+   * distance-ordered stagger the hex's own glow uses, so the embers of a
+   * cascade light up in the same ripple.
+   *
+   * Randomness here is render-side jitter, not a rule the replay depends
+   * on — `Math.random` is legal in `src/render` (only `src/engine` and
+   * `src/content` are barred from it, see `eslint.config.js`'s `pure` rules,
+   * which this file's config block does not include).
+   */
+  #spawnEmbers(x: number, y: number, layout: Layout, delayMs: number, tint: number): void {
+    const count = EMBER_MIN + Math.floor(Math.random() * (EMBER_MAX - EMBER_MIN + 1));
+    for (let i = 0; i < count; i++) {
+      const sprite = this.#acquireEmber();
+      if (sprite === null) return; // Pool spent; the rest of a huge pop throws no more.
+
+      const size = Math.max(1.5, layout.size * (0.07 + Math.random() * 0.05));
+      sprite.tint = tint;
+      sprite.scale.set(1);
+      sprite.position.set(x, y);
+      sprite.setSize(size, size);
+      sprite.alpha = 0;
+
+      this.#embersActive.push({
+        sprite,
+        delayMs,
+        elapsedMs: 0,
+        lifeMs: 500 + Math.random() * 200,
+        startX: x,
+        startY: y,
+        // Mostly sideways drift and always upward — "rising", never falling.
+        driftX: (Math.random() * 2 - 1) * layout.size * 0.6,
+        driftY: -layout.size * (0.5 + Math.random() * 0.7),
+        peak: 0.8,
+      });
+    }
+  }
+
+  /**
+   * A sprite for one ember: a recycled one from an earlier, finished burst
+   * if the pool has one waiting, else a freshly created sprite so long as
+   * the pool has not hit `EMBER_CAP` — the label-texture cache's discipline
+   * (create once, reuse forever) applied to a moving sprite instead of a
+   * baked texture. `null` once the cap is spent, or if there is no canvas to
+   * bake the ember texture from at all (a state `draw()` cannot reach).
+   */
+  #acquireEmber(): Sprite | null {
+    const recycled = this.#emberFree.pop();
+    if (recycled !== undefined) return recycled;
+    if (this.#emberSpriteCount >= EMBER_CAP) return null;
+
+    const texture = this.#emberTextureFor();
+    if (texture === null) return null;
+
+    const sprite = new Sprite(texture);
+    sprite.anchor.set(0.5);
+    sprite.blendMode = 'add';
+    sprite.alpha = 0;
+    this.#fx.addChild(sprite);
+    this.#emberSpriteCount++;
+    return sprite;
+  }
+
+  #advanceEmbers(deltaMs: number): void {
+    if (this.#embersActive.length === 0) return;
+
+    const alive: Ember[] = [];
+    for (const ember of this.#embersActive) {
+      if (ember.delayMs > 0) {
+        ember.delayMs -= deltaMs;
+        alive.push(ember);
+        continue;
+      }
+
+      ember.elapsedMs += deltaMs;
+      const t = ember.elapsedMs / ember.lifeMs;
+      if (t >= 1) {
+        ember.sprite.alpha = 0;
+        this.#emberFree.push(ember.sprite);
+        continue;
+      }
+
+      // Fast in, slower out — the same shape the pop's own glow fades on —
+      // and a gravity-less straight-line drift from where it was popped.
+      const curve = t < 0.12 ? t / 0.12 : Math.pow(1 - (t - 0.12) / 0.88, 1.5);
+      ember.sprite.alpha = ember.peak * curve;
+      ember.sprite.position.set(ember.startX + ember.driftX * t, ember.startY + ember.driftY * t);
+      ember.sprite.scale.set(1 - 0.3 * t);
+      alive.push(ember);
+    }
+    this.#embersActive = alive;
+  }
+
+  /** A small, colour-neutral round dot — every ember tints it, so one bake
+   * serves every pop and every theme this renderer ever draws. */
+  #emberTextureFor(): Texture | null {
+    if (this.#emberTexture !== null) return this.#emberTexture;
+
+    const size = 32;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) return null;
+
+    const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    gradient.addColorStop(0, '#ffffff');
+    gradient.addColorStop(0.4, '#ffffff');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    this.#emberTexture = Texture.from(canvas);
+    return this.#emberTexture;
   }
 
   #advanceFlashes(deltaMs: number): void {
