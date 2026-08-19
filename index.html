@@ -54,6 +54,11 @@
         <p id="front-door-mode" class="flag-note" hidden></p>
         <button id="front-door-begin" type="button">BEGIN</button>
         <button id="front-door-daily" type="button" class="quiet" hidden>DAILY</button>
+        <!-- The other two world slots (2026-08-19): settled ones switch,
+             empty ones begin new. Filled by main.ts; hidden off the home
+             mode so a detour's door stays about the detour. -->
+        <div id="front-door-worlds" hidden></div>
+        <button id="front-door-settle" type="button" class="quiet" hidden>SETTLE</button>
         <button id="front-door-home" type="button" class="quiet" hidden>YOUR WORLD</button>
         <button id="front-door-help" type="button" class="quiet">HOW TO PLAY</button>
         <!-- The one true wipe: run, world, shop, records, settings — the

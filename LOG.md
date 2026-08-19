@@ -3726,3 +3726,38 @@ its offer, its refusal and its replay-guard pinned; the fully-awake and
 unfinished-ledger cards are pinned unchanged). `pnpm sim` byte-identical
 by stash-and-rerun — the crossing's numbers live in content but nothing
 engine-reachable moved. Typecheck, lint, format, build green.
+
+**Addendum, same day — three worlds per device, and a seed you can keep.**
+
+Marc: "any way to continue from a seed? maybe have 3 save game
+possibilities?" Both, built on the front door the day already gave them a
+home:
+
+- **Three world slots.** A device keeps up to three worlds — each with
+  its own map, territories, shrines, run-in-progress and shrine receipt —
+  and plays one at a time. `tiles.slot.v1` names the active one;
+  `slotKeys()` maps each slot to its storage, and **slot 1 keeps the
+  legacy key names**, so every device that existed before slots IS slot 1
+  with no migration and nothing re-read. Everything world-shaped in the
+  shell (`loadWorld`, `saveWorld`, the shrine receipt, the run save, the
+  crossing's wipe, NEW WORLD's wipe) is parameterized on those keys; the
+  shop, perks, teaching ledger and record book stay device-wide, as ever.
+  The front door's home mode lists the other two slots under the daily —
+  a settled world switches to it ("WORLD 2 — 4 runs · best 3,120 · 2
+  held"), an empty one begins there — and SETTINGS' atlas leads with
+  WORLD n of 3. RESET ALL already wiped by prefix, so it needed nothing.
+- **Continue from a seed: SETTLE THIS WORLD.** A shared `?seed=` link's
+  front door now offers to keep that world's GEOGRAPHY as your own: the
+  seed settles into the first empty slot as a fresh `WorldMemory`, played
+  with your own economy from then on. Only the seed travels — the
+  sender's run, their ground and their claims stay theirs, so "beat my
+  run" stays a fair fight while "I want to LIVE here" finally has an
+  answer. Hidden when all three slots are settled.
+- The manual's ONE-world sentence now tells the three-world truth, and
+  the crossing reads naturally in the new frame: it rebirths the ACTIVE
+  slot, dowry and all.
+
+567 tests green (unchanged — the slot plumbing is shell work, main.ts is
+deliberately untested by this repo's own convention, and everything the
+slots store was already pinned at the decode layer); typecheck, lint,
+format, build green; `pnpm sim` byte-identical by stash-and-rerun.

@@ -97,6 +97,15 @@ body {
   text-align: center;
 }
 
+/* The other two world slots (2026-08-19): a small stack inside the door's
+   own column, one quiet button per world, same rhythm as the door. */
+#front-door-worlds {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+}
+
 /* The global `button { flex: 1 1 0 }` was written for rows of siblings that
    share a line; inside this centred COLUMN it made BEGIN and HOW TO PLAY
    split the whole screen height into two giant squares (Marc's screenshot,

@@ -110,6 +110,60 @@ const SHRINE_RECEIPT_KEY = 'tiles.shrinereceipt.v1';
 const ERROR_STORAGE_KEY = 'tiles.lasterror.v1';
 /** The daily ladder: best and tries per date, plus the streak they imply. */
 const DAILY_STORAGE_KEY = 'tiles.daily.v1';
+/**
+ * Which of the three world slots is active (Marc, 2026-08-19: "maybe have 3
+ * save game possibilities?"). A device keeps up to three worlds — each with
+ * its own map, territories, shrines, run-in-progress and shrine receipt —
+ * and plays ONE at a time; the front door's menu switches between them.
+ * The shop, perks, teaching and records stay device-wide, as ever.
+ */
+const ACTIVE_SLOT_KEY = 'tiles.slot.v1';
+
+type Slot = 1 | 2 | 3;
+const SLOTS: readonly Slot[] = [1, 2, 3];
+
+/** Every stored thing that belongs to ONE world, keyed by its slot. */
+type SlotKeys = { readonly world: string; readonly run: string; readonly receipt: string };
+
+/**
+ * Slot 1 keeps the legacy key names on purpose: every device that existed
+ * before slots IS slot 1, with no migration and nothing to re-read.
+ */
+function slotKeys(slot: Slot): SlotKeys {
+  return slot === 1
+    ? { world: WORLD_STORAGE_KEY, run: RUN_STORAGE_KEY, receipt: SHRINE_RECEIPT_KEY }
+    : {
+        world: `tiles.world.s${slot}.v1`,
+        run: `tiles.run.s${slot}.v1`,
+        receipt: `tiles.shrinereceipt.s${slot}.v1`,
+      };
+}
+
+function activeSlot(): Slot {
+  try {
+    const stored = Number(localStorage.getItem(ACTIVE_SLOT_KEY));
+    return stored === 2 || stored === 3 ? stored : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function setActiveSlot(slot: Slot): void {
+  try {
+    localStorage.setItem(ACTIVE_SLOT_KEY, String(slot));
+  } catch {
+    // Unwritable storage plays slot 1 forever, which is the old game intact.
+  }
+}
+
+/** A slot's world as stored, or null where the slot is unsettled. */
+function peekSlot(slot: Slot): WorldMemory | null {
+  try {
+    return decodeWorld(localStorage.getItem(slotKeys(slot).world));
+  } catch {
+    return null;
+  }
+}
 
 /** Today, as the LOCAL date string the daily is named after (Marc's Wordle
  *  rule, `ideas/daily.md`: the ritual is "new one when I wake up"). */
@@ -249,11 +303,11 @@ function bankRelics(state: GameState): void {
  * the run it was written for. A device that never woke a shrine, or already
  * read the receipt, gets an empty list, which is silent rather than wrong.
  */
-function readShrineReceipt(): readonly string[] {
+function readShrineReceipt(keys: SlotKeys): readonly string[] {
   try {
-    const raw = localStorage.getItem(SHRINE_RECEIPT_KEY);
+    const raw = localStorage.getItem(keys.receipt);
     if (raw === null) return [];
-    localStorage.removeItem(SHRINE_RECEIPT_KEY);
+    localStorage.removeItem(keys.receipt);
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) && parsed.every((s) => typeof s === 'string') ? parsed : [];
   } catch {
@@ -261,10 +315,10 @@ function readShrineReceipt(): readonly string[] {
   }
 }
 
-function writeShrineReceipt(labels: readonly string[]): void {
+function writeShrineReceipt(keys: SlotKeys, labels: readonly string[]): void {
   if (labels.length === 0) return;
   try {
-    localStorage.setItem(SHRINE_RECEIPT_KEY, JSON.stringify(labels));
+    localStorage.setItem(keys.receipt, JSON.stringify(labels));
   } catch {
     // Best effort — the receipt is a nicety on top of a shrine's own live
     // toast, not the only place the unlock is ever named.
@@ -301,21 +355,21 @@ function askedSeed(): number | null {
  * the world — a shared link must show the sender's run, not the receiver's
  * geography.
  */
-function loadWorld(): WorldMemory {
+function loadWorld(keys: SlotKeys): WorldMemory {
   try {
-    const stored = decodeWorld(localStorage.getItem(WORLD_STORAGE_KEY));
+    const stored = decodeWorld(localStorage.getItem(keys.world));
     if (stored !== null) return stored;
   } catch {
     // Private mode: every visit is a new world, which is a fine game too.
   }
   const world = newWorld(Date.now() & 0x7fffffff);
-  saveWorld(world);
+  saveWorld(keys, world);
   return world;
 }
 
-function saveWorld(world: WorldMemory): void {
+function saveWorld(keys: SlotKeys, world: WorldMemory): void {
   try {
-    localStorage.setItem(WORLD_STORAGE_KEY, encodeWorld(world));
+    localStorage.setItem(keys.world, encodeWorld(world));
   } catch {
     // Unwritable memory is a world you rediscover each time. Still playable.
   }
@@ -330,6 +384,7 @@ function runKeeping(
   world: WorldMemory,
   debugOn: boolean,
   dailyDate: string | null,
+  keys: SlotKeys,
 ): GameHooks & { savedSeed: number | null } {
   // Asked once: the URL cannot change mid-session without a reload, and this
   // used to construct fresh URLSearchParams three times per action across
@@ -341,7 +396,7 @@ function runKeeping(
 
   let saved = null;
   try {
-    saved = detour ? null : decodeRun(localStorage.getItem(RUN_STORAGE_KEY));
+    saved = detour ? null : decodeRun(localStorage.getItem(keys.run));
   } catch {
     // Private mode. Every run is its own life; that is also a game.
   }
@@ -369,7 +424,7 @@ function runKeeping(
     if (!worldDirty) return;
     worldDirty = false;
     actionsSinceWrite = 0;
-    saveWorld(current);
+    saveWorld(keys, current);
   };
   window.addEventListener('pagehide', flushWorld);
   document.addEventListener('visibilitychange', () => {
@@ -415,7 +470,7 @@ function runKeeping(
     // Read once, right here — before the game this receipt is FOR has even
     // been constructed — and cleared the moment it is read, so a shrine
     // named on this run's first frame is never named again on the next.
-    shrineReceipt: detour ? [] : readShrineReceipt(),
+    shrineReceipt: detour ? [] : readShrineReceipt(keys),
 
     // Which unlock the next shrine gives, so the game can NAME it at the
     // moment it is woken. The ledger lives out here with the world; the game
@@ -465,7 +520,7 @@ function runKeeping(
       current = { ...current, goalsMet: [...current.goalsMet, ...newly] };
       worldDirty = false;
       actionsSinceWrite = 0;
-      saveWorld(current);
+      saveWorld(keys, current);
 
       return `${met.map((g) => g.label).join('; ')} (+${reward} relics)`;
     },
@@ -504,9 +559,9 @@ function runKeeping(
               const progress = readProgress();
               writeProgress({ ...progress, relics: progress.relics + dowry });
               try {
-                localStorage.removeItem(WORLD_STORAGE_KEY);
-                localStorage.removeItem(RUN_STORAGE_KEY);
-                localStorage.removeItem(SHRINE_RECEIPT_KEY);
+                localStorage.removeItem(keys.world);
+                localStorage.removeItem(keys.run);
+                localStorage.removeItem(keys.receipt);
               } catch {
                 // A storage that refuses the wipe still reloads into the old
                 // world — with the dowry banked, which errs kind.
@@ -524,7 +579,7 @@ function runKeeping(
       // guarded. The daily depends on the guard, so now it exists.
       if (detour) return;
       try {
-        localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
+        localStorage.setItem(keys.run, encodeRun(state));
         askPersistence();
       } catch {
         // Storage full or forbidden. Before giving up on the run — the one
@@ -532,8 +587,8 @@ function runKeeping(
         // memory, which can: it regrows from play, the run does not. Only
         // then is an unkept run accepted as the cost of a hostile browser.
         try {
-          localStorage.removeItem(WORLD_STORAGE_KEY);
-          localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
+          localStorage.removeItem(keys.world);
+          localStorage.setItem(keys.run, encodeRun(state));
           askPersistence();
         } catch {
           // Forbidden outright (private mode). Every run is its own life.
@@ -614,7 +669,7 @@ function runKeeping(
         current = rememberRun(current, state);
         worldDirty = false;
         actionsSinceWrite = 0;
-        saveWorld(current);
+        saveWorld(keys, current);
 
         // The shrine receipt: this run's own shrine-woken toast already fired
         // live, mid-run — this is what makes it legible again on the NEXT
@@ -624,6 +679,7 @@ function runKeeping(
         // gap is exactly what THIS run woke.
         if (current.shrines.length > world.shrines.length) {
           writeShrineReceipt(
+            keys,
             UNLOCKS.slice(world.shrines.length, current.shrines.length).map((u) => u.label),
           );
         }
@@ -649,7 +705,7 @@ function runKeeping(
       // count found on 2026-08-18. The run is recorded; keeping its corpse
       // around bought nothing but the bug.
       try {
-        localStorage.removeItem(RUN_STORAGE_KEY);
+        localStorage.removeItem(keys.run);
       } catch {
         // Unwritable storage cannot double-bank either: the same failure that
         // kept the run from being saved keeps it from being resumed.
@@ -672,7 +728,7 @@ function runKeeping(
       // and the home save must survive it (the same guard onChange keeps).
       if (!detour) {
         try {
-          localStorage.removeItem(RUN_STORAGE_KEY);
+          localStorage.removeItem(keys.run);
         } catch {
           // Nothing to clear is fine too.
         }
@@ -816,6 +872,7 @@ function mountSettings(
     theme: Theme;
     facing: Orientation | null;
     world: WorldMemory;
+    slot: Slot;
     abandon: () => void;
   },
   startNewRun: () => void,
@@ -867,6 +924,7 @@ function mountSettings(
   atlasGrid.id = 'atlas';
   atlasGrid.className = 'facts-grid';
   atlasGrid.append(
+    fact('WORLD', `${live.slot} of 3`),
     fact('SEED', String(w.worldSeed)),
     fact('RUNS', String(w.runs)),
     fact('KNOWN', `${Math.round(knownFraction(w) * 100)}%`),
@@ -1163,7 +1221,11 @@ function applyUnlocks(base: Tuning, unlocked: readonly string[]): Tuning {
 
 async function main(): Promise<void> {
   const features = resolveFeatures();
-  const world = loadWorld();
+  // Three world slots (Marc, 2026-08-19): the active one is the game; the
+  // front door's menu switches, settles and begins the others.
+  const slot = activeSlot();
+  const keys = slotKeys(slot);
+  const world = loadWorld(keys);
 
   // Teaching (`ideas/teaching.md`, 2026-08-19): `decodeProgress` already
   // treats a pre-teaching PROGRESS blob as a veteran's, but a device that has
@@ -1183,7 +1245,7 @@ async function main(): Promise<void> {
   // The daily (`ideas/daily.md`, built 2026-08-19): `?daily=YYYY-MM-DD`
   // opens that date's shared world, strictly plain, on its own ladder.
   const dailyDate = askedDaily();
-  const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'), dailyDate);
+  const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'), dailyDate, keys);
   // Resumed run > the daily > shared seed link > THIS DEVICE'S WORLD. The
   // last is P4a: without a link or a run in progress you go back to your own
   // plane, which is what makes the fog memory and territories mean anything.
@@ -1305,9 +1367,12 @@ async function main(): Promise<void> {
   // offers the other doors beside it, so a mode is entered on purpose and
   // never by accident of what was in the address bar.
   const today = localToday();
-  frontDoorHome.addEventListener('click', () => {
+  const frontDoorWorlds = required('front-door-worlds');
+  const frontDoorSettle = required<HTMLButtonElement>('front-door-settle');
+  const goHome = (): void => {
     location.href = new URL(location.pathname, location.href).toString();
-  });
+  };
+  frontDoorHome.addEventListener('click', goHome);
   if (dailyDate !== null) {
     frontDoorBegin.textContent = `BEGIN DAILY #${dailyNumber(dailyDate)}`;
     frontDoorMode.hidden = false;
@@ -1322,6 +1387,23 @@ async function main(): Promise<void> {
       'A shared link: somebody else’s world and seed, played plain. ' +
       'Nothing here is kept; your own world is untouched.';
     frontDoorHome.hidden = false;
+
+    // Continue FROM a seed (Marc, 2026-08-19): a shared world worth keeping
+    // can be SETTLED — its geography becomes one of this device's three
+    // worlds, fresh and unexplored, played with your own economy from then
+    // on. Only the seed travels; the sender's run stays theirs.
+    const emptySlot = SLOTS.find((s) => peekSlot(s) === null);
+    if (emptySlot !== undefined) {
+      const seedToKeep = askedSeed();
+      frontDoorSettle.hidden = false;
+      frontDoorSettle.textContent = `SETTLE THIS WORLD — keep the seed as WORLD ${emptySlot}`;
+      frontDoorSettle.addEventListener('click', () => {
+        if (seedToKeep === null) return;
+        saveWorld(slotKeys(emptySlot), newWorld(seedToKeep & 0x7fffffff));
+        setActiveSlot(emptySlot);
+        goHome();
+      });
+    }
   } else {
     // A run already in progress gets named rather than a generic BEGIN — the
     // same fact the end screen states as "RUN N", read here from the state
@@ -1331,7 +1413,7 @@ async function main(): Promise<void> {
         ? 'BEGIN'
         : `RESUME — PLACEMENT ${keeper.resume.placements}`;
     frontDoorMode.hidden = false;
-    frontDoorMode.textContent = 'Your world — remembered ground, your shop, whatever you carry.';
+    frontDoorMode.textContent = `World ${slot} of 3 — remembered ground, your shop, whatever you carry.`;
     const dailyBook = readDailyBook();
     const todayRecord = dailyBook[today];
     const streak = dailyStreak(dailyBook, today);
@@ -1347,6 +1429,28 @@ async function main(): Promise<void> {
       url.searchParams.set('daily', today);
       location.href = url.toString();
     });
+
+    // The other two worlds (Marc, 2026-08-19: "3 save game possibilities"):
+    // a settled slot switches to it, an empty one begins there — either way
+    // the switch is a reload, the same cheap honesty the theme picker keeps.
+    frontDoorWorlds.hidden = false;
+    frontDoorWorlds.replaceChildren(
+      ...SLOTS.filter((s) => s !== slot).map((s) => {
+        const other = peekSlot(s);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'quiet';
+        button.textContent =
+          other === null
+            ? `WORLD ${s} — begin new`
+            : `WORLD ${s} — ${other.runs} ${other.runs === 1 ? 'run' : 'runs'} · best ${other.bestPoints} · ${other.territories.length} held`;
+        button.addEventListener('click', () => {
+          setActiveSlot(s);
+          goHome();
+        });
+        return button;
+      }),
+    );
   }
   frontDoorBegin.addEventListener('click', () => {
     frontDoor.hidden = true;
@@ -1371,11 +1475,12 @@ async function main(): Promise<void> {
         themesHost: required('themes'),
         theme,
         facing,
-        world: loadWorld(),
+        world: loadWorld(keys),
+        slot,
         abandon: () => {
           try {
-            localStorage.removeItem(WORLD_STORAGE_KEY);
-            localStorage.removeItem(RUN_STORAGE_KEY);
+            localStorage.removeItem(keys.world);
+            localStorage.removeItem(keys.run);
           } catch {
             // Nothing stored is already an abandoned world.
           }

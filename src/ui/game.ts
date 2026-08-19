@@ -1691,7 +1691,7 @@ export class Game {
                   'LEFT reaches zero: the expedition is over. Anything already ripe can still be POPPED.',
                 ]
               : []),
-            'This device has ONE world, and it remembers. Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
+            'This device keeps up to THREE worlds — the front door switches between them — and each one remembers: ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
             ...(this.#hooks.crossing !== undefined && show('shrine')
               ? [
                   'Once every shrine unlock is woken, any further shrine is a crossing: step through to a NEW WORLD, carrying relics for what you leave behind.',
