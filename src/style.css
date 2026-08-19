@@ -556,6 +556,23 @@ button.quiet {
   text-transform: uppercase;
 }
 
+/* RUN N: `book.runs`, printed rather than carried and never shown. */
+.end-run {
+  font-size: 0.6875rem;
+  letter-spacing: var(--label-tracking, 0.04em);
+  color: var(--ink-faint, #767d8d);
+}
+
+/* NEW BEST, as a headline — not a restatement beside the score, which read
+   as an answer to a question nobody had asked yet. */
+.end-headline {
+  font-family: var(--font-display, inherit);
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  color: var(--accent, #d7b45a);
+  text-transform: uppercase;
+}
+
 .end-score {
   font-family: var(--font-display, inherit);
   font-size: 1.75rem;
@@ -597,25 +614,98 @@ button.quiet {
   font-size: 0.75rem;
 }
 
+/* A plain-text control: a real button (44px, tappable, focusable) with none
+   of the bordered look — NEW RUN stays the only thing on this screen shaped
+   like one. SHARE, the shop door and BACK all read as rows or links now. */
+.end-link {
+  width: 100%;
+  max-width: 320px;
+  min-height: 44px;
+  margin: 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--ink-dim, #c3c9d6);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  opacity: 0.85;
+}
+
+.end-link.live {
+  color: var(--accent, #d7b45a);
+  opacity: 1;
+}
+
+/* The payout breakdown: the score, in the three terms the engine actually
+   pays it in. A grid of label/value pairs, same shape as the facts grid
+   below it, with TOTAL set apart by weight rather than by a rule — the sum
+   should read as an answer, not a footer. */
+.end-payout {
+  max-width: 320px;
+  margin: 10px auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--panel-edge, #3a4150);
+}
+
+.end-payout-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  color: var(--ink-dim, #8a91a0);
+  font-variant-numeric: tabular-nums;
+}
+
+.end-payout-total {
+  color: var(--ink, #e8ecf4);
+  font-weight: 600;
+}
+
+/* Six fixed cells, always present — the shape of this screen must not jump
+   between a short run and a long one. LUCK is deliberately not one of
+   them (it double-counts relics, which CARRIED OUT already states). */
+.end-facts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  max-width: 320px;
+  margin: 10px auto;
+}
+
+.end-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.end-fact-label {
+  font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 0.5625rem;
+  letter-spacing: var(--label-tracking, 0.04em);
+  color: var(--ink-faint, #767d8d);
+}
+
+.end-fact-value {
+  font-family: var(--font-display, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 1rem;
+  color: var(--ink, #e8ecf4);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What outlives the run: relics banked, a perk found, and the world's own
+   facts (territories held, how much is known) — read fresh, never a
+   snapshot. Left-aligned prose, deliberately unlike the grid above it: these
+   are not the run's shape, they are what the run left behind. */
+.end-carried {
+  max-width: 320px;
+  margin: 10px auto;
+  text-align: left;
+}
+
 #end-new-run {
   margin-top: 6px;
   width: 100%;
   max-width: 320px;
-}
-
-/* The shop's door on the run screen, and the way back. The door wears the
-   accent when anything inside is affordable — the same advertising contract
-   the luck fold keeps in-run. */
-#end-shop-open,
-#end-shop-back {
-  width: 100%;
-  max-width: 320px;
-}
-
-#end-shop-open.live {
-  border-color: var(--accent, #d7b45a);
-  color: var(--accent, #d7b45a);
-  opacity: 1;
 }
 
 #themes {
@@ -780,6 +870,48 @@ button.spare {
 /* A perk being worn is the one piece of state in the shop worth a colour. */
 .shop-row[data-worn='true'] .shop-name {
   color: var(--accent, #d7b45a);
+}
+
+/* The acknowledgement: a beat of the row wearing the accent right after a
+   purchase, before the screen redraws under it — a bought upgrade used to
+   look identical to one still for sale, same row, price just gone quiet. */
+@media (prefers-reduced-motion: no-preference) {
+  .shop-row.bought {
+    transition: background-color 200ms ease-out;
+    background-color: color-mix(in srgb, var(--accent, #d7b45a) 18%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop-row.bought {
+    background-color: color-mix(in srgb, var(--accent, #d7b45a) 18%, transparent);
+  }
+}
+
+/* The shop's own screen: sticky purse and BACK together at the top, so
+   neither scrolls out of reach of a long shelf — the same sticky trick the
+   manual's tab bar already uses. */
+.shop-header {
+  position: sticky;
+  top: -16px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 -16px 12px;
+  padding: 10px 16px;
+  background: var(--panel, #1e222b);
+  border-bottom: 1px solid var(--panel-edge, #3a4150);
+}
+
+.shop-header .shop-purse {
+  margin: 0;
+}
+
+#end-shop-back {
+  width: auto;
+  max-width: none;
+  margin: 0;
 }
 
 /* The manual's tab bar. It sticks to the top of the scrolling panel because

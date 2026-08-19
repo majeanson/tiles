@@ -179,6 +179,15 @@ export type GameHooks = {
    * belongs to the shell, and the game only needs the words.
    */
   readonly findLabel?: (hex: HexKey) => string | null;
+  /**
+   * The world-scale facts the end screen's CARRIED OUT strip states beside
+   * this run's own (relics banked, a perk found) — territories held and how
+   * much of the map is known, both outlive any one run, so the game asks
+   * the shell fresh rather than carrying a snapshot. Read on every render of
+   * the end screen, the same as `shop.read()` — cheap, and a territory
+   * claimed a moment ago must not read as unclaimed.
+   */
+  readonly worldStats?: () => { readonly territories: number; readonly knownPct: number };
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -241,12 +250,23 @@ export class Game {
   #noteTimer: ReturnType<typeof setTimeout> | null = null;
   /** Shrines claimed this run, so each one announces the right unlock. */
   #shrinesClaimed = 0;
+  /**
+   * The name of a perk THIS RUN found, if any — for the end screen's CARRIED
+   * OUT strip. Set inside `#claimNote` when `findLabel` grants one; never
+   * cleared mid-run, because a run finds at most a handful and the strip
+   * only ever reads it once the run has ended.
+   */
+  #foundThisRun: string | null = null;
 
   /**
    * The end screen's record lines, computed once per ended run so the book is
-   * written exactly once however many times the ended state renders.
+   * written exactly once however many times the ended state renders. Element
+   * 0 is either `'NEW BEST'` or the exact number of points short of it —
+   * which one decides whether the end screen shows a headline or a footnote.
    */
   #recordLines: string[] | null = null;
+  /** `book.runs`, alongside `#recordLines` — RUN N on the end screen. */
+  #runNumber: number | null = null;
   /**
    * Which face of the end surface is showing: the run's picture, or the shop.
    * Split on 2026-08-18 (Marc: "split the end screen and the spend screen") —
@@ -749,6 +769,7 @@ export class Game {
           // somebody else's replay". One honest sentence covers both: a find
           // only grants what you do not own, on your own world.
           const label = this.#hooks.findLabel?.(k) ?? null;
+          if (label !== null) this.#foundThisRun = label;
           notes.push({
             rank: RANK.find,
             text:
@@ -1544,11 +1565,18 @@ export class Game {
     this.#el.harvestTiles.classList.toggle('spare', hud.tilesSpare);
     // Under the single payout there is nothing to choose between: one POP
     // button that pays tiles and scores, and the points button stops
-    // existing rather than sitting there meaning the same thing.
+    // existing rather than sitting there meaning the same thing. Where
+    // `hidePoints` is on, the points figure itself stayed off this button —
+    // printing it here leaked the very number the setting exists to hide.
+    // DEPTH is what shows instead: the same distance multiplier the pocket
+    // is about to be scored at, the honest thing to learn from a button
+    // whose score you cannot see. The end screen's payout breakdown is where
+    // the points themselves are learned, once the run is over.
     if (hud.singlePayout) {
+      const worth = hud.showPoints ? `${hud.harvestPoints} pts` : `×${hud.harvestDepth} deep`;
       this.#el.harvestTiles.textContent = hud.questPays
-        ? `★ POP  ${hud.harvestTiles} tiles · ${hud.harvestPoints} pts`
-        : `POP  ${hud.harvestTiles} tiles · ${hud.harvestPoints} pts`;
+        ? `★ POP  ${hud.harvestTiles} tiles · ${worth}`
+        : `POP  ${hud.harvestTiles} tiles · ${worth}`;
       this.#el.harvestTiles.classList.toggle('bounty', hud.questPays);
       this.#el.harvestTiles.classList.remove('spare');
       this.#el.harvestPoints.hidden = true;
@@ -1569,8 +1597,12 @@ export class Game {
     this.#el.harvestBurn.hidden = burn <= 0;
     this.#el.harvestBurn.disabled = burn <= 0;
     if (burn > 0) {
+      // "for the shop" names what a sacrifice is FOR — relics only ever buy
+      // the shop, and the word was otherwise doing the same job as SACRIFICE
+      // itself: naming that something is given up, not what it is given up
+      // for.
       this.#el.harvestBurn.textContent = hud.burnPaysRelics
-        ? `SACRIFICE  ${burn} relics`
+        ? `SACRIFICE · ${burn} relics for the shop`
         : `BURN  +${burn} luck`;
     }
     this.#el.harvestTiles.hidden = !hud.canHarvest;
@@ -1653,25 +1685,25 @@ export class Game {
   }
 
   /**
-   * The run, ended — Gate D's screen. The cause of death in one sentence,
-   * then the arc in numbers: the score, how far, the biggest pop and WHERE it
-   * landed in the run (near the end is an arc; the gate's question, asked of
-   * every run), what was claimed, and the standing best so a finished run
-   * immediately poses the next one's question. One button: again.
+   * The run, ended — Gate D's screen, as a PAYOUT (Stage 2, 2026-08-18):
+   * what you scored, broken into exactly the three terms the engine paid it
+   * in, and what you carry out into the next run. `hidePoints` keeps the
+   * running total off the HUD all the way through the run; this is the one
+   * screen that owes the player the arithmetic behind the number they only
+   * just saw for the first time.
    */
   #renderEnd(hud: HudView): void {
     if (this.#recordLines === null) {
       this.#recordLines = [];
       const book = this.#hooks.finish?.(this.#state);
       if (book !== undefined) {
+        // A headline when it is true; a distance when it is not. Restating
+        // "best 480 pts" beside a run that scored 190 answered a question
+        // nobody asked — how far short is the one worth knowing.
         this.#recordLines.push(
-          book.isNewBest ? `NEW BEST — ${book.best} pts` : `best ${book.best} pts`,
+          book.isNewBest ? 'NEW BEST' : `${Math.max(0, book.best - hud.points)} short of best`,
         );
-        // A Gate B tally line lived here until 2026-08-18, guarded to hide
-        // itself under the single payout — which shipped, so the guard held
-        // the door shut on the roadmap's own evidence. The gate is retired
-        // (singlePayout WAS its prescribed fallback); the run's pops, burns
-        // and biggest-pop already print in the facts line below.
+        this.#runNumber = book.runs;
       }
     }
 
@@ -1682,91 +1714,78 @@ export class Game {
       return p;
     };
 
-    // The game says its own name here, because this is the screen that gets
-    // screenshotted and shared — a picture of a run should say whose run.
-    const parts: Element[] = [
-      line('end-title', NAME),
-      line('end-epitaph', hud.epitaph ?? ''),
-      line('end-score', `${hud.points} pts`),
-    ];
-    const arc = this.#arcChart();
-    if (arc !== null) parts.push(arc);
-    if (this.#recordLines.length > 0) parts.push(line('end-best', this.#recordLines[0]!));
+    // Two columns of one line each — a label and its number, the same shape
+    // the stat row already uses, so a payout row and a HUD stat read as the
+    // same kind of fact.
+    const row = (
+      cls: string,
+      label: string,
+      value: string,
+      opts: { link?: () => void; live?: boolean } = {},
+    ): HTMLElement => {
+      const el =
+        opts.link === undefined ? document.createElement('p') : document.createElement('button');
+      el.className = cls;
+      if (el instanceof HTMLButtonElement) {
+        el.type = 'button';
+        el.classList.toggle('live', opts.live === true);
+        el.addEventListener('click', () => opts.link?.());
+      }
+      const l = document.createElement('span');
+      l.textContent = label;
+      const v = document.createElement('span');
+      v.textContent = value;
+      el.append(l, v);
+      return el;
+    };
 
-    const s = hud.summary;
-    if (s !== null) {
-      const facts: string[] = [`reach ${hud.depthValue}`, `${hud.placements} placements`];
-      if (s.harvests > 0) {
-        facts.push(
-          hud.singlePayout
-            ? `${s.harvests} pocket${s.harvests === 1 ? '' : 's'} popped`
-            : `${s.tilesTaken} tiles / ${s.pointsTaken} pts taken`,
-        );
-      }
-      if (s.biggestHarvest > 0) {
-        facts.push(
-          `biggest pop ${s.biggestHarvest} pts at ${Math.round(s.biggestAt * 100)}% of the run`,
-        );
-      }
-      if (s.claims > 0) facts.push(`${s.claims} destination${s.claims === 1 ? '' : 's'} reached`);
-      if (s.quests > 0) facts.push(`${s.quests} quest${s.quests === 1 ? '' : 's'} done`);
-      if (s.luck > 0) facts.push(`luck ${s.luck}`);
-      if (hud.relics > 0) facts.push(`${hud.relics} relics carried out`);
-      parts.push(line('end-facts', facts.join(' · ')));
-    }
+    const isNewBest = this.#recordLines[0] === 'NEW BEST';
 
     // The shop lives behind its own door now, not interleaved with the run's
-    // picture. The door carries the balance, and wears the accent when
-    // anything is affordable — the same advertising contract the luck fold
-    // keeps in-run.
+    // picture. Its own screen, sticky purse and BACK at the top so neither
+    // scrolls out of reach of a long shelf.
     if (this.#endView === 'shop') {
+      const progress = this.#hooks.shop?.read();
+      const header = document.createElement('div');
+      header.className = 'shop-header';
       const back = document.createElement('button');
       back.type = 'button';
       back.id = 'end-shop-back';
-      back.className = 'quiet';
-      back.textContent = '◂ BACK TO THE RUN';
+      back.className = 'end-link';
+      back.textContent = '◂ BACK';
       back.addEventListener('click', () => {
         this.#endView = 'run';
         this.#renderEnd(hud);
       });
-      this.#el.end.replaceChildren(line('end-title', NAME), ...this.#shopParts(), back);
+      const purse = document.createElement('p');
+      purse.className = 'shop-purse';
+      purse.textContent = `${progress?.relics ?? 0} RELICS`;
+      header.append(back, purse);
+      this.#el.end.replaceChildren(header, ...this.#shopParts());
       return;
     }
-    if (this.#hooks.shop !== undefined) {
-      const progress = this.#hooks.shop.read();
-      const door = document.createElement('button');
-      door.type = 'button';
-      door.id = 'end-shop-open';
-      door.className = 'quiet';
-      door.textContent = `THE SHOP · ${progress.relics} RELICS ▸`;
-      door.classList.toggle(
-        'live',
-        UPGRADES.some((u) => canAfford(progress, u)),
-      );
-      door.addEventListener('click', () => {
-        this.#endView = 'shop';
-        this.#renderEnd(hud);
-      });
-      parts.push(door);
+
+    // The game says its own name here, because this is the screen that gets
+    // screenshotted and shared — a picture of a run should say whose run.
+    const parts: Element[] = [line('end-title', NAME)];
+    if (this.#runNumber !== null) parts.push(line('end-run', `RUN ${this.#runNumber}`));
+    if (isNewBest) parts.push(line('end-headline', 'NEW BEST'));
+    parts.push(line('end-epitaph', hud.epitaph ?? ''));
+    parts.push(line('end-score', `${hud.points} pts`));
+
+    const arc = this.#arcChart();
+    if (arc !== null) parts.push(arc);
+    if (!isNewBest && this.#recordLines.length > 0) {
+      parts.push(line('end-best', this.#recordLines[0]!));
     }
 
-    if (this.#hooks.newRun !== undefined) {
-      const again = document.createElement('button');
-      again.type = 'button';
-      again.id = 'end-new-run';
-      again.textContent = 'NEW RUN';
-      const start = this.#hooks.newRun;
-      again.addEventListener('click', () => {
-        start();
-      });
-      parts.push(again);
-    }
-
+    // SHARE rides beside the run's own picture of itself — the arc and the
+    // score — rather than waiting at the bottom under the shop and NEW RUN.
     if (this.#hooks.share !== undefined) {
       const share = document.createElement('button');
       share.type = 'button';
       share.id = 'end-share';
-      share.className = 'quiet';
+      share.className = 'end-link';
       share.textContent = 'SHARE THIS RUN';
       const send = this.#hooks.share;
       share.addEventListener('click', () => {
@@ -1784,6 +1803,128 @@ export class Game {
       parts.push(share);
     }
 
+    // The payout breakdown: the score, in the exact three terms the engine
+    // adds it up in — everything scored while playing (every pop taken as
+    // points, and any site claimed outright), then the two end-of-run
+    // bonuses `endingBonus` pays once, at the moment the run stops. Derived
+    // from the SAME numbers the reducer just paid with (`hud.depthValue` is
+    // `reachOf(state)`, `hud.summary.claims` counts the identical claimed
+    // landmarks `endingBonus` does) rather than restated, so this cannot
+    // drift from what actually happened. Silent where the dials are both
+    // off — nothing to break down.
+    const t = this.#state.tuning;
+    if ((t.endReachBonus > 0 || t.endClaimBonus > 0) && hud.summary !== null) {
+      const reachBonus = hud.depthValue * t.endReachBonus;
+      const claimBonus = hud.summary.claims * t.endClaimBonus;
+      const pops = hud.points - reachBonus - claimBonus;
+      const payout = document.createElement('div');
+      payout.className = 'end-payout';
+      payout.append(
+        row('end-payout-row', 'POPS', String(pops)),
+        row('end-payout-row', `REACH ${hud.depthValue} × ${t.endReachBonus}`, `+${reachBonus}`),
+        row(
+          'end-payout-row',
+          `CLAIMS ${hud.summary.claims} × ${t.endClaimBonus}`,
+          `+${claimBonus}`,
+        ),
+        row('end-payout-row end-payout-total', 'TOTAL', String(hud.points)),
+      );
+      parts.push(payout);
+    }
+
+    // The facts, as a 2×3 grid rather than one clause run together — six
+    // fixed cells, always present, so the shape of the screen never jumps
+    // between a short run and a long one. LUCK is deliberately not one of
+    // them: it double-counts relics (`endingBonus` already folded the
+    // unspent purse into the relics line below), and this grid is about the
+    // run's shape, not its currency.
+    const s = hud.summary;
+    if (s !== null) {
+      const grid = document.createElement('div');
+      grid.className = 'end-facts-grid';
+      const cell = (label: string, value: string): HTMLElement => {
+        const c = document.createElement('div');
+        c.className = 'end-fact';
+        const l = document.createElement('span');
+        l.className = 'end-fact-label';
+        l.textContent = label;
+        const v = document.createElement('span');
+        v.className = 'end-fact-value';
+        v.textContent = value;
+        c.append(l, v);
+        return c;
+      };
+      grid.append(
+        cell('REACH', String(hud.depthValue)),
+        cell('PLACEMENTS', String(hud.placements)),
+        cell('POPPED', String(s.harvests)),
+        cell(
+          'BIGGEST POP',
+          s.biggestHarvest > 0 ? `${s.biggestHarvest} at ${Math.round(s.biggestAt * 100)}%` : '—',
+        ),
+        cell('DESTINATIONS', String(s.claims)),
+        cell('BOUNTIES', String(s.quests)),
+      );
+      parts.push(grid);
+    }
+
+    // CARRIED OUT: what this run adds to the roguelite, permanently — as
+    // distinct from the run's own score above it. Relics banked and a perk
+    // found are THIS run's; territories held and how much of the map is
+    // known are the WORLD's, read fresh from the shell (`worldStats`) so a
+    // territory claimed a moment ago is never shown as unclaimed.
+    const world = this.#hooks.worldStats?.();
+    if (hud.relics > 0 || this.#foundThisRun !== null || world !== undefined) {
+      const carried = document.createElement('div');
+      carried.className = 'end-carried';
+      carried.append(line('shop-purse', 'CARRIED OUT'));
+      carried.append(line('end-facts', `${hud.relics} relics banked`));
+      if (this.#foundThisRun !== null) {
+        carried.append(line('end-facts', `✦ found — ${this.#foundThisRun}`));
+      }
+      if (world !== undefined) {
+        carried.append(
+          line(
+            'end-facts',
+            `${world.territories} territor${world.territories === 1 ? 'y' : 'ies'} held · ` +
+              `${Math.round(world.knownPct * 100)}% of the world known`,
+          ),
+        );
+      }
+      parts.push(carried);
+    }
+
+    // The shop door, demoted from a button to a payout row: the purse total
+    // (not this run's take above — the whole thing you can spend), tappable,
+    // wearing the accent when anything inside is affordable — the same
+    // advertising contract the in-run luck fold keeps.
+    if (this.#hooks.shop !== undefined) {
+      const progress = this.#hooks.shop.read();
+      const door = row('end-payout-row end-link', 'RELICS', `${progress.relics} ▸`, {
+        link: () => {
+          this.#endView = 'shop';
+          this.#renderEnd(hud);
+        },
+        live: UPGRADES.some((u) => canAfford(progress, u)),
+      });
+      door.id = 'end-shop-open';
+      parts.push(door);
+    }
+
+    // NEW RUN is the only thing on this screen still shaped like a button —
+    // everything else here is read or tapped as a row.
+    if (this.#hooks.newRun !== undefined) {
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.id = 'end-new-run';
+      again.textContent = 'NEW RUN';
+      const start = this.#hooks.newRun;
+      again.addEventListener('click', () => {
+        start();
+      });
+      parts.push(again);
+    }
+
     this.#el.end.replaceChildren(...parts);
   }
 
@@ -1797,16 +1938,13 @@ export class Game {
    * Everything is listed, priced, whether or not it can be afforded — the
    * shop is what gives a burnt pocket a reason, so its expensive half has to
    * be visible from the first run. Empty entirely where there is no meta
-   * economy, which is every game but the tiles-only one.
+   * economy, which is every game but the tiles-only one. The purse total
+   * itself is drawn by the caller now (the sticky header), not here.
    */
   #shopParts(): HTMLElement[] {
     const shop = this.#hooks.shop;
     if (shop === undefined) return [];
     const progress = shop.read();
-
-    const head = document.createElement('p');
-    head.className = 'shop-purse';
-    head.textContent = `${progress.relics} RELICS`;
 
     const rows = UPGRADES.map((upgrade) => {
       const level = levelOf(progress, upgrade.id);
@@ -1833,11 +1971,21 @@ export class Game {
         button.textContent = 'DONE';
         button.disabled = true;
       } else {
-        button.textContent = String(price);
+        button.textContent = `BUY ${price}`;
         button.disabled = progress.relics < price;
         button.addEventListener('click', () => {
           shop.write(buy(shop.read(), upgrade));
-          this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+          // The acknowledgement: a beat of the row wearing the accent, and
+          // the button saying so, before the whole screen redraws under it.
+          // A bought upgrade used to look identical to one that was still
+          // for sale — same row, same price gone quiet — and the only sign
+          // anything happened was a purse number one had to already know to
+          // check.
+          row.classList.add('bought');
+          button.textContent = 'BOUGHT';
+          setTimeout(() => {
+            this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+          }, 260);
         });
       }
 
@@ -1846,16 +1994,16 @@ export class Game {
     });
 
     // THE SHELF (2026-08-18): perks are found in the world, never bought.
-    // An owned perk shows its name, its sentence and the one toggle it has;
-    // an undiscovered one is a mystery row — no name, no price, no note
-    // beyond a dash. The mystery is the point, so nothing here may print an
-    // unowned perk's name or effect.
+    // An owned perk shows its name, its sentence and the one toggle it has.
+    // Undiscovered ones used to be four identical UNDISCOVERED rows with a
+    // dash — the mystery was the point, but four blank rows read as a
+    // loading state rather than a promise. One line names the count instead.
     const shelfHead = document.createElement('p');
     shelfHead.className = 'shop-purse';
     shelfHead.textContent = 'THE SHELF — found out in the world, never sold';
 
-    const shelf = PERKS.map((perk) => {
-      const owned = progress.found.includes(perk.id);
+    const owned = PERKS.filter((perk) => progress.found.includes(perk.id));
+    const shelf = owned.map((perk) => {
       const worn = progress.equipped.includes(perk.id);
 
       const row = document.createElement('div');
@@ -1864,33 +2012,39 @@ export class Game {
 
       const name = document.createElement('span');
       name.className = 'shop-name';
-      name.textContent = owned ? perk.name : 'UNDISCOVERED';
+      name.textContent = perk.name;
 
       const note = document.createElement('span');
       note.className = 'shop-note';
-      note.textContent = owned ? perk.note : '—';
+      note.textContent = perk.note;
 
       row.append(name, note);
 
-      if (owned) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'shop-buy';
-        button.textContent = worn ? 'WORN' : 'WEAR';
-        button.addEventListener('click', () => {
-          shop.write(equip(shop.read(), perk.id));
-          this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
-        });
-        row.append(button);
-      }
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'shop-buy';
+      button.textContent = worn ? 'WORN' : 'WEAR';
+      button.addEventListener('click', () => {
+        shop.write(equip(shop.read(), perk.id));
+        this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+      });
+      row.append(button);
       return row;
     });
+
+    const undiscovered = PERKS.length - owned.length;
+    const mystery = document.createElement('p');
+    mystery.className = 'end-facts';
+    mystery.textContent =
+      undiscovered > 0
+        ? `${undiscovered} more ${undiscovered === 1 ? 'is' : 'are'} still out there, unnamed.`
+        : 'Every perk in the pool has been found.';
 
     const slotLine = document.createElement('p');
     slotLine.className = 'end-facts';
     slotLine.textContent = 'One perk may be worn at a time.';
 
-    return [head, ...rows, shelfHead, ...shelf, slotLine];
+    return [...rows, shelfHead, ...shelf, mystery, slotLine];
   }
 
   /**

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COLOUR_MARK } from '@theme/tokens';
 import { TUNING, type Tuning } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from '@engine/hex';
@@ -589,7 +589,11 @@ describe('keeping the run, and ending it properly', () => {
     expect(ctx.el.end.hidden).toBe(false);
     const text = ctx.el.end.textContent ?? '';
     expect(text).toMatch(/0 pts/);
-    expect(text).toMatch(/best 999 pts/);
+    // Not a new best: a DISTANCE from it, not a restatement of the number —
+    // "best 999 pts" beside a run that scored 0 answered a question nobody
+    // asked. `book.runs` (2026-08-18: "exists unused") gets its own line.
+    expect(text).toMatch(/999 short of best/);
+    expect(text).toMatch(/RUN 4/);
     expect(text).toMatch(/placements/);
     // The tally left with the gate (2026-08-18) — singlePayout removed the
     // fork it measured, so the end screen has nothing left to print here.
@@ -613,7 +617,102 @@ describe('keeping the run, and ending it properly', () => {
       finish: () => ({ runs: 1, best: 500, isNewBest: true }),
     });
     ctx.game.start();
-    expect(ctx.el.end.textContent).toMatch(/NEW BEST — 500 pts/);
+    // A new best is the HEADLINE now, not a restatement beside the score —
+    // its own line, and the score line still says the number plainly.
+    expect(ctx.el.end.querySelector('.end-headline')?.textContent).toBe('NEW BEST');
+    expect(ctx.el.end.textContent).toMatch(/500 pts/);
+  });
+
+  // Stage 2, 2026-08-18: the end screen's payout breakdown is where points
+  // are LEARNED (`hidePoints` keeps the running total off the HUD the whole
+  // run through). The three terms have to be the exact ones `endingBonus`
+  // pays — reach × endReachBonus, claims × endClaimBonus — and they have to
+  // sum to the total actually shown, not merely to some plausible number.
+  it('breaks the score into pops, reach and claims — and they sum to the total', () => {
+    const t = TUNING;
+    const base = newRun(9, t);
+    const reach = 3;
+    const claims = 1;
+    const pops = 120;
+    const cells: Record<string, Cell> = {
+      ...base.cells,
+      [key(reach, 0)]: { kind: 'tile', colour: 'green' },
+      [key(-1, 0)]: { kind: 'landmark', reward: 'site', claimed: true },
+    };
+    const ended: GameState = {
+      ...base,
+      cells,
+      phase: 'ended',
+      death: 'broke',
+      points: pops + reach * t.endReachBonus + claims * t.endClaimBonus,
+    };
+    const ctx = build(1, t, { resume: ended });
+    ctx.game.start();
+
+    const text = ctx.el.end.textContent ?? '';
+    expect(text).toContain(`POPS${pops}`);
+    expect(text).toContain(`REACH ${reach} × ${t.endReachBonus}+${reach * t.endReachBonus}`);
+    expect(text).toContain(`CLAIMS ${claims} × ${t.endClaimBonus}+${claims * t.endClaimBonus}`);
+    expect(text).toContain(`TOTAL${ended.points}`);
+  });
+
+  // CARRIED OUT: what outlives the run. Relics and a found perk are THIS
+  // run's; territories and world-knowledge are the WORLD's, read fresh from
+  // `worldStats` rather than snapshotted, so a claim from a moment ago is
+  // never shown as unclaimed.
+  it('states what the run carries out — this run’s and the world’s', () => {
+    const ended: GameState = {
+      ...newRun(9, TUNING),
+      phase: 'ended',
+      death: 'broke',
+      relics: 40,
+    };
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      worldStats: () => ({ territories: 2, knownPct: 0.35 }),
+    });
+    ctx.game.start();
+    const text = ctx.el.end.textContent ?? '';
+    expect(text).toMatch(/CARRIED OUT/);
+    expect(text).toMatch(/40 relics banked/);
+    expect(text).toMatch(/2 territories held/);
+    expect(text).toMatch(/35% of the world known/);
+  });
+
+  // Buying in the shop used to redraw the whole screen with no sign anything
+  // had happened beyond a price going quiet — the row now flashes and the
+  // button confirms before the redraw settles.
+  it('acknowledges a shop purchase before the screen redraws under it', () => {
+    vi.useFakeTimers();
+    try {
+      let progress = { relics: 999, bought: {}, found: [] as never[], equipped: [] as never[] };
+      const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+      const ctx = build(1, TUNING, {
+        resume: ended,
+        shop: {
+          read: () => progress,
+          write: (p) => {
+            progress = p as typeof progress;
+          },
+        },
+      });
+      ctx.game.start();
+      (ctx.el.end.querySelector('#end-shop-open') as HTMLButtonElement).click();
+
+      const buy = [...ctx.el.end.querySelectorAll<HTMLButtonElement>('.shop-buy')].find(
+        (b) => !b.disabled,
+      );
+      expect(buy).not.toBeUndefined();
+      buy!.click();
+      expect(buy!.textContent).toBe('BOUGHT');
+      expect(buy!.closest('.shop-row')?.classList.contains('bought')).toBe(true);
+
+      vi.runAllTimers();
+      // The purchase actually happened, once the redraw settles.
+      expect(progress.relics).toBeLessThan(999);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('draws the run as an arc chart, with the biggest pop in accent', () => {
@@ -1054,6 +1153,32 @@ describe('special tiles and what a pop did', () => {
     expect(text).toMatch(/1 rare tile/);
   });
 
+  // `hidePoints` keeps the score off the HUD until the run ends; the single
+  // POP button used to print the points figure on itself regardless, which
+  // leaked the exact number the setting exists to hide. DEPTH — the same
+  // distance multiplier the pocket is about to be scored at — replaces it;
+  // the points themselves are learned on the end screen's payout breakdown.
+  it('shows depth, not points, on POP while points are hidden', () => {
+    const pocketUnder = (tuning: Tuning): GameState => ({ ...rarePocket(9), tuning });
+
+    const hidden = build(1, TUNING, {
+      resume: pocketUnder({ ...TUNING, singlePayout: true, hidePoints: true }),
+    });
+    hidden.game.start();
+    hidden.renderer.nextHit = key(0, 0);
+    tap(hidden.el.board);
+    expect(hidden.el.harvestTiles.textContent).toMatch(/deep/);
+    expect(hidden.el.harvestTiles.textContent).not.toMatch(/pts/);
+
+    const shown = build(1, TUNING, {
+      resume: pocketUnder({ ...TUNING, singlePayout: true, hidePoints: false }),
+    });
+    shown.game.start();
+    shown.renderer.nextHit = key(0, 0);
+    tap(shown.el.board);
+    expect(shown.el.harvestTiles.textContent).toMatch(/pts/);
+  });
+
   it('shows the arithmetic of a pop', () => {
     const tiles = build(1, TUNING, { resume: rarePocket(9) });
     tiles.game.start();
@@ -1291,21 +1416,25 @@ describe('the shelf', () => {
     expect(ctx.el.end.querySelector('.end-epitaph')).toBeNull();
 
     (ctx.el.end.querySelector('#end-shop-back') as HTMLButtonElement).click();
-    // Back on the run screen: the picture, the door, and no shop rows.
+    // Back on the run screen: the picture, the door, and no shop rows. The
+    // door is a payout row now (2026-08-18), not a bordered button — RELICS
+    // and the purse total, tappable.
     expect(ctx.el.end.querySelector('.end-epitaph')).not.toBeNull();
     expect(ctx.el.end.querySelector('.shop-row')).toBeNull();
-    expect(ctx.el.end.querySelector('#end-shop-open')?.textContent).toMatch(/THE SHOP · \d+/);
+    expect(ctx.el.end.querySelector('#end-shop-open')?.textContent).toMatch(/RELICS\d+/);
   });
 
-  it('shows owned perks by name and the rest as UNDISCOVERED, unnamed', () => {
+  it('shows owned perks by name, and names only the COUNT of the rest', () => {
     const ctx = shelf(['stonewalker'], ['stonewalker']);
     const text = ctx.el.end.textContent ?? '';
 
     expect(text).toMatch(/THE SHELF/);
     expect(text).toMatch(/STONEWALKER/);
     expect(text).toMatch(/beside stone cost 1 less/i);
-    // Four perks unowned, four mystery rows — and not one of their names.
-    expect((text.match(/UNDISCOVERED/g) ?? []).length).toBe(4);
+    // Four perks unowned: one line naming the count, not four identical
+    // UNDISCOVERED rows — and not one of their names, still.
+    expect(text).toMatch(/4 more/);
+    expect(text).not.toMatch(/UNDISCOVERED/);
     for (const name of ['ROOTBOUND', 'SECOND WIND', 'WALLBREAKER', 'OPEN HAND']) {
       expect(text).not.toContain(name);
     }

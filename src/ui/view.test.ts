@@ -3,7 +3,7 @@ import { decodeRun, encodeRun } from '@meta/save';
 import { TUNING, type Tuning } from '@content/tuning';
 import { key, parse } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
-import { legalPlacements, ripeKeys } from '@engine/rules';
+import { harvestMultiplier, harvestValue, legalPlacements, ripeKeys } from '@engine/rules';
 import type { GameState } from '@engine/state';
 import { destinationsWithin, findAt } from '@engine/world';
 import { toBoardView, toHudView } from './view';
@@ -121,6 +121,27 @@ describe('the hud', () => {
     expect(hud.ended).toBe(true);
     expect(hud.epitaph).toMatch(/out of tiles/i);
     expect(hud.epitaph).toContain(String(dead.placements));
+  });
+
+  // POP · N READY counts decisions on the board, not tiles — a 12-tile
+  // pocket and a 2-tile one are each one thing to choose between.
+  it('counts ripe POCKETS, not ripe tiles', () => {
+    const full = fill(newRun(11, TINY));
+    const hud = toHudView(full);
+    expect(hud.pocketsReady).toBeGreaterThan(0);
+    expect(hud.pocketsReady).toBeLessThanOrEqual(hud.ripeCount);
+  });
+
+  // The number the single-payout POP button prints in place of the points
+  // figure it used to leak regardless of `hidePoints` — it has to be the
+  // SAME multiplier the reducer would actually pay, not a restatement.
+  it('prices the depth of the pocket the harvest buttons are pointing at', () => {
+    const full = fill(newRun(11, TINY));
+    const hud = toHudView(full);
+    expect(hud.harvestAt).not.toBeNull();
+    if (hud.harvestAt === null) return;
+    const value = harvestValue(full, hud.harvestAt);
+    expect(hud.harvestDepth).toBe(harvestMultiplier(full, value.keys));
   });
 });
 

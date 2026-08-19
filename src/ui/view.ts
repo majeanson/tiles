@@ -5,6 +5,7 @@ import {
   cachePaysAt,
   canPlaceNow,
   costOf,
+  harvestMultiplier,
   harvestValue,
   isRipe,
   legalPlacements,
@@ -100,6 +101,13 @@ export type RenderContext = {
   /** How far from home the run has built — REACH, and the beacon horizon. */
   readonly reach: number;
   /**
+   * How many SEPARATE ripe pockets exist right now — not ripe tiles, pockets:
+   * a POP · N READY count needs the number of decisions on the board, and a
+   * 12-tile pocket is one decision same as a 2-tile one. Free from the same
+   * clustering pass that already finds `target`.
+   */
+  readonly pocketCount: number;
+  /**
    * Every drawn cell, parsed once. The KEEN NOSE shimmer loop is the one
    * consumer today (an O(cells × finds) distance scan per render), but this
    * is the same "computed once, threaded through" shape as the rest of the
@@ -168,6 +176,7 @@ export function renderContext(state: GameState, asked: HexKey | null = null): Re
     legal,
     previews,
     reach: reachOf(state),
+    pocketCount: pockets.length,
     ground: Object.keys(state.cells).map(parse),
   };
 }
@@ -494,9 +503,21 @@ export type HudView = {
   readonly spotlight: ColourPotential | null;
 
   readonly ripeCount: number;
+  /**
+   * Separate ripe pockets, not ripe tiles — POP · N READY counts decisions,
+   * and a big pocket is still one decision.
+   */
+  readonly pocketsReady: number;
   /** What harvesting right now would pay, each way. Both are always shown. */
   readonly harvestTiles: number;
   readonly harvestPoints: number;
+  /**
+   * The priced pocket's distance multiplier — depth, in the one unit the
+   * player already reads the board in. Where points are hidden mid-run
+   * (`hidePoints`), this is what POP shows in place of the points figure it
+   * used to leak regardless of the setting meant to hide it.
+   */
+  readonly harvestDepth: number;
   /** The pocket those prices are FOR, on the plane. Null on bounded maps. */
   readonly harvestAt: HexKey | null;
 
@@ -607,8 +628,10 @@ export function toHudView(
     spotlight: colours.find((c) => c.colour === spotlight) ?? null,
 
     ripeCount: ctx.ripe.size,
+    pocketsReady: ctx.pocketCount,
     harvestTiles: value.tiles,
     harvestPoints: value.points,
+    harvestDepth: harvestMultiplier(state, value.keys),
     harvestAt: target,
 
     questPays: value.questPays,
@@ -813,9 +836,13 @@ function guideFor(state: GameState, ctx: RenderContext): string | null {
     // More tiles than the clock can spend: the survival button is dead and
     // saying so is the whole job of this line.
     if (tilesSpareIn(state)) return 'More tiles than you can spend — take PTS from here on';
+    // POP · N pockets ready: how many separate decisions are sitting on the
+    // board right now, not how many tiles — a 12-tile pocket is one of them,
+    // same as a 2-tile one. Singular wording stays where there is only one.
+    const pockets = ctx.pocketCount > 1 ? `${ctx.pocketCount} pockets ready` : 'Pocket ready';
     return single
-      ? 'Pocket ready — tap it to price it, then POP or sacrifice it'
-      : 'Pocket ready — tap it, then take tiles or pts';
+      ? `${pockets} — tap one to price it, then POP or sacrifice it`
+      : `${pockets} — tap one, then take tiles or pts`;
   }
   return 'Place tiles — surround one on all six sides to ripen it';
 }

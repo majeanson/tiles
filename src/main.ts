@@ -345,6 +345,15 @@ function runKeeping(
       return granted.perk.name;
     },
 
+    // The end screen's CARRIED OUT strip: world-scale facts beside the run's
+    // own. Read off `current` (kept live by `onChange` above), not the
+    // snapshot this page loaded with — a territory claimed a moment ago
+    // must not read as unclaimed on the very screen reporting it.
+    worldStats: () => ({
+      territories: current.territories.length,
+      knownPct: knownFraction(current),
+    }),
+
     onChange: (state) => {
       try {
         localStorage.setItem(RUN_STORAGE_KEY, encodeRun(state));
