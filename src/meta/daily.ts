@@ -11,8 +11,10 @@
  * so the shell hands strings in and everything here is testable to the day.
  */
 
-/** Daily #1's date. Chosen at build time; changing it renumbers every share. */
-export const DAILY_EPOCH = '2026-08-20';
+/** Daily #1's date — the day the daily SHIPPED (fresh-eyes finding 6: the
+ *  original epoch sat one day in the future, so launch day read "DAILY #0").
+ *  Changing it renumbers every share; do not. */
+export const DAILY_EPOCH = '2026-08-19';
 
 /** The exact shape a daily date must have. Garbage in a URL is not a daily. */
 export function isDailyDate(s: string): boolean {

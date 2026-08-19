@@ -4,8 +4,29 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-19** — the second debrief, and the game learned
-to teach itself. 549 tests.
+Last checkpoint: **2026-08-19** — the second debrief; the game learned to
+teach itself; the day then kept going: the balance batch, the daily, the
+crossing, three world slots, and the no-phone program. 568 tests.
+
+- **The rest of 2026-08-19, in one paragraph** (full accounts in LOG.md's
+  addenda): colours teach themselves at first placement and placed rares
+  wear a star; labels survive every zoom; base rare odds halved and
+  shrines thinned 8% → 5% (finds rescaled with them), swept at 200
+  runs/policy; the error panel became a reporting overlay (LAST ERROR
+  under DEVELOPER) for the unresolved iOS crash; fog memory shows what it
+  saw and the tap-scan divining rod is closed; the deliberate last-gasp
+  rule is taught; BEST left the draft cards. Then the fresh-worlds
+  answer: the DAILY (one shared plain world per local date, own ladder,
+  sparkline share), the CROSSING (a fully-awake world's shrines offer a
+  new world with a relic dowry), a front door that is a playstyle MENU,
+  THREE world slots (slot 1 = legacy keys, no migration) and SETTLE THIS
+  WORLD (keep a shared seed's geography as your own). A fresh-eyes
+  reviewer then audited the day whole and found ten defects — the
+  crossing un-crossing itself into an infinite relic farm the worst —
+  all fixed; the origin audit closed blue tide's origin-read and
+  unblocked waypoints (`ideas/waypoints.md`); the renderer caps DPR at 2
+  and survives WebGL context loss; and sound is BUILT behind `ui.sound`,
+  off by default, voiced per theme.
 
 - **Marc's second debrief (two long runs, 11k/4k, "I had fun") moved three
   written questions**: the rebalance verdict is positive (caches confirmed

@@ -76,6 +76,17 @@ export const COLD_SURVEY: Theme = {
     popLift: 0.7,
   },
 
+  // The voice (ideas/sound.md): glassy and high — thin sines, quick decay,
+  // the cold's instrument register.
+  voice: {
+    pop: { baseHz: 587, stepHz: 30, decay: 0.12, wave: 'sine' as const },
+    claim: { cache: 494, site: 784, territory: 294, shrine: 740, find: 988 },
+    claimDecay: 0.4,
+    claimWave: 'sine' as const,
+    dry: { hz: 147, decay: 1.0 },
+    gain: 0.12,
+  },
+
   terrain: {
     // CRYPT — rough matte stone, raised slab edge, darkest of the four.
     green: surface(0x3c5348, {

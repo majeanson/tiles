@@ -88,6 +88,17 @@ export const TORCHLIT: Theme = {
     popLift: 0.8,
   },
 
+  // The voice (ideas/sound.md): warm and woody — triangle waves, low bells,
+  // a slow ember of a dry-warning. Torchlit sounds like it looks.
+  voice: {
+    pop: { baseHz: 330, stepHz: 18, decay: 0.25, wave: 'triangle' as const },
+    claim: { cache: 262, site: 523, territory: 165, shrine: 466, find: 784 },
+    claimDecay: 0.7,
+    claimWave: 'triangle' as const,
+    dry: { hz: 87, decay: 1.6 },
+    gain: 0.18,
+  },
+
   terrain: {
     // CRYPT — rough matte, 60° hatch.
     green: surface(0x3e4a2e, {

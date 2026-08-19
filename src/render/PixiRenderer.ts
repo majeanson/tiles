@@ -269,13 +269,39 @@ export class PixiRenderer implements Renderer {
       resizeTo: host,
       // A hex edge at phone scale is a couple of physical pixels; without
       // device-pixel resolution the whole board reads as soft and cheap.
-      resolution: window.devicePixelRatio,
+      // CAPPED at 2 (2026-08-19, the iOS crash hunt): a DPR-3 phone was
+      // rendering 2.25× the pixels of DPR 2 for sharpness nobody can see at
+      // arm's length, and iOS reclaims WebGL contexts under exactly that
+      // kind of GPU memory pressure — the leading suspect for Marc's
+      // "please reload" storms. Every texture bake keys off this same value
+      // through the renderer, so the cap halves texture memory too.
+      resolution: Math.min(2, window.devicePixelRatio),
       autoDensity: true,
     });
 
     host.appendChild(app.canvas);
     app.stage.addChild(this.#cells, this.#fx, this.#vignette);
     this.#app = app;
+
+    // WebGL context loss (the same hunt): iOS drops contexts under memory
+    // pressure and fires `webglcontextlost` — calling preventDefault is
+    // what OPTS IN to restoration, and without it the canvas stays dead
+    // and every later frame throws into the error overlay. On restore,
+    // every baked texture is stale GPU state: drop the caches whole and
+    // draw the current view again — the surfaces re-bake on demand, which
+    // is the same path a theme's first frame already takes.
+    app.canvas.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault();
+    });
+    app.canvas.addEventListener('webglcontextrestored', () => {
+      this.#surfaces.clear();
+      this.#labels.clear();
+      this.#flashTexture?.destroy(true);
+      this.#flashTexture = null;
+      this.#emberTexture?.destroy(true);
+      this.#emberTexture = null;
+      this.draw(this.#view);
+    });
 
     // `resizeTo` only watches WINDOW resizes, but the host is a flex child: it
     // changes size with no window event at all when the chrome around it does —

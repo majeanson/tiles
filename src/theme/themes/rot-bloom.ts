@@ -75,6 +75,17 @@ export const ROT_BLOOM: Theme = {
     popLift: 1,
   },
 
+  // The voice (ideas/sound.md): hollow squares in a low register, kept
+  // quiet — the bloom hums rather than rings.
+  voice: {
+    pop: { baseHz: 311, stepHz: 21, decay: 0.3, wave: 'square' as const },
+    claim: { cache: 233, site: 415, territory: 139, shrine: 370, find: 622 },
+    claimDecay: 0.8,
+    claimWave: 'square' as const,
+    dry: { hz: 73, decay: 2.0 },
+    gain: 0.1,
+  },
+
   terrain: {
     // CRYPT — diseased green, diagonal hatch.
     green: surface(0x44502c, {

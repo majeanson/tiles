@@ -24,18 +24,27 @@ turns deep ground into a FRONTIER you can start from, which is the same
 promise the fog memory just started keeping ("memory shows what it saw"),
 one step further: memory you can stand on.
 
-## The prerequisite (the whole cost lives here)
+## The prerequisite — DONE (the origin audit, 2026-08-19, same day)
 
-Audit every distance-based rule in the engine for the implicit origin and
-make each one read `homeOf(state)` — or decide, per rule, that it SHOULD
-stay world-anchored:
+Every RUN-anchored rule now reads `homeOf(state)`, and every WORLD-anchored
+rule was ruled world-anchored on purpose:
 
-- `distanceMultiplierAt` — the score multiplier. The big question (below).
-- blue tide (`blueTideEvery`) — worth per hexes from home.
-- deep water (`deepWaterRampBlocks`) — block distance tilting the mix.
-- destination density ramp (`destinationRampBlocks`).
-- cache grading (`cachePaysPerRing`) and `popTilesPerRing`.
-- the survey's `reach20`, the HUD's REACH, `endReachBonus`.
+- **Blue tide read the world origin inside `tallyWorth` — the named
+  exploit. Fixed**: `worthOf`/`previewWorth` carry a `home` parameter
+  (defaulting to origin), `harvestValue` passes `homeOf(state)`, and the
+  UI's every worth read, reach measure and share line passes it too — the
+  preview keeps its promise under any home. Pinned in `wake.test.ts`: a
+  blue tile at distance 30 pays tide 6 from origin and tide 0 from a wake
+  hex standing on it, same board, only home moved.
+- `distanceMultiplierAt`, `cachePaysAt`, `harvestMultiplier`, REACH and
+  `endReachBonus` already read `homeOf` from the prototype's own pass.
+- **Ruled world-anchored, deliberately**: destination density, the deep
+  water mix, biomes, native fields, walls — the world's GEOGRAPHY does not
+  re-arrange around a camp; only the rewards anchor to it. With scoring
+  home-anchored, a deep camp's richer neighbourhood is the point of
+  camping, not an exploit.
+- `pnpm sim` proven byte-identical by stash-and-rerun: home IS the origin
+  in every shipped run, so the audit changed nothing anyone plays today.
 
 **The design question the audit cannot answer:** should the score
 multiplier anchor to THIS RUN's waypoint (every camp is a fresh climb — the
@@ -55,6 +64,9 @@ machinery — `WorldMemory` gains one key. One camp at a time, replaced on
 purpose, never accumulated — the one-perk-slot philosophy applied to
 geography.
 
-Parked behind the audit. When a session picks this up: re-run the wake
-harness first (`wakeAt` still works), fix the origin-readers, re-sweep,
-THEN design the earn.
+**No longer parked behind anything but Marc's fork.** The audit is done and
+pinned; `wakeAt` grows, prices and scores honestly from any hex. What
+remains is the design call above (does a camp restart the climb — which is
+what the engine now does naturally — or should crossings-of-depth pay a
+priced multiplier?) and then the earn: who grants the camp, and what NEW
+RUN offers. One session, mostly shell work, whenever Marc calls it.

@@ -66,6 +66,17 @@ export const PLACEHOLDER: Theme = {
     popLift: 0.9,
   },
 
+  // The voice (ideas/sound.md): plain sines, no fiction — the placeholder
+  // sounds like a tuning fork, which is exactly its job.
+  voice: {
+    pop: { baseHz: 440, stepHz: 24, decay: 0.18, wave: 'sine' as const },
+    claim: { cache: 392, site: 659, territory: 220, shrine: 622, find: 880 },
+    claimDecay: 0.5,
+    claimWave: 'sine' as const,
+    dry: { hz: 110, decay: 1.2 },
+    gain: 0.15,
+  },
+
   terrain: {
     green: surface(0x3f7d55),
     yellow: surface(0xa8912f),

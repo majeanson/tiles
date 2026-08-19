@@ -3761,3 +3761,90 @@ home:
 deliberately untested by this repo's own convention, and everything the
 slots store was already pinned at the decode layer); typecheck, lint,
 format, build green; `pnpm sim` byte-identical by stash-and-rerun.
+
+**Addendum, same day — the no-phone program: four tasks Marc queued, and
+ten findings from the fresh-eyes reviewer who audited the day.**
+
+Marc, phone away: "what else can you work on?" — and on the option set he
+took all four, in order.
+
+**1. The fresh-eyes audit.** A reviewer agent with no memory of writing
+any of it read the day's nine commits as one body, against CLAUDE.md's own
+rules. It returned ten findings, every one verified before fixing; the two
+worst were invisible to any single commit:
+
+- **The crossing un-crossed itself and was an infinite relic farm** (its
+  worst): `cross()` banked the dowry and deleted the world — then
+  navigation fired `pagehide`, and the debounced world-flush RE-SAVED the
+  dirty world after its own funeral. Claim shrine, cross, land in the same
+  world, +100 relics, repeat. NEW WORLD had the same resurrection. Both
+  doors now route through one `dropWorld()` whose first line clears the
+  dirty flag.
+- **Detours narrated the home world**: a daily shrine announced the HOME
+  ledger's next unlock (or "fully awake") though nothing records; the
+  daily end screen said "N relics banked" when nothing banks; the relic
+  lesson was taught — and marked met forever — by the one mode where its
+  words are false; the shop door priced itself on unbankable run-relics.
+  All four surfaces now speak the detour honestly (a shrine says what
+  shrines ARE; CARRIED OUT reports 0; the lesson stays armed for home).
+- **DAILY #0**: the epoch sat one day in the future, so launch day read
+  "DAILY #0" and pre-epoch URLs read "#-3". Epoch is the ship date; #1 is
+  live; pre-epoch dates are rejected as not-dailies.
+- **"It can only happen once" was false three times over** — the
+  last-gasp teaching promised a once-only forgiveness the engine never
+  had (any pop that pays back under cost re-arms it). All three surfaces
+  now say what is true: it cannot CHAIN — only a pop lifts you back.
+- **The shrine receipt died behind the front door**: read-and-cleared at
+  boot, toasted for 5.2s at a door nobody had lifted — worse now that the
+  door is a menu worth reading. `announceArrival()` is public and fires
+  on BEGIN, when someone is looking.
+- **Settle nits**: a negative hand-typed seed settled a different world
+  than previewed (mask dropped — the seed settles exactly as played), and
+  a brand-new device arriving via a shared link burned slot 1 on a random
+  world nobody chose (a virgin active slot now counts as the empty one).
+- Two of my own pre-review fixes confirmed by the reviewer as real at
+  HEAD (the CARRIED OUT lie, the relic lesson) — and one of my premises
+  corrected: the teaching gates read per ACTION, not per frame (camera
+  moves never re-run the HUD), so the progress memoization stays as cheap
+  insurance with an honest comment instead of a wrong one.
+
+**2. The origin audit — waypoints unblocked.** Blue tide was the named
+exploit that failed where-you-wake: it read the WORLD origin inside
+`tallyWorth`, paying a far spawn free worth per blue tile.
+`worthOf`/`previewWorth` now carry `home` (defaulting to origin),
+`harvestValue` and every UI worth read, reach measure and share line pass
+`homeOf(state)`, and the preview keeps its promise under any home —
+pinned in `wake.test.ts` (tide 6 from origin, tide 0 from a wake hex on
+the same board). World GEOGRAPHY (destination density, deep water,
+biomes) is ruled world-anchored on purpose: the world does not re-arrange
+around a camp; only the rewards anchor to it. `pnpm sim` byte-identical
+by stash-and-rerun — home IS origin in every shipped run.
+`ideas/waypoints.md` updated: nothing is parked now but Marc's
+score-anchor fork and the earn design.
+
+**3. iOS crash hardening.** Renderer resolution capped at 2 (a DPR-3
+phone rendered 2.25× the pixels of DPR-2 for sharpness invisible at arm's
+length — GPU memory pressure is the leading crash suspect);
+`webglcontextlost` now calls `preventDefault` (which is what OPTS IN to
+restoration — without it the canvas stays dead and every frame feeds the
+error overlay), and `webglcontextrestored` drops every baked texture and
+redraws, the same path a first frame takes. Plus the progress-read
+memoization above.
+
+**4. Sound, built but gated** (`ideas/sound.md`, all three moments):
+`ui.sound` in the feature registry — presentation, the theme picker's own
+class, OFF by default per Marc's silent-1.0 call — and every theme now
+carries a `voice` in its tokens (torchlit warm triangles, cold-survey
+glassy sines, rot-bloom hollow squares, the placeholder a tuning fork).
+`ui/audio.ts` is Web Audio synthesis, zero assets: the pop as a rising
+run of bells capped at twelve, one struck note per claim kind, and
+running-dry as a low fade with hysteresis — fired when the purse first
+sinks near the next cost, re-armed only after real recovery; death stays
+silent. The game calls through an optional hook and stays deaf to whether
+anyone listens. The written question, for the phone with the flag on:
+**does sound change WHEN players pop?**
+
+568 tests green; typecheck, lint, format, build green; `pnpm sim`
+byte-identical across the whole program. Nothing here needs the phone to
+be correct — and three things now wait on it: the drip (RESET TEACHING),
+the crossing, and `?ff=ui.sound`.

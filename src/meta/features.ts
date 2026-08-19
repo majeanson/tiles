@@ -58,6 +58,18 @@ export const FEATURES = [
     defaultOn: false,
     wired: true,
   },
+  {
+    id: 'ui.sound',
+    label: 'Sound',
+    note:
+      'Three synthesised moments (ideas/sound.md, built 2026-08-19): the pop as a rising ' +
+      'run of bells, one struck note per claim kind, and a low fade when the purse runs ' +
+      'near dry. Web Audio, zero assets, voiced by the theme. Off by default — Marc chose ' +
+      'a silent 1.0 (2026-08-15), and a phone game that surprises a quiet room is ' +
+      'uninstalled. Takes effect on the next load.',
+    defaultOn: false,
+    wired: true,
+  },
 ] as const satisfies readonly FeatureDef[];
 
 export type FeatureId = (typeof FEATURES)[number]['id'];

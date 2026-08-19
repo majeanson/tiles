@@ -33,12 +33,12 @@ describe('the date, the number, the seed', () => {
 
   it('numbers the epoch date #1 and counts real calendar days', () => {
     expect(dailyNumber(DAILY_EPOCH)).toBe(1);
-    expect(dailyNumber('2026-08-21')).toBe(2);
-    expect(dailyNumber('2026-09-20')).toBe(32);
+    expect(dailyNumber('2026-08-20')).toBe(2);
+    expect(dailyNumber('2026-09-19')).toBe(32);
     // Across a year boundary and a leap February, still exact: 365 days to
-    // 2027-08-20 (#366), then 366 more through 2028's February 29th (#732).
-    expect(dailyNumber('2027-08-20')).toBe(366);
-    expect(dailyNumber('2028-08-20')).toBe(732);
+    // 2027-08-19 (#366), then 366 more through 2028's February 29th (#732).
+    expect(dailyNumber('2027-08-19')).toBe(366);
+    expect(dailyNumber('2028-08-19')).toBe(732);
   });
 
   it('walks one day back correctly across month and year seams', () => {

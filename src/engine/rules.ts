@@ -209,6 +209,7 @@ function tallyWorth(
   rarity: Rarity | undefined,
   onNative: boolean,
   t: Tuning,
+  home: { q: number; r: number },
   counts: (n: HexKey) => boolean,
 ): number {
   const { q, r } = parse(k);
@@ -246,7 +247,12 @@ function tallyWorth(
     worth += (t.yellowCompanyAll ? strangers : company.size) * t.yellowCompanyBonus;
   }
   if (colour === 'blue' && t.blueTideEvery > 0) {
-    worth += Math.floor(distance({ q, r }, ORIGIN) / t.blueTideEvery);
+    // Measured from HOME, not the world origin (the origin audit,
+    // 2026-08-19): under the where-you-wake prototype a far spawn inherited
+    // six free tide-worth per blue tile just by standing where it woke —
+    // the exact exploit that failed the prototype. Home IS the origin in
+    // every shipped run, so nothing moves until a wake hex exists.
+    worth += Math.floor(distance({ q, r }, home) / t.blueTideEvery);
   }
 
   // Native ground counts as one match — the endless world's rule 4 addendum.
@@ -277,10 +283,15 @@ function tallyWorth(
  * Note there is no recursion risk: ripeness depends only on whether neighbours
  * are solid, never on anyone's worth.
  */
-export function worthOf(cells: Cells, k: HexKey, t: Tuning): number {
+export function worthOf(
+  cells: Cells,
+  k: HexKey,
+  t: Tuning,
+  home: { q: number; r: number } = ORIGIN,
+): number {
   const cell = cells[k];
   if (cell?.kind !== 'tile') return 0;
-  return tallyWorth(cells, k, cell.colour, cell.rarity, cell.onNative === true, t, (n) =>
+  return tallyWorth(cells, k, cell.colour, cell.rarity, cell.onNative === true, t, home, (n) =>
     t.ripeTilesMatch ? true : !isRipe(cells, n),
   );
 }
@@ -391,10 +402,11 @@ export function harvestValue(
   // means no harvest — which is a rule rather than an edge case, because
   // which pocket you cash is half the decision.
   const pops = at === undefined ? [] : ripeClusterAt(state.cells, at);
+  const home = homeOf(state);
   let tiles = 0;
   let sumWorth = 0;
   for (const k of pops) {
-    const worth = worthOf(state.cells, k, t);
+    const worth = worthOf(state.cells, k, t, home);
     sumWorth += worth;
     tiles += t.tilesPerPop + Math.floor(worth / t.worthPerExtraTile);
   }
@@ -450,6 +462,7 @@ export function previewWorth(
   k: HexKey,
   tile: Pick<Tile, 'colour' | 'rarity'>,
   t: Tuning,
+  home: { q: number; r: number } = ORIGIN,
 ): number {
   const { colour, rarity } = tile;
   const ground = cells[k];
@@ -460,9 +473,9 @@ export function previewWorth(
   // Worth taking — the harness asks this a few hundred times per placement, and
   // the slow path copies the whole board to answer it.
   if (t.ripeTilesMatch) {
-    return tallyWorth(cells, k, colour, rarity, onNative, t, () => true);
+    return tallyWorth(cells, k, colour, rarity, onNative, t, home, () => true);
   }
-  return worthOf({ ...cells, [k]: { kind: 'tile', colour, onNative, rarity } }, k, t);
+  return worthOf({ ...cells, [k]: { kind: 'tile', colour, onNative, rarity } }, k, t, home);
 }
 
 /** Build a `cells` record from a list of coordinates, all empty. */

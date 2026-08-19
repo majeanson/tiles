@@ -96,6 +96,15 @@ export class SurfaceTextures {
     this.#cache.evictExcept(`${orientation}:${Math.max(4, Math.round(size))}:`);
   }
 
+  /**
+   * Drop every baked texture but stay usable — the WebGL context-loss path
+   * (2026-08-19): after a restore, every cached texture is stale GPU state,
+   * and the next draw re-bakes on demand exactly like a first frame.
+   */
+  clear(): void {
+    this.#cache.clear();
+  }
+
   destroy(): void {
     this.#cache.clear();
   }

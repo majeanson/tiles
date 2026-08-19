@@ -1661,9 +1661,15 @@ describe('the moments pack (2026-08-18)', () => {
     }
   });
 
-  it('names what the previous run woke, once, at the start of a fresh run', () => {
+  // announceArrival is the shell's to call when BEGIN lifts the front door
+  // (fresh-eyes finding 9, 2026-08-19): fired at boot, the toast played its
+  // five seconds to the back of the door and the receipt died unseen.
+  it('names what the previous run woke, once BEGIN is actually looking', () => {
     const ctx = build(1, TUNING, { shrineReceipt: ['A fourth draft card'] });
     ctx.game.start();
+    // Boot alone says nothing — the door is still up.
+    expect(ctx.el.toast.hidden).toBe(true);
+    ctx.game.announceArrival();
     expect(ctx.el.toast.textContent).toBe('Awake since your last run: A fourth draft card.');
   });
 
@@ -1673,6 +1679,7 @@ describe('the moments pack (2026-08-18)', () => {
       shrineReceipt: ['A fourth draft card'],
     });
     ctx.game.start();
+    ctx.game.announceArrival();
     expect(ctx.el.toast.hidden).toBe(true);
   });
 
@@ -1680,6 +1687,7 @@ describe('the moments pack (2026-08-18)', () => {
     const claimed = [key(9, 9), key(-9, 9)];
     const ctx = build(1, TUNING, undefined, claimed);
     ctx.game.start();
+    ctx.game.announceArrival();
     expect(ctx.el.toast.textContent).toBe('+12 tiles from territories held.');
   });
 
@@ -1687,6 +1695,7 @@ describe('the moments pack (2026-08-18)', () => {
     const claimed = [key(9, 9), key(-9, 9)];
     const ctx = build(1, TUNING, { shrineReceipt: ['A fourth draft card'] }, claimed);
     ctx.game.start();
+    ctx.game.announceArrival();
     expect(ctx.el.toast.textContent).toBe(
       'Awake since your last run: A fourth draft card. +12 tiles from territories held.',
     );
@@ -2425,7 +2434,10 @@ describe('the crossing (2026-08-19)', () => {
     expect(ctx.el.eventCard.hidden).toBe(true);
   });
 
-  it('stays a plain fully-awake card on a replay — a detour has no world to leave', () => {
+  it('speaks a detour shrine honestly — no home ledger, no crossing to offer', () => {
+    // Fresh-eyes finding 5 (2026-08-19): a daily shrine used to narrate the
+    // HOME world's next unlock, or claim "fully awake", when a detour
+    // records nothing anywhere. It says what shrines ARE now.
     const ctx = shrineAt({
       unlockLabel: () => null,
       replay: true,
@@ -2436,7 +2448,10 @@ describe('the crossing (2026-08-19)', () => {
         },
       },
     });
-    expect(ctx.el.eventCardText.textContent).toMatch(/fully awake/);
+    const text = ctx.el.eventCardText.textContent ?? '';
+    expect(text).toMatch(/On your own world/);
+    expect(text).toMatch(/shared run keeps nothing/i);
+    expect(text).not.toMatch(/fully awake/);
     expect(actionButton().hidden).toBe(true);
     expect(ctx.el.eventCardDismiss.textContent).toBe('GOT IT');
   });

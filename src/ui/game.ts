@@ -7,6 +7,7 @@ import {
   costOf,
   harvestMultiplier,
   harvestValue,
+  homeOf,
   isRipe,
   placementCostAt,
   worthOf,
@@ -279,6 +280,17 @@ export type GameHooks = {
     readonly dowry: () => number;
     readonly cross: () => void;
   };
+  /**
+   * The three sounded moments (`ideas/sound.md`, behind `ui.sound`): the
+   * pop's rising bells, the claim's struck note, the running-dry fade.
+   * Absent while the flag is off, which is the silence the game shipped
+   * with — the game calls, the shell decides whether anything is listening.
+   */
+  readonly sound?: {
+    pop(count: number): void;
+    claim(kind: LandmarkReward): void;
+    dry(): void;
+  };
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -426,6 +438,14 @@ export class Game {
    * device: a fresh Game instance per run means a fresh flag.
    */
   #uniqueExplained = false;
+  /**
+   * Running dry, sounded once per descent (`ideas/sound.md`): armed while
+   * the purse is healthy, fired the moment it first sinks near the next
+   * placement's cost, re-armed only after a real recovery — hysteresis, so
+   * hovering at the line is one warning, not a metronome. The margins are
+   * feedback thresholds, not balance: nothing in the economy reads them.
+   */
+  #dryWarned = false;
 
   /**
    * The end screen's record lines, computed once per ended run so the book is
@@ -645,24 +665,33 @@ export class Game {
 
     this.#syncCamera();
     this.render();
+  }
 
-    // The start-of-run toast (2026-08-18): a fresh run only, never a resumed
-    // one — a resume is the same run reloading, not a new expedition, and it
-    // has already had its opening frame. Two moments share the one slot,
-    // joined when both fire: the shrine receipt (what the PREVIOUS run woke,
-    // named once on the very next run's first frame) and the territory
-    // why-line (`startingPerk`, already in the manual — surfaced here too
-    // when it actually changed the starting purse).
-    if (this.#hooks.resume === null || this.#hooks.resume === undefined) {
-      const parts: string[] = [];
-      const receipt = this.#hooks.shrineReceipt ?? [];
-      if (receipt.length > 0) {
-        parts.push(`Awake since your last run: ${receipt.join(', ')}.`);
-      }
-      const perk = startingPerk(this.#state.tuning, this.#state.claimed.length);
-      if (perk > 0) parts.push(`+${perk} tiles from territories held.`);
-      if (parts.length > 0) this.#showNote(parts.join(' '));
+  /**
+   * The start-of-run toast (2026-08-18): a fresh run only, never a resumed
+   * one — a resume is the same run reloading, not a new expedition, and it
+   * has already had its opening frame. Two moments share the one slot,
+   * joined when both fire: the shrine receipt (what the PREVIOUS run woke,
+   * named once on the very next run's first frame) and the territory
+   * why-line (`startingPerk`, already in the manual — surfaced here too
+   * when it actually changed the starting purse).
+   *
+   * PUBLIC, and separate from `start()` since the fresh-eyes review
+   * (2026-08-19, finding 9): fired at boot, the toast played its 5.2 seconds
+   * to the back of the front door and the receipt — read-and-cleared by the
+   * shell — was gone forever. The shell calls this when BEGIN actually
+   * lifts the door, which is when someone is looking.
+   */
+  announceArrival(): void {
+    if (this.#hooks.resume !== null && this.#hooks.resume !== undefined) return;
+    const parts: string[] = [];
+    const receipt = this.#hooks.shrineReceipt ?? [];
+    if (receipt.length > 0) {
+      parts.push(`Awake since your last run: ${receipt.join(', ')}.`);
     }
+    const perk = startingPerk(this.#state.tuning, this.#state.claimed.length);
+    if (perk > 0) parts.push(`+${perk} tiles from territories held.`);
+    if (parts.length > 0) this.#showNote(parts.join(' '));
   }
 
   /**
@@ -861,7 +890,10 @@ export class Game {
   #pocketNote(at: HexKey): string {
     const t = this.#state.tuning;
     const value = harvestValue(this.#state, at);
-    const worth = value.keys.reduce((n, k) => n + worthOf(this.#state.cells, k, t), 0);
+    const worth = value.keys.reduce(
+      (n, k) => n + worthOf(this.#state.cells, k, t, homeOf(this.#state)),
+      0,
+    );
     const multiplier = harvestMultiplier(this.#state, value.keys);
 
     // Rare tiles inside the pocket, and what each kind does — a ripe rare
@@ -915,7 +947,7 @@ export class Game {
     value: ReturnType<typeof harvestValue>,
   ): string {
     const t = before.tuning;
-    const worth = value.keys.reduce((n, k) => n + worthOf(before.cells, k, t), 0);
+    const worth = value.keys.reduce((n, k) => n + worthOf(before.cells, k, t, homeOf(before)), 0);
     const multiplier = harvestMultiplier(before, value.keys);
     const head = `POPPED ${value.count} — total worth ${worth}`;
 
@@ -1009,6 +1041,7 @@ export class Game {
       // thing that pays and the words about it have to be the same object in
       // the player's head — "a star gave me that" rather than "some text
       // appeared".
+      this.#hooks.sound?.claim(cell.reward);
       switch (cell.reward) {
         case 'cache':
           this.#markMet('cache');
@@ -1047,8 +1080,17 @@ export class Game {
           // used to say "fully awake" and give nothing — a dead reward. It
           // is the way onward now: cross to a fresh world carrying relics
           // for what this one holds, or stay and keep building it.
+          // A detour has no ledger to narrate (fresh-eyes finding 5): say
+          // what shrines ARE, never what the HOME world would have unlocked.
+          if (this.#hooks.replay === true) {
+            notes.push({
+              rank: RANK.shrine,
+              text: '◈  SHRINE WOKEN\nOn your own world a shrine switches a system on, for good. A shared run keeps nothing — but it still counts the claim.',
+            });
+            break;
+          }
           const crossing = this.#hooks.crossing;
-          if (label === null && crossing !== undefined && this.#hooks.replay !== true) {
+          if (label === null && crossing !== undefined) {
             const dowry = crossing.dowry();
             action = { label: `CROSS — carry ${dowry} relics`, run: crossing.cross };
             notes.push({
@@ -1139,11 +1181,18 @@ export class Game {
           : `★ SITE — claim it for ${t.sitePays} pts × its distance, and it opens a bounty worth ×${t.questBonus}.`;
       }
       if (reward === 'shrine') {
+        // A detour has no ledger to narrate (fresh-eyes finding 5): say what
+        // shrines ARE, not what the home world would have unlocked.
+        if (this.#hooks.replay === true) {
+          return claimed
+            ? '◈ SHRINE — woken. On your own world, this switches a system on for good.'
+            : '◈ SHRINE — touch it with a tile. On your own world, waking one switches a system on for good.';
+        }
         const next = this.#hooks.unlockLabel?.(this.#shrinesClaimed) ?? null;
         if (claimed) return '◈ SHRINE — woken. It switched a system on for this world.';
         // Fully awake with the crossing available: the shrine's remaining
         // gift is the way onward, and its tap explanation says so.
-        if (next === null && this.#hooks.crossing !== undefined && this.#hooks.replay !== true) {
+        if (next === null && this.#hooks.crossing !== undefined) {
           return `◈ SHRINE — this world is fully awake, so reaching it offers the crossing: a NEW WORLD, with ${this.#hooks.crossing.dowry()} relics carried for what you leave.`;
         }
         return `◈ SHRINE — claim it to unlock ${next ?? 'a system'} for this world, permanently.`;
@@ -1215,7 +1264,7 @@ export class Game {
       case 'stone':
         return `Spent ground — a popped tile. It surrounds but never matches, except for ${name('red')}, which feeds on it.`;
       case 'tile': {
-        const worth = worthOf(this.#state.cells, hex, t);
+        const worth = worthOf(this.#state.cells, hex, t, homeOf(this.#state));
         const power = this.#rarityLine(cell.rarity);
         // The colour's personality rides along (2026-08-19, "the colors are
         // not explained") — a tapped tile is the cheapest place to learn
@@ -1452,7 +1501,7 @@ export class Game {
             t.costGrace > 0
               ? `A placement costs ${t.baseCost} tiles for the first ${t.costGrace}, then +1 for every ${t.costRisesEvery} after. It never comes back down — that is the clock that ends every run.`
               : `A placement costs ${t.baseCost} tiles, +1 for every ${t.costRisesEvery} you have ever placed this run. It never comes back down — that is the clock that ends every run.`,
-            'You may place while you hold ANY tiles, even fewer than the cost — the difference is forgiven at zero, which can only happen once.',
+            'You may place while you hold ANY tiles, even fewer than the cost — the difference is forgiven at zero. It cannot chain: only a pop can lift you back above zero for the next.',
           ],
         },
         {
@@ -1956,6 +2005,7 @@ export class Game {
     // hand, then new ground — neither worth interrupting a pop or a claim
     // for, both worth saying the one time they are true.
     if (popped !== null) {
+      if (harvested !== null && harvested.count > 0) this.#hooks.sound?.pop(harvested.count);
       // The first pop is a teaching moment AND a receipt (`ideas/teaching.md`):
       // the held card carries the lesson — stone, and the pressure it makes —
       // with this pop's own arithmetic under it, so nothing is lost to the
@@ -1997,12 +2047,14 @@ export class Game {
     this.render();
   }
 
-  /** How far from home `state` has built. Mirrors `view.ts`'s own reachOf. */
+  /** How far from home `state` has built. Mirrors `view.ts`'s own reachOf —
+   *  both measured from homeOf(state) since the origin audit (2026-08-19). */
   #reachOf(state: GameState): number {
+    const home = homeOf(state);
     let reach = 0;
     for (const [k, cell] of Object.entries(state.cells)) {
       if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-      reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+      reach = Math.max(reach, distance(parse(k), home));
     }
     return reach;
   }
@@ -2176,7 +2228,10 @@ export class Game {
       };
     }
 
-    if (!met.has('relic') && next.relics > 0) {
+    // Never on a detour: a daily's run-relics bank nothing, and the lesson's
+    // own words ("they follow you out") must not be taught by a mode where
+    // they do not. The moment stays armed for the home world.
+    if (!met.has('relic') && next.relics > 0 && this.#hooks.replay !== true) {
       return { tier: 'card', id: 'relic', text: RELIC_LESSON };
     }
 
@@ -2194,7 +2249,7 @@ export class Game {
       return {
         tier: 'toast',
         id: 'lastGasp',
-        text: 'That cost more tiles than you had — allowed, by design: you may place while ANY tiles remain, and the difference is forgiven at zero. It can only happen once; at zero with nothing ripe to pop, the run is over.',
+        text: 'That cost more tiles than you had — allowed, by design: you may place while ANY tiles remain, and the difference is forgiven at zero. It cannot chain — only a pop can lift you back above zero — and at zero with nothing ripe, the run is over.',
       };
     }
 
@@ -2243,6 +2298,19 @@ export class Game {
   }
 
   #renderHud(hud: HudView): void {
+    // Running dry (`ideas/sound.md`): the dread is the sound, and it plays
+    // when the purse first sinks within a few tiles of the next cost — not
+    // at death, which stays silent. Hysteresis re-arms it only after a real
+    // recovery (a cache, a pop), so the line is crossed once per descent.
+    if (!hud.ended && this.#hooks.sound !== undefined) {
+      if (!this.#dryWarned && hud.tiles > 0 && hud.tiles < hud.cost + 3) {
+        this.#dryWarned = true;
+        this.#hooks.sound.dry();
+      } else if (this.#dryWarned && hud.tiles >= hud.cost + 6) {
+        this.#dryWarned = false;
+      }
+    }
+
     this.#renderStats(hud);
     this.#renderDraft(hud);
 
@@ -2508,8 +2576,10 @@ export class Game {
       // arriving only in the ending bonus, after the last quiet action that
       // could have taught them. Said here, once, at the same transition that
       // banked them (`finish` above), so the door below never appears
-      // unexplained (`ideas/teaching.md`).
-      if (!this.#met('relic')) {
+      // unexplained (`ideas/teaching.md`). Never on a detour: a daily banks
+      // nothing, and "they follow you out" must not be taught by a mode
+      // where they do not.
+      if (!this.#met('relic') && this.#hooks.replay !== true) {
         const banked = this.#hooks.shop?.read().relics ?? 0;
         if (banked > 0 || hud.relics > 0) {
           this.#markMet('relic');
@@ -2702,9 +2772,13 @@ export class Game {
     // found are THIS run's; territories held and how much of the map is
     // known are the WORLD's, read fresh from the shell (`worldStats`) so a
     // territory claimed a moment ago is never shown as unclaimed.
+    // On a detour (a replay, a daily) NOTHING is carried out — the run's own
+    // relics were never banked, so saying "N relics banked" would be the end
+    // screen lying about the one thing the mode promises not to do.
+    const carriedRelics = this.#hooks.replay === true ? 0 : hud.relics;
     const world = this.#hooks.worldStats?.();
     if (
-      hud.relics > 0 ||
+      carriedRelics > 0 ||
       this.#foundThisRun !== null ||
       this.#goalMetThisRun !== null ||
       world !== undefined
@@ -2712,7 +2786,7 @@ export class Game {
       const carried = document.createElement('div');
       carried.className = 'end-carried';
       carried.append(line('shop-purse', 'CARRIED OUT'));
-      carried.append(line('end-facts', `${hud.relics} relics banked`));
+      carried.append(line('end-facts', `${carriedRelics} relics banked`));
       if (this.#foundThisRun !== null) {
         carried.append(line('end-facts', `✦ found — ${this.#foundThisRun}`));
       }
@@ -2742,7 +2816,9 @@ export class Game {
     // kind of unexplained chrome the drip exists to remove.
     if (
       this.#hooks.shop !== undefined &&
-      (this.#met('relic') || this.#hooks.shop.read().relics > 0 || hud.relics > 0)
+      (this.#met('relic') ||
+        this.#hooks.shop.read().relics > 0 ||
+        (this.#hooks.replay !== true && hud.relics > 0))
     ) {
       const progress = this.#hooks.shop.read();
       const door = row('end-payout-row end-link', 'RELICS', `${progress.relics} ▸`, {
@@ -3033,7 +3109,7 @@ export class Game {
           t.costGrace > 0
             ? `It stays ${t.baseCost} for the first ${t.costGrace} placements, then rises +1 every ${t.costRisesEvery} placed`
             : `It rises +1 every ${t.costRisesEvery} placed`;
-        return `COST — the next placement's price: ${hud.cost}. ${curve}, and it never comes back down — the clock that ends every run. You may place while you hold ANY tiles, even fewer than the cost: the difference is forgiven at zero, once.`;
+        return `COST — the next placement's price: ${hud.cost}. ${curve}, and it never comes back down — the clock that ends every run. You may place while you hold ANY tiles, even fewer than the cost: the difference is forgiven at zero (a pop must refill you before the next).`;
       }
       case 'left':
         return 'LEFT — placements remaining in the expedition. At zero it ends; anything already ripe can still be popped.';

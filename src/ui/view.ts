@@ -224,7 +224,9 @@ export function renderContext(state: GameState, asked: HexKey | null = null): Re
   const previews = placeable
     ? state.draft.map((tile) => {
         const map = new Map<HexKey, number>();
-        for (const k of legal) map.set(k, previewWorth(state.cells, k, tile, state.tuning));
+        for (const k of legal) {
+          map.set(k, previewWorth(state.cells, k, tile, state.tuning, homeOf(state)));
+        }
         return map;
       })
     : [];
@@ -311,7 +313,7 @@ export function toBoardView(
       // The colour lens: with a chip active, every OTHER colour's tiles step
       // back so one colour's holdings read as a single shape on the board.
       dimmed: spotlight !== null && cell.kind === 'tile' && cell.colour !== spotlight,
-      worth: worthOf(state.cells, k, state.tuning),
+      worth: worthOf(state.cells, k, state.tuning, homeOf(state)),
       home: k === homeKey,
       light: lit(q, r),
       band: band(q, r),
@@ -889,14 +891,15 @@ function colourPotentials(state: GameState): ColourPotential[] {
     Colour,
     { count: number; worth: number; bonus: number; ripeCount: number; ripeWorth: number }
   >(COLOURS.map((c) => [c, { count: 0, worth: 0, bonus: 0, ripeCount: 0, ripeWorth: 0 }]));
+  const home = homeOf(state);
   for (const [k, cell] of Object.entries(state.cells)) {
     if (cell.kind !== 'tile') continue;
     const entry = acc.get(cell.colour);
     if (entry === undefined) continue;
-    const worth = worthOf(state.cells, k, t);
+    const worth = worthOf(state.cells, k, t, home);
     entry.count++;
     entry.worth += worth;
-    entry.bonus += worth - worthOf(state.cells, k, plain);
+    entry.bonus += worth - worthOf(state.cells, k, plain, home);
     if (isRipe(state.cells, k)) {
       entry.ripeCount++;
       entry.ripeWorth += worth;
@@ -1061,12 +1064,15 @@ function oddsFor(state: GameState): string | null {
   return `magic ${pct(odds.magic)} · unique ${pct(odds.unique)}`;
 }
 
-/** Hexes from home the run has built — the plane's depth, drawn in the HUD. */
+/** Hexes from home the run has built — the plane's depth, drawn in the HUD.
+ *  Measured from homeOf(state) (the origin audit, 2026-08-19): true origin
+ *  in every shipped run, the wake hex under the prototype. */
 function reachOf(state: GameState): number {
+  const home = homeOf(state);
   let reach = 0;
   for (const [k, cell] of Object.entries(state.cells)) {
     if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-    reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+    reach = Math.max(reach, distance(parse(k), home));
   }
   return reach;
 }

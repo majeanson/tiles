@@ -308,6 +308,33 @@ export type Motion = {
 
 export type ThemeId = string;
 
+/**
+ * The direction's VOICE (`ideas/sound.md`, built 2026-08-19 behind
+ * `ui.sound`, off by default — Marc chose a silent 1.0): three synthesised
+ * moments, parameterised as data so sound is art direction like everything
+ * else in this file. The greyscale rule's cousin applies — a direction that
+ * cannot be told apart with eyes closed has no voice — so each theme states
+ * its own numbers. Frequencies in Hz, times in seconds, gains 0..1.
+ */
+export type Voice = {
+  /** The pop: a rising run of bells, one per popped tile. */
+  readonly pop: {
+    readonly baseHz: number;
+    /** Pitch step per extra tile in the pocket — the size, audible. */
+    readonly stepHz: number;
+    readonly decay: number;
+    readonly wave: OscillatorType;
+  };
+  /** One struck note per claim kind — cache warm, site bright, territory low, shrine strange, find rare. */
+  readonly claim: Readonly<Record<'cache' | 'site' | 'territory' | 'shrine' | 'find', number>>;
+  readonly claimDecay: number;
+  readonly claimWave: OscillatorType;
+  /** Running dry: the low fade when the purse first nears the next cost. */
+  readonly dry: { readonly hz: number; readonly decay: number };
+  /** Master gain — the whole voice's loudness ceiling. */
+  readonly gain: number;
+};
+
 export type Theme = {
   readonly id: ThemeId;
   readonly name: string;
@@ -321,6 +348,8 @@ export type Theme = {
   readonly ink: Ink;
   readonly type: Type;
   readonly motion: Motion;
+  /** The direction's voice. Silent until `ui.sound` is switched on. */
+  readonly voice: Voice;
 
   /** The four playable colours. Every key is required — a missing one is a bug. */
   readonly terrain: Readonly<Record<Colour, Surface>>;

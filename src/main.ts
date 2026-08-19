@@ -1,6 +1,7 @@
 import { TUNING, type Tuning } from '@content/tuning';
 import { CROSSING, GOALS } from '@content/goals';
 import { distance, parse } from '@engine/hex';
+import { homeOf } from '@engine/rules';
 import {
   arcSparkline,
   dailyNumber,
@@ -61,6 +62,7 @@ import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/ind
 import type { Orientation, Theme } from '@theme/tokens';
 import type { GameState } from '@engine/state';
 import { Game, type Elements, type GameHooks } from '@ui/game';
+import { Sound } from '@ui/audio';
 
 // v2, 2026-08-14: the endless world became the default. Any device that ever
 // visited before has `world.endless: false` explicitly persisted under v1,
@@ -173,10 +175,11 @@ function localToday(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-/** `?daily=YYYY-MM-DD`, validated — garbage in the URL is not a daily. */
+/** `?daily=YYYY-MM-DD`, validated — garbage in the URL is not a daily,
+ *  and neither is a date before #1 existed (a "#-3" would be a lie). */
 function askedDaily(): string | null {
   const asked = new URLSearchParams(location.search).get('daily');
-  return asked !== null && isDailyDate(asked) ? asked : null;
+  return asked !== null && isDailyDate(asked) && dailyNumber(asked) >= 1 ? asked : null;
 }
 
 function readDailyBook(): ReturnType<typeof decodeDailyBook> {
@@ -275,9 +278,24 @@ function resolveThemeId(): string {
  * copy here would show a purse that had already been spent. Storage is cheap;
  * a lie about how many relics you have is not.
  */
+/**
+ * Memoized on the RAW string, not on time: the teaching gates read progress
+ * several times per ACTION render now (the LUCK stat, the purse fold, the
+ * glow check — camera moves never re-run the HUD, so this is per tap, not
+ * per frame). Decoding the same JSON a handful of times per tap is small,
+ * but it is also free to not do. The freshness contract survives whole: the
+ * stored string is re-read every call, so any write anywhere invalidates
+ * the cache by value.
+ */
+let progressCache: { raw: string | null; decoded: Progress } | null = null;
+
 function readProgress(): Progress {
   try {
-    return decodeProgress(localStorage.getItem(PROGRESS_STORAGE_KEY));
+    const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
+    if (progressCache !== null && progressCache.raw === raw) return progressCache.decoded;
+    const decoded = decodeProgress(raw);
+    progressCache = { raw, decoded };
+    return decoded;
   } catch {
     return EMPTY_PROGRESS;
   }
@@ -385,7 +403,7 @@ function runKeeping(
   debugOn: boolean,
   dailyDate: string | null,
   keys: SlotKeys,
-): GameHooks & { savedSeed: number | null } {
+): GameHooks & { savedSeed: number | null; dropWorld: () => void } {
   // Asked once: the URL cannot change mid-session without a reload, and this
   // used to construct fresh URLSearchParams three times per action across
   // the hooks below.
@@ -449,9 +467,30 @@ function runKeeping(
     }
   };
 
+  /**
+   * Leave the active world behind, for BOTH doors that do it (the crossing
+   * and SETTINGS' NEW WORLD). The load-bearing line is the first one: the
+   * fresh-eyes review (2026-08-19) found that navigating away fires
+   * `pagehide`, and the flush re-saved a dirty world AFTER its own funeral —
+   * which un-crossed every crossing and made the dowry an infinite relic
+   * farm (claim shrine, cross, land in the same world, repeat).
+   */
+  const dropWorld = (): void => {
+    worldDirty = false;
+    try {
+      localStorage.removeItem(keys.world);
+      localStorage.removeItem(keys.run);
+      localStorage.removeItem(keys.receipt);
+    } catch {
+      // A storage that refuses the wipe reloads into the old world — with
+      // anything already banked kept, which errs kind.
+    }
+  };
+
   return {
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
+    dropWorld,
     memory: world.revealed,
 
     shop: {
@@ -474,8 +513,11 @@ function runKeeping(
 
     // Which unlock the next shrine gives, so the game can NAME it at the
     // moment it is woken. The ledger lives out here with the world; the game
-    // only knows how many shrines this run has claimed.
-    unlockLabel: (nth) => UNLOCKS[world.shrines.length + nth]?.label ?? null,
+    // only knows how many shrines this run has claimed. NOT on a detour
+    // (fresh-eyes finding 5): a daily shrine was narrating the HOME world's
+    // next unlock — or "fully awake" — when nothing is recorded anywhere;
+    // absent, the game gives detour shrines their own honest line.
+    ...(detour ? {} : { unlockLabel: (nth) => UNLOCKS[world.shrines.length + nth]?.label ?? null }),
 
     // A hidden find, claimed: grant one unowned perk, write it down, hand
     // back the name for the toast. Deterministic in (world, hex) — no roll to
@@ -558,14 +600,7 @@ function runKeeping(
                 CROSSING.baseRelics + current.territories.length * CROSSING.relicsPerTerritory;
               const progress = readProgress();
               writeProgress({ ...progress, relics: progress.relics + dowry });
-              try {
-                localStorage.removeItem(keys.world);
-                localStorage.removeItem(keys.run);
-                localStorage.removeItem(keys.receipt);
-              } catch {
-                // A storage that refuses the wipe still reloads into the old
-                // world — with the dowry banked, which errs kind.
-              }
+              dropWorld();
               location.href = new URL(location.pathname, location.href).toString();
             },
           },
@@ -755,10 +790,11 @@ function runKeeping(
       if (dailyDate !== null) {
         url.searchParams.delete('seed');
         url.searchParams.set('daily', dailyDate);
+        const home = homeOf(state);
         let reach = 0;
         for (const [k, cell] of Object.entries(state.cells)) {
           if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-          reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+          reach = Math.max(reach, distance(parse(k), home));
         }
         const tries = readDailyBook()[dailyDate]?.tries ?? 1;
         const arc = arcSparkline(state.log.harvests);
@@ -893,11 +929,11 @@ function mountSettings(
   // player to decide, and moved into their own fold below.
   const intro = document.createElement('p');
   intro.textContent =
-    'Sticky on this device. Two switches for testing sit folded under ' +
-    'DEVELOPER, below — the address bar does the same job ' +
-    '(?ff=debug.overlay, ?ff=-ui.themePicker), and each note carries the ' +
-    'decision that set its default. NEW RUN is how a changed one actually ' +
-    'takes effect; it never touches the run in progress.';
+    'Sticky on this device. The switches sit folded under DEVELOPER, below — ' +
+    'SOUND among them — and the address bar does the same job ' +
+    '(?ff=ui.sound, ?ff=debug.overlay), each note carrying the decision ' +
+    'that set its default. NEW RUN is how a changed one actually takes ' +
+    'effect; it never touches the run in progress.';
 
   // The atlas, as a label/value grid in the stat row's own language
   // (`.fact`/`.fact-label`/`.fact-value` — shared with the end screen's own
@@ -1392,14 +1428,24 @@ async function main(): Promise<void> {
     // can be SETTLED — its geography becomes one of this device's three
     // worlds, fresh and unexplored, played with your own economy from then
     // on. Only the seed travels; the sender's run stays theirs.
-    const emptySlot = SLOTS.find((s) => peekSlot(s) === null);
+    // A virgin active slot (auto-created at boot, never actually played)
+    // counts as the empty one — otherwise a brand-new device arriving via a
+    // shared link burned slot 1 on a random world nobody chose (finding 10).
+    const active = peekSlot(slot);
+    const emptySlot =
+      active !== null && active.runs === 0 && active.revealed.length === 0
+        ? slot
+        : SLOTS.find((s) => peekSlot(s) === null);
     if (emptySlot !== undefined) {
       const seedToKeep = askedSeed();
       frontDoorSettle.hidden = false;
       frontDoorSettle.textContent = `SETTLE THIS WORLD — keep the seed as WORLD ${emptySlot}`;
       frontDoorSettle.addEventListener('click', () => {
         if (seedToKeep === null) return;
-        saveWorld(slotKeys(emptySlot), newWorld(seedToKeep & 0x7fffffff));
+        // The seed settles EXACTLY as played (fresh-eyes finding 10) — the
+        // old 31-bit mask would have settled a different world than the one
+        // just previewed whenever a hand-typed seed was negative.
+        saveWorld(slotKeys(emptySlot), newWorld(seedToKeep));
         setActiveSlot(emptySlot);
         goHome();
       });
@@ -1455,6 +1501,10 @@ async function main(): Promise<void> {
   frontDoorBegin.addEventListener('click', () => {
     frontDoor.hidden = true;
     gameShell.inert = false;
+    // The arrival toast fires HERE, not at boot (fresh-eyes finding 9): at
+    // boot it played its five seconds to the back of the front door, and
+    // the shrine receipt — read-and-cleared — was gone unseen.
+    game.announceArrival();
   });
 
   if (isEnabled(features, 'ui.themePicker')) {
@@ -1478,12 +1528,10 @@ async function main(): Promise<void> {
         world: loadWorld(keys),
         slot,
         abandon: () => {
-          try {
-            localStorage.removeItem(keys.world);
-            localStorage.removeItem(keys.run);
-          } catch {
-            // Nothing stored is already an abandoned world.
-          }
+          // Through the keeper's own dropWorld (fresh-eyes finding 2): the
+          // pagehide flush was re-saving up to nine actions of the world
+          // this button had just left behind.
+          keeper.dropWorld();
           location.href = new URL(location.pathname, location.href).toString();
         },
       },
@@ -1519,7 +1567,14 @@ async function main(): Promise<void> {
   // a replay is reproducible from seed + tuning + these two lists.
   const held = seed === world.worldSeed ? world.territories : [];
   const heldFinds = seed === world.worldSeed ? world.finds : [];
-  const game = new Game(renderer, elements, seed, theme, tuning, keeper, held, heldFinds);
+  // The voice (ideas/sound.md, behind ui.sound — off by default): created
+  // here where the flag and the theme meet, handed in as a hook so the game
+  // stays deaf to whether anyone is listening. Takes effect on load, which
+  // the flag's own note says.
+  const hooks: GameHooks & { savedSeed: number | null } = isEnabled(features, 'ui.sound')
+    ? { ...keeper, sound: new Sound(theme.voice) }
+    : keeper;
+  const game = new Game(renderer, elements, seed, theme, tuning, hooks, held, heldFinds);
   game.start();
 
   // The front door's own opener — same dialog the in-game ? opens, so
