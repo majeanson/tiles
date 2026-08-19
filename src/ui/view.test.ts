@@ -183,6 +183,20 @@ describe('destinations and rarity in the view', () => {
     expect(hud.hint).toMatch(/glows \d+ out/);
   });
 
+  // What-still-glows (2026-08-18): the end screen's own version of the
+  // signpost — same nearest destination, same words, but the distance is
+  // past the run's OWN edge rather than from home, which is what "still
+  // glows" means once the run is over. Null while the run lives.
+  it('names the nearest unreached destination past the run’s edge, only when the run has ended', () => {
+    const { state } = seeded();
+    const live = toHudView(state);
+    expect(live.glowBeyondEdge).toBeNull();
+
+    const ended: GameState = { ...state, phase: 'ended', death: 'broke' };
+    const hud = toHudView(ended);
+    expect(hud.glowBeyondEdge).toMatch(/still glows \d+ past your edge\./);
+  });
+
   it('shows the odds, and says nothing where there is no rarity to have', () => {
     expect(toHudView(newRun(1, TUNING)).odds).toMatch(/magic .+ unique/);
     const plain = tuned({ magicChance: 0, uniqueChance: 0 });

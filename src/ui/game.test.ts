@@ -6,6 +6,7 @@ import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
 import type { Cell, GameState } from '@engine/state';
+import { UPGRADES } from '@meta/progress';
 import type { BoardView, Renderer } from '@render/Renderer';
 import { Game, type Elements, type GameHooks } from './game';
 
@@ -74,6 +75,7 @@ function build(
   seed = 4,
   tuning?: Tuning,
   hooks?: GameHooks,
+  claimed: readonly HexKey[] = [],
 ): { game: Game; renderer: StubRenderer; el: Elements } {
   document.body.innerHTML = `
     <header id="stats"></header>
@@ -136,7 +138,7 @@ function build(
   };
 
   const renderer = new StubRenderer();
-  return { game: new Game(renderer, el, seed, undefined, tuning, hooks), renderer, el };
+  return { game: new Game(renderer, el, seed, undefined, tuning, hooks, claimed), renderer, el };
 }
 
 /** A pointer event with a stable id, so gestures can be composed by hand. */
@@ -1313,6 +1315,17 @@ describe('special tiles and what a pop did', () => {
     expect(text).toMatch(/POP for tiles: \+\d+/);
     expect(text).toMatch(/worth \d+ × pocket 9 × distance \d+/);
     expect(text).toMatch(/1 rare tile/);
+    // The pocket bar (2026-08-18): the count against the size bonus's cap,
+    // once the pocket is big enough for the bar to be worth reading (2+).
+    expect(text).toMatch(new RegExp(`POCKET 9/${TUNING.harvestSizeCap}`));
+  });
+
+  it('keeps the pocket bar off a lone tile — 1/N is noise, not news', () => {
+    const ctx = build(1, TUNING, { resume: rarePocket(1) });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(0, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).not.toMatch(/POCKET \d+\//);
   });
 
   // `hidePoints` keeps the score off the HUD until the run ends; the single
@@ -1455,6 +1468,140 @@ describe('the purse, folded', () => {
     toggle.click();
     expect(toggle.textContent).not.toMatch(/magic/);
     expect(ctx.el.spends.hidden).toBe(false);
+  });
+});
+
+describe('the moments pack (2026-08-18)', () => {
+  it('announces NEW GROUND once, the first time this run passes the world’s own best', () => {
+    const T = { ...TUNING, destinationChance: 0, magicChance: 0, uniqueChance: 0, worldWalls: 0 };
+    const ctx = build(1, T, {
+      worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 0 }),
+    });
+    ctx.game.start();
+    expect(ctx.el.toast.hidden).toBe(true);
+
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.hidden).toBe(false);
+    expect(ctx.el.toast.textContent).toBe('NEW GROUND — farther than this world has ever reached.');
+
+    // Once only: a second placement, farther still, says nothing new here.
+    ctx.el.toast.hidden = true;
+    ctx.renderer.nextHit = key(2, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.hidden).toBe(true);
+  });
+
+  it('never announces NEW GROUND on a ?seed= replay', () => {
+    const T = { ...TUNING, destinationChance: 0, magicChance: 0, uniqueChance: 0, worldWalls: 0 };
+    const ctx = build(1, T, {
+      replay: true,
+      worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 0 }),
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.hidden).toBe(true);
+  });
+
+  it('explains UNIQUE once, the moment one first enters the hand', () => {
+    vi.useFakeTimers();
+    try {
+      const T = { ...TUNING, magicChance: 0, uniqueChance: 0 };
+      const base = newRun(7, T);
+      const withUnique: GameState = {
+        ...base,
+        draft: base.draft.map((tile, i) =>
+          i === 1 ? { ...tile, rarity: 'unique' as const } : tile,
+        ),
+      };
+      const ctx = build(1, T, { resume: withUnique });
+      ctx.game.start();
+      expect(ctx.el.toast.hidden).toBe(true);
+
+      // SELECT does not redraw the hand — the unique tile is still the one
+      // that entered it, and choosing it is a real, distinct action.
+      const cards = [...ctx.el.draft.children].filter((c) => !c.classList.contains('hold'));
+      (cards[1] as HTMLButtonElement).click();
+      expect(ctx.el.toast.textContent).toBe('UNIQUE — every match counts double, both ways.');
+
+      // Once only: it does not fire again once the toast has cleared.
+      vi.advanceTimersByTime(6000);
+      expect(ctx.el.toast.hidden).toBe(true);
+      (cards[0] as HTMLButtonElement).click();
+      expect(ctx.el.toast.hidden).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('names what the previous run woke, once, at the start of a fresh run', () => {
+    const ctx = build(1, TUNING, { shrineReceipt: ['A fourth draft card'] });
+    ctx.game.start();
+    expect(ctx.el.toast.textContent).toBe('Awake since your last run: A fourth draft card.');
+  });
+
+  it('says nothing about the receipt on a resumed run', () => {
+    const ctx = build(1, TUNING, {
+      resume: newRun(7, TUNING),
+      shrineReceipt: ['A fourth draft card'],
+    });
+    ctx.game.start();
+    expect(ctx.el.toast.hidden).toBe(true);
+  });
+
+  it('names the territory why-line at a fresh run’s start, when it changed the purse', () => {
+    const claimed = [key(9, 9), key(-9, 9)];
+    const ctx = build(1, TUNING, undefined, claimed);
+    ctx.game.start();
+    expect(ctx.el.toast.textContent).toBe('+12 tiles from territories held.');
+  });
+
+  it('joins the shrine receipt and the territory why-line when both fire', () => {
+    const claimed = [key(9, 9), key(-9, 9)];
+    const ctx = build(1, TUNING, { shrineReceipt: ['A fourth draft card'] }, claimed);
+    ctx.game.start();
+    expect(ctx.el.toast.textContent).toBe(
+      'Awake since your last run: A fourth draft card. +12 tiles from territories held.',
+    );
+  });
+
+  it('names the cheapest unbought upgrade on the end screen, with the relics gap', () => {
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    let progress = { relics: 5, bought: {}, found: [] as never[], equipped: [] as never[] };
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      shop: {
+        read: () => progress,
+        write: (p) => {
+          progress = p as typeof progress;
+        },
+      },
+    });
+    ctx.game.start();
+
+    const cheapest = [...UPGRADES].sort((a, b) => a.cost - b.cost)[0]!;
+    const text = ctx.el.end.textContent ?? '';
+    expect(text).toContain(`${cheapest.name} in ${cheapest.cost - 5}`);
+  });
+
+  it('shows just the price once the cheapest upgrade is affordable', () => {
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    let progress = { relics: 999, bought: {}, found: [] as never[], equipped: [] as never[] };
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      shop: {
+        read: () => progress,
+        write: (p) => {
+          progress = p as typeof progress;
+        },
+      },
+    });
+    ctx.game.start();
+
+    const cheapest = [...UPGRADES].sort((a, b) => a.cost - b.cost)[0]!;
+    const text = ctx.el.end.textContent ?? '';
+    expect(text).toContain(`${cheapest.name} ${cheapest.cost}`);
   });
 });
 

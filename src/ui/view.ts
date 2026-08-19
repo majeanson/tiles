@@ -1,4 +1,4 @@
-import { COLOURS, type Colour } from '@content/tuning';
+import { COLOURS, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
 import { canSpend, rarityOdds, spendCost } from '@engine/reduce';
 import {
@@ -567,6 +567,12 @@ export type HudView = {
   /** Gate D: the cause of death, in one sentence. */
   readonly epitaph: string | null;
   /**
+   * What-still-glows (2026-08-18): the nearest unreached destination and how
+   * far past the run's own edge it sits, for the end screen's run face.
+   * Null while the run lives, and null when there is nothing left to name.
+   */
+  readonly glowBeyondEdge: string | null;
+  /**
    * The run, summarised for its end screen — Gate D's arc made visible.
    * `biggestAt` is where the run's biggest harvest landed as a fraction of
    * its length: near 1 is an arc, near 0.5 is a plateau, and the player
@@ -654,6 +660,7 @@ export function toHudView(
 
     ended: state.phase === 'ended',
     epitaph: state.phase === 'ended' ? epitaphFor(state) : null,
+    glowBeyondEdge: state.phase === 'ended' ? whatGlows(state, ctx.reach) : null,
     summary: state.phase === 'ended' ? summariseRun(state) : null,
   };
 }
@@ -870,10 +877,16 @@ function tilesSpareIn(state: GameState): boolean {
 const RUNWAY_ALARM = 6;
 
 /**
- * The nearest unclaimed destination — revealed or beacon — named and priced
- * in the one unit the player already reads the board in: hexes out.
+ * The nearest unclaimed destination — revealed or beacon — found once and
+ * shared by `hintFor` (the live signpost) and `whatGlows` (the end screen's
+ * what-still-glows line, 2026-08-18) so the two can never name a different
+ * destination or disagree on distance. NEVER a find: this is what a player
+ * may be TOLD about, and a find is the one landmark that stays a secret.
  */
-function hintFor(state: GameState, reach: number): string | null {
+function nearestUnclaimed(
+  state: GameState,
+  reach: number,
+): { reward: LandmarkReward; dist: number; at: HexKey } | null {
   let best: { reward: LandmarkReward; dist: number; at: HexKey } | null = null;
   const consider = (q: number, r: number, reward: LandmarkReward): void => {
     const dist = distance({ q, r }, { q: 0, r: 0 });
@@ -892,18 +905,46 @@ function hintFor(state: GameState, reach: number): string | null {
   for (const d of destinationsCached(state.rootSeed, horizon, state.tuning)) {
     if (state.cells[key(d.q, d.r)] === undefined) consider(d.q, d.r, d.reward);
   }
+  return best;
+}
 
+/** What `nearestUnclaimed` found, in words — "a cache of 40 tiles", and so on. */
+function nameDestination(reward: LandmarkReward, at: HexKey, t: Tuning): string {
+  return reward === 'cache'
+    ? `a cache of ${cachePaysAt(at, t)} tiles`
+    : reward === 'site'
+      ? 'a scoring site'
+      : reward === 'shrine'
+        ? 'a shrine'
+        : 'a territory to claim';
+}
+
+const capitalize = (s: string): string => `${s[0]!.toUpperCase()}${s.slice(1)}`;
+
+/**
+ * The nearest unclaimed destination — revealed or beacon — named and priced
+ * in the one unit the player already reads the board in: hexes out.
+ */
+function hintFor(state: GameState, reach: number): string | null {
+  const best = nearestUnclaimed(state, reach);
   if (best === null) return null;
-  const { reward, dist, at } = best as { reward: LandmarkReward; dist: number; at: HexKey };
-  const named =
-    reward === 'cache'
-      ? `a cache of ${cachePaysAt(at, state.tuning)} tiles`
-      : reward === 'site'
-        ? 'a scoring site'
-        : reward === 'shrine'
-          ? 'a shrine'
-          : 'a territory to claim';
-  return `${named[0]!.toUpperCase()}${named.slice(1)} glows ${dist} out`;
+  const { reward, dist, at } = best;
+  return `${capitalize(nameDestination(reward, at, state.tuning))} glows ${dist} out`;
+}
+
+/**
+ * What-still-glows (2026-08-18): the end screen's own version of the
+ * signpost, in the run's own edge — how far PAST where the run actually got
+ * to, not how far from home, which is what "still glows" means once the run
+ * is over. Reuses `hintFor`'s language and its never-a-find rule exactly;
+ * the only thing that changes is the distance the sentence reports.
+ */
+export function whatGlows(state: GameState, reach: number): string | null {
+  const best = nearestUnclaimed(state, reach);
+  if (best === null) return null;
+  const { reward, dist, at } = best;
+  const beyond = Math.max(0, dist - reach);
+  return `${capitalize(nameDestination(reward, at, state.tuning))} still glows ${beyond} past your edge.`;
 }
 
 /**

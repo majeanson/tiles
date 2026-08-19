@@ -217,6 +217,21 @@ export type GameHooks = {
    * without the flag.
    */
   readonly buildSha?: string;
+  /**
+   * True for a `?seed=` replay: somebody else's world, not this device's.
+   * Every start-of-run moment that speaks about THIS world (NEW GROUND, the
+   * shrine receipt, the territory why-line) checks this and stays quiet —
+   * the same guard `findLabel` already keeps for the same reason.
+   */
+  readonly replay?: boolean;
+  /**
+   * Shrines the PREVIOUS run woke, named for the first frame of this one —
+   * "the shrine receipt" (2026-08-18). The shell knows the world before and
+   * after a run ends; this is what it hands over the moment the receipt
+   * would be read, which is the very next run's opening frame. Absent or
+   * empty means nothing to report.
+   */
+  readonly shrineReceipt?: readonly string[];
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -304,6 +319,22 @@ export class Game {
   #foundThisRun: string | null = null;
 
   /**
+   * NEW GROUND (2026-08-18): fires once, the first time this run's reach
+   * exceeds the world's own farthest reach as of the moment this run began —
+   * captured here rather than re-read live, because `worldStats` is kept
+   * current by the shell's own merge and would otherwise cross the very
+   * boundary this moment exists to announce (see `#dispatch`).
+   */
+  #startFarthestReach = 0;
+  #newGroundShown = false;
+  /**
+   * The first-unique explainer (2026-08-18): fires once, the first time a
+   * unique tile is in the hand this run — drawn or forged. Per run, not per
+   * device: a fresh Game instance per run means a fresh flag.
+   */
+  #uniqueExplained = false;
+
+  /**
    * The end screen's record lines, computed once per ended run so the book is
    * written exactly once however many times the ended state renders. Element
    * 0 is either `'NEW BEST'` or the exact number of points short of it —
@@ -345,6 +376,11 @@ export class Game {
     this.#hooks = hooks;
     this.#helpOpener = elements.help;
     this.#state = hooks.resume ?? newRun(seed, tuning, claimed, claimedFinds);
+    // The world's own best as of right now — before this run's own actions
+    // can move it. A resumed run may already have passed it in an earlier
+    // session, which is exactly why NEW GROUND must not fire twice for the
+    // same progress.
+    this.#startFarthestReach = hooks.worldStats?.().farthestReach ?? 0;
 
     for (const colour of COLOURS) {
       try {
@@ -483,6 +519,24 @@ export class Game {
 
     this.#syncCamera();
     this.render();
+
+    // The start-of-run toast (2026-08-18): a fresh run only, never a resumed
+    // one — a resume is the same run reloading, not a new expedition, and it
+    // has already had its opening frame. Two moments share the one slot,
+    // joined when both fire: the shrine receipt (what the PREVIOUS run woke,
+    // named once on the very next run's first frame) and the territory
+    // why-line (`startingPerk`, already in the manual — surfaced here too
+    // when it actually changed the starting purse).
+    if (this.#hooks.resume === null || this.#hooks.resume === undefined) {
+      const parts: string[] = [];
+      const receipt = this.#hooks.shrineReceipt ?? [];
+      if (receipt.length > 0) {
+        parts.push(`Awake since your last run: ${receipt.join(', ')}.`);
+      }
+      const perk = startingPerk(this.#state.tuning, this.#state.claimed.length);
+      if (perk > 0) parts.push(`+${perk} tiles from territories held.`);
+      if (parts.length > 0) this.#showNote(parts.join(' '));
+    }
   }
 
   /**
@@ -686,6 +740,13 @@ export class Game {
       `POP for tiles: +${value.tiles}.`,
       `POP for pts: ${value.points} = worth ${worth} × pocket ${Math.min(value.count, t.harvestSizeCap > 0 ? t.harvestSizeCap : value.count)} × distance ${multiplier}${value.questPays ? ` × bounty ${t.questBonus}` : ''}.`,
     ];
+    // The pocket bar (2026-08-18): the priced pocket's count against the size
+    // bonus's cap — "POCKET 14/20" — once it is within reach of mattering.
+    // Always showing "1/20" is noise nobody reads twice; 2+ is the point a
+    // pocket has started becoming a decision rather than a single tile.
+    if (t.harvestSizeCap > 0 && value.count >= 2) {
+      lines.push(`POCKET ${value.count}/${t.harvestSizeCap}`);
+    }
     if (value.treasure !== null)
       lines.push(`POP for treasure: a ${value.treasure.toUpperCase()} tile.`);
     if (value.questPays)
@@ -1550,17 +1611,40 @@ export class Game {
     // decided, and its arithmetic is the thing worth learning. A claim that
     // outranks nothing (no pop happened) routes by its own weight: a find,
     // a shrine or a territory is an EVENT CARD; a cache or a site stays the
-    // one-line toast every pop already uses.
+    // one-line toast every pop already uses. Two smaller, once-a-run moments
+    // (2026-08-18) fall in behind both: the first unique tile to enter the
+    // hand, then new ground — neither worth interrupting a pop or a claim
+    // for, both worth saying the one time they are true.
     if (popped !== null) this.#showNote(popped);
     else if (claimed !== null) {
       if (claimed.eventWorthy) this.#showEventCard(claimed.text);
       else this.#showNote(claimed.text);
+    } else if (!this.#uniqueExplained && next.draft.some((tile) => tile.rarity === 'unique')) {
+      this.#uniqueExplained = true;
+      this.#showNote('UNIQUE — every match counts double, both ways.');
+    } else if (
+      !this.#newGroundShown &&
+      this.#hooks.replay !== true &&
+      this.#reachOf(next) > this.#startFarthestReach
+    ) {
+      this.#newGroundShown = true;
+      this.#showNote('NEW GROUND — farther than this world has ever reached.');
     }
     // Every real change is offered to the shell to keep. Saving after each
     // action rather than on some timer means the most a crash can eat is one
     // tap — a run is 10-20 minutes of a phone's attention, and phones wander.
     this.#hooks.onChange?.(next);
     this.render();
+  }
+
+  /** How far from home `state` has built. Mirrors `view.ts`'s own reachOf. */
+  #reachOf(state: GameState): number {
+    let reach = 0;
+    for (const [k, cell] of Object.entries(state.cells)) {
+      if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
+      reach = Math.max(reach, distance(parse(k), { q: 0, r: 0 }));
+    }
+    return reach;
   }
 
   render(): void {
@@ -2004,6 +2088,13 @@ export class Game {
       parts.push(grid);
     }
 
+    // What-still-glows (2026-08-18): the nearest thing this run never
+    // reached, and how far past its own edge it sits — `hintFor`'s own
+    // language, reused, never a find. Silent when nothing qualifies (a run
+    // that claimed everything nearby, or died somewhere with nothing left
+    // in beacon range).
+    if (hud.glowBeyondEdge !== null) parts.push(line('end-facts', hud.glowBeyondEdge));
+
     // CARRIED OUT: what this run adds to the roguelite, permanently — as
     // distinct from the run's own score above it. Relics banked and a perk
     // found are THIS run's; territories held and how much of the map is
@@ -2045,6 +2136,27 @@ export class Game {
       });
       door.id = 'end-shop-open';
       parts.push(door);
+
+      // The next rung (2026-08-18): the cheapest unbought upgrade, named —
+      // "STEADY PACE in 12" when relics are short, just its price when they
+      // are not. The door already says how much you HAVE; this says what it
+      // is FOR, which is the reason to sacrifice one more pocket before NEW
+      // RUN rather than after.
+      let cheapest: { name: string; price: number } | null = null;
+      for (const upgrade of UPGRADES) {
+        const price = priceOf(progress, upgrade);
+        if (price === null) continue;
+        if (cheapest === null || price < cheapest.price) cheapest = { name: upgrade.name, price };
+      }
+      if (cheapest !== null) {
+        const gap = cheapest.price - progress.relics;
+        parts.push(
+          line(
+            'end-facts',
+            gap > 0 ? `${cheapest.name} in ${gap}` : `${cheapest.name} ${cheapest.price}`,
+          ),
+        );
+      }
     }
 
     // NEW RUN is the only thing on this screen still shaped like a button —

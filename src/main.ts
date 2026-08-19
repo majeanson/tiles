@@ -78,6 +78,14 @@ const PROGRESS_STORAGE_KEY = 'tiles.progress.v1';
  * Gate B is measured on. v2: v1 held bare numbers, this holds records.
  */
 const BEST_STORAGE_KEY = 'tiles.records.v2';
+/**
+ * The shrine receipt (2026-08-18): what the world unlocked THIS run, written
+ * once when a run ends and read exactly once — on the very next run's first
+ * frame — so a shrine woken late in a run (its own toast already shown, live,
+ * mid-run) gets named again where a returning player will actually see it:
+ * the opening of the run it changed.
+ */
+const SHRINE_RECEIPT_KEY = 'tiles.shrinereceipt.v1';
 
 /**
  * Flags are resolved once, here at the edge, and passed downward as data. The
@@ -180,6 +188,33 @@ function bankRelics(state: GameState): void {
   if (state.relics <= 0) return;
   const progress = readProgress();
   writeProgress({ ...progress, relics: progress.relics + state.relics });
+}
+
+/**
+ * Read the shrine receipt back, and clear it — it is read exactly once, on
+ * the run it was written for. A device that never woke a shrine, or already
+ * read the receipt, gets an empty list, which is silent rather than wrong.
+ */
+function readShrineReceipt(): readonly string[] {
+  try {
+    const raw = localStorage.getItem(SHRINE_RECEIPT_KEY);
+    if (raw === null) return [];
+    localStorage.removeItem(SHRINE_RECEIPT_KEY);
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.every((s) => typeof s === 'string') ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeShrineReceipt(labels: readonly string[]): void {
+  if (labels.length === 0) return;
+  try {
+    localStorage.setItem(SHRINE_RECEIPT_KEY, JSON.stringify(labels));
+  } catch {
+    // Best effort — the receipt is a nicety on top of a shrine's own live
+    // toast, not the only place the unlock is ever named.
+  }
 }
 
 function rememberTheme(id: string): void {
@@ -325,6 +360,14 @@ function runKeeping(
     // Not a GameHooks field — read by main() for the front door's copy only.
     firstVisit,
 
+    // A `?seed=` replay is somebody else's world: every start-of-run moment
+    // that speaks about THIS world stays quiet on one.
+    replay: replaySeed !== null,
+    // Read once, right here — before the game this receipt is FOR has even
+    // been constructed — and cleared the moment it is read, so a shrine
+    // named on this run's first frame is never named again on the next.
+    shrineReceipt: replaySeed === null ? readShrineReceipt() : [],
+
     // Which unlock the next shrine gives, so the game can NAME it at the
     // moment it is woken. The ledger lives out here with the world; the game
     // only knows how many shrines this run has claimed.
@@ -418,6 +461,18 @@ function runKeeping(
         worldDirty = false;
         actionsSinceWrite = 0;
         saveWorld(current);
+
+        // The shrine receipt: this run's own shrine-woken toast already fired
+        // live, mid-run — this is what makes it legible again on the NEXT
+        // run's opening frame, which is when a returning player is actually
+        // looking. `world.shrines.length` is this run's OWN starting count
+        // (the closure captured it before a single action happened), so the
+        // gap is exactly what THIS run woke.
+        if (current.shrines.length > world.shrines.length) {
+          writeShrineReceipt(
+            UNLOCKS.slice(world.shrines.length, current.shrines.length).map((u) => u.label),
+          );
+        }
       }
 
       let book: RecordBook;
