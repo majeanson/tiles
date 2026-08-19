@@ -147,12 +147,6 @@ export type GameHooks = {
    */
   readonly debug?: boolean;
   /**
-   * True on a device that has never played. The game greets a stranger with
-   * the manual open rather than with a board they must guess at — once, ever,
-   * and the shell remembers that it happened.
-   */
-  readonly firstVisit?: boolean;
-  /**
    * Send this run somewhere — the share sheet, or the clipboard. Absent means
    * the button is not drawn, which is the honest state on a browser with no
    * way to share.
@@ -170,6 +164,12 @@ export type GameHooks = {
    * the game only needs the words to put in the popup.
    */
   readonly unlockLabel?: (nth: number) => string | null;
+  // `firstVisit` used to live here and auto-open the manual once, ever
+  // (2026-08-15). Stage 2's front door (main.ts) is a stranger's greeting
+  // now — BEGIN and a quiet HOW TO PLAY, shown before the first interaction
+  // rather than a panel sprung open over a board nobody has seen yet — so
+  // the flag's one job moved out of this class entirely. `Game.openHelp` is
+  // the seam the front door calls into instead of reimplementing the dialog.
   /**
    * A hidden find was claimed at this hex: the shell grants a perk
    * (deterministically, writes progress) and returns its NAME for the toast —
@@ -255,6 +255,15 @@ export class Game {
    */
   #endView: 'run' | 'shop' = 'run';
 
+  /**
+   * Which button opened the manual, so closing it returns focus to the right
+   * place — the in-game ? most of the time, but the front door's quiet HOW TO
+   * PLAY lives outside this class entirely (main.ts), and its own button is
+   * where a keyboard or screen-reader user actually was. Set on every open;
+   * defaults to the in-game button below.
+   */
+  #helpOpener: HTMLButtonElement;
+
   constructor(
     renderer: Renderer,
     elements: Elements,
@@ -269,6 +278,7 @@ export class Game {
     this.#el = elements;
     this.#theme = theme;
     this.#hooks = hooks;
+    this.#helpOpener = elements.help;
     this.#state = hooks.resume ?? newRun(seed, tuning, claimed, claimedFinds);
 
     for (const colour of COLOURS) {
@@ -343,7 +353,7 @@ export class Game {
     this.#el.helpPanel.tabIndex = -1;
 
     this.#el.help.addEventListener('click', () => {
-      if (this.#el.helpPanel.hidden) this.#openHelp();
+      if (this.#el.helpPanel.hidden) this.openHelp(this.#el.help);
       else this.#closeHelp();
     });
     this.#el.helpPanel.addEventListener('click', () => {
@@ -387,11 +397,11 @@ export class Game {
       this.#spend(on as Spend, colour);
     });
 
-    // A stranger's first minute: the manual, open, before the board is a
-    // puzzle they have to guess at. Once ever — the shell remembers — and it
-    // closes on the same tap as always, so it costs a returning player
-    // nothing and a new one one gesture.
-    if (this.#hooks.firstVisit === true) this.#openHelp();
+    // A stranger's first minute used to be greeted by springing this very
+    // panel open over a board nobody had seen yet. Stage 2's front door
+    // (main.ts, outside this class) is the greeting now — BEGIN and a quiet
+    // HOW TO PLAY, before the first interaction rather than after it — so
+    // there is nothing left for this class to auto-open.
 
     this.#syncCamera();
     this.render();
@@ -419,17 +429,17 @@ export class Game {
       return a !== undefined && b !== undefined ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
     };
 
-    // Only the canvas is a gesture surface. The camera buttons and the help
-    // panel LIVE INSIDE the board element, and a press on them bubbles here —
-    // capturing that pointer steals the button's click entirely (how every
-    // board-mounted button died on desktop), and treating its lift as a tap
-    // could place a tile through the help panel. Anything that is not the
-    // bare board or its canvas is somebody else's press.
+    // Only the canvas is a gesture surface. The camera buttons LIVE INSIDE
+    // the board element, and a press on them bubbles here — capturing that
+    // pointer steals the button's click entirely (how every board-mounted
+    // button died on desktop). Anything that is not the bare board or its
+    // canvas is somebody else's press.
     const isBoardSurface = (target: EventTarget | null): boolean => {
       // While the manual is up, the board is behind a curtain and must not
       // take a single gesture — not a tap, not a drag, not a wheel. The panel
-      // is inset inside `#board`, so its 8px frame was live board the whole
-      // time, and closing the manual could place a tile you never meant.
+      // is `position: fixed` and covers the viewport now (2026-08-18), not
+      // merely `#board`'s box, but the explicit check stays: closing the
+      // manual on the SAME gesture that follows must not also place a tile.
       if (!this.#el.helpPanel.hidden) return false;
       return target === board || target instanceof HTMLCanvasElement;
     };
@@ -503,10 +513,17 @@ export class Game {
    * The dialog contract, kept in one pair so no opener or closer can forget
    * half of it: focus moves into the panel when it opens (the panel itself,
    * tabIndex −1 — the first tab button would also do, but the panel keeps
-   * working when a tuning empties the tab bar) and back to the ? button when
-   * it closes, however it closes — tap, Escape, or the ? again.
+   * working when a tuning empties the tab bar) and back to WHICHEVER button
+   * asked when it closes, however it closes — tap, Escape, or the same
+   * button again.
+   *
+   * `openHelp` is public — the front door (main.ts) lives outside this
+   * class entirely, and its quiet HOW TO PLAY opens this exact dialog rather
+   * than a second one built to match it by hand. Passing the opener is how
+   * focus finds its way back to a button this class never mounted itself.
    */
-  #openHelp(): void {
+  openHelp(opener: HTMLButtonElement = this.#el.help): void {
+    this.#helpOpener = opener;
     this.#el.helpPanel.hidden = false;
     this.#el.helpPanel.focus();
   }
@@ -514,7 +531,7 @@ export class Game {
   #closeHelp(): void {
     if (this.#el.helpPanel.hidden) return;
     this.#el.helpPanel.hidden = true;
-    this.#el.help.focus();
+    this.#helpOpener.focus();
   }
 
   #tap(event: PointerEvent): void {

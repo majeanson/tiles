@@ -38,86 +38,107 @@
   </head>
   <body>
     <main id="app">
-      <!-- The run's whole state in one line: what you have, what you have
-           scored, how deep you are, and what the next tile costs. The cost is
-           here because it is the thing that eventually kills you. -->
-      <header id="stats"></header>
-
-      <div id="board">
-        <!-- The camera and the manual, floating over the canvas. Zoom is
-             buttons-first (pinch also works): unambiguous on a phone, and no
-             gesture ever fights tap-to-place. -->
-        <div id="camera">
-          <button id="help" type="button" aria-label="How to play">?</button>
-          <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
-          <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
-          <button id="zoom-fit" type="button" aria-label="Show everything">FIT</button>
-        </div>
-        <!-- What just happened, or what the glyph you tapped does. Over the
-             board, glyph first, gone on a tap. aria-live so a screen reader
-             hears the announcement without focus ever moving. -->
-        <div id="toast" aria-live="polite" hidden></div>
-
-        <!-- The manual and the switchboard. The manual half is written by the
-             game from its LIVE tuning; the settings half is written from the
-             feature registry, whose notes carry the decisions — one source
-             for each, so neither can go stale. Tapping prose closes the
-             panel; the settings rows swallow their taps. -->
-        <div id="help-panel" hidden>
-          <div id="help-manual"></div>
-          <div id="help-meta"></div>
-        </div>
+      <!-- The front door: shown before the first interaction, over
+           everything else in #app. BEGIN starts (or RESUMES) the run that is
+           already booting quietly underneath it — the game never waits on
+           this screen, so dismissing it costs nothing. Quiet HOW TO PLAY
+           opens the same manual the in-game ? does, via Game#openHelp. -->
+      <div id="front-door" role="dialog" aria-modal="true" tabindex="-1">
+        <p id="front-door-name"></p>
+        <p id="front-door-tagline"></p>
+        <button id="front-door-begin" type="button">BEGIN</button>
+        <button id="front-door-help" type="button" class="quiet">HOW TO PLAY</button>
       </div>
 
-      <!-- The colour lens: one chip per colour with its standing worth — the
+      <!-- The manual and the switchboard, OUTSIDE #game-shell on purpose: an
+           `inert` ancestor makes every descendant unfocusable and untappable
+           regardless of z-index, and this panel has to open (from the front
+           door's own quiet HOW TO PLAY) before #game-shell ever loses that
+           attribute. The manual half is written by the game from its LIVE
+           tuning; the settings half is written from the feature registry,
+           whose notes carry the decisions — one source for each, so neither
+           can go stale. Tapping prose closes the panel; the settings rows
+           swallow their taps. -->
+      <div id="help-panel" hidden>
+        <div id="help-manual"></div>
+        <div id="help-meta"></div>
+      </div>
+
+      <!-- Everything the front door covers, and inert while it does — a
+           keyboard user must not be able to tab into a board they cannot
+           see yet. -->
+      <div id="game-shell" inert>
+        <!-- The run's whole state in one line: what you have, what you have
+             scored, how deep you are, and what the next tile costs. The cost is
+             here because it is the thing that eventually kills you. -->
+        <header id="stats"></header>
+
+        <div id="board">
+          <!-- The camera, floating over the canvas. Zoom is buttons-first
+             (pinch also works): unambiguous on a phone, and no gesture ever
+             fights tap-to-place. -->
+          <div id="camera">
+            <button id="help" type="button" aria-label="How to play">?</button>
+            <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+            <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+            <button id="zoom-fit" type="button" aria-label="Show everything">FIT</button>
+          </div>
+          <!-- What just happened, or what the glyph you tapped does. Over the
+             board, glyph first, gone on a tap. aria-live so a screen reader
+             hears the announcement without focus ever moving. -->
+          <div id="toast" aria-live="polite" hidden></div>
+        </div>
+
+        <!-- The colour lens: one chip per colour with its standing worth — the
            number a points harvest sums. Tap to spotlight that colour on the
            board and see the calculation in the hint line. -->
-      <div id="colours"></div>
+        <div id="colours"></div>
 
-      <!-- The reorientation line: what to do now, the nearest unclaimed
+        <!-- The reorientation line: what to do now, the nearest unclaimed
            destination, the current odds — or the held-down chip's numbers.
            aria-live for the same reason as the toast. -->
-      <p id="hint" aria-live="polite" hidden></p>
+        <p id="hint" aria-live="polite" hidden></p>
 
-      <!-- Both payouts sit on screen with their real numbers at all times. The
+        <!-- Both payouts sit on screen with their real numbers at all times. The
            harvest is only a decision if you can see what you are giving up. -->
-      <div id="controls">
-        <div id="draft"></div>
+        <div id="controls">
+          <div id="draft"></div>
 
-        <!-- POP is the decision; everything else is a variation on it. So POP
+          <!-- POP is the decision; everything else is a variation on it. So POP
              gets the row, and the variations get a quieter one underneath —
              five equal buttons wrapping their own labels was the crammed thing
              Marc was looking at. -->
-        <div id="actions">
-          <button id="harvest-tiles" type="button"></button>
-          <button id="harvest-points" type="button" hidden></button>
-        </div>
-        <div id="actions-more">
-          <button id="harvest-treasure" type="button" hidden></button>
-          <button id="harvest-burn" type="button" hidden></button>
-        </div>
+          <div id="actions">
+            <button id="harvest-tiles" type="button"></button>
+            <button id="harvest-points" type="button" hidden></button>
+          </div>
+          <div id="actions-more">
+            <button id="harvest-treasure" type="button" hidden></button>
+            <button id="harvest-burn" type="button" hidden></button>
+          </div>
 
-        <!-- The luck purse, folded. Open it and it is a shop; closed it is one
+          <!-- The luck purse, folded. Open it and it is a shop; closed it is one
              line that says what you are carrying — and lights up when there is
              something you can actually afford. -->
-        <div id="purse" hidden>
-          <button id="purse-toggle" type="button" aria-expanded="false"></button>
-          <div id="spends" hidden></div>
+          <div id="purse" hidden>
+            <button id="purse-toggle" type="button" aria-expanded="false"></button>
+            <div id="spends" hidden></div>
+          </div>
         </div>
-      </div>
 
-      <!-- Gate D's screen: cause of death, the run's arc in numbers, the
+        <!-- Gate D's screen: cause of death, the run's arc in numbers, the
            standing best, and one button — again. Built by the game. -->
-      <div id="end" hidden></div>
+        <div id="end" hidden></div>
 
-      <!-- Art directions, one button each. Hidden unless ?ff=ui.themePicker.
+        <!-- Art directions, one button each. Hidden unless ?ff=ui.themePicker.
            Gate E opened on 2026-08-15 and torchlit is the direction; the
            others stay loaded because a default is a decision, not a cage. -->
-      <nav id="themes" hidden></nav>
+        <nav id="themes" hidden></nav>
 
-      <!-- Testing happens on the deployed site, so which build you are looking
+        <!-- Testing happens on the deployed site, so which build you are looking
            at has to be visible on the device itself. -->
-      <footer id="stamp"></footer>
+        <footer id="stamp"></footer>
+      </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

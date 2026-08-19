@@ -746,14 +746,33 @@ describe('the remembered world on screen', () => {
 });
 
 describe('a stranger arriving', () => {
-  it('opens the manual on a first visit, and not otherwise', () => {
-    const first = build(4, TUNING, { firstVisit: true });
-    first.game.start();
-    expect(first.el.helpPanel.hidden).toBe(false);
+  // A stranger's first minute used to be greeted by the manual auto-opening
+  // over a board they had not seen yet. Stage 2 replaced that with the front
+  // door (main.ts, untested here — it is plain DOM wiring outside this
+  // class), which opens the SAME dialog via `Game#openHelp` rather than a
+  // second one built to match it. `firstVisit` no longer does anything on
+  // its own, so it is gone from GameHooks; what is left to pin here is that
+  // the panel never opens by itself, and that opening it FROM elsewhere
+  // (an external "opener" button) returns focus to that exact button.
+  it('never opens the manual by itself', () => {
+    const ctx = build();
+    ctx.game.start();
+    expect(ctx.el.helpPanel.hidden).toBe(true);
+  });
 
-    const returning = build(4, TUNING, { firstVisit: false });
-    returning.game.start();
-    expect(returning.el.helpPanel.hidden).toBe(true);
+  it('opens for an external opener, and returns focus to it on close', () => {
+    const ctx = build();
+    ctx.game.start();
+
+    const frontDoorHelp = document.createElement('button');
+    document.body.appendChild(frontDoorHelp);
+
+    ctx.game.openHelp(frontDoorHelp);
+    expect(ctx.el.helpPanel.hidden).toBe(false);
+
+    ctx.el.helpPanel.click();
+    expect(ctx.el.helpPanel.hidden).toBe(true);
+    expect(document.activeElement).toBe(frontDoorHelp);
   });
 
   it('offers a share only when the shell can share, and sends the run', () => {

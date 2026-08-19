@@ -17,7 +17,7 @@ import {
   ONLY_WORLD,
   type RecordBook,
 } from '@meta/records';
-import { ICON_DATA_URI, NAME } from '@meta/identity';
+import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
 import {
   EMPTY_PROGRESS,
   PERKS,
@@ -240,7 +240,7 @@ function saveWorld(world: WorldMemory): void {
 function runKeeping(
   world: WorldMemory,
   debugOn: boolean,
-): GameHooks & { savedSeed: number | null } {
+): GameHooks & { savedSeed: number | null; firstVisit: boolean } {
   // Asked once: the URL cannot change mid-session without a reload, and this
   // used to construct fresh URLSearchParams three times per action across
   // the hooks below.
@@ -254,8 +254,10 @@ function runKeeping(
   }
 
   // A device that has never finished anything and has no world behind it is
-  // a stranger, and gets the manual open once. `runs` rather than a flag of
-  // its own: the world already knows whether this device has played.
+  // a stranger. `runs` rather than a flag of its own: the world already
+  // knows whether this device has played. No longer a GameHooks field
+  // (Stage 2: the front door in `main()` reads it directly, for its own
+  // copy — the manual itself is never auto-opened any more).
   const firstVisit = world.runs === 0 && world.revealed.length === 0 && saved === null;
 
   // The world as it stands right now, kept current between actions so the
@@ -316,6 +318,7 @@ function runKeeping(
       write: writeProgress,
     },
     debug: debugOn,
+    // Not a GameHooks field — read by main() for the front door's copy only.
     firstVisit,
 
     // Which unlock the next shrine gives, so the game can NAME it at the
@@ -808,6 +811,28 @@ async function main(): Promise<void> {
     toast: required('toast'),
   };
 
+  // The front door: static markup, already painted before any of this runs —
+  // dismissing it costs nothing because the game underneath has already
+  // booted. `game-shell` starts `inert` in the markup so a keyboard user
+  // cannot tab into a board they cannot see yet; BEGIN lifts both at once.
+  const frontDoor = required('front-door');
+  const gameShell = required<HTMLElement>('game-shell');
+  required('front-door-name').textContent = NAME;
+  required('front-door-tagline').textContent = TAGLINE;
+  const frontDoorBegin = required<HTMLButtonElement>('front-door-begin');
+  const frontDoorHelp = required<HTMLButtonElement>('front-door-help');
+  // A run already in progress gets named rather than a generic BEGIN — the
+  // same fact the end screen states as "RUN N", read here from the state
+  // this device is about to resume.
+  frontDoorBegin.textContent =
+    keeper.resume === null || keeper.resume === undefined
+      ? 'BEGIN'
+      : `RESUME — PLACEMENT ${keeper.resume.placements}`;
+  frontDoorBegin.addEventListener('click', () => {
+    frontDoor.hidden = true;
+    gameShell.inert = false;
+  });
+
   if (isEnabled(features, 'ui.themePicker')) {
     mountThemePicker(required('themes'), theme, facing);
   }
@@ -868,7 +893,22 @@ async function main(): Promise<void> {
   // a replay is reproducible from seed + tuning + these two lists.
   const held = seed === world.worldSeed ? world.territories : [];
   const heldFinds = seed === world.worldSeed ? world.finds : [];
-  new Game(renderer, elements, seed, theme, tuning, keeper, held, heldFinds).start();
+  const game = new Game(renderer, elements, seed, theme, tuning, keeper, held, heldFinds);
+  game.start();
+
+  // The front door's own opener — same dialog the in-game ? opens, so
+  // there is exactly one manual rather than two that could drift apart.
+  frontDoorHelp.addEventListener('click', () => {
+    game.openHelp(frontDoorHelp);
+  });
+  // A keyboard or screen-reader user should land on the primary action, not
+  // have to discover it. Best-effort: some browsers refuse focus during
+  // load, and the door is still fully usable by touch either way.
+  try {
+    frontDoorBegin.focus();
+  } catch {
+    // Not focusable yet, or focus refused. BEGIN is still one tap away.
+  }
 
   // Offline, after the game is already playable. A service worker that
   // registers before the first frame is a service worker that can delay one;
