@@ -2563,3 +2563,186 @@ byte-identical — none of the four touch `src/engine`. Stage 2 is now
 whole against WORKPLAN.md's own list. Stage 3 (new systems — the moments
 pack, deep water, the survey, TITHE, the where-you-wake prototype) is
 next, on Sonnet, same tree.
+
+**Addendum, 2026-08-18, continuing — Stage 3: five new systems, four
+commits, one written question each.** `WORKPLAN.md`'s last stage. Every
+item below shipped separately, gates green and `pnpm sim` checked at every
+commit; the where-you-wake prototype's own sweep is reported in full,
+because its verdict is the point of building it.
+
+**1. The moments pack** (`60003a8`) — seven small truths, said once each,
+at the moment they are true, all UI plus one hook apiece, zero balance
+change. NEW GROUND fires once a run, the instant this run's own reach
+passes the world's stored `farthestReach` — captured at the Game's
+construction so the check compares against the world as it stood BEFORE
+this run's own actions could move it (worldStats is kept live by the
+shell's own merge, and would otherwise cross the very boundary the moment
+exists to announce). The pocket bar prints "POCKET 14/20" on the tapped
+pocket's note once the count is within reach of mattering (2+ — 1/20 on
+every single tile was noise nobody reads twice). The first-unique
+explainer fires once, the first time a unique tile is anywhere in the
+hand this run, drawn or forged. The shrine receipt names what the
+PREVIOUS run woke on the very next run's opening frame — written to
+storage the moment a run ends (comparing the world's shrine count at this
+run's start against its count after) and read-and-cleared exactly once,
+before the next `Game` is even constructed. The territory why-line
+surfaces `startingPerk` (already in the manual since Stage 1) as a
+start-of-run toast too, joined with the shrine receipt in the one slot
+when both fire. What-still-glows is the end screen's own version of the
+signpost — `hintFor`'s naming logic factored out and shared, but the
+distance reported is how far PAST the run's own edge the nearest
+destination sits, never a find. The shop door's next rung names the
+cheapest unbought upgrade — "STEADY PACE in 12" short, just its price
+affordable. 485 tests (+11).
+
+**2. Deep water** (`9d97d91`) — the destination reward MIX tilts with
+block distance from home, on top of the density ramp that already thins
+how OFTEN one shows up. Caches fall from 40% toward `cacheShareFar` (0.2)
+as `deepWaterRampBlocks` (10) climbs; site, territory and shrine thicken
+to fill what cache gave up, each SCALED to keep its own near-water ratio
+to the other two, so the three numbers always sum to exactly 1.
+`blockDestination` (`src/engine/world.ts`) still picks WHERE a
+destination sits before it ever asks which kind it is, so the tilt only
+ever relabels a hex — pinned directly, `destinationsWithin` returns the
+identical position set on and off. `deepWaterRampBlocks > 0` gates the
+whole cluster, so an old save decoding both new fields as `undefined`
+reproduces the original fixed 40/35/17/8 split untouched (also pinned, at
+a horizon far enough that "distance must not matter with the ramp off" is
+a tested claim). Chose 10 blocks — well past the density ramp's own 2 —
+so the near world (where most runs actually live) plays exactly as it did
+before this dial existed. **Written question**: does the world changing
+what it OFFERS with depth give the middle of a run a shape the income
+ramp alone does not? Harness half: swept bank20/spender/seeker/rush/farm
+at 40 seeds against `deepWaterRampBlocks=0`. No stalls, no capped runs,
+medians unmoved (typical reach 11-15 barely touches the ramped depth) —
+the DEPTHS moved: bank20's best-of-batch rose 11866 → 13100, farm's
+13618 → 19346, both purely from richer destinations on the runs that
+pushed far enough to meet them. Claims held at a median of 1 everywhere;
+the shape change is in what a deep claim is worth, not how many there
+are. Human half — whether that shape is felt — waits on the phone. 489
+tests (+4).
+
+**3. The survey and TITHE** (`7f54538`) — two systems, one commit.
+
+THE SURVEY: five world-scale goals (`src/content/goals.ts`,
+`src/meta/goals.ts`) — reach 20 · hold 4 territories · know 40% · wake
+every shrine · find every perk — each paying relics (35-60, modest beside
+a single shop upgrade) ONCE per world the moment it is first met.
+`isGoalMet` reads `WorldMemory` and `Progress`; `newlyMetGoals` diffs
+against a new `WorldMemory.goalsMet` so a goal that stays true forever
+(reach does not un-happen) is paid exactly once. Wired in the shell where
+`mergeRun` already runs — `main.ts`'s `checkGoals` hook, called after
+every action's own `onChange`. One real bug caught in testing: relics from
+a met goal land in the PERSISTENT shop purse, not the run's own
+`state.relics`, and the end screen's CARRIED OUT strip originally guarded
+itself on `hud.relics > 0` — a goal met with nothing else to report never
+rendered its own line. Fixed by adding the run's own `#goalMetThisRun` to
+that guard directly. Announced at the toast tier, joined onto whatever
+else the same action already earned rather than competing with it. The
+ledger — met vs unmet, facts never places — renders in SETTINGS' YOUR
+WORLD, beside the shrine ledger it is a sibling to. **Written question**:
+does a legible ledger of world goals change the line a player takes
+through their world? Code proves only that it pays once — a human,
+on a phone, is the rest of the answer.
+
+TITHE: a fourth luck price riding the existing SPEND action (`Spend`
+gains `'tithe'`) — converts the WHOLE purse to relics at `titheRate` 25%,
+better than the 10% death pays on unspent luck, floored at `titheMin` 20
+so a token tithe cannot be a trap dressed as an option. The one spend
+that does not touch the draft. Purse row: "TITHE — all luck → N relics",
+disabled under the floor. **Written question**: does a live luck→relics
+conversion make hoarding the purse a decision instead of a default?
+Swept bank20/spender at 40 seeds with and without (`--set titheRate=0`)
+— byte-identical, because neither policy spends on tithe; the sweep's
+job here is only "nothing breaks when the option exists," which it does.
+Human value is, again, the open question. 509 tests (+20, 11 for the
+survey's detection/payout/decode edges, 4 for TITHE's conversion, floor,
+better-than-death rate and off switch, 5 UI).
+
+**4. Where-you-wake** (`42c9ec8`) — harness only, and the prototype
+answers its own question, and the answer is FAIL. This is the one item
+WORKPLAN asked to be reported in full either way, so here is the table.
+
+Engine support: `newRun` takes an optional 5th argument, `wakeAt`
+(`state.ts`, `reduce.ts`) — null on every real save and every UI call
+site, always. `openWorld` grows the seed tile and its clearing at that
+hex instead of `(0,0)`. `rules.ts` gains `homeOf(state)`, guarded the
+same way `lastPlaced` already is (`typeof === 'string'`, not `!== null`
+— an old save's `undefined` must never reach `parse`);
+`distanceMultiplierAt`/`cachePaysAt` take an optional origin defaulting
+to true origin (every UI call site unchanged), and `harvestMultiplier`
+and `endingBonus`'s own REACH tally read `homeOf(state)` directly.
+`sim/run.ts` and `sim/policy.ts` follow the same measurement for the
+harness's reporting and for policy decisions.
+
+**THE CORE QUESTION**: does a far spawn inherit a free multiplier? Swept
+bank20 / seeker / random-legal from true origin and from hand-picked
+spawns at hex distance 10 / 20 / 30 (along the q axis), 40 seeds each:
+
+```
+policy                runs  points   best  depth  max
+bank20@origin           40   3338   13100   12.0   20
+seeker@origin           40   1883    6163   11.0   14
+random-legal@origin     40    235     479    5.0    8
+
+bank20@dist10           40   6259   16089   15.0   24
+seeker@dist10           40   1672   10225   11.5   18
+random-legal@dist10     40    258     496    6.0    8
+
+bank20@dist20           40  12207   25426   17.5   24
+seeker@dist20           40   3556    9933   15.0   24
+random-legal@dist20     40    296     602    6.0    8
+
+bank20@dist30           40  15564   38439   18.0   24
+seeker@dist30           40   6386   13384   17.5   22
+random-legal@dist30     40    310     690    6.0   10
+```
+
+0 stalled, 0 capped throughout — but bank20's median points climb
+3338 → 6259 → 12207 → 15564, a clean multiple with distance, not seed
+noise. Isolated by disabling, one at a time, the two things this run
+still touches that stayed keyed to absolute origin instead of `homeOf`:
+
+- **Primary, and sufficient alone**: `tallyWorth`'s (`rules.ts`) BLUE
+  TIDE bonus hardcodes `distance({q,r}, ORIGIN)` — never threaded through
+  `homeOf`, because nothing in the brief named a colour personality as a
+  "distance-based reward" the way the multiplier and reach were. A blue
+  tile at true distance 30 is worth `floor(30 / blueTideEvery)` = +5 for
+  FREE at the wake hex itself, before a single placement, and every match
+  it makes carries that +5 forward. Confirmed by re-running with
+  `blueTideEvery: 0`: bank20@origin 2834/14641 vs bank20@dist30
+  3417/12120 — ordinary seed variance, gap gone.
+- **Secondary, softer**: deep water (this stage's own item 2) and the
+  destination density ramp both key their block distance off TRUE
+  origin, not the wake hex — a far spawn lands in ground that is already
+  at full density and already tilted toward richer reward kinds, for
+  free, no walking required. Confirmed by flattening both ramps
+  (`deepWaterRampBlocks=0`, `destinationRampBlocks=0`) with blue tide
+  left ON: bank20@origin 3552/11866 vs bank20@dist30 16189/47099 — the
+  gap barely moves, which is exactly what "secondary" means here.
+
+**VERDICT: FAIL.** A far spawn CAN beat its origin twin by exploiting
+spawn geometry — not through either function this stage's own brief
+named (`distanceMultiplierAt`/`harvestMultiplier`, both fixed and both
+hold), but through a colour personality and two world-generation ramps
+nobody thought to check until the prototype's own sweep asked. Per the
+brief: stop rather than keep patching what the sweep finds. Shipping
+where-you-wake would mean auditing every distance-based rule in the
+engine for an implicit ORIGIN, not the four this prototype already fixed
+— a materially bigger job than "start a run somewhere else," and not
+this session's to start. The engine support stays exactly as
+harness-only as it arrived: `wakeAt` unreachable from any UI, off by
+default, dead code to a real player, kept only because a negative result
+is still worth being able to re-run. 6 new engine tests (`wake.test.ts`)
+pin the support itself, correctly — the verdict is about the OTHER rules
+the prototype exposed, not about what this commit built. 515 tests
+(+6).
+
+**Stage 3, verified whole:** 515 tests (was 474 at Stage 2's close — net
++41). Typecheck, lint, format clean at every one of the four commits.
+`pnpm sim` — 200 seeds, 15 policies — 0 stalled, 0 capped throughout;
+byte-identical to Stage 2's own table after every commit except deep
+water's, whose own change is the sweep documented above. `WORKPLAN.md`'s
+pipeline (correctness → UI/UX → new systems) is complete. What is left is
+what was always going to be left: the phone playtest, the stranger test,
+and v1.0 — see `ROADMAP.md` and `FOLLOWUP.md`.

@@ -107,39 +107,56 @@ brief. Full account in `LOG.md`'s 2026-08-18 addendum; the short version:
 Tests: 458 → 474 (net +16). No palette/art changes; engine untouched;
 `pnpm sim` byte-identical to Stage 1's table at every commit.
 
-## Stage 3 — new systems (STATUS: TODO — Sonnet, after stage 2)
+## Stage 3 — new systems (STATUS: DONE — `60003a8` `9d97d91` `7f54538` `42c9ec8`)
 
-Each with a written question in LOG and a harness sweep before shipping:
+Each with a written question in LOG and a harness sweep before shipping.
+Full account in `LOG.md`'s 2026-08-18 addendum; the short version:
 
-- **Moments pack** (all XS): NEW GROUND toast once per run when reach
-  passes world.farthestReach · pocket bar "POCKET 14/20" on the priced
-  pocket · first-unique explainer fires when a unique ENTERS THE HAND
-  (draw or forge) · shrine receipt on next run's first frame ("the
-  fourth card is yours") · territory why-line (call startingPerk: "+12
-  from territories held") · end-screen "a cache still glows 6 past your
-  edge" (what-still-glows) · shop door names the next rung ("STEADY
-  PACE in 12").
-- **Deep water**: destination reward MIX tilts with block distance
-  (caches thin, sites/territories/shrines thicken) — new tuning dial(s),
-  engine expression in blockDestination's kind split, swept at 40 seeds
-  (seeker/bank20 must hold; no stalls; note claims curve).
-- **The survey**: five world-scale goals (reach 20 · hold 4 territories
-  · know 40% · wake all shrines · find all perks), each paying relics
-  once per world; ledger in SETTINGS/atlas, legible from run one; facts
-  not places (never name a find location). Rides WorldMemory + the
-  UNLOCKS pattern.
-- **TITHE**: fourth luck price — convert luck→relics mid-run at a rate
-  better than death's 10% (tuning dial, e.g. 20-25%); rides the SPEND
-  action; sweep that spender-style policies don't collapse; purse row
-  gets the price.
-- **Where-you-wake prototype**: HARNESS ONLY. Engine flag/tuning to
-  start a run at a held territory hex; distance multiplier MUST measure
-  from the wake hex (or prove why origin-anchored is safe); sweep
-  bank20/seeker/random from far spawns vs origin — if any line beats
-  origin-play by exploiting spawn distance, write the failure down and
-  stop. Report the table in LOG; no UI.
+1. **Moments pack** (`60003a8`, all XS, zero balance change): NEW GROUND
+   toast once per run when reach passes world.farthestReach · pocket bar
+   "POCKET 14/20" on the priced pocket · first-unique explainer fires
+   when a unique ENTERS THE HAND (draw or forge) · shrine receipt on
+   next run's first frame · territory why-line (`startingPerk`, joined
+   with the receipt when both fire) · end-screen what-still-glows ·
+   shop door names the next rung ("STEADY PACE in 12"). 485 tests (+11).
+2. **Deep water** (`9d97d91`): destination reward MIX tilts with block
+   distance — caches thin toward `cacheShareFar` past
+   `deepWaterRampBlocks`, site/territory/shrine thicken in their own
+   near-water ratio. Positions pinned unchanged; old saves pinned
+   unchanged (`deepWaterRampBlocks > 0` gates the whole cluster). Swept
+   at 40 seeds, bank20/spender/seeker/rush/farm: 0 stalled/0 capped,
+   medians unmoved, best-of-batch depths rose (farm 13618 → 19346). 489
+   tests (+4).
+3. **The survey and TITHE** (`7f54538`): five world-scale goals (reach
+   20 · 4 territories · 40% known · every shrine · every perk), each
+   paying relics once per world, ledger in SETTINGS' YOUR WORLD; and a
+   fourth luck price, TITHE, converting the whole purse to relics at 25%
+   (better than death's 10%), floored at `titheMin` so a token tithe
+   cannot be a trap. 509 tests (+20).
+4. **Where-you-wake prototype** (`42c9ec8`, harness only): **VERDICT —
+   FAIL.** A far spawn CAN exploit spawn geometry for a free score
+   advantage — not through `distanceMultiplierAt`/`harvestMultiplier`
+   (both fixed, both hold), but through `tallyWorth`'s BLUE TIDE bonus
+   (hardcoded true-origin distance, never threaded through the new
+   `homeOf(state)`) and, more softly, deep water's and the destination
+   density ramp's own block distance, both still keyed to true origin
+   rather than the wake hex. bank20's median points climbed 3338 (origin)
+   → 15564 (dist30) at 40 seeds; disabling blue tide alone collapsed the
+   gap to ordinary seed variance. Full table and the isolating sweeps in
+   LOG.md. The engine support (`newRun`'s `wakeAt`, `rules.ts`'s
+   `homeOf`) stays exactly as harness-only as it arrived — unreachable
+   from any UI, off by default — kept only so the negative result can be
+   re-run. 515 tests (+6).
+
+**Pipeline complete.** Stage 1 (correctness) → Stage 2 (UI/UX) → Stage 3
+(new systems), one stage at a time on the same tree, as Marc green-lit on
+2026-08-18. 515 tests total (was 458 before Stage 1). Every gate green at
+every commit; `pnpm sim` checked and reported at each.
 
 ## After the pipeline
 
 Phone playtest (FOLLOWUP.md §1) · stranger test · v1.0 tag. Sound and
-daily seed are designed in ideas/, unbuilt by choice.
+daily seed are designed in ideas/, unbuilt by choice. Where-you-wake stays
+parked as a failed prototype (see Stage 3 item 4) unless a future session
+wants to take on auditing every distance-based rule for an implicit
+ORIGIN — a bigger job than this one.

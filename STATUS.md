@@ -318,7 +318,14 @@ Everything above this line has shipped. What has not, honestly:
   design session — scope, not merit; see `ideas/uniques.md`.
 - **A leaderboard.** No backend exists to hold one; not designed past being
   named as a gap.
-- **The where-you-wake prototype.** `WORKPLAN.md`'s stage-3 item: an engine
-  flag to start a run at a held territory, harness-first — prove the
-  distance multiplier cannot be beelined from a far spawn before any UI
-  exists. Not started.
+- **Where-you-wake.** Built and swept 2026-08-18 as a harness-only
+  prototype (`WORKPLAN.md` Stage 3 item 4) — and it FAILED: a far spawn
+  can exploit spawn geometry for a free score advantage, through
+  `tallyWorth`'s blue-tide bonus and (more softly) deep water's and the
+  destination density ramp's own block distance, none of which read the
+  new `homeOf(state)` the prototype's two named functions were fixed to
+  use. Full table in `LOG.md`'s Stage 3 addendum. The engine support
+  (`newRun`'s `wakeAt`) stays in the tree, unreachable from any UI, off by
+  default — parked, not merely not-started, unless a future session wants
+  to audit every distance-based rule in the engine for an implicit
+  ORIGIN before trying again.
