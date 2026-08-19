@@ -38,7 +38,7 @@ lint/format clean, `pnpm sim` byte-identical to the last balance sweep (0
 stalled, 0 capped, 200 seeds × 15 policies). Full account in `LOG.md`'s
 2026-08-18 addendum. Pushed; CI green on `main`.
 
-## Stage 2 — UI/UX (STATUS: DONE, commits `8e25a63`, `091749c`, `b2edce4`, `<pending>`)
+## Stage 2 — UI/UX (STATUS: DONE, commits `8e25a63`, `091749c`, `b2edce4`, `478c6cb`)
 
 The audit's big five, in four commits, plus most of the small wins. Full
 account in `LOG.md`'s 2026-08-18 addendum; the short version:
@@ -75,7 +75,7 @@ account in `LOG.md`'s 2026-08-18 addendum; the short version:
    popping. The frontier fix: `PixiRenderer.draw()` held the fit still past
    FIT (only a resize or returning to FIT recomputes it), which is what
    stops the world sliding under a zoomed camera.
-4. **Feedback tiers + words** (`<pending>`): a new event-card dialog (held,
+4. **Feedback tiers + words** (`478c6cb`): a new event-card dialog (held,
    centred, dismissed on tap/Escape/button) for find/shrine/territory —
    `#claimNote` returns `{ text, eventWorthy }` now, ranked exactly as
    before; cache/site stay the one-line toast. A one-beat ripen pulse
