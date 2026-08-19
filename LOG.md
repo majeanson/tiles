@@ -2518,14 +2518,6 @@ retired word back.
 
 **Adapted from the brief, decided and written down:**
 
-- "REACH 12 · best 18" on the live stat row: not done. It needs
-  world-level data (a world's farthest reach) threaded into a row whose
-  test currently pins an exact `String(hud.depthValue)` equality — a small
-  win asking for more plumbing than its size earned this pass.
-- SETTINGS reordered, the theme picker moved into it, the gallery linked
-  from it: not done. None touch the big five, and the stage was already
-  the largest of the three; left whole for a dedicated pass rather than
-  squeezed in at the end.
 - The toast-fires-on-signpost-change path is exercised by real gameplay
   (a beacon entering the horizon as reach grows, with no competing claim
   that same placement) but not by an automated test — constructing a
@@ -2541,6 +2533,33 @@ camera button test became the FIT/HERE toggle test; `questLine` — left
 unconsumed once the hint line dropped it — was deleted along with its
 computation). Typecheck, lint, format clean at every commit. `pnpm sim` —
 200 seeds, 15 policies — byte-identical to Stage 1's table at every
-commit: `src/engine` was never touched. Stage 3 (new systems — the moments
+commit: `src/engine` was never touched.
+
+**Addendum, same day — the last four small wins, closed on Marc's "the
+goal is ALL of WORKPLAN.md with no cut corners."** REACH · best N now
+rides the live stat row: `worldStats` already carried `farthestReach` for
+the end screen's CARRIED OUT strip, so `#renderStats` reads the same hook
+— no prior best (a fresh world, or the hook absent, as in most tests)
+prints plain REACH N. SETTINGS reordered whole: player things first — YOUR
+WORLD (the atlas's seven facts, a run-on sentence until today, now a
+`.facts-grid` sharing the exact classes the end screen's own grid coined
+hours earlier) and ABANDON — with both registered flags folded under a
+DEVELOPER `<details>`, the manual's own NUMBERS pattern restated for a
+different audience: a raw debug readout and an art-direction comparison
+tool are testing instruments, not something a run is asking a player to
+weigh. The theme picker moved into that fold, inside the `ui.themePicker`
+row's own area, exactly as asked — `#themes` is declared once in
+`index.html` and physically reparented into `#help-meta` by `mountSettings`
+the moment SETTINGS first paints, which happens before any `await` in
+`main()` and so before the browser has a reason to paint it anywhere else
+first. The gallery is linked beside it, and its "Play in X" links stopped
+force-appending `&ff=ui.themePicker` — that override STICKS (the resolver
+writes it back to storage), so a plain visit from the gallery used to turn
+the picker on for the device permanently just for looking; a second,
+explicit "with the picker on" link still offers it, in words, on purpose.
+474 tests (+1: the live REACH · best behaviour, with and without a prior
+best, with and without the hook at all). Gates clean; `pnpm sim`
+byte-identical — none of the four touch `src/engine`. Stage 2 is now
+whole against WORKPLAN.md's own list. Stage 3 (new systems — the moments
 pack, deep water, the survey, TITHE, the where-you-wake prototype) is
 next, on Sonnet, same tree.

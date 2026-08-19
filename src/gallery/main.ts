@@ -289,8 +289,16 @@ function themeCard(theme: Theme, manifest: AssetManifest): HTMLElement {
   grey.appendChild(surfaceCard('BLOCKED', theme.wall, theme, false));
   grey.appendChild(surfaceCard('STONE', theme.stone, theme, false));
 
+  // The plain link — Stage 2, 2026-08-18: this used to force-append
+  // &ff=ui.themePicker, which STICKS (the flag resolver writes back to
+  // storage), so following it from the gallery permanently turned the
+  // picker on for that device even for someone who only wanted to try a
+  // direction once. The picker is now its own explicit second link.
   const play = el('a', 'play', `Play in ${theme.name} →`);
-  play.href = `/?theme=${encodeURIComponent(theme.id)}&ff=ui.themePicker`;
+  play.href = `/?theme=${encodeURIComponent(theme.id)}`;
+
+  const playWithPicker = el('a', 'play quiet', 'with the picker on →');
+  playWithPicker.href = `/?theme=${encodeURIComponent(theme.id)}&ff=ui.themePicker`;
 
   card.append(
     head,
@@ -314,6 +322,7 @@ function themeCard(theme: Theme, manifest: AssetManifest): HTMLElement {
     labelled('ASSET SLOTS'),
     slotList(theme, manifest),
     play,
+    playWithPicker,
   );
   return card;
 }

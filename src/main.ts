@@ -349,13 +349,16 @@ function runKeeping(
       return granted.perk.name;
     },
 
-    // The end screen's CARRIED OUT strip: world-scale facts beside the run's
-    // own. Read off `current` (kept live by `onChange` above), not the
-    // snapshot this page loaded with — a territory claimed a moment ago
-    // must not read as unclaimed on the very screen reporting it.
+    // The end screen's CARRIED OUT strip, and the live REACH stat: world-scale
+    // facts beside the run's own. Read off `current` (kept live by `onChange`
+    // above), not the snapshot this page loaded with — a territory claimed a
+    // moment ago must not read as unclaimed, and `farthestReach` (2026-08-18)
+    // updates mid-run the instant THIS run passes the world's old best, the
+    // same merge that already keeps the atlas honest.
     worldStats: () => ({
       territories: current.territories.length,
       knownPct: knownFraction(current),
+      farthestReach: current.farthestReach,
     }),
 
     onChange: (state) => {
@@ -591,13 +594,104 @@ function mountSettings(
   heading.className = 'help-title';
   heading.textContent = 'SETTINGS';
 
+  // Player things first (2026-08-18: "settings reordered"); the two
+  // developer switches are testing tools, not something a run is asking a
+  // player to decide, and moved into their own fold below.
   const intro = document.createElement('p');
   intro.textContent =
-    'Sticky on this device. UI switches apply at once; world switches apply from your ' +
-    'next run and never touch the one in progress. The address bar does the same job ' +
-    '(?ff=debug.overlay, ?ff=-ui.themePicker), and each note below is the decision ' +
-    'that set the default.';
+    'Sticky on this device. Two switches for testing sit folded under ' +
+    'DEVELOPER, below — the address bar does the same job ' +
+    '(?ff=debug.overlay, ?ff=-ui.themePicker), and each note carries the ' +
+    'decision that set its default. NEW RUN is how a changed one actually ' +
+    'takes effect; it never touches the run in progress.';
 
+  // The atlas, as a label/value grid in the stat row's own language
+  // (`.fact`/`.fact-label`/`.fact-value` — shared with the end screen's own
+  // grid, 2026-08-18) rather than a seven-fact sentence a reader had to
+  // parse apart. A fact you have to pull out of a run-on is a fact half-shown.
+  const atlas = document.createElement('p');
+  atlas.className = 'help-title';
+  atlas.textContent = 'YOUR WORLD';
+
+  const w = live.world;
+  const fact = (label: string, value: string): HTMLElement => {
+    const c = document.createElement('div');
+    c.className = 'fact';
+    const l = document.createElement('span');
+    l.className = 'fact-label';
+    l.textContent = label;
+    const v = document.createElement('span');
+    v.className = 'fact-value';
+    v.textContent = value;
+    c.append(l, v);
+    return c;
+  };
+  const atlasGrid = document.createElement('div');
+  atlasGrid.id = 'atlas';
+  atlasGrid.className = 'facts-grid';
+  atlasGrid.append(
+    fact('SEED', String(w.worldSeed)),
+    fact('RUNS', String(w.runs)),
+    fact('KNOWN', `${Math.round(knownFraction(w) * 100)}%`),
+    fact('SEEN', `${w.revealed.length} hexes`),
+    fact('TERRITORIES', String(w.territories.length)),
+    fact('BEST', `${w.bestPoints} pts`),
+    fact('FARTHEST', String(w.farthestReach)),
+  );
+
+  // The unlock ledger, as geography: what this world has switched on, and
+  // what the next shrine will. A list of locked things you can still read is
+  // the difference between a reason to explore and a surprise.
+  const ledger = document.createElement('div');
+  ledger.id = 'unlocks';
+  ledger.append(
+    ...UNLOCKS.map((unlock, i) => {
+      const row = document.createElement('p');
+      const found = i < w.shrines.length;
+      row.className = found ? 'unlock found' : 'unlock';
+      row.textContent = `${found ? '◈' : '◇'} ${unlock.label}`;
+      return row;
+    }),
+  );
+
+  const shrineHint = document.createElement('p');
+  shrineHint.className = 'flag-note';
+  shrineHint.textContent =
+    w.shrines.length >= UNLOCKS.length
+      ? 'Every shrine in the ledger has been found. This world is fully awake.'
+      : `Reach a shrine (◈ in the fog) to unlock the next one. ${w.shrines.length} of ${UNLOCKS.length} found.`;
+
+  // Perks are FOUND, never bought (2026-08-18) — a count, never a name: an
+  // unfound perk stays a mystery even here, so this line never says which
+  // ones are left. Progress carries across every world, unlike the shrine
+  // ledger above, so it is read fresh rather than off `live.world`.
+  const perksLine = document.createElement('p');
+  perksLine.className = 'flag-note';
+  perksLine.textContent = `${readProgress().found.length} of ${PERKS.length} perks found.`;
+
+  // Abandoning is the only destructive control in the game, so it confirms
+  // — and it takes the ground and the territories with it, which is the
+  // point. Kept beside the world it abandons, not buried under DEVELOPER.
+  let armed = false;
+  const abandon = document.createElement('button');
+  abandon.type = 'button';
+  abandon.id = 'abandon-world';
+  abandon.className = 'quiet';
+  abandon.textContent = 'ABANDON THIS WORLD';
+  abandon.addEventListener('click', () => {
+    if (!armed) {
+      armed = true;
+      abandon.textContent = 'TAP AGAIN — this forgets the map and the territories';
+      return;
+    }
+    live.abandon();
+  });
+
+  // The developer fold (2026-08-18): both registered flags are testing
+  // tools (a raw readout with no console to hand; a way to compare art
+  // directions before Gate E was chosen) rather than something a run asks
+  // a PLAYER to decide, so they are folded away — the manual's own NUMBERS
+  // pattern, restated here as DEVELOPER.
   const rows = FEATURES.map((f) => {
     const row = document.createElement('div');
     row.className = 'flag';
@@ -650,88 +744,49 @@ function mountSettings(
     return row;
   });
 
+  // The theme picker itself, and the gallery, live in the ui.themePicker
+  // row's own area — "render it inside the flag's own row/area when the
+  // flag is on" — rather than a separate section elsewhere. `themesHost`
+  // is the SAME node `index.html` declares and `main()` mounts into; it is
+  // relocated here, into the fold, the first time SETTINGS paints.
+  const galleryLink = document.createElement('a');
+  galleryLink.href = '/gallery.html';
+  galleryLink.textContent = 'THE GALLERY — every art direction, side by side ▸';
+
+  const themePickerIndex = FEATURES.findIndex((f) => f.id === 'ui.themePicker');
+  const flagElements: HTMLElement[] = [];
+  rows.forEach((row, i) => {
+    flagElements.push(row);
+    if (i === themePickerIndex) flagElements.push(live.themesHost, galleryLink);
+  });
+
+  const developer = document.createElement('details');
+  developer.className = 'help-more';
+  const developerSummary = document.createElement('summary');
+  developerSummary.textContent = 'DEVELOPER';
+  developer.append(developerSummary, ...flagElements);
+
   // A fresh run under whatever the switches now say — the same path as the
   // end screen's button, so it also clears the saved run and drops ?seed and
-  // ?ff, leaving the STORED settings to decide what comes next.
+  // ?ff, leaving the STORED settings to decide what comes next. Last on the
+  // panel: it is the action that makes anything above it count.
   const restart = document.createElement('button');
   restart.type = 'button';
   restart.id = 'new-run';
   restart.textContent = 'NEW RUN with these settings';
   restart.addEventListener('click', startNewRun);
 
-  // The atlas, and the way out of a world (P4a). Abandoning is the only
-  // destructive control in the game, so it confirms — and it takes the
-  // ground and the territories with it, which is the point.
-  const atlas = document.createElement('p');
-  atlas.className = 'help-title';
-  atlas.textContent = 'YOUR WORLD';
-
-  const w = live.world;
-  const atlasLine = document.createElement('p');
-  atlasLine.id = 'atlas';
-  atlasLine.textContent =
-    `Seed ${w.worldSeed} · ${w.runs} run${w.runs === 1 ? '' : 's'} · ` +
-    `${Math.round(knownFraction(w) * 100)}% of it known · ` +
-    `${w.revealed.length} hexes seen · ` +
-    `${w.territories.length} territor${w.territories.length === 1 ? 'y' : 'ies'} held · ` +
-    `best ${w.bestPoints} pts · farthest ${w.farthestReach}`;
-
-  // The unlock ledger, as geography: what this world has switched on, and
-  // what the next shrine will. A list of locked things you can still read is
-  // the difference between a reason to explore and a surprise.
-  const ledger = document.createElement('div');
-  ledger.id = 'unlocks';
-  ledger.append(
-    ...UNLOCKS.map((unlock, i) => {
-      const row = document.createElement('p');
-      const found = i < w.shrines.length;
-      row.className = found ? 'unlock found' : 'unlock';
-      row.textContent = `${found ? '◈' : '◇'} ${unlock.label}`;
-      return row;
-    }),
-  );
-
-  const shrineHint = document.createElement('p');
-  shrineHint.className = 'flag-note';
-  shrineHint.textContent =
-    w.shrines.length >= UNLOCKS.length
-      ? 'Every shrine in the ledger has been found. This world is fully awake.'
-      : `Reach a shrine (◈ in the fog) to unlock the next one. ${w.shrines.length} of ${UNLOCKS.length} found.`;
-
-  // Perks are FOUND, never bought (2026-08-18) — a count, never a name: an
-  // unfound perk stays a mystery even here, so this line never says which
-  // ones are left. Progress carries across every world, unlike the shrine
-  // ledger above, so it is read fresh rather than off `live.world`.
-  const perksLine = document.createElement('p');
-  perksLine.className = 'flag-note';
-  perksLine.textContent = `${readProgress().found.length} of ${PERKS.length} perks found.`;
-
-  let armed = false;
-  const abandon = document.createElement('button');
-  abandon.type = 'button';
-  abandon.id = 'abandon-world';
-  abandon.className = 'quiet';
-  abandon.textContent = 'ABANDON THIS WORLD';
-  abandon.addEventListener('click', () => {
-    if (!armed) {
-      armed = true;
-      abandon.textContent = 'TAP AGAIN — this forgets the map and the territories';
-      return;
-    }
-    live.abandon();
-  });
-
   host.replaceChildren(
     heading,
     intro,
-    ...rows,
-    restart,
     atlas,
-    atlasLine,
+    atlasGrid,
     ledger,
     shrineHint,
     perksLine,
     abandon,
+    developer,
+    restart,
   );
 }
 

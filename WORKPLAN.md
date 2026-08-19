@@ -38,10 +38,10 @@ lint/format clean, `pnpm sim` byte-identical to the last balance sweep (0
 stalled, 0 capped, 200 seeds × 15 policies). Full account in `LOG.md`'s
 2026-08-18 addendum. Pushed; CI green on `main`.
 
-## Stage 2 — UI/UX (STATUS: DONE, commits `8e25a63`, `091749c`, `b2edce4`, `478c6cb`)
+## Stage 2 — UI/UX (STATUS: DONE — `8e25a63` `091749c` `b2edce4` `478c6cb` `<pending>`)
 
-The audit's big five, in four commits, plus most of the small wins. Full
-account in `LOG.md`'s 2026-08-18 addendum; the short version:
+The audit's big five, in four commits, plus every small win named in the
+brief. Full account in `LOG.md`'s 2026-08-18 addendum; the short version:
 
 1. **Front door** (`8e25a63`): NAME + TAGLINE + BEGIN (RESUME — PLACEMENT N
    when a run is saved) + quiet HOW TO PLAY over #app, painted as static
@@ -82,6 +82,20 @@ account in `LOG.md`'s 2026-08-18 addendum; the short version:
    (quieter/shorter than the pop glow, reusing its texture) on any tile
    that just became ripe. One voice: every player-facing "take"/"cash"/
    "burn" became POP/SACRIFICE, including the game's own TAGLINE.
+5. **The last four small wins** (`<pending>`, on Marc's "finish them now"):
+   REACH · best N on the LIVE stat row, threaded through `worldStats`
+   (which already carried `farthestReach`) — no prior best prints plain
+   REACH N. SETTINGS reordered: player things first (YOUR WORLD's atlas,
+   now a `.facts-grid` in the stat row's own language, plus ABANDON), the
+   two flags folded under a DEVELOPER `<details>` (the manual's own NUMBERS
+   pattern, restated). The theme picker relocated into that fold, inside
+   the `ui.themePicker` row's own area — `#themes` is declared once in
+   `index.html` and physically reparented into `#help-meta` the moment
+   SETTINGS first paints, before the first real frame. The gallery linked
+   beside it, and its own "Play in X" links stopped force-appending
+   `&ff=ui.themePicker` (that flag STICKS — a plain visit used to turn the
+   picker on for the device permanently); a second, explicit "with the
+   picker on" link carries it instead.
 
 **Adapted from the brief, decided and written down:**
 
@@ -89,20 +103,9 @@ account in `LOG.md`'s 2026-08-18 addendum; the short version:
   headline (item 2) — a second transient card layered on top of the very
   screen already announcing it would have been redundant chrome, not
   better feedback.
-- "REACH 12 · best 18" on the LIVE stat row: not done. It would need
-  world-level data threaded into a row whose test currently pins an exact
-  `String(hud.depthValue)` equality, for a small win — the cost didn't
-  clear the bar this pass.
-- SETTINGS reorder, the theme picker moving into SETTINGS, and the gallery
-  link: not done. None touch the big five and the stage was already large;
-  left for a dedicated pass rather than squeezed in.
 
-Tests: 458 → 473 (net +15: several deletions where behaviour moved —
-`firstVisit`'s auto-open, the standalone colour chips, the `+`/`−` zoom
-buttons, `questLine` — outnumbered by new coverage for the front door,
-the payout breakdown, the camera toggle, the long-press and the event
-card). No palette/art changes; engine untouched; `pnpm sim` byte-identical
-to Stage 1's table at every commit.
+Tests: 458 → 474 (net +16). No palette/art changes; engine untouched;
+`pnpm sim` byte-identical to Stage 1's table at every commit.
 
 ## Stage 3 — new systems (STATUS: TODO — Sonnet, after stage 2)
 

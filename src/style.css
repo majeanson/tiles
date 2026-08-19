@@ -656,10 +656,15 @@ button.quiet {
   font-weight: 600;
 }
 
-/* Six fixed cells, always present — the shape of this screen must not jump
-   between a short run and a long one. LUCK is deliberately not one of
-   them (it double-counts relics, which CARRIED OUT already states). */
-.end-facts-grid {
+/* A label/value grid in the stat row's own language (`.stat-label` /
+   `.stat-value`, restated at settings scale) — used twice: the end screen's
+   six fixed cells (the shape of that screen must not jump between a short
+   run and a long one; LUCK is deliberately not one of them, it
+   double-counts relics, which CARRIED OUT already states) and the atlas's
+   seven facts about this world (2026-08-18: a run-on sentence became this
+   the same day the end screen got it, on the same reasoning — a fact you
+   have to parse out of a sentence is a fact half-shown). */
+.facts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px 16px;
@@ -667,20 +672,20 @@ button.quiet {
   margin: 10px auto;
 }
 
-.end-fact {
+.fact {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.end-fact-label {
+.fact-label {
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
   font-size: 0.5625rem;
   letter-spacing: var(--label-tracking, 0.04em);
   color: var(--ink-faint, #767d8d);
 }
 
-.end-fact-value {
+.fact-value {
   font-family: var(--font-display, ui-monospace, Menlo, Consolas, monospace);
   font-size: 1rem;
   color: var(--ink, #e8ecf4);
@@ -762,9 +767,25 @@ button.quiet {
   color: var(--accent, #d7b45a);
 }
 
-#atlas {
-  color: var(--ink-dim, #8a91a0);
-  font-size: 0.6875rem;
+/* The atlas grid sits inside a left-aligned settings panel, not the
+   centred end screen `.facts-grid` was designed for — full width, no
+   auto-centring. */
+#atlas.facts-grid {
+  max-width: none;
+  margin: 6px 0 12px;
+}
+
+/* A real link, not a JS action — the gallery, from SETTINGS. Same 44px
+   floor as every control, styled as a link rather than a button because it
+   is one. */
+#help-meta a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 4px;
+  color: var(--ink-dim, #c3c9d6);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* The game's own name, once, at the top of the manual. */

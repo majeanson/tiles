@@ -64,6 +64,16 @@
         <div id="help-meta"></div>
       </div>
 
+      <!-- Art directions, one button each. Declared here rather than inside
+           #game-shell — `mountSettings` (main.ts) relocates this exact node
+           into #help-meta, under the DEVELOPER fold's ui.themePicker row,
+           the moment SETTINGS first paints (2026-08-18: "the theme picker
+           moves out of the page flow into SETTINGS"). Its own content is
+           still only ever populated while ?ff=ui.themePicker is on; Gate E
+           opened on 2026-08-15 and torchlit is the direction, but the
+           others stay loaded because a default is a decision, not a cage. -->
+      <nav id="themes" hidden></nav>
+
       <!-- Everything the front door covers, and inert while it does — a
            keyboard user must not be able to tab into a board they cannot
            see yet. -->
@@ -147,11 +157,6 @@
         <!-- Gate D's screen: cause of death, the run's arc in numbers, the
            standing best, and one button — again. Built by the game. -->
         <div id="end" hidden></div>
-
-        <!-- Art directions, one button each. Hidden unless ?ff=ui.themePicker.
-           Gate E opened on 2026-08-15 and torchlit is the direction; the
-           others stay loaded because a default is a decision, not a cage. -->
-        <nav id="themes" hidden></nav>
 
         <!-- Testing happens on the deployed site, so which build you are looking
            at has to be visible on the device itself. -->

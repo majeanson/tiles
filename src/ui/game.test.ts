@@ -172,6 +172,29 @@ describe('the game loop', () => {
     expect(ctx.el.draft.children.length).toBeGreaterThanOrEqual(ctx.game.state.draft.length);
   });
 
+  // REACH · best N (2026-08-18): the world's own farthest reach, read live
+  // off `worldStats` — the same hook the end screen's CARRIED OUT strip
+  // uses. No prior best (the hook absent, or a fresh world) is plain REACH N.
+  it('shows the world’s best reach beside the live one, or nothing new to say', () => {
+    const withBest = build(4, TUNING, {
+      worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 18 }),
+    });
+    withBest.game.start();
+    const value = withBest.el.stats.querySelector('[data-stat="map"] .stat-value')?.textContent;
+    expect(value).toBe('0 · best 18');
+
+    const fresh = build(4, TUNING, {
+      worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 0 }),
+    });
+    fresh.game.start();
+    const freshValue = fresh.el.stats.querySelector('[data-stat="map"] .stat-value')?.textContent;
+    expect(freshValue).toBe('0');
+
+    // No hook at all (the gallery, a bare game.test.ts build()) is the same
+    // plain number, not an error.
+    expect(stat('map')).toBe('0');
+  });
+
   // The draft cards carry the theme's word for a colour, not the colour id. The
   // default theme has no fiction, so it says GREEN — but the lookup is the thing
   // being checked, because a direction that renames all four must not produce
@@ -775,7 +798,7 @@ describe('keeping the run, and ending it properly', () => {
     };
     const ctx = build(1, TUNING, {
       resume: ended,
-      worldStats: () => ({ territories: 2, knownPct: 0.35 }),
+      worldStats: () => ({ territories: 2, knownPct: 0.35, farthestReach: 18 }),
     });
     ctx.game.start();
     const text = ctx.el.end.textContent ?? '';

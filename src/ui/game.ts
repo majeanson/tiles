@@ -198,11 +198,17 @@ export type GameHooks = {
    * The world-scale facts the end screen's CARRIED OUT strip states beside
    * this run's own (relics banked, a perk found) — territories held and how
    * much of the map is known, both outlive any one run, so the game asks
-   * the shell fresh rather than carrying a snapshot. Read on every render of
-   * the end screen, the same as `shop.read()` — cheap, and a territory
-   * claimed a moment ago must not read as unclaimed.
+   * the shell fresh rather than carrying a snapshot. Read on every render —
+   * cheap, the same contract as `shop.read()` — so a territory claimed a
+   * moment ago is never shown as unclaimed. `farthestReach` also feeds the
+   * live REACH stat (2026-08-18): the world's own best, which updates as
+   * THIS run passes it, not merely a fact for the end of the story.
    */
-  readonly worldStats?: () => { readonly territories: number; readonly knownPct: number };
+  readonly worldStats?: () => {
+    readonly territories: number;
+    readonly knownPct: number;
+    readonly farthestReach: number;
+  };
   /**
    * The exact build this page is running, short. The footer stamp that used
    * to say this at all times moved behind `debug.overlay` (Stage 2,
@@ -1971,15 +1977,15 @@ export class Game {
     const s = hud.summary;
     if (s !== null) {
       const grid = document.createElement('div');
-      grid.className = 'end-facts-grid';
+      grid.className = 'facts-grid';
       const cell = (label: string, value: string): HTMLElement => {
         const c = document.createElement('div');
-        c.className = 'end-fact';
+        c.className = 'fact';
         const l = document.createElement('span');
-        l.className = 'end-fact-label';
+        l.className = 'fact-label';
         l.textContent = label;
         const v = document.createElement('span');
-        v.className = 'end-fact-value';
+        v.className = 'fact-value';
         v.textContent = value;
         c.append(l, v);
         return c;
@@ -2190,6 +2196,17 @@ export class Game {
    * colour for that reason.
    */
   #renderStats(hud: HudView): void {
+    // REACH · best N (2026-08-18): the world's own farthest reach, read
+    // fresh off `worldStats` — the same hook the end screen's CARRIED OUT
+    // strip uses — so a run that just passed its own world's old best
+    // shows it changing live, not merely at the end of the story. No prior
+    // best (a fresh world, or the hook absent) prints plain REACH N.
+    const world = this.#hooks.worldStats?.();
+    const reachValue =
+      world !== undefined && world.farthestReach > 0
+        ? `${hud.depthValue} · best ${world.farthestReach}`
+        : String(hud.depthValue);
+
     const stats: readonly Stat[] = [
       { id: 'tiles', label: 'TILES', value: String(hud.tiles) },
       // Score where it is worth watching; otherwise the purse, which is the
@@ -2197,7 +2214,7 @@ export class Game {
       hud.showPoints
         ? ({ id: 'points', label: 'POINTS', value: String(hud.points) } satisfies Stat)
         : ({ id: 'luck', label: 'LUCK', value: String(hud.luck) } satisfies Stat),
-      { id: 'map', label: 'REACH', value: String(hud.depthValue) },
+      { id: 'map', label: 'REACH', value: reachValue },
       { id: 'cost', label: 'COST', value: `−${hud.cost}` },
       // The clock, where there is one. Last on the row because it is the
       // number you check rather than the number you watch — but on screen
