@@ -19,9 +19,12 @@ const WEBFONT =
  * `vignette.strength` here is a ceiling the vignette is clamped to rather than a
  * free gradient — see `PixiRenderer`.
  *
- * The direction's best idea is one we cannot build yet: each placement carries a
+ * The direction's best idea, BUILT (2026-08-18/19): each placement carries a
  * little light with it, so the pool grows as you build and running out of tiles
- * reads as the light going out. Recorded in `prompt.md`, not faked here.
+ * reads as the light going out. `ui/view.ts`'s `structureDistances` is the
+ * mechanism — a multi-source BFS from every tile and stone on the board, not
+ * from the one hex you last placed — feeding the same `brightness()` curve
+ * below. Was recorded here as unbuilt; is not, any more.
  */
 export const TORCHLIT: Theme = {
   id: 'torchlit',

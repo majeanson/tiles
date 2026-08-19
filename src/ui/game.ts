@@ -447,11 +447,12 @@ export class Game {
     this.#el.hint.setAttribute('aria-live', 'polite');
 
     // FIT ⇄ HERE: two states, not four buttons. At FIT (zoom 1), a tap jumps
-    // in on the torch — the last thing you built, `state.lastPlaced` — the
-    // same point the light already centres on, so "HERE" means the same
-    // place in both. Past FIT, a tap goes back to seeing everything. Pinch
-    // and drag still do continuous zoom and pan; this is the one DISCRETE
-    // decision left on screen, and it is a toggle rather than a step.
+    // in on `state.lastPlaced` — the last thing you built, and still the
+    // warmest point of the light even now that the pool is the whole
+    // structure's, not just this one hex (2026-08-18/19: see `view.ts`).
+    // Past FIT, a tap goes back to seeing everything. Pinch and drag still
+    // do continuous zoom and pan; this is the one DISCRETE decision left on
+    // screen, and it is a toggle rather than a step.
     this.#el.cameraToggle.addEventListener('click', () => {
       if (this.#renderer.zoomLevel() <= 1.001) {
         this.#renderer.zoomBy(CAMERA_HERE_ZOOM);

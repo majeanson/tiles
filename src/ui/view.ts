@@ -32,6 +32,61 @@ const NO_FALLOFF: Light = { radius: Infinity, fade: 1, floor: 1 };
 const ORIGIN_HEX = { q: 0, r: 0 };
 
 /**
+ * How far `structureDistances` below is willing to walk before it stops
+ * caring exactly how far a hex is. `brightness()` clamps to `floor` for any
+ * distance at or past `light.radius + light.fade`, and the largest such sum
+ * among the shipped themes is cold survey's 24 (torchlit 15, rot bloom 18) —
+ * so a sentinel exactly there can never read differently from the true
+ * distance for a theme that exists today, and it keeps the flood fill from
+ * paying for a halo no theme's curve can see past. A render-precision
+ * constant, not a balance number: this file has no theme to read one from,
+ * by design — bump it if a future direction's `radius + fade` exceeds it.
+ */
+const STRUCTURE_LIGHT_CAP = 24;
+
+/**
+ * The light the structure carries (2026-08-18/19): distance from every hex
+ * within `STRUCTURE_LIGHT_CAP` steps to the nearest BUILT cell — a tile or a
+ * stone, the structure actually placed — rather than to the one hex last
+ * placed. `torchlit.ts`'s header recorded this as the direction's best idea
+ * and unbuilt; this is it built.
+ *
+ * One multi-source BFS: every built cell seeds the frontier at distance 0,
+ * which then expands outward across the raw hex lattice a ring at a time —
+ * not only cells the board has drawn, because a beacon or a remembered hex
+ * sitting past the grown ground still needs an honest distance. O(cells
+ * reached), computed once per render.
+ */
+function structureDistances(cells: GameState['cells']): ReadonlyMap<HexKey, number> {
+  const dist = new Map<HexKey, number>();
+  const queue: HexKey[] = [];
+  for (const [k, cell] of Object.entries(cells)) {
+    if (cell.kind === 'tile' || cell.kind === 'stone') {
+      dist.set(k, 0);
+      queue.push(k);
+    }
+  }
+  for (let i = 0; i < queue.length; i++) {
+    const k = queue[i]!;
+    const d = dist.get(k)!;
+    if (d >= STRUCTURE_LIGHT_CAP) continue;
+    const { q, r } = parse(k);
+    for (const n of neighbourKeys(q, r)) {
+      if (!dist.has(n)) {
+        dist.set(n, d + 1);
+        queue.push(n);
+      }
+    }
+  }
+  return dist;
+}
+
+/** `structureDistances`' answer for one hex, or the cap once past its reach. */
+function structureDistanceAt(dist: ReadonlyMap<HexKey, number>, q: number, r: number): number {
+  return dist.get(key(q, r)) ?? STRUCTURE_LIGHT_CAP;
+}
+
+/**
  * State to screen, as one pure function.
  *
  * Everything the player is shown is derived here, so the UI cannot invent a
@@ -114,6 +169,12 @@ export type RenderContext = {
    * context rather than a re-parse living inside `toBoardView`.
    */
   readonly ground: readonly { readonly q: number; readonly r: number }[];
+  /**
+   * The light the structure carries: every reached hex's distance to the
+   * nearest BUILT cell (tile or stone), from one multi-source BFS run once
+   * per render. See `structureDistances`.
+   */
+  readonly structureDist: ReadonlyMap<HexKey, number>;
 };
 
 export function renderContext(state: GameState, asked: HexKey | null = null): RenderContext {
@@ -178,6 +239,7 @@ export function renderContext(state: GameState, asked: HexKey | null = null): Re
     reach: reachOf(state),
     pocketCount: pockets.length,
     ground: Object.keys(state.cells).map(parse),
+    structureDist: structureDistances(state.cells),
   };
 }
 
@@ -192,15 +254,26 @@ export function toBoardView(
   // gets a fresh one for free.
   ctx: RenderContext = renderContext(state, harvestAt),
 ): BoardView {
-  // The torch sits on the last thing you built, and on the origin before you
-  // have built anything — so a fresh run opens lit rather than opening dark
-  // and waiting for you to earn a first frame you can read.
-  // Defensive on purpose: a save written before this field existed decodes it
-  // as absent, and `undefined` walks straight past an `=== null` guard into
-  // `parse`. `decodeRun` fills it as well — both, because this one cost Marc a
-  // black screen on the first frame of a resumed run.
+  // The light the structure carries (2026-08-18/19): the real source is now
+  // every BUILT cell, not one hex — `ctx.structureDist` is that answer, one
+  // multi-source BFS shared by the whole render. `lastPlaced` (or the origin
+  // before anything is built) keeps a small bonus pool on top: full
+  // brightness within the theme's own radius of it, exactly the old
+  // single-torch formula. `Math.max` of the two means the spot you are
+  // working RIGHT NOW still reads a touch warmer than the rest of the
+  // structure, and neither source can ever make a cell darker than the
+  // other already had it — nothing regresses past what today's torch drew.
+  //
+  // Defensive on purpose: a save written before `lastPlaced` existed decodes
+  // it as absent, and `undefined` walks straight past an `=== null` guard
+  // into `parse`. `decodeRun` fills it as well — both, because this one cost
+  // Marc a black screen on the first frame of a resumed run.
   const torch = typeof state.lastPlaced === 'string' ? parse(state.lastPlaced) : ORIGIN_HEX;
-  const lit = (q: number, r: number): number => brightness(light, distance({ q, r }, torch));
+  const lit = (q: number, r: number): number =>
+    Math.max(
+      brightness(light, structureDistanceAt(ctx.structureDist, q, r)),
+      brightness(light, distance({ q, r }, torch)),
+    );
   const band = (q: number, r: number): number =>
     elevationBandAt(state.rootSeed, q, r, state.tuning);
   const previews = ctx.previews[state.selected];

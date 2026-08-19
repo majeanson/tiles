@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { decodeRun, encodeRun } from '@meta/save';
 import { TUNING, type Tuning } from '@content/tuning';
-import { key, parse } from '@engine/hex';
+import { distance, key, neighbourKeys, parse } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { harvestMultiplier, harvestValue, legalPlacements, ripeKeys } from '@engine/rules';
 import type { GameState } from '@engine/state';
 import { destinationsWithin, findAt } from '@engine/world';
+import { brightness } from '@theme/tokens';
 import { toBoardView, toHudView } from './view';
 
 /**
@@ -204,13 +205,23 @@ describe('destinations and rarity in the view', () => {
   });
 });
 
-describe('the torch', () => {
+describe('the light the structure carries', () => {
   /**
    * Marc, 2026-08-16: "whats our next steps for visuals?" — and then chose
    * real light and dark first, with one rule attached: DIM, NEVER HIDDEN.
-   * The falloff curve itself is tested in `theme/tokens.test.ts`; what is
-   * checked here is that the board hands the renderer the right distances,
-   * from the right place, and never hands it a hex it cannot read.
+   * 2026-08-18/19 built the direction's own best idea: the source is now
+   * every BUILT cell (a tile or a stone), not the one hex last placed — see
+   * `structureDistances` in `view.ts`. The falloff curve itself is tested in
+   * `theme/tokens.test.ts`; what is checked here is that the board hands the
+   * renderer the right distances, from the right place, and never hands it
+   * a hex it cannot read.
+   *
+   * This describe used to be "the torch" and pinned single-source, lastPlaced
+   * -only behaviour: a cell more than a few hexes from `lastPlaced` had to
+   * read dim even while sitting right next to a tile placed ten minutes
+   * earlier. That was the bug this feature fixes, so that assertion is gone
+   * rather than kept green by accident — replaced below by tests that pin
+   * the new, honest rule instead.
    */
   const LIGHT = { radius: 2, fade: 8, floor: 0.4 };
 
@@ -233,24 +244,51 @@ describe('the torch', () => {
     expect(view.cells.find((c) => c.key === key(0, 0))?.light).toBe(1);
   });
 
-  it('dims with distance, and never past the floor', () => {
-    // Grow the plane first: a fresh run has revealed only the clearing, and a
-    // torch cannot be shown falling off across ground that does not exist yet.
+  it('fully lights any cell touching the structure, even far from lastPlaced', () => {
+    // Grow the plane so the structure has some size to it, then find an
+    // EMPTY (unbuilt) cell that sits right beside a tile or a stone but is
+    // far enough from `lastPlaced` alone that the old single-torch formula
+    // would have left it dim. The new light reaches it anyway — that is the
+    // whole point of measuring from the structure instead of one hex.
     const grown = fill(newRun(5, TINY));
-    const torch = grown.lastPlaced === null ? { q: 0, r: 0 } : parse(grown.lastPlaced);
-    const far = toBoardView(grown, null, null, [], LIGHT).cells.filter(
-      (c) =>
-        Math.max(
-          Math.abs(c.q - torch.q),
-          Math.abs(c.r - torch.r),
-          Math.abs(torch.q - c.q + torch.r - c.r),
-        ) > 4,
-    );
-    expect(far.length).toBeGreaterThan(0);
-    for (const cell of far) {
-      expect(cell.light).toBeLessThan(1);
-      expect(cell.light).toBeGreaterThanOrEqual(LIGHT.floor);
+    const lastPlacedHex = grown.lastPlaced === null ? { q: 0, r: 0 } : parse(grown.lastPlaced);
+
+    let target: string | null = null;
+    for (const [k, cell] of Object.entries(grown.cells)) {
+      if (cell.kind !== 'empty') continue;
+      if (distance(parse(k), lastPlacedHex) <= LIGHT.radius) continue;
+      const { q, r } = parse(k);
+      const touchesStructure = neighbourKeys(q, r).some((n) => {
+        const c = grown.cells[n];
+        return c !== undefined && (c.kind === 'tile' || c.kind === 'stone');
+      });
+      if (touchesStructure) {
+        target = k;
+        break;
+      }
     }
+    if (target === null) throw new Error('grow the board further — no far empty cell found');
+
+    const view = toBoardView(grown, null, null, [], LIGHT);
+    expect(view.cells.find((c) => c.key === target)?.light).toBe(1);
+  });
+
+  it('reads brightness(N) at a cell N beyond the structure’s edge', () => {
+    // A fresh run has exactly one built cell (the origin), so the structure's
+    // distance to a hex is plain hex distance from it — an exact number to
+    // pin the curve against.
+    const fresh = newRun(5, TINY);
+    const N = LIGHT.radius + 4;
+    const far = key(N, 0);
+    const view = toBoardView(fresh, null, null, [far], LIGHT);
+    expect(view.cells.find((c) => c.key === far)?.light).toBeCloseTo(brightness(LIGHT, N));
+  });
+
+  it('never drops below the floor, however far the structure’s edge sits', () => {
+    const fresh = newRun(5, TINY);
+    const veryFar = key(500, 0);
+    const view = toBoardView(fresh, null, null, [veryFar], LIGHT);
+    expect(view.cells.find((c) => c.key === veryFar)?.light).toBe(LIGHT.floor);
   });
 
   it('never dims anything to nothing, however far out the board runs', () => {
@@ -263,6 +301,12 @@ describe('the torch', () => {
   it('is flat where a direction asks for no falloff', () => {
     const view = toBoardView(newRun(5, TINY));
     for (const cell of view.cells) expect(cell.light).toBe(1);
+  });
+
+  it('stays safe with no cells on the board at all', () => {
+    const empty: GameState = { ...newRun(5, TINY), cells: {} };
+    expect(() => toBoardView(empty, null, null, [], LIGHT)).not.toThrow();
+    expect(toBoardView(empty, null, null, [], LIGHT).cells).toHaveLength(0);
   });
 });
 

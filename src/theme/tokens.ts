@@ -324,9 +324,13 @@ export type Theme = {
   readonly ghost: Surface;
 
   /**
-   * The torch (2026-08-16). Light falls off with distance from the hex you
-   * last built on, which is what makes the plane read as a room you are
-   * carrying a light through rather than a chart on black.
+   * The torch (2026-08-16; the light the structure carries, 2026-08-18/19).
+   * Light falls off with distance from the nearest hex you have actually
+   * BUILT — every tile and stone lights its own edge, not just the one you
+   * last placed — which is what makes the plane read as a room you are
+   * carrying a light through rather than a chart on black. `radius` and
+   * `fade` are measured from that edge now; the numbers themselves are
+   * unchanged by the mechanism under them.
    *
    * Marc set the rule: DIM, NEVER HIDDEN. Distance drains light, but every
    * number, symbol and beacon stays readable — atmosphere must not cost a
@@ -337,7 +341,7 @@ export type Theme = {
 };
 
 export type Light = {
-  /** Hexes of full brightness around the torch before any falloff starts. */
+  /** Hexes of full brightness around the structure's edge before any falloff starts. */
   readonly radius: number;
   /** Hexes over which brightness falls from full to the floor. */
   readonly fade: number;
