@@ -3110,3 +3110,149 @@ in `ui/view.ts`, not in `src/content`.
 `pnpm sim` byte-identical across all three commits. Each commit pushed and
 deployed independently; `gh run watch --exit-status` confirmed CI green
 before the next commit started.
+
+---
+
+### Session 24 — The visual pass, third pass: embers, the hearth, the story drawn
+
+Same standing brief as Session 23 and its addendum, a new day, Marc still
+playing live: pure render/theme/ui-visual work, `src/content` and
+`src/engine` untouched throughout, `pnpm sim` byte-identical after every
+commit. Three commits, each pushed and deployed independently before the
+next began.
+
+**Commit 1 — the embers.** Torchlit's own motion note had promised a pop
+"falls back to gloom over 700ms with embers" since the direction was
+transcribed; the flash sprite carried the whole feeling alone. Every
+popped hex now throws 4–7 tiny warm particles, riding the same
+distance-ordered cascade stagger the glow and the jump already use — a
+straight-line, gravity-less drift away from the hex over 500–700ms,
+additive-blended so they read as light rather than confetti, tinted per
+theme (the pop's own colour pulled toward the accent) rather than baked,
+so one white dot texture serves every direction. Pooled, not allocated: a
+hard `EMBER_CAP` of 140 sprites, acquired from a free list before ever
+creating a new one — the label-texture cache's own create-once-reuse-
+forever discipline, applied to a moving sprite — so a huge harvest simply
+throws no more embers once the pool is spent rather than allocating an
+unbounded storm. Killed on resize and zoom exactly where flashes already
+are; skipped entirely under reduced motion, which the held glow already
+answers "did that happen" for without asking for movement.
+
+Checked, not assumed: `Math.random` is legal in `src/render`.
+`eslint.config.js`'s `pure` block (no `Math.random`, no `Date`, no DOM) is
+scoped to `src/engine/**` and `src/content/**` only; `src/render/**`'s own
+block is layering-only (may not import `ui/` or `sim/`). Render-side
+jitter was never actually forbidden — it only looked that way because
+nothing in this file had reached for it yet.
+
+**Commit 2 — home, marked, and the vignette joins the light.** Two audit
+findings, landed together because both touched the same stroke-and-camera
+territory:
+
+- **The origin had no visual identity**, despite being the one hex every
+  distance-based number in the game — REACH, `harvestMultiplier`, cache
+  and site payouts — measures from. It now gets a quiet permanent ring,
+  drawn by `PixiRenderer`'s stroke ladder (`#strokeFor`) at the LOWEST
+  priority the ladder has: checked dead last, after targeted, ripe,
+  unclaimed-landmark and rare-tile, all of which still win the edge
+  outright if the origin ever happens to carry one of those states too.
+  `Board` gained a `home: { ring, ringWidth }` token every theme fills in
+  — torchlit gets its own warm ember tone (`0xe0803c`), the other three
+  reuse their own `accent` as the sensible default (cold survey's own
+  contract reserves warmth for `danger` alone, so its home ring stays
+  cool on purpose). `CellView` gained `home: boolean`, set in
+  `ui/view.ts` from `homeOf(state)` — the SAME hex `harvestMultiplier`
+  already reads, not a hardcoded `{q:0,r:0}` — so a future where-you-wake
+  attempt would mark the right cell without this needing to move again.
+- **The vignette double-dipped with the torch** (audit finding): a
+  screen-space darkening toward the canvas edge and a world-space light
+  falloff both darkening the same dark plane said the same thing twice.
+  `#drawVignette` now scales its drawn strength by `#vignetteFactor`, a
+  camera proxy — zoom is a free, already-computed stand-in for how much
+  of the fitted extent the viewport is showing, since `zoomLayout` scales
+  the fit's own size by it directly. At FIT (zoom 1, the whole grown
+  world — mostly unlit ground and beacons past the torch — filling the
+  screen) the vignette earns its full ceiling; zoomed in on a lit
+  structure, that same fitted extent has been magnified well past the
+  screen, so the vignette eases, never below a third of the ceiling.
+  Applied as a plain alpha multiply on the ONE sprite already baked
+  (the gradient itself still bakes at the theme's literal `strength`,
+  unscaled) rather than folded into the bake, so a live pinch — which
+  redraws every frame — costs one number instead of a canvas re-render,
+  and torchlit's documented strength stays the ceiling the header
+  promises: the factor can only ever divide it down. Reduced motion is
+  untouched, because this rides the camera, not a clock.
+
+**Commit 3 — the story, drawn.** `ideas/endless-world.md`'s own line —
+"the map at death is the run's whole story, drawn" — was a sentence, not
+a picture. `Renderer` gained `snapshot(maxPx): string | null`;
+`PixiRenderer`'s implementation asks Pixi's `extract.canvas` for the
+SCALED-DOWN resolution directly (rather than rastering full-size and
+downscaling after), fills `clearColor` with the theme's own board
+background (the stage has no background layer of its own — an unfilled
+extraction comes back transparent), and returns a PNG data URL. Pixi's
+own `ExtractSystem.canvas` destroys the temporary texture it builds
+internally before returning — verified against the installed package —
+so "destroy the extract texture immediately" was already the library's
+contract; nothing further to do. `null` wherever nothing is mounted or
+extraction throws, caught rather than left to crash the end screen over a
+picture nobody asked to be guaranteed.
+
+`Game` captures one snapshot, once, inside the SAME null-guarded block
+that already runs exactly once per ended run for the record book
+(`#renderEnd`'s `this.#recordLines === null` check) — reopening the shop
+and coming back to the run face does not re-capture. The end screen shows
+it as a framed `<img class="end-snapshot">` between the arc chart and the
+facts grid, `alt=""` (decorative — everything it shows is already stated
+as text and as the arc above it), sized up to 40% of the viewport's
+height and letterboxed in the panel's own background so a wide or tall
+board is never cropped. Tap opens nothing; the share flow is untouched —
+`share` still sends text and a `?seed=` link, no file attached. A fresh
+`Game` instance per run (the same reasoning `#uniqueExplained`'s own
+comment already gives) means NEW RUN needs no explicit clear: there is no
+run for `#snapshot` to survive into.
+
+**Measured in a real browser**, not estimated — happy-dom has no 2D
+canvas, so this could only ever be checked against Chromium: a
+Playwright session against the dev build, a run grown to ~25–30 cells by
+simulated taps, `snapshot(480)` timed with `performance.now()` from the
+console. One run: a 167,170-character PNG data URL (~125KB decoded) in
+33ms, under software-rendered WebGL (no real GPU in that container — a
+phone with hardware readback should beat this, not lose to it). The
+temporary `window.__renderer` exposure used to reach the renderer from
+the console was reverted before this commit; nothing about the
+measurement rig shipped.
+
+**What to look for on the phone:**
+
+- Pop a pocket and watch for a scatter of tiny warm sparks lifting off
+  each hex as it goes, on top of the flash — not a shower, a handful.
+- Find the origin — the very first tile placed — and check it carries a
+  quiet ring distinct from ordinary tile edges, even once it has popped
+  to stone.
+- Build ONTO the origin so it goes ripe or gets targeted, and confirm the
+  ring gives way to that louder edge rather than fighting it.
+- Zoom to FIT over a big, mostly-dark plane and note the vignette's full
+  weight; zoom in tight on a lit cluster and check it visibly eases.
+- Finish a run and check the end screen for a framed picture of the
+  board between the arc chart and the six facts — tapping it should do
+  nothing.
+
+**Deliberately not done:** no art-slot fallback for the ember texture
+(`fx.pop` is reused by the flash; the ember dot stays purely procedural,
+since nothing asked for a bitmap here) · no gallery strip for home or the
+vignette factor — this pass's brief scoped the gallery to item 3 only,
+and item 3 is explicitly "N/A" for the gallery (a screenshot feature has
+nothing to draw a static swatch of) · the theme `light` numbers stayed
+untouched again, same standing rule as last session's addendum.
+
+**Verified:** 531 tests green (was 523) — the embers commit added none
+(nothing in `PixiRenderer.ts` is unit-tested; happy-dom has no canvas,
+same standing caveat as every visual commit in this repository), home
+added 6 (the origin mark surviving a pop, and the stroke-ladder priority
+pinned in `theme.test.ts`), the snapshot commit added 2 (present when the
+renderer provides one, absent when it returns `null`). Typecheck, lint,
+format clean; `pnpm sim` byte-identical across all three commits (0
+stalled, 0 capped, same table throughout). Each commit pushed and
+deployed independently; `gh run watch --exit-status` confirmed CI green
+before the next commit started.

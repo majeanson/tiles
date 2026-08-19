@@ -514,6 +514,55 @@ export class PixiRenderer implements Renderer {
     return this.#drawnKeys.has(k) ? k : null;
   }
 
+  /**
+   * The story, drawn (`ideas/endless-world.md`): a small portrait of the
+   * board exactly as it currently sits — camera, pan, the last thing on
+   * screen — captured once at the ended transition and never again.
+   *
+   * `extract.canvas` is asked for the SCALED-DOWN resolution directly
+   * (`resolution`, below), rather than raster-then-downscale: cheaper, and it
+   * means the temporary render target it builds internally is never larger
+   * than the thumbnail actually needs. `clearColor` fills the theme's own
+   * board background — the stage has no background layer of its own (the
+   * canvas clear colour usually does that job), so an unfilled extraction
+   * would otherwise come back transparent and the thumbnail would show
+   * whatever sits behind it on the end screen instead of the board's own
+   * dark.
+   *
+   * Pixi's own `canvas()` destroys the temporary texture it builds
+   * internally before returning (`ExtractSystem.canvas`, verified against
+   * the installed package) — "destroy the extract texture immediately" is
+   * already the library's own contract here, not something this method has
+   * to do again.
+   *
+   * `null` whenever nothing is mounted, extraction throws (a context lost
+   * mid-run, say), or the resulting canvas has no `toDataURL` — happy-dom's
+   * stub renderer never reaches this file at all, so the guard is for a real
+   * browser missing a piece of the canvas API, not for tests.
+   */
+  snapshot(maxPx: number): string | null {
+    const app = this.#app;
+    if (app === null) return null;
+
+    const w = app.screen.width;
+    const h = app.screen.height;
+    if (!(w > 0) || !(h > 0)) return null;
+
+    const resolution = Math.min(1, maxPx / Math.max(w, h));
+
+    try {
+      const canvas = app.renderer.extract.canvas({
+        target: app.stage,
+        resolution,
+        clearColor: this.#theme.board.background,
+      });
+      if (typeof canvas.toDataURL !== 'function') return null;
+      return canvas.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  }
+
   destroy(): void {
     this.#detach?.();
     this.#detach = null;

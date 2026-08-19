@@ -161,6 +161,15 @@ export interface Renderer {
    * and drifting out of step with what is actually drawn.
    */
   hitTest(x: number, y: number): HexKey | null;
+  /**
+   * A small portrait of the board, exactly as currently drawn (camera and
+   * all), as a PNG data URL — "the map at death is the run's whole story,
+   * drawn" (`ideas/endless-world.md`). `maxPx` bounds the longest side of the
+   * raster; the renderer decides how to get there. `null` wherever extraction
+   * is unavailable — nothing mounted, no 2D context to encode into — which a
+   * caller treats as "no picture this time", not an error.
+   */
+  snapshot(maxPx: number): string | null;
   /** Release GPU resources and detach. */
   destroy(): void;
 }

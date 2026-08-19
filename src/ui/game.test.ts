@@ -62,6 +62,16 @@ class StubRenderer implements Renderer {
   zoomMax(): number {
     return this.max;
   }
+  /**
+   * happy-dom has no 2D canvas, so the real renderer's own `null` guard
+   * (nothing to extract from) is the honest answer here too — not a special
+   * case for tests, the SAME path a browser without canvas support would
+   * take. A picture is set here explicitly in the one test that wants one.
+   */
+  picture: string | null = null;
+  snapshot(): string | null {
+    return this.picture;
+  }
   destroy(): void {}
 
   get last(): BoardView {
@@ -963,6 +973,32 @@ describe('keeping the run, and ending it properly', () => {
     const ctx = build(1, TUNING, { resume: ended });
     ctx.game.start();
     expect(ctx.el.end.querySelector('svg.end-arc')).toBeNull();
+  });
+
+  // The story, drawn (`ideas/endless-world.md`): a small portrait of the
+  // board on the end screen, framed between the arc and the facts grid.
+  it('shows the board portrait when the renderer provides one', () => {
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    const ctx = build(1, TUNING, { resume: ended });
+    ctx.renderer.picture = 'data:image/png;base64,AAAA';
+    ctx.game.start();
+
+    const img = ctx.el.end.querySelector<HTMLImageElement>('img.end-snapshot');
+    expect(img).not.toBeNull();
+    expect(img!.src).toBe('data:image/png;base64,AAAA');
+    // Decorative: everything the picture shows is already stated as text and
+    // as the arc chart above it, and tap on it opens nothing.
+    expect(img!.alt).toBe('');
+  });
+
+  it('shows no board portrait wherever the renderer has none — happy-dom, or a real one with no canvas', () => {
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    const ctx = build(1, TUNING, { resume: ended });
+    // The stub's default — exactly what a real renderer with no 2D context
+    // returns too.
+    expect(ctx.renderer.picture).toBeNull();
+    ctx.game.start();
+    expect(ctx.el.end.querySelector('img.end-snapshot')).toBeNull();
   });
 
   it('writes the record book exactly once per ended run', () => {

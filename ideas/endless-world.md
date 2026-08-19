@@ -63,7 +63,11 @@ origin. There are no maps and no LEAVE button — the world is the map.
 - **Stone becomes the road.** Popped tiles still turn to stone, stone still
   surrounds and never matches — but on a continuous plane your stone wake is
   also the connected ground you extend from. The spent land behind you is the
-  trail; the map at death is the run's whole story, drawn.
+  trail; the map at death is the run's whole story, drawn. **The line is
+  literal, 2026-08-19**: `PixiRenderer.snapshot` extracts the board exactly
+  as the run left it into the end screen, between the arc chart and the
+  facts grid — the run's whole story, drawn, is now a picture rather than a
+  sentence describing one.
 
 ### The rules, redrafted
 

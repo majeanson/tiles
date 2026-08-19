@@ -675,6 +675,24 @@ button.quiet {
   letter-spacing: var(--label-tracking, 0.04em);
 }
 
+/* The story, drawn: the board itself, framed like any other panel on this
+   screen. `object-fit: contain` keeps a wide or tall board unbroken rather
+   than cropping it, and the panel background letterboxes whatever gap that
+   leaves — never a naked page colour showing through. Capped at 40% of the
+   viewport's height, not the screen's width, because portrait is the only
+   shape this game is tested in. */
+.end-snapshot {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 40vh;
+  margin: 4px auto 10px;
+  border: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 6px;
+  background: var(--panel, #1e222b);
+  object-fit: contain;
+}
+
 .end-facts {
   color: var(--ink-dim, #8a91a0);
   font-size: 0.75rem;

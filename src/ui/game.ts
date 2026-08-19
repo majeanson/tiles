@@ -293,6 +293,15 @@ const EVENT_GLYPH = /^(\S+)\s\s([\s\S]*)$/;
 /** Circumradius of the hex drawn on a draft card, in CSS pixels. */
 const HAND_HEX_SIZE = 24;
 
+/**
+ * The end screen's board portrait: bounds the longest side of the raster
+ * `Renderer.snapshot` returns. Large enough to read as a picture of the run
+ * rather than a smear once CSS frames it at up to 40% of a phone's viewport
+ * height on a 2-3x device pixel ratio; small enough that one PNG data URL
+ * held in memory for the rest of the session is not a cost worth measuring.
+ */
+const SNAPSHOT_MAX_PX = 480;
+
 export class Game {
   #state: GameState;
   readonly #renderer: Renderer;
@@ -388,6 +397,17 @@ export class Game {
    * had the number for and had never handed across.
    */
   #recordBest: number | null = null;
+  /**
+   * The story, drawn (`ideas/endless-world.md`): a small portrait of the
+   * board, captured once — alongside `#recordLines`, guarded by the same
+   * null-check — at the ended transition. `null` on every render before the
+   * run ends, and wherever the renderer itself had nothing to extract (the
+   * stub in tests, or a real browser missing a piece of the canvas API). A
+   * fresh `Game` instance per run (see `#uniqueExplained`'s own note) means
+   * this needs no explicit clearing on NEW RUN — there is no run for it to
+   * survive into.
+   */
+  #snapshot: string | null = null;
   /**
    * Which face of the end surface is showing: the run's picture, or the shop.
    * Split on 2026-08-18 (Marc: "split the end screen and the spend screen") —
@@ -2043,6 +2063,11 @@ export class Game {
         this.#runNumber = book.runs;
         this.#recordBest = book.previousBest ?? null;
       }
+      // The story, drawn: one snapshot, taken exactly once at this same
+      // ended transition — never re-captured on a later render of the same
+      // end screen (opening the shop and coming back, say), which is what
+      // guarding it behind `#recordLines`'s own null-check buys for free.
+      this.#snapshot = this.#renderer.snapshot(SNAPSHOT_MAX_PX);
     }
 
     const line = (cls: string, text: string): HTMLElement => {
@@ -2115,6 +2140,17 @@ export class Game {
     if (arc !== null) parts.push(arc);
     if (!isNewBest && this.#recordLines.length > 0) {
       parts.push(line('end-best', this.#recordLines[0]!));
+    }
+
+    // The story, drawn (`ideas/endless-world.md`): the board itself, exactly
+    // as the run left it. Tap opens nothing — it IS the screenshot bait, and
+    // the share flow stays text-only (see `share`, below) on purpose.
+    if (this.#snapshot !== null) {
+      const img = document.createElement('img');
+      img.className = 'end-snapshot';
+      img.src = this.#snapshot;
+      img.alt = '';
+      parts.push(img);
     }
 
     // SHARE rides beside the run's own picture of itself — the arc and the
