@@ -87,6 +87,7 @@ function build(
       <div id="toast" hidden></div>
       <div id="event-card" hidden>
         <div id="event-card-panel">
+          <p id="event-card-glyph"></p>
           <p id="event-card-text"></p>
           <button id="event-card-dismiss">GOT IT</button>
         </div>
@@ -133,6 +134,7 @@ function build(
     helpManual: pick('help-manual'),
     toast: pick('toast'),
     eventCard: pick('event-card'),
+    eventCardGlyph: pick('event-card-glyph'),
     eventCardText: pick('event-card-text'),
     eventCardDismiss: pick<HTMLButtonElement>('event-card-dismiss'),
   };
@@ -1306,7 +1308,9 @@ describe('the curtain, and contextual help', () => {
 
     expect(ctx.el.toast.hidden).toBe(true);
     expect(ctx.el.eventCard.hidden).toBe(false);
-    expect(ctx.el.eventCardText.textContent).toMatch(/◈/);
+    // The leading claim's glyph now lives in its own element, large above
+    // the words (2026-08-19) — see `#showEventCard`.
+    expect(ctx.el.eventCardGlyph.textContent).toBe('◈');
     expect(ctx.el.eventCardText.textContent).toMatch(/SHRINE WOKEN/);
     expect(ctx.el.eventCardText.textContent).toMatch(/A fourth draft card/);
     expect(ctx.el.eventCardText.textContent).toMatch(/next run/i);
@@ -1333,6 +1337,7 @@ describe('the curtain, and contextual help', () => {
     ctx.renderer.nextHit = key(1, 0);
     tap(ctx.el.board);
     expect(ctx.el.eventCard.hidden).toBe(false);
+    expect(ctx.el.eventCardGlyph.textContent).toBe('◆');
     expect(ctx.el.eventCardText.textContent).toMatch(/TERRITORY CLAIMED/);
 
     // While it is up, the board takes no gesture — the same curtain the
@@ -1795,8 +1800,8 @@ describe('hidden finds in the shell', () => {
     // (Stage 2, 2026-08-18), not the timed-out toast.
     expect(ctx.el.toast.hidden).toBe(true);
     expect(ctx.el.eventCard.hidden).toBe(false);
+    expect(ctx.el.eventCardGlyph.textContent).toBe('✦');
     const text = ctx.el.eventCardText.textContent ?? '';
-    expect(text).toMatch(/✦/);
     expect(text).toMatch(/FOUND — STONEWALKER/);
     expect(text).toMatch(/THE SHOP/i);
 

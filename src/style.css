@@ -329,9 +329,15 @@ body {
   align-items: flex-end;
 }
 
+/* Label vs value hierarchy (2026-08-19): the row is five facts (TILES,
+   POINTS/LUCK, REACH, COST, and LEFT where the clock exists), not ten
+   fragments of equal weight — a label that reads smaller and wider-set
+   against a value that reads heavier is what makes each pair click
+   together as ONE fact at a glance, rather than five small words sitting
+   over five big numbers with no visible relationship between them. */
 .stat-label {
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 0.625rem;
+  font-size: 0.5625rem;
   letter-spacing: var(--label-tracking, 0.04em);
   color: var(--ink-faint, #767d8d);
 }
@@ -339,6 +345,7 @@ body {
 .stat-value {
   font-family: var(--font-display, ui-monospace, Menlo, Consolas, monospace);
   font-size: 1.5rem;
+  font-weight: 600;
   line-height: 1;
   color: var(--ink, #e8ecf4);
   font-variant-numeric: tabular-nums;
@@ -482,11 +489,18 @@ button.quiet {
 
 /* Selected: which card would place next. Strengthened (Stage 2,
    2026-08-18): a 1px ring read as barely-there beside everything else
-   competing for attention in the hand. */
+   competing for attention in the hand. Crisper again (2026-08-19): the
+   board's own legal-hex glow and preview numbers are already loudly
+   agreeing with this card, and the card was the quiet half of that
+   conversation — a wider ring, a soft halo behind it (the same
+   `color-mix` trick the shop's bought-row acknowledgement already uses,
+   not a new colour), and a touch more lift. */
 .tile[aria-pressed='true'] {
   border-color: var(--panel-edge-active, #e8ecf4);
-  box-shadow: 0 0 0 2px var(--panel-edge-active, #e8ecf4);
-  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 3px var(--panel-edge-active, #e8ecf4),
+    0 0 12px 1px color-mix(in srgb, var(--panel-edge-active, #e8ecf4) 50%, transparent);
+  transform: translateY(-4px);
 }
 
 /* Spotlit: long-pressed (or right-clicked) to study this colour on the
@@ -500,10 +514,15 @@ button.quiet {
 /*
  * A rare draw is an event, and the card says so in the theme's accent — the
  * one colour every direction reserves for "look here". Values provisional;
- * Gate E stays shut.
+ * Gate E stays shut. A heavier border, not a new colour (2026-08-19): the
+ * accent alone on a 2px edge read as a tint rather than a signal at arm's
+ * length; a third pixel is the whole fix. `box-shadow` stays free here for
+ * the selected ring above — a card can be rare AND selected at once, and
+ * the two states must never fight over the same property.
  */
 .tile[data-rarity='magic'],
 .tile[data-rarity='unique'] {
+  border-width: 3px;
   border-color: var(--accent, #d7b45a);
 }
 
@@ -514,11 +533,15 @@ button.quiet {
 }
 
 /* The card whose best placement pays the most right now. A word, not a
-   glow — it is advice, and advice should never outshine the choice. */
+   glow — it is advice, and advice should never outshine the choice. Made to
+   actually read (2026-08-19): 0.5rem in the dim ink measured as invisible
+   at arm's length, so this borrows `.tile-rarity`'s own proven-legible
+   treatment (size, colour) rather than inventing a third. Advice that
+   cannot be read is not quiet, it is absent. */
 .tile-best {
-  font-size: 0.5rem;
+  font-size: 0.625rem;
   letter-spacing: 0.12em;
-  color: var(--ink-dim, #8a91a0);
+  color: var(--accent, #d7b45a);
 }
 
 /* The stash: one more card, behind a divider and narrower than a draft card
@@ -904,10 +927,14 @@ button.quiet {
   background: rgb(0 0 0 / 55%);
 }
 
+/* Heavier than the manual's or the toast's border (2px, not 1px) — this is
+   the rarest surface in the game: a find, a shrine or a territory, the only
+   claims that change what the NEXT run starts with. It should look like the
+   biggest thing on screen because it is. */
 #event-card-panel {
   max-width: 320px;
   padding: 20px;
-  border: 1px solid var(--accent, #c79a4b);
+  border: 2px solid var(--accent, #c79a4b);
   border-radius: 8px;
   background: var(--panel, #1e222b);
   color: var(--ink, #e8ecf4);
@@ -919,6 +946,22 @@ button.quiet {
   box-shadow: 0 12px 32px rgb(0 0 0 / 55%);
 }
 
+/* The leading claim's own glyph (2026-08-19), pulled out of the words and
+   set large above them — `#showEventCard` does the splitting. Empty and
+   collapsed (`:empty` has no text node even for whitespace) for the rare
+   text that arrives without the "glyph, two spaces" shape it expects. */
+#event-card-glyph {
+  margin: 0 0 6px;
+  font-family: var(--font-display, inherit);
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--accent, #d7b45a);
+}
+
+#event-card-glyph:empty {
+  display: none;
+}
+
 #event-card-dismiss {
   width: 100%;
   margin-top: 14px;
@@ -927,7 +970,10 @@ button.quiet {
 }
 
 /* Reduced-motion users get the card exactly the same — held, centred,
-   dismissed on purpose — just without the entrance. */
+   dismissed on purpose — just without the entrance. A rise, not a scale
+   (2026-08-19): the same lift the toast below the board already uses, so
+   the game speaks one motion language for "something just arrived" rather
+   than two. */
 @media (prefers-reduced-motion: no-preference) {
   #event-card-panel {
     animation: event-card-in 160ms ease-out;
@@ -936,7 +982,7 @@ button.quiet {
   @keyframes event-card-in {
     from {
       opacity: 0;
-      transform: scale(0.96);
+      transform: translateY(6px);
     }
   }
 }
@@ -1201,6 +1247,17 @@ button.help-tab[data-on='true'] {
 }
 #spends button.spend[data-colour='blue'] {
   border-color: var(--tile-blue, #4a7fb4);
+}
+
+/* TITHE (2026-08-19): the one row whose label states its own arithmetic —
+   "all luck → N relics" — where every sibling fits a verb and a number in
+   one word each (`spendsFor` in `ui/view.ts` calls it "the exit from the
+   purse"). Left in the same 1-of-3 grid cell it wrapped onto two lines,
+   visibly bulkier than the row it sits beside; a full-width row gives the
+   longer label room instead of a cramped leftover. The disabled state is
+   `button:disabled`, unchanged — same as every other spend. */
+#spends button.spend[data-spend='tithe'] {
+  grid-column: 1 / -1;
 }
 
 /* The reorientation line is one line. It was three on a phone with the debug

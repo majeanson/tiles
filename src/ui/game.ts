@@ -111,6 +111,13 @@ export type Elements = {
    * with. A real dialog, like the manual (role, modality, Escape).
    */
   readonly eventCard: HTMLElement;
+  /**
+   * The leading (rarest) claim's own glyph, pulled out of `eventCardText`'s
+   * words and shown large above them (2026-08-19) — the glyph and the words
+   * are one object in the player's head, and a card that names a big moment
+   * should look like one from across the room, not read like a receipt.
+   */
+  readonly eventCardGlyph: HTMLElement;
   readonly eventCardText: HTMLElement;
   readonly eventCardDismiss: HTMLButtonElement;
 };
@@ -274,6 +281,14 @@ type Stat = { readonly id: string; readonly label: string; readonly value: strin
 
 /** How long a claim announcement stays up before it fades on its own. */
 const NOTE_MS = 5200;
+
+/**
+ * Every `#claimNote` line leads with its glyph, then two spaces, then the
+ * words — `EVENT_GLYPH` is how `#showEventCard` pulls the leading claim's
+ * glyph back out to show large above the card, without `#claimNote` having
+ * to know that the card even exists.
+ */
+const EVENT_GLYPH = /^(\S+)\s\s([\s\S]*)$/;
 
 /** Circumradius of the hex drawn on a draft card, in CSS pixels. */
 const HAND_HEX_SIZE = 24;
@@ -1775,7 +1790,9 @@ export class Game {
    */
   #showEventCard(text: string): void {
     this.#showNote(null);
-    this.#el.eventCardText.textContent = text;
+    const match = EVENT_GLYPH.exec(text);
+    this.#el.eventCardGlyph.textContent = match?.[1] ?? '';
+    this.#el.eventCardText.textContent = match?.[2] ?? text;
     this.#el.eventCard.hidden = false;
     this.#el.eventCardDismiss.focus();
   }

@@ -988,6 +988,7 @@ async function main(): Promise<void> {
     helpManual: required('help-manual'),
     toast: required('toast'),
     eventCard: required('event-card'),
+    eventCardGlyph: required('event-card-glyph'),
     eventCardText: required('event-card-text'),
     eventCardDismiss: required<HTMLButtonElement>('event-card-dismiss'),
   };
