@@ -2980,3 +2980,133 @@ touching, so they shipped a commit early rather than waiting on their own.
 same table throughout — `src/content` and `src/engine` were never touched).
 Each commit pushed and deployed independently; `gh run watch` confirmed CI
 green and `verify-deploy` passing before the next commit started.
+
+### Session 23 addendum — the light the structure carries
+
+Same standing brief, second pass, same day Marc kept playing. `torchlit.ts`'s
+header had recorded the direction's best idea as unbuilt: "each placement
+carries a little light with it, so the pool grows as you build and running
+out of tiles reads as the light going out." Today it is built. Three commits,
+`src/content` and `src/engine` untouched throughout, `pnpm sim` byte-identical
+after every commit, each pushed and deployed independently before the next
+began.
+
+**Commit 1 — the flagship.** Light now measures distance to the nearest
+BUILT cell (a tile or a stone), not to `state.lastPlaced`. `ui/view.ts` gained
+`structureDistances`: one multi-source BFS per render, every tile/stone
+seeding the frontier at 0 and expanding across the raw hex lattice — capped
+at 24, the largest `radius + fade` any shipped theme's curve can still see
+past (torchlit 15, rot bloom 18, cold survey 24; `brightness()` clamps to
+`floor` at or past that sum regardless of the exact distance handed in, so a
+cap this precise reads identically to the true distance for every direction
+that exists). The board's `lit()` now takes `Math.max` of that answer and the
+old single-torch formula (still centred on `lastPlaced`, or the origin before
+anything is built) — nothing reads darker than it did yesterday, and the
+spot you are actively building still reads warmest.
+
+The old "the torch" describe block in `view.test.ts` pinned lastPlaced-only
+behaviour: a cell more than a few hexes from `lastPlaced` had to read dim
+even sitting right next to a tile placed ten minutes earlier. That was
+exactly the bug this feature fixes, so the assertion is gone rather than kept
+green by accident — replaced by tests pinning the new rule instead: any
+empty cell touching the structure reads fully lit regardless of `lastPlaced`;
+a cell fed through `memory` at a controlled distance from a single-tile board
+reads `brightness(N)` exactly; a cell 500 hexes out still floors rather than
+throwing or going dark; an all-empty board stays safe. Net +3 tests (520 →
+523).
+
+**The BFS cost, measured** (`scripts/perf-light-scratch.ts`, written for this
+and deleted after — not shipped): at a ~365-cell board, the BFS alone runs
+~1.7ms and the whole `renderContext` (BFS plus the legality/preview/ripe
+passes it already did) ~2.9ms; the full `toBoardView` including that context
+is ~3.5ms. At ~900 cells those numbers are ~2.7ms / ~6.0ms / ~7.6ms. `render()`
+fires per action, not per animation frame — there is no requestAnimationFrame
+loop in `game.ts` — so a few milliseconds on a tap is not a budget question.
+The cap started at 40 (generous headroom) and was measured, then tightened to
+24 (the exact value every shipped theme needs) once the flood fill's own
+visited-set size showed it was walking a halo of 6,000–9,500 hexes to answer
+questions about a few hundred drawn ones; 24 cut that to 2,600–4,900 and the
+BFS's own share of the render time by roughly half.
+
+**Commit 2 — chrome, CSS/DOM only.** The event card (find/shrine/territory,
+the rarest surface in the game) gets a 2px accent border instead of 1px, and
+`#showEventCard` now splits the leading claim's own glyph out of
+`#claimNote`'s "glyph, two spaces, words" text and sets it large above the
+words in its own element (`#event-card-glyph`) rather than buried inline —
+`game.test.ts`'s glyph assertions moved from `eventCardText` to the new
+element, same three claim-tier tests, still green. The entrance animation
+swapped from a `scale` to the same `translateY(6px)` lift the toast already
+uses — one motion vocabulary instead of two — still 160ms, still absent
+under `prefers-reduced-motion`, dismiss untouched.
+
+Draft cards: the selected ring widened (2px → 3px) with a soft `color-mix`
+halo behind it, matching the shop's own bought-row trick rather than a new
+technique, so the card agrees as loudly as the board's legal-hex glow and
+preview number already do. MAGIC/UNIQUE tiles get a 3px border instead of
+2px — a heavier edge, not a new colour — with `box-shadow` deliberately left
+free of rarity's touch so a rare, selected card never has the two states
+fighting over the same property. BEST was 0.5rem in the dim ink — measured,
+per the brief, as invisible at arm's length; it now borrows `.tile-rarity`'s
+own already-legible treatment (0.625rem, full accent) rather than a duller
+one nobody could read, on the reasoning that advice you cannot read is not
+quiet, it is absent.
+
+Stats header: `.stat-label` down to 0.5625rem (matching the end screen's own
+`.fact-label`), `.stat-value` up to `font-weight: 600` — the label/value
+pair reads as one fact rather than a small word floating over a big number.
+`--label-tracking` itself was left alone; it is a per-theme token (0.18em
+torchlit, 0.22em rot bloom, 0.2em cold survey) and hard-coding a tracking
+value here would have quietly overridden a decision that belongs to the
+theme, not to this pass.
+
+TITHE's row: it was the one spend whose label states its own arithmetic
+("all luck → N relics") where every sibling fits a verb and a number in one
+word, and in the 3-column spend grid it wrapped onto two lines — visibly
+bulkier than REDRAW or FORGE beside it. `grid-column: 1 / -1` gives it the
+full row; disabled state is the same `button:disabled` rule every other
+spend already uses, unchanged.
+
+**Commit 3 — sweep.** The gallery's TORCH strip caption now says the source
+moved (distance from the structure's edge, not one hex) rather than going
+silently stale the way the old NATIVE FIELD line once did. A new STRUCTURE
+LIGHT strip sits beside it: the identical `brightness()` curve, stepped one
+hex at a time (0 through 10) instead of the TORCH strip's big sampled jumps
+— arguing the mechanism (every touching hex is "0 OUT") where the strip
+above argues the curve. `torchlit.ts`'s header now says BUILT; `theme/tokens.ts`'s
+`light` doc now says `radius`/`fade` measure from the structure's edge, same
+numbers underneath. `game.ts`'s HERE-button comment, which claimed HERE
+jumped to "the same point the light already centres on," no longer claims a
+single centre — HERE still jumps to `lastPlaced`, which is still the
+warmest point, just not the only source any more. No other manual text
+named the torch by name; nothing else was stale.
+
+**What to look for on the phone:**
+
+- Build outward in a straight line, then walk back to the far end of your
+  own structure — it should read as fully built, not fading into the dark
+  the further it sits from wherever you last tapped.
+- Run a tile stash down to nothing near the edge of a big structure: the
+  ground you already built should still glow, even as the light you are
+  carrying forward goes out.
+- Claim a shrine or a territory and check the event card: heavier border,
+  the glyph large above the words, a small rise on the way in.
+- Select a MAGIC or UNIQUE card and confirm the selected ring and the
+  rarity border both read at once without one swallowing the other.
+- Glance at the stats row and see whether TILES/POINTS/REACH/COST read as
+  four facts rather than eight fragments.
+- Open the shop and check TITHE reads like a settled row, not a squeezed
+  third of one.
+
+**Deliberately not retuned:** the theme's `light` numbers (`radius`,
+`fade`, `floor`) are untouched in every theme file — the brief was explicit
+that the mechanic and the numbers must not move in the same commit, and if
+the pool reads too bright or too dark in the gallery once Marc has played
+under it, that is a follow-up with real evidence behind it, not a blind
+guess made here. The STRUCTURE_LIGHT_CAP render constant (24) is a
+precision/performance value, not a balance number — it lives beside the BFS
+in `ui/view.ts`, not in `src/content`.
+
+**Verified:** 523 tests green (was 520); typecheck, lint, format clean;
+`pnpm sim` byte-identical across all three commits. Each commit pushed and
+deployed independently; `gh run watch --exit-status` confirmed CI green
+before the next commit started.

@@ -111,10 +111,41 @@ function tinted(canvas: HTMLCanvasElement, tint: number): HTMLCanvasElement {
  * load-bearing value and, until 2026-08-18, the only one the gallery could
  * not show — `light: {radius, fade, floor}` could only be argued with by
  * playing a fifteen-minute run.
+ *
+ * The source moved (2026-08-18/19): "distance" is now measured from the
+ * nearest BUILT cell — the light the structure carries — rather than from
+ * one torch hex. The curve itself, and this strip's arithmetic, are exactly
+ * the same; only what "0 OUT" sits beside changed. See `structureLightStrip`
+ * below for the same curve at the mechanic's actual grain, one hex at a time.
  */
 function lightStrip(theme: Theme): HTMLElement {
   const row = el('div', 'row');
   for (const dist of [0, 3, 5, 7, 9, 12, 15, 20]) {
+    const level = brightness(theme.light, dist);
+    const box = el('div', 'surface');
+    const canvas = bakeSurface(theme.terrain.green, 23, theme.orientation);
+    if (canvas !== null) {
+      box.appendChild(tinted(canvas, mix(theme.board.background, 0xffffff, level)));
+    }
+    box.append(el('span', 'surface-name', `${dist} OUT`));
+    box.append(el('span', 'surface-value', level.toFixed(2)));
+    row.appendChild(box);
+  }
+  return row;
+}
+
+/**
+ * The light the structure carries (2026-08-19): the same `brightness()`
+ * curve as `lightStrip` above, but stepped one hex at a time rather than
+ * sampled in big jumps — the actual grain `structureDistances` computes in
+ * `ui/view.ts`'s multi-source BFS, ring by ring outward from every tile and
+ * stone on the board. Where the strip above argues the CURVE, this one
+ * argues the MECHANISM: that "0 OUT" is not one hex on the whole map, but
+ * every hex touching something built.
+ */
+function structureLightStrip(theme: Theme): HTMLElement {
+  const row = el('div', 'row');
+  for (let dist = 0; dist <= 10; dist++) {
     const level = brightness(theme.light, dist);
     const box = el('div', 'surface');
     const canvas = bakeSurface(theme.terrain.green, 23, theme.orientation);
@@ -477,8 +508,13 @@ function themeCard(theme: Theme, manifest: AssetManifest): HTMLElement {
     colour,
     labelled('THE SAME FOUR WITHOUT HUE'),
     grey,
-    labelled('THE TORCH · BRIGHTNESS BY DISTANCE, THE MULTIPLIER UNDER EACH'),
+    labelled(
+      'THE TORCH · BRIGHTNESS BY DISTANCE FROM THE STRUCTURE’S EDGE (2026-08-19: was one hex, ' +
+        'now every tile and stone), THE MULTIPLIER UNDER EACH',
+    ),
     lightStrip(theme),
+    labelled('THE LIGHT THE STRUCTURE CARRIES · THE SAME CURVE, ONE HEX AT A TIME'),
+    structureLightStrip(theme),
     labelled(
       'ELEVATION · FIVE BANDS AT THE LIGHT FLOOR, WHERE CONTOURS LIVE (the board strokes a lit and a shadowed edge; this strip shows the flat lift)',
     ),
