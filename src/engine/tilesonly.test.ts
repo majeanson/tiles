@@ -171,6 +171,38 @@ describe('luck as a purse', () => {
   });
 });
 
+// TITHE (2026-08-18): the fourth price, and the odd one out — it does not
+// touch the draft at all, only the purse.
+describe('TITHE', () => {
+  it('converts the whole purse to relics, at titheRate, and empties it', () => {
+    const rich: GameState = { ...newRun(5, T), luck: 100 };
+    const tithed = reduce(rich, { type: 'SPEND', on: 'tithe' });
+
+    expect(tithed.luck).toBe(0);
+    expect(tithed.relics).toBe(rich.relics + Math.floor(100 * T.titheRate));
+    // Nothing about the hand moved — the other three spends all redraw or
+    // reprice the draft; this one is purely the purse.
+    expect(tithed.draft).toBe(rich.draft);
+  });
+
+  it('refuses below titheMin, and charges nothing', () => {
+    const poor: GameState = { ...newRun(5, T), luck: T.titheMin - 1 };
+    expect(canSpend(poor, 'tithe')).toBe(false);
+    expect(reduce(poor, { type: 'SPEND', on: 'tithe' })).toBe(poor);
+  });
+
+  it('pays a better rate than dying with luck still in the purse', () => {
+    expect(T.titheRate).toBeGreaterThan(T.luckToRelics);
+  });
+
+  it('does not exist where the dial is off', () => {
+    const off = without({ titheRate: 0, titheMin: 0 });
+    const state: GameState = { ...newRun(5, off), luck: 500 };
+    expect(canSpend(state, 'tithe')).toBe(false);
+    expect(reduce(state, { type: 'SPEND', on: 'tithe' })).toBe(state);
+  });
+});
+
 describe('the run itself', () => {
   it('has no clock at all — the purse is the whole limit', () => {
     expect(T.runLength).toBe(0);

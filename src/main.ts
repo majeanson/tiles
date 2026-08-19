@@ -1,4 +1,6 @@
 import { TUNING, type Tuning } from '@content/tuning';
+import { GOALS } from '@content/goals';
+import { newlyMetGoals } from '@meta/goals';
 import {
   decodeFeatures,
   encodeFeatures,
@@ -392,6 +394,35 @@ function runKeeping(
       return granted.perk.name;
     },
 
+    // The survey (2026-08-18): five world-scale goals, each paying relics
+    // ONCE per world. Called after every action's own `onChange` above has
+    // already merged the world, so `current` is fresh — reach, territories
+    // and known% all read the same live facts the atlas does. A replay is
+    // somebody else's world and must neither pay nor mark anything met.
+    checkGoals: () => {
+      if (replaySeed !== null) return null;
+      const progress = readProgress();
+      const newly = newlyMetGoals(current, progress);
+      if (newly.length === 0) return null;
+
+      const met = newly
+        .map((id) => GOALS.find((g) => g.id === id))
+        .filter((g): g is (typeof GOALS)[number] => g !== undefined);
+      const reward = met.reduce((n, g) => n + g.reward, 0);
+      writeProgress({ ...progress, relics: progress.relics + reward });
+
+      // Met goals are a world fact, so they are written and saved immediately
+      // rather than riding the merge's own debounce — a goal is met at most a
+      // handful of times in a world's whole life, so there is no cost to
+      // treating it with the same urgency a claim already gets.
+      current = { ...current, goalsMet: [...current.goalsMet, ...newly] };
+      worldDirty = false;
+      actionsSinceWrite = 0;
+      saveWorld(current);
+
+      return `${met.map((g) => g.label).join('; ')} (+${reward} relics)`;
+    },
+
     // The end screen's CARRIED OUT strip, and the live REACH stat: world-scale
     // facts beside the run's own. Read off `current` (kept live by `onChange`
     // above), not the snapshot this page loaded with — a territory claimed a
@@ -724,6 +755,25 @@ function mountSettings(
   perksLine.className = 'flag-note';
   perksLine.textContent = `${readProgress().found.length} of ${PERKS.length} perks found.`;
 
+  // The survey (2026-08-18): five world-scale goals, legible from run one —
+  // met vs unmet, facts rather than places (never a find's location, never a
+  // hidden perk's name — the same reticence the shrine ledger keeps).
+  const surveyHeading = document.createElement('p');
+  surveyHeading.className = 'help-title';
+  surveyHeading.textContent = 'THE SURVEY';
+  const metGoals = new Set(w.goalsMet);
+  const survey = document.createElement('div');
+  survey.id = 'survey';
+  survey.append(
+    ...GOALS.map((goal) => {
+      const row = document.createElement('p');
+      const met = metGoals.has(goal.id);
+      row.className = met ? 'unlock found' : 'unlock';
+      row.textContent = `${met ? '◈' : '◇'} ${goal.label}`;
+      return row;
+    }),
+  );
+
   // Abandoning is the only destructive control in the game, so it confirms
   // — and it takes the ground and the territories with it, which is the
   // point. Kept beside the world it abandons, not buried under DEVELOPER.
@@ -839,6 +889,8 @@ function mountSettings(
     ledger,
     shrineHint,
     perksLine,
+    surveyHeading,
+    survey,
     abandon,
     developer,
     restart,

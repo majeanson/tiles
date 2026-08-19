@@ -678,9 +678,15 @@ export type SpendView = {
   readonly colour: Colour | null;
   readonly cost: number;
   readonly affordable: boolean;
+  /**
+   * TITHE only (2026-08-18): what the WHOLE purse converts into right now —
+   * `cost` for every other spend is a fixed price, but a tithe's price IS
+   * the purse, so this is the number the row actually needs to print.
+   */
+  readonly relics?: number;
 };
 
-/** The shop, in the order it reads: cheapest first, forge last. */
+/** The shop, in the order it reads: cheapest first, forge — then tithe, the exit from the purse. */
 function spendsFor(state: GameState): readonly SpendView[] {
   const t = state.tuning;
   const rows: SpendView[] = [];
@@ -708,6 +714,15 @@ function spendsFor(state: GameState): readonly SpendView[] {
       colour: null,
       cost: spendCost(t, 'forge'),
       affordable: canSpend(state, 'forge'),
+    });
+  }
+  if (t.titheRate > 0 && t.titheMin > 0) {
+    rows.push({
+      on: 'tithe',
+      colour: null,
+      cost: state.luck,
+      affordable: canSpend(state, 'tithe'),
+      relics: Math.floor(state.luck * t.titheRate),
     });
   }
   return rows;

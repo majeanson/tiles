@@ -1605,6 +1605,83 @@ describe('the moments pack (2026-08-18)', () => {
   });
 });
 
+describe('TITHE (2026-08-18)', () => {
+  it('lists the row, and converts the whole purse to relics on tap', () => {
+    const rich: GameState = { ...newRun(7, TUNING), luck: 100 };
+    const ctx = build(1, TUNING, { resume: rich });
+    ctx.game.start();
+    ctx.el.purseToggle.click();
+
+    const button = [...ctx.el.spends.querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.dataset['spend'] === 'tithe',
+    );
+    expect(button).not.toBeUndefined();
+    const expected = Math.floor(100 * TUNING.titheRate);
+    expect(button!.textContent).toBe(`TITHE — all luck → ${expected} relics`);
+    expect(button!.disabled).toBe(false);
+
+    button!.click();
+    expect(ctx.game.state.luck).toBe(0);
+    expect(ctx.game.state.relics).toBe(expected);
+    expect(ctx.el.toast.textContent).toBe(`Tithed 100 luck for ${expected} relics.`);
+  });
+
+  it('disables the row under titheMin, the same "goal not a trap" floor the engine keeps', () => {
+    const poor: GameState = { ...newRun(7, TUNING), luck: TUNING.titheMin - 1 };
+    const ctx = build(1, TUNING, { resume: poor });
+    ctx.game.start();
+    ctx.el.purseToggle.click();
+
+    const button = [...ctx.el.spends.querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.dataset['spend'] === 'tithe',
+    );
+    expect(button!.disabled).toBe(true);
+  });
+});
+
+describe('the survey, in the shell (2026-08-18)', () => {
+  it('announces a newly-met goal as a toast', () => {
+    const T = { ...TUNING, destinationChance: 0, magicChance: 0, uniqueChance: 0, worldWalls: 0 };
+    const ctx = build(1, T, {
+      checkGoals: () => 'Reach 20 hexes from home (+40 relics)',
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toBe('GOAL MET — Reach 20 hexes from home (+40 relics)');
+  });
+
+  it('says nothing when the hook has nothing to report', () => {
+    const T = { ...TUNING, destinationChance: 0, magicChance: 0, uniqueChance: 0, worldWalls: 0 };
+    // A `worldStats` hook with a farthest reach this placement cannot pass —
+    // otherwise NEW GROUND (also silent-by-default) would fire instead, and
+    // the test would prove the wrong thing.
+    const ctx = build(1, T, {
+      checkGoals: () => null,
+      worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 100 }),
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.hidden).toBe(true);
+  });
+
+  it('mentions a goal met this run in the end screen’s CARRIED OUT strip', () => {
+    const T = { ...TUNING, destinationChance: 0, magicChance: 0, uniqueChance: 0, worldWalls: 0 };
+    const dying: GameState = { ...newRun(7, T), tiles: 1 };
+    const ctx = build(1, T, {
+      resume: dying,
+      checkGoals: () => 'Reach 20 hexes from home (+40 relics)',
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+
+    expect(ctx.game.state.phase).toBe('ended');
+    expect(ctx.el.end.textContent).toMatch(/◈ goal met — Reach 20 hexes from home \(\+40 relics\)/);
+  });
+});
+
 describe('hidden finds in the shell', () => {
   /** A run with an unclaimed find planted one placement from the clearing. */
   const withFind = (hooks: GameHooks = {}): ReturnType<typeof build> & { find: HexKey } => {

@@ -1,5 +1,6 @@
 import { distance, parse, type HexKey } from '@engine/hex';
 import type { GameState } from '@engine/state';
+import type { GoalId } from '@content/goals';
 
 const ORIGIN = { q: 0, r: 0 };
 
@@ -42,6 +43,14 @@ export type WorldMemory = {
    * engine's "already claimed" alone cannot stop it being asked for twice.
    */
   readonly finds: readonly HexKey[];
+  /**
+   * The survey (2026-08-18): world-scale goal ids this world has already
+   * been paid for. Detection lives in `src/meta/goals.ts`; this is only the
+   * ledger of what has already been claimed, so a goal met a second time
+   * (its underlying fact stays true forever — reach 20 does not un-happen)
+   * never pays relics again.
+   */
+  readonly goalsMet: readonly GoalId[];
   /** What the world has seen. The atlas line reads these. */
   readonly runs: number;
   readonly bestPoints: number;
@@ -54,6 +63,7 @@ export const newWorld = (worldSeed: number): WorldMemory => ({
   territories: [],
   shrines: [],
   finds: [],
+  goalsMet: [],
   runs: 0,
   bestPoints: 0,
   farthestReach: 0,
@@ -112,9 +122,13 @@ export function decodeWorld(raw: string | null): WorldMemory | null {
   const territories = keys(parsed['territories']);
   if (revealed === null || territories === null) return null;
   // Shrines arrived after the first worlds existed: an older world has none,
-  // which is true rather than corrupt. Finds the same, since (2026-08-18).
+  // which is true rather than corrupt. Finds and goalsMet the same, since
+  // 2026-08-18 (goalsMet is untyped `string[]` here on purpose — a stray or
+  // retired id costs nothing, since `newlyMetGoals` only ever checks
+  // membership against the CURRENT `GOALS` table).
   const shrines = keys(parsed['shrines']) ?? [];
   const finds = keys(parsed['finds']) ?? [];
+  const goalsMet = (keys(parsed['goalsMet']) ?? []) as GoalId[];
 
   const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
   return {
@@ -123,6 +137,7 @@ export function decodeWorld(raw: string | null): WorldMemory | null {
     territories,
     shrines,
     finds,
+    goalsMet,
     runs: num(parsed['runs']),
     bestPoints: num(parsed['bestPoints']),
     farthestReach: num(parsed['farthestReach']),
@@ -182,6 +197,10 @@ export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
     territories: [...territories],
     shrines: [...shrines],
     finds: [...finds],
+    // The survey's own ledger is not this function's business — goals are
+    // detected and paid by `src/meta/goals.ts`, outside the engine's own
+    // facts, so it only ever rides through unchanged here.
+    goalsMet: world.goalsMet,
     // The run count is rememberRun's alone — this function runs after EVERY
     // action, and when it bumped the count too (2026-08-18) the atlas called
     // each tap a run. That is what the docblock's "EXCEPT" always meant.

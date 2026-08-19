@@ -232,6 +232,15 @@ export type GameHooks = {
    * empty means nothing to report.
    */
   readonly shrineReceipt?: readonly string[];
+  /**
+   * The survey (2026-08-18): called after every action, so the shell can
+   * detect and pay a newly-met world goal wherever it actually happened —
+   * reach, a territory count, known%, a shrine or a perk. Relics are already
+   * paid and the ledger already written by the time this returns; the game
+   * only needs the words for the toast and, once, for the end screen's
+   * CARRIED OUT strip. Null when nothing was newly met.
+   */
+  readonly checkGoals?: () => string | null;
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -317,6 +326,12 @@ export class Game {
    * only ever reads it once the run has ended.
    */
   #foundThisRun: string | null = null;
+  /**
+   * A world goal (the survey, 2026-08-18) met by an action THIS run, for the
+   * end screen's CARRIED OUT strip. Set from `checkGoals`' own text; never
+   * cleared, since the strip only reads it once the run has ended.
+   */
+  #goalMetThisRun: string | null = null;
 
   /**
    * NEW GROUND (2026-08-18): fires once, the first time this run's reach
@@ -1499,7 +1514,12 @@ export class Game {
     // so a folded shop advertises itself at exactly the moment it can be used,
     // which the always-open version somehow did not: Marc finished a run with
     // 166 luck unspent while every price sat on screen the whole time.
-    const cheapest = hud.spends.reduce((n, s2) => Math.min(n, s2.cost), Infinity);
+    // TITHE's own `cost` is the whole purse, not a fixed price — it must
+    // never win the toggle's "next N" summary, which is about the cheapest
+    // thing left to SAVE UP for.
+    const cheapest = hud.spends
+      .filter((s2) => s2.on !== 'tithe')
+      .reduce((n, s2) => Math.min(n, s2.cost), Infinity);
     const canBuy = hud.spends.some((s2) => s2.affordable);
     const open = this.#el.purseToggle.getAttribute('aria-expanded') === 'true';
 
@@ -1534,6 +1554,14 @@ export class Game {
         button.dataset['spend'] = spend.on;
         button.disabled = !spend.affordable;
         if (spend.colour !== null) button.dataset['colour'] = spend.colour;
+
+        if (spend.on === 'tithe') {
+          button.textContent = `TITHE — all luck → ${spend.relics ?? 0} relics`;
+          button.title =
+            'Convert your whole luck purse to relics, on the spot — a worse rate than what ' +
+            'unspent luck banks when the run ends, but yours to spend right now.';
+          return button;
+        }
 
         const label =
           spend.colour !== null
@@ -1572,6 +1600,7 @@ export class Game {
    */
   #spend(on: Spend, colour?: Colour): void {
     const before = this.#state.luck;
+    const beforeRelics = this.#state.relics;
     this.#dispatch(colour === undefined ? { type: 'SPEND', on } : { type: 'SPEND', on, colour });
     const paid = before - this.#state.luck;
     if (paid <= 0) return;
@@ -1582,7 +1611,9 @@ export class Game {
         ? `A fresh hand, for ${paid} luck.`
         : on === 'steer'
           ? `${word} runs hot: a new hand drawn under it, and the next ${this.#state.tuning.colourBiasDraws} draws lean its way. ${paid} luck.`
-          : `Forged UNIQUE — wild, and every match it makes counts double, both ways. ${paid} luck.`,
+          : on === 'tithe'
+            ? `Tithed ${paid} luck for ${this.#state.relics - beforeRelics} relics.`
+            : `Forged UNIQUE — wild, and every match it makes counts double, both ways. ${paid} luck.`,
     );
   }
 
@@ -1607,6 +1638,23 @@ export class Game {
         : null;
 
     this.#state = next;
+    // Every real change is offered to the shell to keep, BEFORE this method
+    // decides what to say about it — the survey's own check right after
+    // reads the world the shell just merged, not the snapshot from a moment
+    // ago. Saving after each action rather than on some timer means the
+    // most a crash can eat is one tap — a run is 10-20 minutes of a phone's
+    // attention, and phones wander.
+    this.#hooks.onChange?.(next);
+
+    // The survey (2026-08-18): relics are already paid and the ledger
+    // already written by the time this returns — the game only has words
+    // left to say. Rare (five goals, once a world), so it never gets its
+    // own slot: it rides along on top of whatever the SAME action already
+    // earned, joined rather than dropped.
+    const goalNote = this.#hooks.checkGoals?.() ?? null;
+    if (goalNote !== null) this.#goalMetThisRun = goalNote;
+    const goalLine = goalNote === null ? '' : `\n\nGOAL MET — ${goalNote}`;
+
     // A pop outranks a claim in the popup: it is the thing the player just
     // decided, and its arithmetic is the thing worth learning. A claim that
     // outranks nothing (no pop happened) routes by its own weight: a find,
@@ -1615,10 +1663,12 @@ export class Game {
     // (2026-08-18) fall in behind both: the first unique tile to enter the
     // hand, then new ground — neither worth interrupting a pop or a claim
     // for, both worth saying the one time they are true.
-    if (popped !== null) this.#showNote(popped);
+    if (popped !== null) this.#showNote(`${popped}${goalLine}`);
     else if (claimed !== null) {
-      if (claimed.eventWorthy) this.#showEventCard(claimed.text);
-      else this.#showNote(claimed.text);
+      if (claimed.eventWorthy) this.#showEventCard(`${claimed.text}${goalLine}`);
+      else this.#showNote(`${claimed.text}${goalLine}`);
+    } else if (goalNote !== null) {
+      this.#showNote(`GOAL MET — ${goalNote}`);
     } else if (!this.#uniqueExplained && next.draft.some((tile) => tile.rarity === 'unique')) {
       this.#uniqueExplained = true;
       this.#showNote('UNIQUE — every match counts double, both ways.');
@@ -1630,10 +1680,6 @@ export class Game {
       this.#newGroundShown = true;
       this.#showNote('NEW GROUND — farther than this world has ever reached.');
     }
-    // Every real change is offered to the shell to keep. Saving after each
-    // action rather than on some timer means the most a crash can eat is one
-    // tap — a run is 10-20 minutes of a phone's attention, and phones wander.
-    this.#hooks.onChange?.(next);
     this.render();
   }
 
@@ -2101,7 +2147,12 @@ export class Game {
     // known are the WORLD's, read fresh from the shell (`worldStats`) so a
     // territory claimed a moment ago is never shown as unclaimed.
     const world = this.#hooks.worldStats?.();
-    if (hud.relics > 0 || this.#foundThisRun !== null || world !== undefined) {
+    if (
+      hud.relics > 0 ||
+      this.#foundThisRun !== null ||
+      this.#goalMetThisRun !== null ||
+      world !== undefined
+    ) {
       const carried = document.createElement('div');
       carried.className = 'end-carried';
       carried.append(line('shop-purse', 'CARRIED OUT'));
@@ -2117,6 +2168,11 @@ export class Game {
               `${Math.round(world.knownPct * 100)}% of the world known`,
           ),
         );
+      }
+      // The survey: a world goal met THIS run, named once — the ledger
+      // itself (met vs unmet, every goal) lives in SETTINGS' YOUR WORLD.
+      if (this.#goalMetThisRun !== null) {
+        carried.append(line('end-facts', `◈ goal met — ${this.#goalMetThisRun}`));
       }
       parts.push(carried);
     }

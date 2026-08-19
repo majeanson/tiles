@@ -490,6 +490,22 @@ export type Tuning = {
   readonly luckSteerCost: number;
   readonly luckForgeCost: number;
 
+  /**
+   * TITHE (2026-08-18): a fourth luck price, and the only one that does not
+   * buy the draft. Converts the WHOLE purse to relics, on the spot, at
+   * `titheRate` — better than what dying with luck still in the purse pays
+   * (`luckToRelics`, 10%), so tithing is a live alternative to hoarding
+   * rather than a strictly worse version of the same thing.
+   *
+   * `titheMin` is the floor: below it, tithing would convert a few luck into
+   * a fraction of a relic, which is a trap dressed as an option rather than
+   * a real one, so the row simply refuses. Both 0 in the bare skeleton and
+   * every old save — the same "the whole cluster is gated by one dial" shape
+   * `stoneDiscount`/`wallBuildCostMult` already keep.
+   */
+  readonly titheRate: number;
+  readonly titheMin: number;
+
   readonly singlePayout: boolean;
   readonly pointsPerPop: number;
   readonly burnLuck: number;
@@ -614,6 +630,8 @@ export const BARE_TUNING: Tuning = {
   luckRerollCost: 0,
   luckSteerCost: 0,
   luckForgeCost: 0,
+  titheRate: 0,
+  titheMin: 0,
   colourBiasDraws: 0,
   colourBiasWeight: 0,
 
@@ -798,6 +816,14 @@ export const TUNING: Tuning = {
   luckRerollCost: 12,
   luckSteerCost: 30,
   luckForgeCost: 75,
+  // TITHE (2026-08-18): 25%, better than the 10% death pays on unspent luck,
+  // so cashing out mid-run is a real alternative to hoarding rather than a
+  // strictly worse version of it. `titheMin` 20 keeps a token tithe (a
+  // handful of luck for one relic) off the row — 20 luck is roughly two
+  // pops' worth, below `luckSteerCost`, so the floor sits under the shop's
+  // own cheapest colour purchase rather than above it.
+  titheRate: 0.25,
+  titheMin: 20,
 
   singlePayout: true,
   pointsPerPop: 0.35,

@@ -314,13 +314,29 @@ export function reduce(state: GameState, action: Action): GameState {
   }
 }
 
-/** What one spend costs, or 0 where that shop does not exist. */
+/**
+ * What one spend costs, or 0 where that shop does not exist.
+ *
+ * TITHE has no fixed price — it takes the WHOLE purse, whatever that is —
+ * so this returns `titheMin`, the floor below which the row refuses, purely
+ * as the informational number a caller expecting "a cost" can still use;
+ * `spendLuck` never reads it for tithe's own arithmetic.
+ */
 export function spendCost(t: Tuning, on: Spend): number {
-  return on === 'reroll' ? t.luckRerollCost : on === 'steer' ? t.luckSteerCost : t.luckForgeCost;
+  if (on === 'reroll') return t.luckRerollCost;
+  if (on === 'steer') return t.luckSteerCost;
+  if (on === 'forge') return t.luckForgeCost;
+  return t.titheMin;
 }
 
 /** Whether the purse can pay for it right now. The UI asks before offering. */
 export function canSpend(state: GameState, on: Spend): boolean {
+  if (on === 'tithe') {
+    const t = state.tuning;
+    return (
+      t.titheRate > 0 && t.titheMin > 0 && state.phase === 'placing' && state.luck >= t.titheMin
+    );
+  }
   const cost = spendCost(state.tuning, on);
   if (cost <= 0 || state.phase !== 'placing' || state.luck < cost) return false;
   // Forging needs something in hand to forge.
@@ -331,14 +347,22 @@ export function canSpend(state: GameState, on: Spend): boolean {
  * Spend luck.
  *
  * Popping early has to buy something, and after Marc played it, the answer is
- * not better odds sitting in a bar — it is these three purchases. Steering
+ * not better odds sitting in a bar — it is these purchases. Steering
  * redraws the hand under the named colour rather than merely biasing later
- * draws, because a bet you cannot see is not a decision you can make.
+ * draws, because a bet you cannot see is not a decision you can make. TITHE
+ * (2026-08-18) is the odd one out: it does not touch the draft at all, only
+ * the purse — the whole thing, converted at once, so hoarding it becomes a
+ * decision made in the moment rather than only at the end of the run.
  */
 function spendLuck(state: GameState, on: Spend, colour?: Colour): GameState {
   if (!canSpend(state, on)) return state;
   if (on === 'steer' && colour === undefined) return state;
   const t = state.tuning;
+
+  if (on === 'tithe') {
+    return { ...state, luck: 0, relics: state.relics + Math.floor(state.luck * t.titheRate) };
+  }
+
   const luck = state.luck - spendCost(t, on);
 
   if (on === 'forge') {

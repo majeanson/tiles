@@ -285,10 +285,12 @@ export type Action =
   | { readonly type: 'HOLD' }
   /**
    * Spend luck. `reroll` buys a fresh hand, `steer` names a colour and buys a
-   * hand drawn under it, `forge` turns the selected card unique. Prices live
-   * in tuning and a zero price means the shop does not exist — so every game
-   * that never heard of luck ignores this action entirely.
+   * hand drawn under it, `forge` turns the selected card unique, `tithe`
+   * (2026-08-18) converts the WHOLE purse to relics at `titheRate` — the one
+   * spend that does not touch the draft. Prices live in tuning and a zero
+   * price means the shop does not exist — so every game that never heard of
+   * luck ignores this action entirely.
    */
   | { readonly type: 'SPEND'; readonly on: Spend; readonly colour?: Colour };
 
-export type Spend = 'reroll' | 'steer' | 'forge';
+export type Spend = 'reroll' | 'steer' | 'forge' | 'tithe';
