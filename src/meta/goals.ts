@@ -8,24 +8,25 @@ import { knownFraction, UNLOCKS, type WorldMemory } from './world';
  * this module only answers "is this goal true right now", so the shell, the
  * settings ledger and the tests all read the same one question.
  *
- * Two of the five goals (`shrinesAll`, `perksAll`) measure against pool
- * sizes `content/goals.ts` cannot import (content/ imports nothing) — read
- * here instead, from `UNLOCKS.length` and `PERKS.length`, their real source
- * of truth.
+ * Every threshold is `content/goals.ts`'s own `target` — read from there,
+ * never restated here, so the number a goal is measured against cannot drift
+ * from the number its own label speaks in words. Two of the five goals
+ * (`shrinesAll`, `perksAll`) measure against pool sizes `content/goals.ts`
+ * cannot import (content/ imports nothing) — read here instead, from
+ * `UNLOCKS.length` and `PERKS.length`, their real source of truth; `target`
+ * is `undefined` for both, and this module never reads it for either.
  */
 
-const REACH_TARGET = 20;
-const TERRITORY_TARGET = 4;
-const KNOWN_TARGET = 0.4;
+const targetOf = (id: GoalId): number => GOALS.find((g) => g.id === id)?.target ?? 0;
 
 export function isGoalMet(id: GoalId, world: WorldMemory, progress: Progress): boolean {
   switch (id) {
     case 'reach20':
-      return world.farthestReach >= REACH_TARGET;
+      return world.farthestReach >= targetOf('reach20');
     case 'territories4':
-      return world.territories.length >= TERRITORY_TARGET;
+      return world.territories.length >= targetOf('territories4');
     case 'known40':
-      return knownFraction(world) >= KNOWN_TARGET;
+      return knownFraction(world) >= targetOf('known40');
     case 'shrinesAll':
       return world.shrines.length >= UNLOCKS.length;
     case 'perksAll':

@@ -7,12 +7,15 @@
  * this WORLD has proven, not merely what one run did. Detection and payout
  * live in `src/meta/goals.ts` (which needs `WorldMemory` and `Progress`,
  * neither of which `content/` may import — content/ imports nothing but its
- * own types, see eslint.config.js); this file carries only the numbers, per
- * the project's own rule that a balance number under `src/engine/` — or,
- * here, under `src/meta/` — is a bug. `shrinesAll` and `perksAll` are
- * measured in `meta/goals.ts` against `UNLOCKS.length`/`PERKS.length`
- * directly (their real source of truth), rather than a count duplicated
- * here that could drift from either pool's actual size.
+ * own types, see eslint.config.js); this file carries every number,
+ * including the threshold each goal is measured against, per the project's
+ * own rule that a balance number under `src/engine/` — or, here, under
+ * `src/meta/` — is a bug. A plain number needs no import, so `target` lives
+ * here even though the comparison it feeds does not. `shrinesAll` and
+ * `perksAll` are the two exceptions: they are measured in `meta/goals.ts`
+ * against `UNLOCKS.length`/`PERKS.length` directly (their real source of
+ * truth), rather than a count duplicated here that could drift from either
+ * pool's actual size — `target` is omitted for both.
  *
  * Amounts are modest beside a single shop upgrade (20-50 relics apiece,
  * `src/meta/progress.ts`) on purpose: these are milestones that fire once a
@@ -26,12 +29,14 @@ export type Goal = {
   readonly id: GoalId;
   readonly label: string;
   readonly reward: number;
+  /** What `label` already says in words. Omitted where the real target is a pool size (see above). */
+  readonly target?: number;
 };
 
 export const GOALS: readonly Goal[] = [
-  { id: 'reach20', label: 'Reach 20 hexes from home', reward: 40 },
-  { id: 'territories4', label: 'Hold 4 territories', reward: 45 },
-  { id: 'known40', label: 'Know 40% of the world', reward: 50 },
+  { id: 'reach20', label: 'Reach 20 hexes from home', reward: 40, target: 20 },
+  { id: 'territories4', label: 'Hold 4 territories', reward: 45, target: 4 },
+  { id: 'known40', label: 'Know 40% of the world', reward: 50, target: 0.4 },
   { id: 'shrinesAll', label: 'Wake every shrine', reward: 35 },
   { id: 'perksAll', label: 'Find every perk', reward: 60 },
 ];

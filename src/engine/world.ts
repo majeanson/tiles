@@ -80,30 +80,28 @@ export function blockDestination(
   const r = br * size + Math.floor(spot * size);
   if (hexDistance(q, r) < size / 2) return null;
 
-  // 40% cache, 35% site, 17% territory, 8% shrine near home — caches carry
+  // cacheShareNear/siteShareNear/territoryShareNear near home — caches carry
   // survival so they lead close in, and shrines are rare because an unlock
-  // you meet every run is not an unlock. Reward kinds ride the presence roll.
+  // you meet every run is not an unlock (shrine's own share is always the
+  // remainder, never a fourth scaled number). Reward kinds ride the presence
+  // roll.
   //
   // Deep water (2026-08-18): past `deepWaterRampBlocks` blocks the cache
   // share has tilted all the way to `cacheShareFar`, and site/territory
   // thicken to fill what cache gave up — each SCALED, so they keep their
-  // near-water ratio to one another and to shrine, whose share is always
-  // the remainder rather than a fourth scaled number (float-drift-proof: the
-  // three thresholds below always sum to exactly 1). `> 0` is the whole
-  // gate: an old save's `deepWaterRampBlocks` decodes as `undefined`, which
-  // fails it and reproduces the original fixed split untouched.
-  const NEAR_CACHE_SHARE = 0.4;
-  const NEAR_SITE_SHARE = 0.35;
-  const NEAR_TERRITORY_SHARE = 0.17;
-  let cacheShare = NEAR_CACHE_SHARE;
-  let siteShare = NEAR_SITE_SHARE;
-  let territoryShare = NEAR_TERRITORY_SHARE;
+  // near-water ratio to one another and to shrine (float-drift-proof: the
+  // three thresholds below always sum to under 1). `> 0` is the whole gate:
+  // an old save's `deepWaterRampBlocks` decodes as `undefined`, which fails
+  // it and reproduces the original fixed split untouched.
+  let cacheShare = t.cacheShareNear;
+  let siteShare = t.siteShareNear;
+  let territoryShare = t.territoryShareNear;
   if (t.deepWaterRampBlocks > 0) {
     const deepRamp = Math.min(1, hexDistance(bq, br) / t.deepWaterRampBlocks);
-    cacheShare = NEAR_CACHE_SHARE + (t.cacheShareFar - NEAR_CACHE_SHARE) * deepRamp;
-    const scale = (1 - cacheShare) / (1 - NEAR_CACHE_SHARE);
-    siteShare = NEAR_SITE_SHARE * scale;
-    territoryShare = NEAR_TERRITORY_SHARE * scale;
+    cacheShare = t.cacheShareNear + (t.cacheShareFar - t.cacheShareNear) * deepRamp;
+    const scale = (1 - cacheShare) / (1 - t.cacheShareNear);
+    siteShare = t.siteShareNear * scale;
+    territoryShare = t.territoryShareNear * scale;
   }
 
   const kind = roll / chance;

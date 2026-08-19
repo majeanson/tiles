@@ -104,9 +104,21 @@ export type Tuning = {
   readonly destinationRampBlocks: number;
 
   /**
+   * The reward mix near home, before deep water tilts anything — cache,
+   * site, territory; shrine is always the remainder, never a fourth scaled
+   * number, so the three below stay float-drift-proof by summing to under 1
+   * with room for it. Balance numbers, so they live here rather than as
+   * bare literals beside the split that reads them (`world.ts`).
+   */
+  readonly cacheShareNear: number;
+  readonly siteShareNear: number;
+  readonly territoryShareNear: number;
+
+  /**
    * Deep water (2026-08-18): the destination reward MIX tilts with distance,
-   * not just its density. Near home the split is the original fixed one —
-   * 40% cache, 35% site, 17% territory, 8% shrine — because caches carry
+   * not just its density. Near home the split is `cacheShareNear` /
+   * `siteShareNear` / `territoryShareNear` above (40% cache, 35% site, 17%
+   * territory, 8% shrine in the shipped economy) — because caches carry
    * survival and the near world has to stay a lifeline. Past
    * `deepWaterRampBlocks` blocks the cache share has fully tilted to
    * `cacheShareFar`, with site, territory and shrine THICKENING — each
@@ -557,6 +569,9 @@ export const BARE_TUNING: Tuning = {
   cachePaysPerRing: 0,
   popTilesPerRing: 0,
   destinationRampBlocks: 0,
+  cacheShareNear: 0,
+  siteShareNear: 0,
+  territoryShareNear: 0,
   deepWaterRampBlocks: 0,
   cacheShareFar: 0,
 
@@ -912,6 +927,13 @@ export const TUNING: Tuning = {
   cachePaysPerRing: 4,
   popTilesPerRing: 0.25,
   destinationRampBlocks: 2,
+
+  // 40% cache, 35% site, 17% territory near home — caches carry survival so
+  // they lead close in; shrine is always the remainder (8%), never a fourth
+  // scaled number.
+  cacheShareNear: 0.4,
+  siteShareNear: 0.35,
+  territoryShareNear: 0.17,
 
   /**
    * DEEP WATER (2026-08-18, first values): the mix, not just the density,
