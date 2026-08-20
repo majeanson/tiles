@@ -118,7 +118,15 @@ export class SurfaceTextures {
  * bug and is actually a one-character omission here.
  */
 export function surfaceKey(s: Surface): string {
-  return [s.fill, s.fillTo ?? 'x', s.inset, s.alpha, patternKey(s.pattern)].join('|');
+  return [
+    s.fill,
+    s.fillTo ?? 'x',
+    s.inset,
+    s.alpha,
+    patternKey(s.pattern),
+    patternKey(s.overlay),
+    s.scorch ? 1 : 0,
+  ].join('|');
 }
 
 function patternKey(p: Pattern): string {

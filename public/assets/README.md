@@ -1,8 +1,21 @@
 # Drop art here
 
 Every bitmap the game can use is an optional **slot**. The game is complete and
-playable with this folder empty — that is the state it ships in — and each PNG
-you add replaces one procedural surface with real art. Nothing needs wiring up.
+playable with this folder empty, and each PNG you add replaces one procedural
+surface with real art. Nothing needs wiring up.
+
+**Torchlit's eight terrain/fx slots are filled** (2026-08-19, WORKPLAN Stage 3):
+`terrain.green/yellow/red/blue/wall/stone/ghost` and `fx.pop`, baked by
+`scripts/terrain.ts` — a deterministic, offline Node script in the same spirit
+as `scripts/icons.ts` and `scripts/social.ts`, reading colour and pattern
+straight off `TORCHLIT` rather than a hand-copied palette. Regenerate with
+`pnpm exec tsx scripts/terrain.ts` after the theme moves. No CC0 texture
+assets were used to seed any layer — the decision of record permits it, and
+this session judged procedural generation (reading the theme's own tokens
+rather than a stock photo, with no network fetch or licence bookkeeping to
+verify) the better fit at this size. `fog.hard`, `fog.soft`, `ui.cardFrame`
+stay empty — no mechanic reads them yet, and shipping art for a slot nothing
+draws would be a beautiful lie.
 
 ## The workflow
 
@@ -29,35 +42,38 @@ Ids are named for the ROLE in the rules (`terrain.green`), never for what a
 direction calls it (`crypt`). Rename the fiction twice more and the filenames do
 not move.
 
-| Slot                                                          | Size    | State               |
-| ------------------------------------------------------------- | ------- | ------------------- |
-| `terrain.green` `terrain.yellow` `terrain.red` `terrain.blue` | 414×358 | used                |
-| `terrain.wall` `terrain.stone` `terrain.ghost`                | 414×358 | used                |
-| `fx.pop`                                                      | 256×256 | used                |
-| `ui.logo`                                                     | 876×450 | used                |
-| `fog.hard` `fog.soft`                                         | 512×512 | **no mechanic yet** |
-| `ui.cardFrame` `ui.runEnd`                                    | varies  | **no screen yet**   |
+| Slot                                                          | Size    | State                 |
+| ------------------------------------------------------------- | ------- | --------------------- |
+| `terrain.green` `terrain.yellow` `terrain.red` `terrain.blue` | 414×358 | used, **art filled**  |
+| `terrain.wall` `terrain.stone` `terrain.ghost`                | 414×358 | used, **art filled**  |
+| `fx.pop`                                                      | 256×256 | used, **art filled**  |
+| `ui.logo`                                                     | 876×450 | used, drawn treatment |
+| `ui.runEnd`                                                   | 876×330 | used, CSS gradient    |
+| `fog.hard` `fog.soft`                                         | 512×512 | **no mechanic yet**   |
+| `ui.cardFrame`                                                | 288×288 | **no screen yet**     |
 
-Two things the reference art sheet does not cover:
+Things worth knowing:
 
-1. **`terrain.stone` has no reference art.** It is the most common cell in the
-   back half of a run — every harvest makes more of it — and the design document
-   never drew one. It has to read as _spent_: the aftermath of something, not
-   furniture.
-2. **The bottom four slots are not read by anything.** They describe fog, a
-   run-end screen and a card frame, none of which exist. A beautiful PNG in one
-   of those changes nothing on screen. `/gallery` marks them `NO MECHANIC` so
+1. **`terrain.stone` had no reference art** — the design document never drew
+   one, though it is the most common cell in the back half of a run. Baked
+   2026-08-19: a dark off-centre **scorch** blot and radiating **crack**
+   lines out of it, on top of the existing dot pitting — the aftermath of a
+   pop, not a fourth flavour of furniture. See `theme/themes/torchlit.ts`'s
+   own `stone` surface and its `scorch`/`overlay` fields.
+2. **The bottom three slots are not read by anything.** They describe fog and
+   a nine-slice card frame, neither of which exist. A beautiful PNG in one of
+   those changes nothing on screen. `/gallery` marks them `NO MECHANIC` so
    this stays visible rather than becoming a surprise.
-3. **`ui.logo` is wired (2026-08-19).** Drop a PNG here and it supersedes the
-   drawn mark-and-name treatment on the front door AND the end screen — one
-   file, both surfaces, same drop-target contract as everything else.
+3. **`ui.logo` and `ui.runEnd` are wired (2026-08-19)** but have no PNG here
+   yet — both draw a live treatment (mark-and-name lockup; a CSS gradient
+   hero) that a file at this slot would supersede.
 
 ## Orientation
 
-Terrain art is drawn to a **flat-top** hex for the three art directions and a
-**pointy-top** hex for the placeholder — `theme.orientation`, per direction. Art
-is scaled to the hex's bounding box, so a file drawn to the wrong orientation
-will be visibly squashed rather than subtly wrong.
+Terrain art is drawn to a **flat-top** hex for torchlit and a **pointy-top**
+hex for the placeholder — `theme.orientation`, per direction. Art is scaled to
+the hex's bounding box, so a file drawn to the wrong orientation will be
+visibly squashed rather than subtly wrong.
 
 ## Checking it landed
 

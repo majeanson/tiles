@@ -64,8 +64,46 @@ export function bakeSurface(
 
   paintFill(ctx, surface, w, h);
   paintPattern(ctx, surface.pattern, w, h);
+  paintPattern(ctx, surface.overlay, w, h);
+  paintDepth(ctx, w, h);
+  if (surface.scorch) paintScorch(ctx, w, h);
 
   return canvas;
+}
+
+/**
+ * A whisper of material under every surface (2026-08-19, WORKPLAN Stage 3):
+ * a soft light from above, a soft dark toward the floor. Fill and pattern
+ * say WHAT a surface is; this is the one thing that makes it read as a
+ * physical thing sitting in a lit room rather than a flat swatch, and it
+ * costs every surface the same — no theme opts in or out, the way no theme
+ * opted out of the seam between cells.
+ */
+function paintDepth(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const gradient = ctx.createLinearGradient(0, 0, 0, h);
+  gradient.addColorStop(0, 'rgba(255,255,255,0.05)');
+  gradient.addColorStop(0.5, 'rgba(255,255,255,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.08)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/**
+ * The scorch (2026-08-19, WORKPLAN Stage 3): a soft dark blot, off the
+ * hex's own centre so it reads as where the burst SAT rather than as a
+ * printed mark. `terrain.stone` is the only surface that ever asks for
+ * this — see its own doc in `theme/themes/torchlit.ts`.
+ */
+function paintScorch(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const cx = w * 0.46;
+  const cy = h * 0.56;
+  const r = Math.min(w, h) * 0.5;
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  gradient.addColorStop(0, 'rgba(0,0,0,0.32)');
+  gradient.addColorStop(0.5, 'rgba(0,0,0,0.13)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h);
 }
 
 function paintFill(ctx: CanvasRenderingContext2D, surface: Surface, w: number, h: number): void {

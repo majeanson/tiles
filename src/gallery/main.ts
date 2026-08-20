@@ -365,13 +365,13 @@ function ghostStrip(theme: Theme): HTMLElement {
  */
 function fogStrip(theme: Theme): HTMLElement {
   const row = el('div', 'row');
-  const veilTint = mix(0xffffff, theme.board.background, 0.45);
+  const veilTint = mix(0xffffff, theme.board.background, theme.fog.veil);
   for (const c of COLOURS) {
     const box = el('div', 'surface');
     const canvas = bakeSurface(theme.terrain[c], 23, theme.orientation);
     if (canvas !== null) {
       const veiled = tinted(canvas, veilTint);
-      veiled.style.opacity = '0.3';
+      veiled.style.opacity = String(theme.fog.alpha);
       box.appendChild(veiled);
     }
     box.appendChild(el('span', 'surface-name', theme.terrainNames[c]));

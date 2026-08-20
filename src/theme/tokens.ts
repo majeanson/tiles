@@ -165,12 +165,32 @@ export type Surface = {
   /** Vertical gradient end. `null` is a flat fill, which most surfaces are. */
   readonly fillTo: Rgb | null;
   readonly pattern: Pattern;
+  /**
+   * A second pattern, drawn over the first (2026-08-19, WORKPLAN Stage 3).
+   *
+   * `pattern` carries the AXIS identity — the thing that keeps MOSS reading
+   * as diagonal and TIDE as horizontal at a glance — and stays load-bearing
+   * on its own; `overlay` is a second, independent layer at its own kind,
+   * ink and alpha that adds material depth without moving the axis a colour
+   * is told apart by. Same closed vocabulary (`Pattern`), so nothing new to
+   * bake: a hatch over a hatch, dots over dots, or either crossed with the
+   * other, is still just `paintPattern` called twice.
+   */
+  readonly overlay: Pattern;
   /** Bitmap slot that supersedes fill and pattern once the file exists. */
   readonly asset: AssetId | null;
   /** 0..1 of the hex radius. A gutter is what makes the grid read as cells. */
   readonly inset: number;
   /** Drawn at this alpha. Only the ghost/preview surface is below 1. */
   readonly alpha: number;
+  /**
+   * A soft dark blot off the hex's own centre (2026-08-19, WORKPLAN Stage
+   * 3): the one thing that makes `terrain.stone` read as the AFTERMATH of a
+   * pop rather than a fourth flavour of furniture. Off for everything else —
+   * a scorch mark on live ground would say something happened there that
+   * never did.
+   */
+  readonly scorch: boolean;
 };
 
 /**
@@ -366,6 +386,19 @@ export type Theme = {
   readonly ghost: Surface;
 
   /**
+   * Remembered ground (2026-08-19, promoted out of `PixiRenderer` where both
+   * numbers used to be hand-typed constants — the same drift risk `mark.ts`
+   * closed for the favicon, paid here instead in two magic numbers nobody
+   * could argue with per direction). `veil` is how far a remembered tile's
+   * hue is pulled toward the board's own background before drawing (0..1);
+   * `alpha` is what the whole tinted sprite then draws at. Two steps because
+   * they answer different questions — is this ground memory, and how hard
+   * should memory compete with the live board — and every direction gets to
+   * answer both.
+   */
+  readonly fog: Fog;
+
+  /**
    * The torch (2026-08-16; the light the structure carries, 2026-08-18/19).
    * Light falls off with distance from the nearest hex you have actually
    * BUILT — every tile and stone lights its own edge, not just the one you
@@ -389,6 +422,12 @@ export type Light = {
   readonly fade: number;
   /** The dimmest a cell may ever be drawn, 0-1. Never 0: see above. */
   readonly floor: number;
+};
+
+/** See `Theme.fog`'s own doc for what the two numbers mean. */
+export type Fog = {
+  readonly veil: number;
+  readonly alpha: number;
 };
 
 /**
@@ -549,9 +588,11 @@ export function surface(fill: Rgb, over: Partial<Surface> = {}): Surface {
     fill,
     fillTo: over.fillTo ?? null,
     pattern: over.pattern ?? NO_PATTERN,
+    overlay: over.overlay ?? NO_PATTERN,
     asset: over.asset ?? null,
     inset: over.inset ?? 0.06,
     alpha: over.alpha ?? 1,
+    scorch: over.scorch ?? false,
   };
 }
 

@@ -101,4 +101,10 @@ export const PLACEHOLDER: Theme = {
 
   // Flat by design — the placeholder measures layout, not mood.
   light: { radius: 999, fade: 1, floor: 1 },
+
+  // The exact numbers `PixiRenderer` hand-typed before this was a token
+  // (2026-08-19). Kept unchanged here on purpose: the placeholder is the
+  // control, and moving its fog dim would make it a second opinion instead
+  // of one.
+  fog: { veil: 0.45, alpha: 0.3 },
 };

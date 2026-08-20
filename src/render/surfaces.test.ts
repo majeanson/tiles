@@ -176,3 +176,29 @@ describe('the colour symbols', () => {
     expect(bakeSurface(field('square'), 24, 'pointy')).toBeNull();
   });
 });
+
+describe('overlay and scorch (2026-08-19, WORKPLAN Stage 3)', () => {
+  /**
+   * The same failure mode the glyph-shape test above guards, one layer up:
+   * `surface()`'s defaults mean two surfaces that only differ in their
+   * SECOND pattern, or in whether they carry a scorch, still look identical
+   * to any check that forgets those fields — and would then silently share
+   * a baked texture.
+   */
+  it('keeps a surface apart from itself plus an overlay', () => {
+    const plain = surface(0x334455, {
+      pattern: { kind: 'dots', ink: 0, alpha: 0.2, radius: 1, pitch: 5 },
+    });
+    const overlaid: Surface = {
+      ...plain,
+      overlay: { kind: 'hatch', angleDeg: 25, ink: 0, alpha: 0.1, bar: 1, gap: 9 },
+    };
+    expect(surfaceKey(plain)).not.toBe(surfaceKey(overlaid));
+  });
+
+  it('keeps a scorched surface apart from an identical unscorched one', () => {
+    const plain = surface(0x334455);
+    const scorched: Surface = { ...plain, scorch: true };
+    expect(surfaceKey(plain)).not.toBe(surfaceKey(scorched));
+  });
+});

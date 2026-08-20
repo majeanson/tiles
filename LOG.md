@@ -4132,3 +4132,132 @@ box drawn around what was already there, is the arc legible at its new size
 without crowding the score, and — the one thing no harness can check — does
 the share card actually look right coming out of the real iOS share sheet
 into an actual chat thread.
+
+### Session 29 — The torchlit art pass
+
+**Question:** at arm's length, on a phone, in daylight — do the four
+colours, walls, stone and the pop read at a glance as one torchlit world
+rather than four tinted hexes on black?
+
+`WORKPLAN.md`'s Stage 3 of the 2026-08-19 visual pipeline, built on Stages 1
+(`f9845bd`) and 2 (`64b7d97`). Scope: procedural deepening first — richer
+per-colour surfaces in the baker, the light-pool and the remembered-ground
+dim tuned as theme tokens, MOSS/EMBER/ASH/TIDE texture depth beyond the four
+line patterns, and `terrain.stone` finally reading as SPENT — then baked
+PNGs into the eight wired slots via a new deterministic offline Node
+script, with the greyscale L* test as the hard guardrail throughout.
+
+**Done.**
+
+1. **Procedural deepening, in the theme layer and the baker.**
+   `theme/tokens.ts`'s `Surface` grew two fields, both defaulted off so
+   `placeholder` is untouched: `overlay` — a SECOND `Pattern`, same closed
+   vocabulary, drawn over the axis-defining `pattern` (`bake.ts#paintPattern`
+   called twice) — and `scorch`, a boolean that only `terrain.stone` sets.
+   `bake.ts` grew two more passes every surface now gets: `paintDepth` (a
+   whisper of top-light/bottom-shadow on every cell, unconditional — the
+   thing that makes a flat fill read as a physical surface) and
+   `paintScorch` (an off-centre dark blot, gated by the new field). Torchlit
+   spends the overlay per colour without moving any axis: MOSS gets sparse
+   brighter dot clusters over its diagonal hatch (moss clumps catching
+   light), EMBER gets warm glint dots between its verticals, ASH gets a
+   second, differently-pitched dot layer so the pitting reads as mottled
+   ash rather than a polka grid, TIDE gets a second, darker horizontal rule
+   so the water reads as two ripples instead of one ruling. `terrain.stone`
+   gets both new fields at once — a sparse 25° crack hatch (an angle no
+   other surface uses) plus the scorch — turning "dot-pitted rock" into
+   "the aftermath of a pop": related to the wall's own rubble bands, spent
+   rather than built. `render/surfaces.ts`'s `surfaceKey` folds both new
+   fields in, guarded by two new tests in `surfaces.test.ts` mirroring the
+   glyph-shape test's own precedent — the exact bug class the cache's own
+   docstring already worried about.
+2. **The light-pool and the fog dim, both tuned as tokens.** Torchlit's
+   `light` tightened (`radius` 4 → 3, `fade` 11 → 14): a smaller full-bright
+   pool, spent on a longer, gentler transition into it — a torch, not a
+   floodlight — with `floor` untouched, since that number is what keeps
+   every in-play tile at or above the direction's own 28%-luminance rule
+   and this stage moves atmosphere, never that floor. The remembered-ground
+   dim was NOT a token before this — `PixiRenderer.ts` hand-typed 0.45 (the
+   veil mix) and 0.3 (the alpha) directly, the same drift risk `mark.ts`
+   closed for the favicon, paid here instead in two magic numbers nobody
+   could argue with per direction. Both are now `Theme.fog`, read by
+   `PixiRenderer.ts` and by `gallery/main.ts`'s own fog strip (which
+   duplicated the same two numbers a second time); `placeholder` keeps the
+   exact former values as the control, torchlit tunes deeper (veil 0.45 →
+   0.5, alpha 0.3 → 0.26) — memory under a torch reads as embers gone cold.
+3. **The baker: `scripts/terrain.ts`.** New, same spirit as `icons.ts` and
+   `social.ts` — one composed SVG per file, rasterised by `sharp`, reading
+   colour and pattern straight off `TORCHLIT` rather than a hand-copied
+   palette. Deliberately not a reuse of `bake.ts`: that file pays per-frame
+   and has to stay cheap; this script pays once, offline, for things a live
+   bake could not afford — jittered moss tufts and grass blades instead of
+   a mechanical repeat, seven radiating crack lines out of stone's scorch
+   point instead of a hatch standing in for a fracture. Randomness is
+   `engine/rng.ts`'s own pure counter stream under fixed, named seeds per
+   field — WORKPLAN's own word for this script is "deterministic", so
+   nothing here calls `Math.random`. All eight wired slots shipped —
+   `terrain.green/yellow/red/blue/wall/stone/ghost` at 414×358 (flat-top's
+   own bounding-box ratio) and `fx.pop` at 256×256, an eight-point ember
+   flare with scattered flecks replacing the flat radial gradient the live
+   fallback still draws. None stayed empty: every slot cleared its own bar
+   on inspection (`Read`, not guesswork — the agent viewing this session
+   could open the PNGs directly). The batch is 212 KB total, comfortably
+   under the ~1 MB budget. No CC0 texture assets were used or fetched — the
+   decision of record permits it, and procedural generation (reading the
+   theme's own tokens, no network dependency, no licence to verify) cleared
+   the bar at this size on its own; see `public/assets/README.md`.
+4. **The greyscale guardrail, extended to the art.** The script composites
+   each terrain PNG over torchlit's own board background (the near-black
+   every in-play tile actually sits on, not the transparent hex corners,
+   which would understate every colour by the same amount and could still
+   mislead the check) and computes the SAME `luma()` the raw tokens are
+   checked with, then asserts the baked ordering matches the tokens' own
+   sorted order — derived from `TORCHLIT.terrain` at run time, not
+   hard-coded, so a future palette change re-checks itself rather than
+   going stale. It holds: `terrain.blue < terrain.green < terrain.red <
+terrain.yellow`, the same order `theme.test.ts` already protects on the
+   raw fills. `theme.test.ts` itself needed no change — it measures
+   `surface.fill`/`fillTo` only, never the baked canvas, so none of this
+   stage's rendering work could have moved it either way; that separation
+   is exactly why the script carries its own check instead of leaning on
+   the existing one.
+
+**Verified:** 557 tests (was 555; two new — `surfaces.test.ts`'s overlay/
+scorch cache-key guards), typecheck/lint/format clean, both Playwright
+smoke specs green, `pnpm sim` byte-identical by stash-and-rerun (nothing
+here touches `engine/` or `content/`). `pnpm build` emits all eight PNGs
+into `dist/assets/torchlit/` and `assets/manifest.json` lists all eight
+under `torchlit`; `/gallery` reports every one `LOADED` off the same
+generic mechanism Stage 1 needed no code change for. A real Playwright
+session against `vite preview` confirmed the art loads and scales
+correctly in the actual game (draft cards and board), not only in the
+manifest: EMBER's blades, TIDE's ripples and ASH's mottle are all legible
+at card size with no squash, which is the orientation bug this stage's own
+brief called out by name.
+
+**Judgment calls, for the record:** `overlay` reuses the existing closed
+`Pattern` vocabulary rather than adding a fifth kind, per CLAUDE.md's own
+"resist adding a fifth" — richness comes from layering two patterns, not
+inventing a new one; `paintDepth` is unconditional (every surface, every
+theme) rather than a theme-level toggle, since it is a rendering refinement
+in the same family as the existing contour rim, not a system needing a
+flag; `scorch` is a boolean rather than a colour/strength pair, since only
+one surface will ever plausibly want it and a general-purpose field for a
+single caller is speculative machinery; the light tune (radius 4→3, fade
+11→14) is a considered but UNPLAYED guess — no test pins torchlit's own
+numbers, so nothing enforces it, and it is explicitly one of the things
+left below; and `fx.pop`'s baked flare is a genuinely different image from
+the live radial-gradient fallback (rays and flecks the cheap path does not
+draw), accepted because the fallback stays exactly as good as before for
+anyone who never gets the art — the contract WORKPLAN Stage 3 states
+explicitly ("empty beats bad, the procedural floor is the game") describes
+the FLOOR, not a ceiling the art may not exceed.
+
+**Left for Marc's eyes, on the phone**, per `WORKPLAN.md`'s own standing
+constraint — this is shipped-and-wired, not judged: whether the tightened
+torch (smaller pool, longer fade) reads as more atmospheric or just
+smaller; whether MOSS's tufts, EMBER's glints, ASH's mottle and TIDE's
+double ripple read as depth or as noise at arm's length; whether stone
+finally reads as SPENT rather than as a fourth terrain; and whether the
+new `fx.pop` flare feels like more of an ember burst than the plain glow
+it replaces, or busier for no reason.

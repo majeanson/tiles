@@ -748,7 +748,8 @@ export class PixiRenderer implements Renderer {
       // Remembered ground is the faintest thing on the board on purpose: it
       // is a map, not a place you can act on, and it must never compete with
       // the run you are actually playing.
-      sprite.alpha = surface.alpha * (cell.dimmed ? 0.25 : 1) * (cell.remembered ? 0.3 : 1);
+      sprite.alpha =
+        surface.alpha * (cell.dimmed ? 0.25 : 1) * (cell.remembered ? this.#theme.fog.alpha : 1);
       // The torch. Tint rather than alpha, because dropping alpha would show
       // the page through the board and turn distance into holes; tinting
       // toward the board's own dark reads as light falling away from you.
@@ -757,13 +758,14 @@ export class PixiRenderer implements Renderer {
       if (cell.light < 1 || cell.band > 0 || cell.remembered) {
         const lift = 1 + cell.band * BAND_LIFT;
         let tint = mix(this.#theme.board.background, 0xffffff, Math.min(1, cell.light * lift));
-        // The fog veil (2026-08-18): the alpha drop alone left every colour
+        // The fog veil (2026-08-18; promoted to a theme token 2026-08-19 —
+        // see `Theme.fog`'s own doc): the alpha drop alone left every colour
         // and every hue intact, just faint — a dark version of the real
         // thing rather than a memory of it. Mixing the whole sprite further
         // toward the board's own background flattens the hue too, on top of
-        // the dimming below, which is the procedural floor `fog.soft` (an
+        // the dimming above, which is the procedural floor `fog.soft` (an
         // empty slot) would otherwise be doing.
-        if (cell.remembered) tint = mix(tint, this.#theme.board.background, 0.45);
+        if (cell.remembered) tint = mix(tint, this.#theme.board.background, this.#theme.fog.veil);
         sprite.tint = tint;
       }
       group.addChild(sprite);

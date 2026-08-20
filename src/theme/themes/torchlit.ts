@@ -99,11 +99,20 @@ export const TORCHLIT: Theme = {
     gain: 0.18,
   },
 
+  // Every `overlay` below (2026-08-19, WORKPLAN Stage 3) is a SECOND layer
+  // at its own kind/ink/alpha, drawn over the axis-defining `pattern` — the
+  // axis itself never moves, so red vs blue is still told apart by texture
+  // direction rather than brightness. The overlay is what turns "a hatch"
+  // into "moss", "grass with light on it" or "ash with soot in it".
   terrain: {
-    // CRYPT — rough matte, 60° hatch.
+    // CRYPT — rough matte, 60° hatch, moss clumped where it catches the
+    // torch. The overlay is a looser, brighter dot grid at a wider pitch
+    // than the hatch's own gap — a second frequency reading as clustered
+    // growth rather than a second, competing axis.
     green: surface(0x3e4a2e, {
       fillTo: 0x242c1c,
       pattern: { kind: 'hatch', angleDeg: 60, ink: 0x000000, alpha: 0.22, bar: 2, gap: 4 },
+      overlay: { kind: 'dots', ink: 0x7a9a5a, alpha: 0.16, radius: 1.3, pitch: 11 },
       asset: 'terrain.green',
     }),
     // CEMETERY — low and dry, the lightest surface under the torch. Vertical
@@ -112,16 +121,24 @@ export const TORCHLIT: Theme = {
     // finish" thesis — and the field markers now derive from these patterns,
     // so a smooth terrain would have left ember ground speaking a borrowed
     // language. Verticals complete the set: diagonal, vertical, dots,
-    // horizontal — four orientations no squint can confuse.
+    // horizontal — four orientations no squint can confuse. The overlay adds
+    // warm glints between the stalks — dry grass catching firelight rather
+    // than just standing in it.
     yellow: surface(0xc6b187, {
       fillTo: 0x98865f,
       pattern: { kind: 'hatch', angleDeg: 90, ink: 0x000000, alpha: 0.14, bar: 1, gap: 5 },
+      overlay: { kind: 'dots', ink: 0xffd28a, alpha: 0.12, radius: 1.0, pitch: 13 },
       asset: 'terrain.yellow',
     }),
-    // BURIAL GROUND — mounded rows, catching the flame on the ridges.
+    // BURIAL GROUND — mounded rows, catching the flame on the ridges. The
+    // overlay is a second, finer dot layer at a pitch that shares no common
+    // factor with the first (9 and 5) so the two grids never line up into a
+    // visible lattice — the two together read as mottled ash rather than
+    // polka dots.
     red: surface(0x9a5a32, {
       fillTo: 0x6b3a1e,
       pattern: { kind: 'dots', ink: 0x000000, alpha: 0.24, radius: 1.5, pitch: 9 },
+      overlay: { kind: 'dots', ink: 0x000000, alpha: 0.12, radius: 0.6, pitch: 5 },
       asset: 'terrain.red',
     }),
     // CATACOMB — recessed and specular, the warm rule being reflected water.
@@ -130,10 +147,13 @@ export const TORCHLIT: Theme = {
     // direction's own answer to this is "identity lives in surface height and
     // finish, because light is already the variable" — but recessed water still
     // has to be darker than matte stone, or the finish is carrying a job value
-    // should be doing.
+    // should be doing. The overlay is a second horizontal rule, darker and
+    // wider-spaced than the first: two ripples instead of one ruling, so the
+    // water reads as moving rather than lined.
     blue: surface(0x243b45, {
       fillTo: 0x111f28,
       pattern: { kind: 'hatch', angleDeg: 0, ink: 0xffecc8, alpha: 0.14, bar: 1, gap: 5 },
+      overlay: { kind: 'hatch', angleDeg: 0, ink: 0x0a161c, alpha: 0.12, bar: 1, gap: 9 },
       asset: 'terrain.blue',
     }),
   },
@@ -176,9 +196,22 @@ export const TORCHLIT: Theme = {
   // Pitted since 2026-08-18: stone is the single most common cell in the back
   // half of a run and was the one surface with no finish at all — a fine dark
   // stipple reads as worked slab without stealing value from the pale signal.
+  //
+  // SPENT, finally (2026-08-19, WORKPLAN Stage 3): the pitting alone read as
+  // "a fourth flavour of dull rock", not as the aftermath of anything. Two
+  // more layers, both keyed to the pop rather than to the material: a
+  // `scorch` — the soft dark blot only this surface ever draws, off-centre
+  // on purpose so it reads as where the tile SAT rather than as a printed
+  // logo — and an `overlay` of sparse, odd-angled hatch (25°, shared by
+  // nothing else on the board) standing in for the hairline fractures a
+  // burst leaves. "Related to blocked ground but plainly consumed" — the
+  // wall's own dark rubble bands, borrowed here as a whisper instead of the
+  // wall's full statement.
   stone: surface(0x5a5044, {
     fillTo: 0x453d33,
     pattern: { kind: 'dots', ink: 0x000000, alpha: 0.16, radius: 1.1, pitch: 5 },
+    overlay: { kind: 'hatch', angleDeg: 25, ink: 0x1c1712, alpha: 0.14, bar: 1, gap: 9 },
+    scorch: true,
     asset: 'terrain.stone',
   }),
 
@@ -189,5 +222,21 @@ export const TORCHLIT: Theme = {
   // keeps the far board readable because Marc set the rule as dim, never
   // hidden. The deepest falloff of the four, because this is the direction
   // whose whole argument is that the map is endless because the darkness is.
-  light: { radius: 4, fade: 11, floor: 0.42 },
+  //
+  // Tightened 2026-08-19 (WORKPLAN Stage 3): `radius` 4 → 3 makes the full-
+  // bright pool itself smaller — a torch, not a floodlight — and `fade` 11 →
+  // 14 spends the difference on a longer, gentler transition into it rather
+  // than a shorter, harder one. `floor` is untouched: it is what keeps every
+  // in-play tile at or above the direction's own 28%-luminance rule, and
+  // this stage moves atmosphere, never that floor.
+  light: { radius: 3, fade: 14, floor: 0.42 },
+
+  // The fog dim (2026-08-19, WORKPLAN Stage 3): promoted out of
+  // `PixiRenderer`'s two hand-typed constants into a token every direction
+  // now states for itself — see `Theme.fog`'s own doc. Tuned deeper than the
+  // placeholder's control values (veil 0.45 → 0.5, alpha 0.3 → 0.26):
+  // memory under a torch should read as embers gone cold, pulled further
+  // toward the board's own dark and sitting quieter under the live board
+  // than the neutral direction bothers to ask for.
+  fog: { veil: 0.5, alpha: 0.26 },
 };
