@@ -505,7 +505,14 @@ function runKeeping(
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
     dropWorld,
-    memory: world.revealed,
+    // A detour starts fully dark (Marc, 2026-08-20: "all dailies should
+    // start fogged completely"). The write side was always guarded — a
+    // detour never merges into this world's memory — but the READ side
+    // passed the home world's revealed keys unconditionally, so a daily
+    // (or somebody else's `?seed=`) drew YOUR fog ghost over a world with
+    // different geography under it. Same guard as every hook below: a
+    // detour is not this device's world, in either direction.
+    memory: detour ? [] : world.revealed,
 
     shop: {
       read: readProgress,
