@@ -2877,7 +2877,9 @@ async function main(): Promise<void> {
   // The front door's own opener — same dialog the in-game ? opens, so
   // there is exactly one manual rather than two that could drift apart.
   frontDoorHelp.addEventListener('click', () => {
-    game.openHelp(frontDoorHelp);
+    // START, not MENU (2026-08-20): this is the only tutorial door a stranger
+    // ever taps, and MENU took the tab bar's first seat the same day.
+    game.openHelp(frontDoorHelp, 'start');
   });
   // A keyboard or screen-reader user should land on the primary action, not
   // have to discover it. Best-effort: some browsers refuse focus during

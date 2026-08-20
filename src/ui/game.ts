@@ -1107,26 +1107,34 @@ export class Game {
    * than a second one built to match it by hand. Passing the opener is how
    * focus finds its way back to a button this class never mounted itself.
    */
-  openHelp(opener: HTMLButtonElement = this.#el.help): void {
+  /**
+   * `tab` names which section opens first. The front door asks for START,
+   * and the reason is the whole point of the parameter: the MENU tab took
+   * the first seat on 2026-08-20, so HOW TO PLAY — the only tutorial door a
+   * stranger ever sees — was opening onto an atlas of zeroes and three
+   * navigation buttons, with the actual lesson one tap to the right. Mid-run
+   * the default still holds, where MENU first is what was asked for.
+   */
+  openHelp(opener: HTMLButtonElement = this.#el.help, tab?: string): void {
     // Repainted on every open, not just at start: the manual GROWS with the
     // ledger now (`ideas/teaching.md`), and a cache claimed a moment ago has
     // to be in here the moment you go and look — the same freshness contract
     // main.ts already keeps for the settings half of this panel.
-    this.#paintManual();
+    this.#paintManual(tab);
     this.#helpOpener = opener;
     this.#el.helpPanel.hidden = false;
     this.#el.helpPanel.focus();
   }
 
   /** The manual's half of the panel, rebuilt from the live tuning and ledger. */
-  #paintManual(): void {
+  #paintManual(tab?: string): void {
     const title = document.createElement('p');
     title.id = 'help-name';
     title.textContent = NAME;
     const tagline = document.createElement('p');
     tagline.className = 'flag-note';
     tagline.textContent = TAGLINE;
-    this.#el.helpManual.replaceChildren(title, tagline, ...this.#buildManual());
+    this.#el.helpManual.replaceChildren(title, tagline, ...this.#buildManual(tab));
   }
 
   #closeHelp(): void {
@@ -1683,7 +1691,7 @@ export class Game {
    * control — so the tabs and the toggles swallow their own taps, the same
    * way the settings rows already do.
    */
-  #buildManual(): HTMLElement[] {
+  #buildManual(want?: string): HTMLElement[] {
     // MENU first (Marc, 2026-08-20): the ways out of a run, and the world
     // they belong to. Its body is main.ts's — relocated, not rebuilt — and
     // it takes the tab bar's first seat because "how do I get back to the
@@ -1693,13 +1701,17 @@ export class Game {
     const menu: HelpTab[] =
       this.#el.helpMenu.childElementCount > 0 ? [{ id: 'menu', label: 'MENU', sections: [] }] : [];
     const tabs = [...menu, ...this.#helpSections()];
+    // Which tab opens. Falls back to the first whenever the caller asked for
+    // one this build does not have — a tab id is not worth a blank panel.
+    const asked = want === undefined ? -1 : tabs.findIndex((t) => t.id === want);
+    const first = asked >= 0 ? asked : 0;
     const bar = document.createElement('div');
     bar.className = 'help-tabs';
 
     const panels = tabs.map((tab, index) => {
       const panel = document.createElement('div');
       panel.className = 'help-panel-body';
-      panel.hidden = index !== 0;
+      panel.hidden = index !== first;
       if (tab.id === 'menu') {
         panel.append(this.#el.helpMenu);
         return panel;
@@ -1721,7 +1733,7 @@ export class Game {
       button.type = 'button';
       button.className = 'help-tab';
       button.textContent = tab.label;
-      if (index === 0) button.dataset['on'] = 'true';
+      if (index === first) button.dataset['on'] = 'true';
       button.addEventListener('click', (event) => {
         event.stopPropagation();
         for (const [i, panel] of panels.entries()) panel.hidden = i !== index;

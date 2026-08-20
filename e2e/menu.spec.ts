@@ -235,3 +235,34 @@ test('the ♪ toggle flips sound on, persists it, and SETTINGS agrees', async ({
 
   expect(errors).toEqual([]);
 });
+
+/**
+ * HOW TO PLAY opens the TUTORIAL, not the menu (2026-08-20).
+ *
+ * MENU took the tab bar's first seat the same day it was built, which aimed
+ * the front door's only tutorial door at an atlas of zeroes and three
+ * navigation buttons — with the actual lesson one tap to the right, four days
+ * before the stranger test. The stranger test is the one v1.0 gate, so this
+ * is pinned rather than trusted.
+ */
+test('HOW TO PLAY opens on the tutorial, and the in-run ? opens on MENU', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  await page.locator('#front-door-help').click();
+  await expect(page.locator('#help-panel')).toBeVisible();
+  // The visible panel body is START's — the first lesson, not the atlas.
+  const shown = page.locator('.help-panel-body:not([hidden])');
+  await expect(shown).toContainText('WHAT YOU SEE');
+  await expect(shown).not.toContainText('YOUR WORLD ·');
+  await page.locator('#help-name').click();
+  await expect(page.locator('#help-panel')).toBeHidden();
+
+  // Mid-run the default stands: ? opens onto MENU, which is what it is for.
+  await page.locator('#front-door-begin').click();
+  await page.locator('#event-card-dismiss').click();
+  await page.locator('#help').click();
+  await expect(page.locator('.help-panel-body:not([hidden])')).toContainText('YOUR WORLD ·');
+
+  expect(errors).toEqual([]);
+});
