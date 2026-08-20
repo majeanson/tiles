@@ -37,6 +37,15 @@ jobs:
   deploy:
     needs: [ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    # One deploy at a time, in order, none skipped (2026-08-20): two pushes
+    # fourteen seconds apart deployed concurrently, the older build finished
+    # LAST, and the hardened verify caught the newer run's hashed assets
+    # answering as SPA fallback. Serialising the job removes the race;
+    # cancel-in-progress stays false because every deploy must still verify
+    # (a skipped middle deploy would leave its commit unproven).
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
