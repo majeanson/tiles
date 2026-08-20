@@ -22,9 +22,21 @@ skipped, storage-full triage sheds the diary before the world, an
 install nudge speaks iOS's manual path once ever, desktop gets a
 centred phone-width frame and rotated phones a real landscape rail, the
 share card PNG names tiles.marcportal.com, and the gallery is
-noindexed. 587 tests; e2e smoke green against the built bundle. Full
-account: LOG.md Session 32. **The two human blockers stand: Marc's
-RESET TEACHING pass, then the stranger test.**
+noindexed. Full account: LOG.md Session 32. The same day (Session 33):
+**the paper caught up and the harness learned to be a person** — the
+docs deep-clean (sound.md and waypoints.md open with their resolutions;
+DECISIONS.md is an answered ledger with only D4 the stranger test open;
+DESIGN.md carries "What a human has proven" and the bounded-body reading
+note; the parking lot holds its four homeless items; **Gate E stamped
+PASSED**, every M5 condition having quietly come true), five e2e menu
+specs (home door, first-contact card once-only, RESET ALL's full round
+trip, fame tabs, the ♪ wire), and three player-profile policies —
+timid / greedy / tourist beside chooser's veteran — with seven balance
+pins: timidity survivable, greed a legible lesson, wandering paid in
+distance, the veteran on top, run one real, the maxed ladder worth its
+relics, every perk stall-free. 594 tests; 7 e2e; `pnpm sim` 18 policies,
+0 stalled/capped. **The two human blockers stand: Marc's RESET TEACHING
+pass, then the stranger test.**
 
 Previous checkpoint: **2026-08-19** — the second debrief; the game learned to
 teach itself; the day then kept going: the balance batch, the daily, the
@@ -397,10 +409,13 @@ Current state (full evidence in `LOG.md`'s gate table): **A passed**
 (2026-08-15, a full run on the phone against prod) · **B retired**
 (2026-08-18 — its own fallback shipped; see the top checkpoint's successor
 question) · **C passed** (Session 1) · **D passed** (2026-08-18, on the arc
-evidence) · **E opened** (2026-08-15, torchlit chosen, the four colours
-renamed MOSS · EMBER · ASH · TIDE) · **F passed** (2026-08-15). Every gate
-that can close without a human has closed; the stranger test is what is
-left.
+evidence) · **E PASSED** (opened 2026-08-15 with torchlit chosen and the
+four colours renamed MOSS · EMBER · ASH · TIDE; stamped PASSED 2026-08-20
+— the losing directions deleted, the art slots baked and served, the name
+everywhere, the palette tests green, and Marc's own "nothing left to
+compare against"; full reasoning in `ROADMAP.md`) · **F passed**
+(2026-08-15). Every gate that can close without a human has closed; the
+stranger test is what is left.
 
 **Nothing visual is tested by this repository.** happy-dom has no 2D canvas,
 so no test here has ever rendered the board. Everything visual is verified

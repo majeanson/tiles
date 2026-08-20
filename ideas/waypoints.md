@@ -1,11 +1,31 @@
-# Waypoints — a new drop-point on your own world
+# Waypoints — SHIPPED as camps (2026-08-19), one earn still parked
 
 Marc's ask, 2026-08-19, mid-session: "we need a way to create, in a seeded
 map, a new droppoint for future runs — maybe a unique perk that on death
 lets you keep this new spawn (or keep the last)?"
 
-**Recorded, not built — because this exact ground holds a buried negative
-result.** Where-you-wake was prototyped and FAILED on 2026-08-18
+**Resolved and LIVE the same day** — this file said "recorded, not built"
+for a day after camps shipped; corrected 2026-08-20, the launch deep-clean:
+
+- **Marc answered the fork below with the anchor call: every camp
+  restarts the climb.** Score anchors to `homeOf(state)` — the run's own
+  wake hex — so deep camps are a frontier, never a multiplier farm. The
+  exploit the 2026-08-18 prototype found is dead by design, not by price.
+- **The earn shipped as a fifth shrine rung** (`camp` in `UNLOCKS`), not
+  as a perk: wake every shrine plus one more, and **BEGIN AT CAMP** on
+  the front door starts a fresh run at the world's farthest territory.
+  Detours never camp; a resumed run keeps its own wake.
+- **The perk-shaped earn below ("a camp where you fell") stays PARKED**
+  in `ROADMAP.md`'s lot — a second, run-earned way to place a camp,
+  worth revisiting only if BEGIN AT CAMP proves the appetite.
+
+Everything below is the record that got it there — the buried negative
+result, the origin audit that un-buried it, and the fork as it was put to
+Marc.
+
+---
+
+**The buried negative result.** Where-you-wake was prototyped and FAILED on 2026-08-18
 (`WORKPLAN.md` Stage 3 item 4, verdict in `LOG.md` and `STATUS.md`): a far
 spawn exploits spawn geometry for a free score advantage, because the
 engine's distance-based rules read an implicit ORIGIN, not the run's home —
@@ -53,9 +73,10 @@ was), or stay anchored to the world origin (deep camps farm deep
 multipliers — the exploit becomes the feature, and the economy needs a
 price that makes it fair)? That is a Marc fork, and the interesting one.
 
-## The shape, if it ships
+## The perk-shaped earn — the one piece that stayed parked
 
-A candidate consistent with everything else: **a waypoint is EARNED where
+What shipped instead is the shrine rung above; this candidate remains a
+second, run-earned door to the same ground: **a waypoint is EARNED where
 you fell** — a perk (found, never bought — pool of five becomes six) or a
 deep-shrine unlock whose grant is "on death, this run's farthest claimed
 territory becomes a camp; NEW RUN offers HOME or CAMP". Territories are
@@ -64,9 +85,8 @@ machinery — `WorldMemory` gains one key. One camp at a time, replaced on
 purpose, never accumulated — the one-perk-slot philosophy applied to
 geography.
 
-**No longer parked behind anything but Marc's fork.** The audit is done and
-pinned; `wakeAt` grows, prices and scores honestly from any hex. What
-remains is the design call above (does a camp restart the climb — which is
-what the engine now does naturally — or should crossings-of-depth pay a
-priced multiplier?) and then the earn: who grants the camp, and what NEW
-RUN offers. One session, mostly shell work, whenever Marc calls it.
+**The fork, as it stood when Marc answered it** (he took the first horn —
+the anchor call at the top of this file): does a camp restart the climb —
+which is what the engine now does naturally — or should crossings-of-depth
+pay a priced multiplier? The session that followed was exactly the "one
+session, mostly shell work" this paragraph predicted.

@@ -1,199 +1,120 @@
-# Decisions waiting for you
+# Decisions waiting for you — now an answered ledger
 
-Written 2026-08-15. Everything here is a call I either made on your behalf or
-deliberately left open. Each one lists the options and my recommendation, so
-you can answer in a word — "D3: b" is a complete reply, and I will do the
-rest. Grouped by what has to happen first.
-
-**Nothing here is urgent except group A**, which is blocked on one play
-session (`PLAYTEST.md`).
+Written 2026-08-15 as an open question list; by launch week every item but
+one had been answered, and the file had not been told. Corrected wholesale
+2026-08-20 (the launch deep-clean): each entry keeps its question and now
+states its answer, with the date and where the evidence lives. **D4 — the
+stranger test — is the one still waiting, and it is the v1.0 gate.**
 
 ---
 
-## A. Blocked on your next play
+## A. Was blocked on play — play happened (two debriefs, 2026-08-15 and 2026-08-19)
 
-### D1 — Gate B's verdict
+### D1 — Gate B's verdict — RESOLVED: the gate is RETIRED (2026-08-18)
 
-Read the tally line on the end screen after two runs.
+It failed twice in human hands (>70% tiles both times, for opposite
+reasons), and its own written fallback — one automatic payout — shipped
+2026-08-16 as `singlePayout`. The successor question ("is
+pop-vs-burn-vs-wait a real timing decision?") is HALF-ANSWERED
+(2026-08-19: luck spent in play, TITHE taken deliberately — the
+advantages ARE bought); whether it reads as a real TIMING decision is
+still Marc's to feel. `LOG.md` 2026-08-18, `FOLLOWUP.md` §1.
 
-- **a.** Neither side over ~70% → the gate passes, I write it into `LOG.md`
-  with your number as the evidence, and Gate B closes for good.
-- **b.** Still 80%+ one way → the gate's own fallback: cut the payout to ONE
-  automatic choice and delete the other button. Painful but honest.
-- **c.** Close but not clean (70–80%) → one more tuning pass on the clock and
-  the cache density, then re-measure.
+### D2 — The boring stretch — ANSWERED (a): gone (2026-08-19)
 
-_Recommendation: whatever the number says. This is the one decision I refuse
-to pre-judge._
+The second debrief's two runs (11k and 4k) were long and fun, the longer
+one BECAUSE of the tile caches. The 2026-08-18 rebalance plus
+destinations, bounties and deep water were the fix. `LOG.md` Session 26.
 
-### D2 — The boring stretch
+### D3 — Run 2 vs run 1 — ANSWERED (a): P4a stands (2026-08-19)
 
-- **a.** Gone — bounties fixed it.
-- **b.** Still there → next build adds a mid-run escalation (the plane gets
-  harder or richer past a threshold) rather than more content.
-- **c.** Worse — too much is happening now.
+The remembered world made runs richer, not duller — caches confirmed as
+lifelines in human hands, territories worth holding. Nobody has asked to
+unwind the machinery. `LOG.md` Session 26.
 
-_Recommendation: none. This is a report, not a choice._
+### D4 — The stranger test — **OPEN. The last blocker.**
 
-### D3 — Run 2 vs run 1 (P4a's question)
-
-- **a.** Better — knowing the map makes the second run richer. P4a stands.
-- **b.** A commute — the world remembering makes it duller. Then fog memory
-  becomes optional, or worlds get retired after N runs.
-
-_Recommendation: (a) if it is close, because the alternative is a lot of
-machinery to unwind. But (b) honestly if it is dull._
-
-### D4 — The stranger test
-
-Someone who is not you, on their own phone, unaided.
-
-- **a.** They finished and started another → **I tag v1.0.**
-- **b.** They bounced → tell me where, and that becomes the next milestone.
-- **c.** Skip it; tag v1.0 anyway on your own judgement.
-
-_Recommendation: (a) or (b). It is the last item on the roadmap's definition
-of done, and it is the only one no amount of code can produce._
+Someone who is not Marc, on their own phone, unaided: do they finish a
+run and start another? (a) tags v1.0; (b) names the next milestone.
+Marc's own RESET TEACHING pass is the rehearsal (`FOLLOWUP.md` §1).
 
 ---
 
-## B. Identity — mine to propose, yours to veto
+## B. Identity — all three ANSWERED by keeping
 
-### D5 — The name
+### D5 — The name — (a) ASHWAKE (2026-08-15, standing since)
 
-- **a.** Keep **ASHWAKE**.
-- **b.** Something else (tell me the word; it is one constant in
-  `src/meta/identity.ts`).
-- **c.** Go back to "tiles".
+One constant in `src/meta/identity.ts` if ever overruled.
 
-_Recommendation: (a). The wake is the spent ground you leave, ash is what it
-is made of, and the rules named the title rather than the other way round._
+### D6 — The art direction — (a) torchlit, then (d) too (2026-08-15/19)
 
-### D6 — The art direction
+Torchlit chosen at Gate E; the real-art half happened 2026-08-19 — eight
+terrain/fx slots baked by `scripts/terrain.ts`, and cold-survey and
+rot-bloom DELETED with a written goodbye (WORKPLAN Stage 1). There is
+nothing left to compare against; reversal is still one line.
 
-- **a.** Keep **torchlit** — dark, gold, one torch, endless because the dark
-  is.
-- **b.** **cold-survey** — forensic daylight, muted, beautiful.
-- **c.** **rot-bloom** — diseased greens, creeping wrongness.
-- **d.** Keep torchlit but commission real art for its slots (every slot is
-  declared and empty on purpose).
+### D7 — The colour names — (a) MOSS · EMBER · ASH · TIDE (2026-08-15)
 
-_Recommendation: (a), and (d) eventually. Compare on the phone first:
-`?theme=cold-survey`, `?theme=rot-bloom`, `?theme=torchlit`._
-
-### D7 — The colour names
-
-- **a.** Keep **MOSS · EMBER · ASH · TIDE** — each names its power.
-- **b.** Back to torchlit's originals (CRYPT / CEMETERY / BURIAL GROUND /
-  CATACOMB).
-- **c.** Plain colours (GREEN / YELLOW / RED / BLUE).
-
-_Recommendation: (a). The originals are four graveyard synonyms; plain
-colours teach nothing._
+Each names its power; taught at first placement since the teaching pack.
 
 ---
 
-## C. Economy — cosmetic to structural
+## C. Economy — all three ANSWERED
 
-### D8 — The points scale
+### D8 — The points scale — (a) keep it (RULED 2026-08-20)
 
-A good run scores tens of thousands.
+Big numbers stay. Still one constant to divide — but the reversal window
+closes the day strangers post daily scores, so this graduated from
+"one-line reversible" to "decided" at launch. `FOLLOWUP.md` §4.
 
-- **a.** Leave it — big numbers are fine in a scoring game.
-- **b.** Divide by 10 (a good run ≈ 3,000).
-- **c.** Divide by 100 (a good run ≈ 300).
+### D9 — Run length — SUPERSEDED by the rebalance (2026-08-18)
 
-_Recommendation: (b) if the numbers feel meaningless on screen, (a)
-otherwise. One constant either way._
+The fixed 260-placement clock this question priced no longer exists: the
+endless economy's cost curve (lean start, STEADY PACE buying the gentler
+curve back) is the run-length dial now, and the debrief called its
+lengths fun. A player-picked length was never built — the game chose.
 
-### D9 — Run length
+### D10 — Difficulty — ANSWERED (a): right (2026-08-19)
 
-Currently 260 placements, about 15 minutes.
-
-- **a.** Right.
-- **b.** Shorter (200 ≈ 11 min) — tighter, more runs per sitting.
-- **c.** Longer (320 ≈ 19 min).
-- **d.** Make it a setting the player picks.
-
-_Recommendation: (a) until you have played two full runs; (d) is tempting and
-also the way a game avoids choosing._
-
-### D10 — Difficulty
-
-- **a.** Right.
-- **b.** Too easy — I tighten the cache density or the cost knee.
-- **c.** Too punishing.
-
-_Recommendation: none; this needs your hands._
+The rebalance verdict was positive; the lean start did not read as
+punishing. Do not retune a working economy days before launch.
 
 ---
 
-## D. Scope — what the game is, and is not
+## D. Scope — all four ANSWERED
 
-### D11 — The bounded game
+### D11 — The bounded game — (a) DELETED (2026-08-16)
 
-The original bounded-maps game still exists behind `?ff=-world.endless`, with
-its own passing tests, and no route to it from the UI.
+One economy for everybody; a shared seed opens the sender's game.
 
-- **a.** Delete it. One world, one game, less to maintain and explain.
-- **b.** Keep it as a hidden mode.
-- **c.** Give it a real entry in SETTINGS as a second way to play.
+### D12 — Sound — (b), built (2026-08-19), shipped OFF with a door (2026-08-20)
 
-_Recommendation: (a), after the stranger test — strangers only ever see the
-plane, so it is dead weight the moment 1.0 ships._
+The minimal pass exists exactly as recommended — the pop, the claim,
+running dry (`ideas/sound.md`, `src/ui/audio.ts`). The silent 1.0 stands
+as the default; the ♪ board-chrome toggle is the way in.
 
-### D12 — Sound
+### D13 — A leaderboard — (a) for now, with the door left open
 
-You chose a silent 1.0.
+No backend at 1.0. The timeline's storage (2026-08-20) was deliberately
+shaped as self-describing dated events a future backend could ingest
+unchanged — (b), per-seed, remains the interesting successor.
 
-- **a.** Stay silent.
-- **b.** Minimal pass: the pop, the claim, the clock running out.
-- **c.** Full pass designed with the art direction.
+### D14 — Multiple / shareable worlds — (b) AND (c), both shipped (2026-08-19)
 
-_Recommendation: (b) as the first post-1.0 job. The pop is the game's one
-moment of release and it currently makes no noise._
-
-### D13 — A leaderboard
-
-- **a.** No — share links are enough.
-- **b.** Yes, per-seed ("beat my run on this world") — small backend, real
-  abuse questions.
-- **c.** Yes, global — bigger backend, bigger abuse questions.
-
-_Recommendation: (a) for now. (b) is the interesting one because the seed
-already makes runs comparable._
-
-### D14 — Multiple / shareable worlds
-
-- **a.** One world per device, as now.
-- **b.** Shareable world codes (`?world=N`) so a world can move between your
-  phone and desktop, or be raced.
-- **c.** Save slots for several worlds.
-
-_Recommendation: (b) eventually — it is cheap and it makes "my world" a thing
-you can hand to someone._
+Three world slots per device, and SETTLE THIS WORLD keeps a shared
+seed's geography as one of yours — `?seed=` links double as world codes.
 
 ---
 
-## E. Process — how we work from here
+## E. Process — answered by twenty sessions of practice
 
-### D15 — What the next session is
+### D15 — What the next session is — (a) then whatever Marc's prompts say
 
-- **a.** Whatever your play report says is broken.
-- **b.** Post-1.0 polish (sound, share art, the app-store question).
-- **c.** A new system entirely (say which).
-- **d.** Nothing — sit with it and play for a while.
+The standing rhythm: his play reports and option-set answers steer;
+`FOLLOWUP.md` carries what waits on him.
 
-_Recommendation: (a), then (d). The game has had sixteen sessions of building
-and about forty minutes of playing._
+### D16 — Autonomy — (a) for building, (c) for what the game IS
 
-### D16 — Autonomy
-
-- **a.** Keep going as in this run: long autonomous stretches, decisions
-  noted and made, follow-up at the end.
-- **b.** Smaller batches with a check-in per milestone.
-- **c.** Ask before anything structural.
-
-_Recommendation: (a) for building, (c) for anything that changes what the
-game IS — the clock and the cost knee in M1 were arguably (c) decisions that
-I made under (a)._
+Exactly as recommended, and how every session since has run: long
+autonomous stretches, with Marc's forks put to him as option sets
+(the memory of this preference is now explicit).

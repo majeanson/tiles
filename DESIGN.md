@@ -1,8 +1,18 @@
 # DESIGN.md
 
-The working design, as of the 2026-07-31 design pass. Parts of it are now
-**proven by the harness** and none of it is proven by a human playing — see
-"What the harness proved" at the bottom, and `LOG.md` for the gates.
+The working design, as of the 2026-07-31 design pass. This header said
+"none of it is proven by a human playing" for five days after that stopped
+being true — corrected 2026-08-20, the launch deep-clean: **the design IS
+human-proven now** — see "What a human has proven" at the bottom, after
+the harness sections, and `LOG.md` for the gates.
+
+**Reading note (2026-08-20):** the body below describes the BOUNDED-MAPS
+game this design was written for — maps, LEAVE, the map multiplier, rule
+7, the numbers table. That game was deleted on 2026-08-16 (one economy,
+for everybody); the endless plane the addenda trace is the shipped game,
+and `src/content/tuning.ts` is the only live numbers table. The body is
+kept as the record of where the rules came from, not as a description of
+what deploys.
 
 `ideas/v1-archive/` is the earlier "Hearthfall" design. Reference, not spec: it
 had two scoring channels that could not be priced against each other, and its
@@ -247,6 +257,33 @@ the time" now has a mechanism behind it rather than a hope.
 placements, `farm` to map 5 in 327. Gate C's third clause holds — though rush
 arrives with almost no score, so "comparable scores by different routes" does
 not yet.
+
+---
+
+## What a human has proven (2026-08-20, from the two debriefs)
+
+The harness sections above end "no human has played any of it." That went
+stale in stages and is corrected here, with the evidence in `LOG.md`
+(Session 26 and the 2026-08-15 debrief) and `FOLLOWUP.md`:
+
+- **Placing feels right** — Gate A's condition, met on a full phone run
+  against prod (2026-08-15).
+- **The run is FUN, and long because of its own systems** — two full runs
+  (11k and 4k points, 2026-08-19), "I had fun", the longer run longer
+  _because of the tile caches_ — Marc's own attribution. The harness's
+  claim that caches act as lifelines is now a human sentence.
+- **The rebalance verdict is positive** — the lean start did not read as
+  punishing; the far caches fund the push outward exactly as swept.
+- **The advantages ARE bought** — luck spent in play, TITHE taken
+  deliberately at a run's end (its question closed YES on first contact).
+  Whether pop-vs-burn-vs-wait reads as a _timing_ decision is the
+  half still open.
+- **Score and feel are two separate rewards, by ruling** (2026-08-19) — a
+  cache/shrine/find-rich run may feel better than its score says, and
+  that is the design, not a bug.
+- **Still unproven by any human**: the stranger test — the v1.0 tag's one
+  remaining gate — and sound's written question (does the ♪ change WHEN
+  players pop?).
 
 ---
 

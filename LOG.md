@@ -6,14 +6,14 @@ Established before any code, so that no work is done twice and no polish lands
 on an unproven design. **A gate is not passed until it is written down here as
 passed, with its evidence.**
 
-| Gate                         | Rule                                                                               | Passes when                                                                                                                    | State                                                                        |
-| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| **A — The minute is fun**    | No pops, no regions, no meta until placing a tile feels good                       | 20 consecutive placements with placeholder art feel good, on the phone                                                         | **PASSED (2026-08-15)**                                                      |
-| **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | **RETIRED (2026-08-18) — its own fallback shipped; successor question open** |
-| **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**                                                       |
-| **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | **PASSED (2026-08-15)**                                                      |
-| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | **OPENED (2026-08-15) — torchlit**                                           |
-| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | **PASSED (2026-08-15)**                                                      |
+| Gate                         | Rule                                                                               | Passes when                                                                                                                    | State                                                                                                                                                            |
+| ---------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A — The minute is fun**    | No pops, no regions, no meta until placing a tile feels good                       | 20 consecutive placements with placeholder art feel good, on the phone                                                         | **PASSED (2026-08-15)**                                                                                                                                          |
+| **B — The decision is real** | The pop payout must be a genuine choice                                            | Across 20 logged pops, no option is taken more than ~70% of the time. If it is: fix it, or cut it to a single automatic payout | **RETIRED (2026-08-18) — its own fallback shipped; successor question open**                                                                                     |
+| **C — The economy closes**   | No content authoring before the headless harness reports                           | No scripted policy runs forever; `random-legal` dies early; two different policies reach comparable depth by different routes  | **passed (session 1)**                                                                                                                                           |
+| **D — The run has an arc**   | A run must peak and then end legibly                                               | The end screen names the cause of death in one sentence, and the run's biggest number came near the end                        | **PASSED (2026-08-15)**                                                                                                                                          |
+| **E — Design freeze**        | No art direction until A–D pass                                                    | A–D signed off here                                                                                                            | **PASSED (2026-08-20; opened 2026-08-15 — torchlit; losing directions deleted, art slots baked, palette tests green; ROADMAP.md carries the stamp's reasoning)** |
+| **F — Content last**         | Biomes, specials, perks and unlock tables are cheap to write, expensive to balance | Gate C passed with placeholder content only                                                                                    | **PASSED (2026-08-15)**                                                                                                                                          |
 
 ## Sessions
 
@@ -4771,3 +4771,75 @@ first spread tap dismisses it, and placement still lands).
 **Waits on the phone:** the two §1 blockers are unchanged and unchanged
 in priority — Marc's RESET TEACHING pass (now including the new first
 card), then the stranger test.
+
+### Session 33 — The paper catches up, and the harness learns to be a person
+
+**Question:** the docs promised things the code had outgrown, and the sim
+only ever played strategies — what breaks when the paper is held to the
+code, and when the policies are made to play like PEOPLE instead?
+
+**Done.**
+
+1. **The docs deep-clean.** `ideas/sound.md` ("nothing here is built" — a
+   day stale) and `ideas/waypoints.md` ("recorded, not built" — camps went
+   LIVE the same day it was written) both open with their resolutions now,
+   scouts kept underneath. `DECISIONS.md` became an answered ledger: all
+   sixteen 2026-08-15 questions stamped with their answers and dates —
+   only **D4, the stranger test,** remains open, stated as the v1.0 gate
+   it is. `DESIGN.md`'s header stopped claiming no human has played (five
+   days stale across two debriefs), grew a reading note marking the
+   bounded-game body as history, and a **"What a human has proven"**
+   section — which closes ROADMAP checklist item 4. `ROADMAP.md`'s
+   parking lot corrected two stale bullets (sound, multiple worlds — both
+   left the lot by shipping) and gained the four recorded-but-homeless
+   items: the waypoint-perk earn, world mood (parked post-playtest),
+   ground-feeds-draft (offered, not chosen), and where-you-wake's
+   negative result as a record. **Gate E stamped PASSED** (LOG's own
+   table, STATUS, ROADMAP): every condition in M5's "Done means" was
+   quietly true — torchlit default by test, losers deleted, slots baked
+   and served, name everywhere, palette tests green — and Marc's own
+   "nothing left to compare against" (2026-08-19) is the human half.
+   The gate ledger now reads: every gate closed except the stranger test.
+2. **e2e/menu.spec.ts** — five real-browser specs over the surfaces
+   Session 32 reshaped and smoke never walks: the home door as menu
+   (mode line, daily badge, three world rows, no wipe on a virgin
+   device), the first-contact card firing once and never twice, RESET
+   ALL's arm→wipe→virgin-again round trip, the hall of fame's three tabs
+   with the clean-start line and TOTALS ledger, and the ♪ toggle
+   flipping/persisting with SETTINGS agreeing. One real flake found and
+   fixed in the writing: no fixed tap spread is safe on a random home
+   world (a beaconless roll zooms the fit until every tap lands inside
+   the seed tile) — the RESET spec spirals outward and stops when the
+   TILES stat pays a cost, the one signal a tile actually landed.
+3. **Player profiles in the harness** (Marc's ask: "test for balance and
+   different profiles of players"): three PEOPLE joined the strategy
+   probes in `policy.ts` — `timid` (Marc's own Gate B experience
+   scripted: packs tight, pops every 3-pocket, hoards tiles), `greedy`
+   (pops everything as points instantly, banks nothing), `tourist`
+   (walks outward every turn; the run IS the distance) — with `chooser`
+   standing as the fourth, the veteran. All registered in POLICIES, so
+   `pnpm sim` prints them and gate C's termination pin covers them.
+4. **`profiles.test.ts`** — seven pins in two suites. Profiles: timidity
+   is survivable (97 median placements over 31 harvests at 200 seeds — a
+   real expedition), greed fails faster than packing but LEGIBLY (78 vs
+   114, tilesShare exactly 0, and it still scores), the wanderer is paid
+   in distance not points (reach 22 vs the nester's 10 — score-vs-feel
+   as a pin), and the veteran out-scores every caricature (1402 against
+   1034/880/582). Ladder: run one is a real game bare (the lean start is
+   lean, not cruel), the maxed shop beats it on points, reach AND length
+   (the roguelite is not a lie), and every perk worn alone over real
+   seeds neither stalls nor caps a run.
+
+**A finding, recorded not fixed:** caution buys length but not an epoch —
+timid outlives greedy by only ~25%, because the caches keep even the
+greedy line breathing. Deliberately pinned loosely (the margins that
+matter are greed-vs-packing and veteran-vs-naive); nothing retunes days
+before launch on a number nobody has felt.
+
+**Verified:** 594 tests (+7 profiles, all deterministic — the harness
+seeds are fixed), typecheck/lint/format clean, production build green,
+all 7 e2e specs green; the RESET spec ran 25+ consecutive times clean
+after the spiral fix. `pnpm sim` — 200 seeds, 18 policies — 0 stalled,
+0 capped, existing rows unchanged.
+
+**Waits on the phone:** unchanged — RESET TEACHING, then the stranger.

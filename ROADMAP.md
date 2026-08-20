@@ -141,12 +141,22 @@ soft numbers in this file; the checkboxes are not.
 M1–M6 are built, verified and deployed. What the checklist actually says now:
 
 - [x] **All six gates** — A passed (S10), C passed (S1), D passed (S11),
-      F passed (S14), E opened (S15). **B is RETIRED (2026-08-18, Marc's
-      call)**: it failed twice in human hands for opposite reasons, and
-      `singlePayout` — the gate's own prescribed fallback, "cut it to a
-      single automatic payout" — shipped. A gate cannot stay open on a fork
-      that no longer exists. Its successor question is open and human-owned:
-      **is pop-vs-burn-vs-wait a real timing decision?** (LOG, 2026-08-18.)
+      F passed (S14). **E: PASSED (stamped 2026-08-20, the launch
+      deep-clean)** — it read "opened" since S15 while every condition in
+      M5's own "Done means" quietly came true: torchlit is the default
+      (asserted by test), the losing directions are DELETED with a written
+      goodbye (2026-08-19), the direction's art slots are baked and served
+      (`scripts/terrain.ts`, verified live by `verify-deploy`), the name is
+      everywhere the game says its own name, and greyscale/wall-clearance
+      tests are green under the final palette. Marc's 2026-08-19
+      correction in `FOLLOWUP.md` §4 — "there is nothing left to compare
+      against" — is the human half of the evidence. **B is RETIRED
+      (2026-08-18, Marc's call)**: it failed twice in human hands for
+      opposite reasons, and `singlePayout` — the gate's own prescribed
+      fallback, "cut it to a single automatic payout" — shipped. A gate
+      cannot stay open on a fork that no longer exists. Its successor
+      question is open and human-owned: **is pop-vs-burn-vs-wait a real
+      timing decision?** (LOG, 2026-08-18.)
 - [x] **Zero unwired feature flags.** `pop.treasure` and `debug.overlay` were
       wired in M3; the registry's `wired` field and its test remain for the
       next flag declared before it is built.
@@ -159,8 +169,13 @@ M1–M6 are built, verified and deployed. What the checklist actually says now:
       only the nose), Stonewalker/Wallbreaker/Open Hand joined
       Rootbound/Second Wind in the findable pool, Tier 1 is parked whole in
       the lot below, and Tidecaller is killed in writing.
-- [ ] **`DESIGN.md` claims human-verified.** Gate A is; the rest is
-      harness-verified and honest about it.
+- [x] **`DESIGN.md` claims human-verified** — closed 2026-08-20: the file
+      grew "What a human has proven" (two debriefs: placing feels right,
+      the run is fun and long because of the caches, the rebalance
+      verdict, TITHE taken, score-vs-feel ruled) and a reading note
+      marking the bounded-game body as history, not description. The two
+      claims still humanly unproven are named there and are exactly the
+      open items below: the stranger test, and sound's written question.
 - [x] **A name, an icon, a direction, and it installs offline.** Ashwake,
       torchlit, an inline mark, a service worker whose cache name is the
       build.
@@ -182,15 +197,35 @@ them would be the first cut corner in twenty sessions.
   harness proof their exploits stay closed). Revisit once found-in-world
   perks have proven the acquisition system.
 
-- **Sound.** Marc chose a silent 1.0; the pop, the claim and the clock
-  running out are the three moments that most want a noise.
+- **Sound — LEFT THE LOT (built 2026-08-19).** All three moments shipped
+  behind `ui.sound`, voiced per theme; the 2026-08-20 ruling keeps the
+  silent default with the ♪ board-chrome toggle as the door. What remains
+  parked is only its written question (does sound change WHEN players
+  pop?) — `ideas/sound.md`.
 - **A leaderboard.** Needs a backend, score validation and an abuse model —
-  all deliberately out of a no-backend 1.0.
-- **Shareable and multiple worlds.** `?world=` codes and save slots, both
-  deferred in the P4 decisions.
+  all deliberately out of a no-backend 1.0. The timeline's storage
+  (2026-08-20) is already shaped as events a backend could ingest.
+- **Shareable and multiple worlds — LEFT THE LOT (built 2026-08-19).**
+  Three world slots and SETTLE THIS WORLD; a `?seed=` link doubles as a
+  world code. (This bullet said "both deferred" a day after both shipped.)
 - **Store wrappers.** Only if the web release finds players who want them.
-- **The points scale.** Good runs score tens of thousands; dividing the
-  points formula by a constant is a one-line change nobody has asked for yet.
+- **The points scale — RULED 2026-08-20, kept as is.** Still one constant
+  to divide, but the window closes when strangers post daily scores;
+  see `DECISIONS.md` D8.
+- **The waypoint-perk earn** (`ideas/waypoints.md`): camps shipped as a
+  shrine rung; the perk-shaped second earn ("a camp where you fell")
+  stays parked until BEGIN AT CAMP proves the appetite.
+- **World mood** (a per-run tilt): PARKED explicitly post-playtest (LOG,
+  2026-08-18) — no run-to-run variable before the fixed economy has been
+  played by strangers.
+- **Ground-feeds-draft** (native ground biasing the draw toward its own
+  colour): offered 2026-08-18 and NOT chosen — Marc kept the draft blind.
+  Written down so nobody builds it on a hunch it was implicitly approved.
+- **Where-you-wake's negative result** (2026-08-18, harness-only): a far
+  spawn exploited origin-anchored scoring. Not a plan — a RECORD, kept
+  because the origin audit that fixed it (2026-08-19) is what made camps
+  safe to ship; re-run `wake.test.ts` before any rule reads distance from
+  a bare origin again.
 - **Storage compaction.** Revealed ground is stored as keys; a per-block
   bitmap is written down in `ideas/persistent-world.md` for the day an atlas
   reports a world past ~1MB.

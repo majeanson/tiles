@@ -531,6 +531,77 @@ export const blind: Policy = {
   },
 };
 
+/* ------------------------------------------------------- player profiles
+ *
+ * Launch week (2026-08-20, Marc's ask: "test for balance and different
+ * profiles of players"): the policies above are STRATEGY probes — each
+ * isolates one dial. These three are PEOPLE — the hands most likely to
+ * hold a stranger's first link, each a caricature legible in one
+ * sentence. `chooser` above already plays the fourth profile, the
+ * veteran who prices everything. Their pins live in `profiles.test.ts`:
+ * the economy must give each kind of hands a real run and a legible
+ * failure, not just reward the tuned lines.
+ */
+
+/**
+ * The cautious first-timer: Marc's own Gate B experience, scripted —
+ * "points feel worthless early and never safe". Packs tight, pops any
+ * little pocket the moment it exists, and hoards tiles unless absurdly
+ * flush. Should survive a LONG time; that timidity is survivable is what
+ * makes the first run teach instead of punish.
+ */
+export const timid: Policy = {
+  name: 'timid',
+  note: 'Packs tight, pops every 3-pocket at once, and takes tiles unless absurdly flush.',
+  decide(state, stream) {
+    if (biggestHarvestSize(state) >= 3) {
+      return [smallestHarvest(state, cashChoice(state, 25)) ?? [], stream];
+    }
+    const place = bestPlacement(state);
+    if (place !== null) return [place, stream];
+    return [biggestHarvest(state, cashChoice(state, 25)) ?? [], stream];
+  },
+};
+
+/**
+ * The greedy child: every pocket popped as points the instant it ripens,
+ * never a tile banked. Must die fast — greed is the lesson run one
+ * teaches — but must SCORE on the way down: a zero would mean the
+ * failure is a wall instead of a lesson.
+ */
+export const greedy: Policy = {
+  name: 'greedy',
+  note: 'Pops every pocket as points the moment it ripens, and never banks a tile.',
+  decide(state, stream) {
+    const cash = biggestHarvest(state, 'points');
+    if (cash !== null) return [cash, stream];
+    const place = bestPlacement(state);
+    if (place !== null) return [place, stream];
+    return [[], stream];
+  },
+};
+
+/**
+ * The wanderer: out is the only direction, pockets exist to fund the next
+ * step, the score is the horizon. Should out-REACH the nester by a
+ * distance — walking must buy what it costs — while scoring little,
+ * which is the score-vs-feel ruling (2026-08-19) stated as a policy.
+ */
+export const tourist: Policy = {
+  name: 'tourist',
+  note: 'Walks outward every turn and pops as tiles only to keep walking.',
+  decide(state, stream) {
+    const cost = costOf(state.placements, state.tuning);
+    if (state.tiles < cost * 4) {
+      const cash = biggestHarvest(state, 'tiles');
+      if (cash !== null) return [cash, stream];
+    }
+    const place = farthestPlacement(state);
+    if (place !== null) return [place, stream];
+    return [biggestHarvest(state, cashChoice(state, 4)) ?? [], stream];
+  },
+};
+
 export const POLICIES: readonly Policy[] = [
   randomLegal,
   blind,
@@ -547,6 +618,9 @@ export const POLICIES: readonly Policy[] = [
   chooser,
   survivor,
   spender,
+  timid,
+  greedy,
+  tourist,
 ];
 
 export const policyByName = (name: string): Policy | undefined =>

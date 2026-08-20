@@ -1,9 +1,26 @@
-# Sound — the post-1.0 pass, scouted early
+# Sound — BUILT (2026-08-19), exactly as scouted
 
-Marc chose a **silent 1.0** (2026-08-15) and confirmed the scout on
-2026-08-18: decide WHICH moments get a noise and HOW, so the pass costs a day
-when the silence lifts. This file is that decision's homework. Nothing here
-is built; nothing here is a commitment to build.
+**Resolved.** The scout below was built in one pass on 2026-08-19
+(`src/ui/audio.ts`, behind `ui.sound` in the registry) — all three
+moments, Web Audio synthesis, zero assets, every parameter in the THEME's
+`voice` (torchlit and the placeholder each have their own). This file
+said "nothing here is built" for a day after that stopped being true;
+corrected 2026-08-20, the launch deep-clean.
+
+**The launch ruling (Marc, 2026-08-20):** the silent 1.0 stands as the
+DEFAULT, and the ♪ button in the board chrome (beside FIT⇄HERE) is the
+easy way in — one tap mid-run, the same `ui.sound` flag SETTINGS'
+switch flips, a confirmation bell on enable. The flag's own registry
+note carries the decision.
+
+**Still open — the written question at the bottom**: does sound change
+WHEN players pop? Unanswerable until someone plays with the ♪ on; the
+harness cannot hear.
+
+---
+
+The scout as written (2026-08-15/18), kept because the build followed it
+line by line:
 
 ## The three moments (from the parking lot, unchanged)
 
