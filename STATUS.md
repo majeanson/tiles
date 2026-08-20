@@ -350,6 +350,20 @@ milestone: M1.**
   on PNG, cards on the procedural bake), the procedural bake as the floor,
   the flat swatch as the no-canvas fallback. Prompted by the first human
   feedback on the prototype: the hand read as "just click there".
+- **Native fields follow the board's own art too.** Marc, 2026-08-20: "the
+  background tiles of territories colors have not switched textures like
+  the others." Stage 3 gave TILES a baked PNG and a second procedural
+  `overlay`; `fieldPattern` only ever read a terrain's base `pattern`, so
+  territory ground kept the pre-Stage-3 look while everything standing on
+  it moved on. `fieldGround` (`theme/tokens.ts`) is now the one function
+  `PixiRenderer` and `/gallery` both call: with the slot's PNG loaded, a
+  field wears that same file ghosted over `theme.empty`'s fill at an alpha
+  `fieldDots` equalises per colour (its own contrast maths, reused rather
+  than a flat number); without, the procedural floor now carries the
+  terrain's overlay layer too, not just its axis pattern. The gallery's
+  FIELD row states which path it drew — "wearing terrain.green art" or
+  "procedural floor" — so the claim stays checkable by looking, which is
+  the other half of Marc's ask.
 
 ## The gates
 

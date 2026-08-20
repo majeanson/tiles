@@ -4499,3 +4499,94 @@ per-frame in a canvas no test here renders. The one cheap guard that
 would have caught it in code — treating any `scale.set(constant)` on a
 `setSize`-fitted sprite as a smell — is now written into the `Flash`
 type's own docstring, where the next animator will read it.
+
+**Addendum, 2026-08-20 — native fields catch up to Stage 3's art**
+(`95a1aa9`). Marc's next report from the same phone pass: "the background
+tiles of territories colors have not switched textures like the others.
+make sure it follows automatically and add it to the gallery so we know it
+follows too." True, and it traces to Stage 3 exactly the way the pop-scale
+seam above did — a real defect the fresh-eyes review's own checks could not
+have caught, because the review verified the art LOADS and that stage
+claims matched their code, not that every consumer of a theme's terrain
+data had been taught about the new fields Stage 3 added to it. Stage 3 gave
+board TILES a baked PNG per terrain slot plus a second procedural
+`overlay`; `fieldPattern` (`theme/tokens.ts`) — the function that decides
+what a native field's ground looks like — only ever read a terrain's base
+`pattern`. It saw neither the PNG nor the overlay, so territory ground kept
+the exact pre-Stage-3 look while the tiles standing on it moved on to
+richer art.
+
+The fix, one shared derivation rather than two places quietly agreeing by
+accident:
+
+1. **`fieldGround(theme, colour, hasArt)`** (`theme/tokens.ts`) is now the
+   ONE function that decides a field's look, called by both
+   `PixiRenderer#surfaceFor` and the gallery's new `fieldCard` — "follows
+   automatically" means there is exactly one place this decision is made,
+   so a PNG dropped in a slot later, or a token retuned, reaches the ground
+   with no other file touched. WITH the terrain slot's PNG loaded: the
+   ground is `theme.empty`'s flat fill with that PNG ghosted over it, the
+   same file a placed TILE draws at full strength, at a fraction of it.
+   WITHOUT: `fieldPattern` stays exactly what it was, now joined by a new
+   `fieldOverlayPattern` that thins the terrain's Stage-3 `overlay` the
+   same way the base pattern has always been thinned — at a deliberately
+   different, looser pitch (`FIELD_OVERLAY_WEIGHT` vs `FIELD_WEIGHT`) so
+   the two layers read as two frequencies rather than one grid drawn twice
+   in the same spot — so the procedural floor now follows the terrain's
+   full two-layer depth, not only its axis.
+2. **The ghost alpha is not one flat number for all four colours.** It
+   reuses `fieldDots`' own equalised alpha — the exact maths that already
+   keeps every colour's field-dot mark reading at the same strength against
+   a theme's own ground, built after torchlit's blue went invisible at a
+   flat 0.22. The ghost asks the identical question — how strongly must
+   this colour's mark show against ITS OWN ground to read like the other
+   three — so it gets the identical answer, written down at the call site
+   rather than re-derived.
+3. **The renderer bakes and caches the composite through the EXISTING
+   `#surfaces`/`bake.ts` pipeline**, not a parallel one. `bakeSurface`
+   gained an optional fourth `ghost: {image, alpha}` argument, drawn after
+   the pattern/overlay layers and before the `paintDepth` gloss every
+   surface gets, inside the same hex clip. `SurfaceTextures.get` gained the
+   same argument and a `ghostKey` half of its cache key (asset id + alpha)
+   — `theme.empty` is the identical `Surface` for all four colours, so
+   without `ghostKey` two colours ghosting it would share one cached
+   texture. `AssetBook` gained `.image()`: a 2D canvas cannot `drawImage` a
+   GPU-resident Pixi `Texture`, so it pulls the plain drawable
+   (`HTMLImageElement`/`HTMLCanvasElement`/`ImageBitmap`/`OffscreenCanvas`)
+   out of a loaded texture's own resource, guarded with `typeof` checks the
+   same way `bake.ts` already guards `DOMMatrix`, and falls back to the
+   plain baked ground rather than drawing nothing if that resolution ever
+   fails.
+4. **The gallery's FIELD row draws through the identical `fieldGround`
+   call and SAYS which path it took** — "wearing terrain.green art" or
+   "procedural floor" — the other half of Marc's ask ("add it to the
+   gallery so we know it follows too"). The art path is drawn the DOM way
+   (a plain `<img>` at the ghost's own alpha, stacked over the baked flat
+   canvas) rather than through `bake.ts`'s canvas-ghost overload, for the
+   same reason `ui.logo`/`ui.runEnd` are plain `<img>` tags on this page:
+   the gallery only ever has the MANIFEST, never a loaded image object to
+   hand a canvas.
+
+**Verified:** 569 tests (558 → 569, +11: `fieldOverlayPattern`'s two
+branches and `fieldGround`'s art/procedural/no-asset-slot branches in
+`tokens.test.ts`, `ghostKey`'s cache-key guards plus `bakeSurface` and
+`SurfaceTextures.get` still degrading to null with a ghost like every other
+bake in `surfaces.test.ts`), typecheck/lint/format clean, both Playwright
+smoke specs green, `pnpm sim` byte-identical by stash-and-rerun (nothing
+here touches `engine/` or `content/`, and no number in `src/content/`
+moved). Beyond the unit tests, a production build served locally and
+driven by Playwright confirmed the actual claim: placeholder's FIELD row
+reads "procedural floor" for all four colours (it has no terrain asset
+slots at all), torchlit's reads "wearing terrain.green/yellow/red/blue
+art" with the correct `/assets/torchlit/terrain.<colour>.png` src on each
+ghost image, and no console or page errors either theme.
+
+**Left for Marc's eyes, on the phone** — the same species the pop-scale
+addendum named, and true again here: this addendum verified the gallery's
+static cards and the derivation's unit tests, not the composited texture
+actually drawing on a live board through a loaded Pixi asset, which is the
+"picture, not wiring" gap no test in this repository closes. Whether the
+ghost alpha reads as a whisper or is still too quiet or too loud against a
+real territory in a real endless world; and whether the field's new second
+layer — the overlay, in the no-art procedural branch — reads as depth or
+as clutter next to the whisper `fieldPattern` was always meant to stay.
