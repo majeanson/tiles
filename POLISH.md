@@ -37,7 +37,13 @@ is week 2.
 
 These are ordered. The first three are the ones I would not tag without.
 
-### 1. HOW TO PLAY no longer opens the tutorial — a regression from today
+### 1. HOW TO PLAY no longer opens the tutorial — a regression from today ✅ FIXED
+
+**Fixed 2026-08-20 in the same commit as this file** (`a495bf5`): `openHelp`
+now names the tab it wants, the front door asks for `start`, the in-run `?`
+keeps MENU, and an e2e test pins both halves. Left written up in full because
+the failure mode — a tab bar whose first seat silently changes what a door
+opens onto — will recur the next time a tab is added.
 
 `src/ui/game.ts:1686-1695` puts the **MENU** tab first whenever `#help-menu`
 has children, and `paintSettings()` runs before the `Game` is constructed
@@ -51,9 +57,9 @@ I introduced this today (Session 36) fixing a different problem. It aims the
 only tutorial door on the front door at a screen of zeroes, four days before
 the stranger test.
 
-**Fix:** MENU first only when a run is in progress; from the front door's
-HOW TO PLAY, open START. Cheapest correct version: `openHelp` takes which tab
-to select, and the front door asks for START.
+**The general lesson, worth keeping:** the front door and the in-run panel are
+two different doors that happen to share a dialog. Anything added to that
+dialog has to be checked from both.
 
 ### 2. The crossing silently eats the run that reached it
 
