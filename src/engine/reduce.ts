@@ -573,14 +573,6 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   // does nothing. The UI only offers it when `treasure` is non-null.
   if (choice === 'treasure' && treasure === null) return state;
 
-  // The bounty is collected by the pop that SCORES the pocket — its multiplier
-  // is already inside `points`. Under the two-payout economy that meant
-  // pressing POINTS specifically, and taking the same pocket as tiles left the
-  // bounty standing; under the single payout every pop scores, so every pop on
-  // a qualifying pocket collects it. Gating on the button rather than on the
-  // scoring was what left bounties uncollectable when the fork was removed.
-  const collected = questPays && (t.singlePayout ? choice !== 'burn' : choice === 'points');
-
   // Popped tiles become stone: still surrounding, no longer matching. On a
   // bounded map that is the reason to leave; on the endless plane it is the
   // reason to keep moving outward — the wake behind you is spent ground.
@@ -612,6 +604,16 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   const pops = t.singlePayout ? choice !== 'treasure' && choice !== 'burn' : choice === 'tiles';
   const scores = t.singlePayout ? pops : choice === 'points';
   const scored = t.singlePayout ? Math.floor(points * t.pointsPerPop) : points;
+
+  // The bounty is collected by the pop that SCORES the pocket — its multiplier
+  // is already inside `points`, so a pop that banks no points must not consume
+  // it. `scores` is that question already answered, under either economy: it
+  // means POINTS under the old fork, and every non-treasure non-burn pop under
+  // the single payout. Spelling the rule out a second time is what broke it
+  // twice — first `choice === 'points'` left bounties uncollectable when the
+  // fork was removed, then `choice !== 'burn'` let a TREASURE pop clear the
+  // bounty and pay nothing for it (Day 2). One expression, one answer.
+  const collected = questPays && scores;
 
   // Luck arrives mostly as a FLAT amount per pop, so three small pockets beat
   // one big one at buying better draws while the big one beats them at tiles

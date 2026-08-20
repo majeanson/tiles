@@ -396,7 +396,10 @@ export function toBoardView(
       // colour steps back, so the known extent of one colour's ground
       // reads as a single shape through the fog.
       dimmed: spotlight !== null && (dest?.colour ?? nativeHere) !== spotlight,
-      lensed: false,
+      // The lens's positive half reaches memory too (Marc, Day 2: "the
+      // lit shape is subtle"): matching fog draws brighter and edged in
+      // its own colour, not merely un-dimmed.
+      lensed: spotlight !== null && (dest?.colour ?? nativeHere) === spotlight,
       worth: 0,
       home: false,
       legal: false,

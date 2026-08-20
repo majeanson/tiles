@@ -3,6 +3,7 @@ import { distance, key, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce, startingPerk } from '@engine/reduce';
 import {
   cachePaysAt,
+  distanceMultiplierAt,
   canPlaceAt,
   costOf,
   harvestMultiplier,
@@ -858,8 +859,24 @@ export class Game {
     const met = this.#metSet();
     if (met !== null && met.size === 0 && this.#state.placements === 0) {
       this.#markMet('place');
+      // Trimmed on Day 2's rehearsal verdict: the ripen-then-POP sentence
+      // was a third idea on a card that already carries two — the RIPE
+      // card owns that lesson, at the moment it is true.
       this.#showEventCard(
-        '⬢  THE EXPEDITION\nTap a card in your hand, then tap a glowing hex to place it. (Tap the selected card again to unselect it.) Tiles are the purse and the clock: when they run out, the run ends. Ripen tiles by surrounding them, then POP.',
+        '⬢  THE EXPEDITION\nTap a card in your hand, then tap a glowing hex to place it. (Tap the selected card again to unselect it.) Tiles are the purse and the clock: when they run out, the run ends.',
+      );
+      return;
+    }
+
+    // The fog lens's one-line invitation (Marc, Day 2: "hard to
+    // discover"): the first time a run OPENS onto remembered ground, say
+    // the gesture exists — once, ever, and only where there is fog worth
+    // tapping, which is exactly never a stranger's first minute.
+    if ((this.#hooks.memory?.length ?? 0) > 0 && met !== null && !met.has('lens')) {
+      this.#markMet('lens');
+      this.#showNote(
+        'The fog remembers. Tap remembered ground to light every known patch of its colour.',
+        true,
       );
     }
   }
@@ -904,6 +921,14 @@ export class Game {
 
     board.addEventListener('pointerdown', (event) => {
       if (!isBoardSurface(event.target)) return;
+      // A fresh gesture starts from a known state. `down` being empty means
+      // every finger of the last one is accounted for, so anything left in
+      // `moved`/`pinch` is residue — clearing it here costs nothing and is
+      // one more way the stuck-in-pinch state below cannot survive.
+      if (down.size === 0) {
+        moved = false;
+        pinch = 0;
+      }
       down.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (down.size === 2) pinch = spread();
       try {
@@ -965,6 +990,36 @@ export class Game {
     };
     board.addEventListener('pointerup', lift);
     board.addEventListener('pointercancel', lift);
+    // The stuck-in-pinch fix (Marc, Day 2: "sometimes our drag to move the map
+    // converts to a zoom and we cant get out of this state without leaving and
+    // coming back").
+    //
+    // Every branch above keys off `down.size`, and `down` only ever shrank on
+    // pointerup/pointercancel. Miss ONE of those — a finger whose lift the
+    // board never sees — and the map keeps a ghost finger forever: `down.size`
+    // stays 2, so every later one-finger drag takes the pinch branch and zooms
+    // instead of panning, with nothing in the session able to clear it. That
+    // is the full restart.
+    //
+    // `lostpointercapture` is the signal that cannot be missed: we capture
+    // every pointer we track, and the browser fires this when the capture
+    // ends for ANY reason — the implicit release at pointerup, a cancel, or
+    // the element going away.
+    //
+    // It PRUNES and never taps, and it is deferred a turn on purpose. The
+    // spec releases capture after dispatching pointerup, so normally there is
+    // nothing left to prune by the time this runs. Deferring means a browser
+    // that releases EARLY cannot cost a placement: the real lift still gets
+    // its pointer, and its tap, first. A gesture that is genuinely over loses
+    // its ghost a millisecond later, which no thumb can feel.
+    board.addEventListener('lostpointercapture', (event) => {
+      const id = event.pointerId;
+      setTimeout(() => {
+        if (!down.delete(id)) return;
+        if (down.size === 0) moved = false;
+        pinch = 0;
+      }, 0);
+    });
   }
 
   /**
@@ -1039,15 +1094,23 @@ export class Game {
       // reads as one shape through the fog. The same tap lets go.
       if (this.#state.cells[hex] === undefined && (this.#hooks.memory?.includes(hex) ?? false)) {
         const known = rememberedNativeAt(this.#state, hex);
-        if (known !== null) {
-          this.#spotlight = this.#spotlight === known ? null : known;
-          const ground = this.#theme.terrainNames[known];
+        // Letting go is GENEROUS now (Marc, Day 2: "letting go is
+        // unclear"): with the lens on, any fog tap that is not a switch
+        // to a different colour releases it — same colour, unknown
+        // ground, a wall, anything. Only a distinctly-coloured patch
+        // switches instead.
+        if (known !== null && known !== this.#spotlight) {
+          this.#spotlight = known;
           this.#showNote(
-            this.#spotlight === null
-              ? `${ground} ground, remembered. The lens is off.`
-              : `Remembered ${ground} ground — every known patch of it is lit. Tap it again to let go.`,
+            `Remembered ${this.#theme.terrainNames[known]} ground — every known patch of it is lit. Tap the fog again to let go.`,
             true,
           );
+          this.render();
+          return;
+        }
+        if (this.#spotlight !== null) {
+          this.#spotlight = null;
+          this.#showNote('The lens is off.', true);
           this.render();
           return;
         }
@@ -1150,6 +1213,21 @@ export class Game {
     const multiplier = harvestMultiplier(before, value.keys);
     const head = `POPPED ${value.count} — total worth ${worth}`;
 
+    // The bounty answers EVERY pop while it is live (Marc, Day 2: "when we
+    // pop, the ×3 applied or not — success or not — with points or +0"):
+    // collected says so with its number, missed says so with the recipe.
+    // Silent only while no ★ has set one — and on the two pops that score
+    // nothing, TREASURE and BURN, which forfeit the bounty and leave it
+    // standing rather than missing it. The multiplier is read from the
+    // STANDING bounty, never from tuning: the quest carries its own bonus,
+    // and it is the one the engine multiplies by.
+    const bounty =
+      before.quest === null || choice === 'treasure' || choice === 'burn'
+        ? ''
+        : value.questPays
+          ? `\n★ Bounty ×${before.quest.bonus} — COLLECTED.`
+          : `\n★ Bounty ×${before.quest.bonus} — missed (+0). Pop ${before.quest.need}+ tiles within ${before.quest.radius} of the ★.`;
+
     if (choice === 'tiles') {
       // The true gain, matching `reduce.ts`'s own arithmetic exactly (flat
       // per pop plus a little per tile, then rounded and capped) — the old
@@ -1170,7 +1248,14 @@ export class Game {
       // arithmetic on screen has to sum to the number on screen.
       const rings = Math.floor(value.count * t.popTilesPerRing * (multiplier - 1));
       const depth = rings > 0 ? `, +${rings} for the depth` : '';
-      return `${head}\n+${value.tiles} tiles: ${t.tilesPerPop} per tile, +1 more per ${t.worthPerExtraTile} worth${depth}.${luck}`;
+      // Under the single payout the pop SCORES too — say the number here
+      // rather than leaving it to the stat row (the bounty line below
+      // needs a points figure to be about).
+      const scored =
+        t.singlePayout && t.pointsPerPop > 0
+          ? `\n+${Math.floor(value.points * t.pointsPerPop)} pts.`
+          : '';
+      return `${head}\n+${value.tiles} tiles: ${t.tilesPerPop} per tile, +1 more per ${t.worthPerExtraTile} worth${depth}.${scored}${luck}${bounty}`;
     }
     if (choice === 'treasure') {
       return `${head}\nA ${String(value.treasure).toUpperCase()} tile goes to your stash — no tiles, no points.`;
@@ -1184,7 +1269,7 @@ export class Game {
     return (
       `${head}\n+${value.points} pts = worth ${worth} × pocket ${counted}${capped} × distance ${multiplier}` +
       (value.questPays ? ` × BOUNTY ${t.questBonus}` : '') +
-      (value.questPays ? '\n★ Bounty collected.' : '')
+      bounty
     );
   }
 
@@ -1256,9 +1341,13 @@ export class Game {
           }
           notes.push({
             rank: RANK.site,
+            // The NUMBER at the moment of touch (Marc, Day 2: "make sure
+            // we see the + points banked the moment we touch") — the same
+            // arithmetic the engine just paid: sitePays × the distance
+            // multiplier at this hex.
             text:
-              `★  SITE CLAIMED\nPoints banked — and this star has set a BOUNTY: ` +
-              `pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it as PTS for ×${t.questBonus}.`,
+              `★  SITE CLAIMED\n+${t.sitePays * distanceMultiplierAt(k, t, homeOf(after))} pts banked — and this star has set a BOUNTY: ` +
+              `pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it for ×${t.questBonus}.`,
           });
           break;
         case 'territory': {
@@ -2238,14 +2327,19 @@ export class Game {
       // now-vs-wait sentences only speak where their dials are live.
       if (!this.#met('pop')) {
         this.#markMet('pop');
+        // The now-vs-wait FORK moved to the RIPE card (Marc, Day 2: "the
+        // early vs pop explanation should come before our first pop
+        // success, the moment we discover about pop") — this card keeps
+        // the stone lesson plus one compact reinforcement, now that luck
+        // exists to name.
         const t = this.#state.tuning;
-        const nowVsWait =
+        const reinforce =
           t.luckPerPop > 0 && t.colourBiasDraws > 0
-            ? ' Pop EARLY and often for luck — it pays mostly per pop, not per size — and to steer your next draws toward the popped colour. Let a pocket GROW and it pays more than its pieces: more tiles, more score. Waiting too long can kill you broke with a fortune in the ground.'
-            : ' A pocket left to grow pays more than its pieces; a pocket popped early pays sooner — waiting too long can kill you broke with a fortune in the ground.';
+            ? ' Small-and-often buys LUCK and steers your draws; big-and-late buys tiles and score.'
+            : '';
         this.#showEventCard(
           '⬢  YOUR FIRST POP\nThe pocket turned to STONE — it still surrounds, but never matches, so popped ground grows poorer; the world stays rich farther out.' +
-            nowVsWait +
+            reinforce +
             `\n\n${popped}${goalLine}`,
         );
       } else {
@@ -2433,27 +2527,36 @@ export class Game {
       return {
         tier: 'card',
         id: 'ripe',
-        text: '⬢  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to see what its pocket pays, then POP — or keep building around it: a pocket left to grow pays more than its pieces, a pocket popped early pays sooner.',
+        // The pop's timing FORK lives here, at discovery (Marc, Day 2:
+        // "the early vs pop explanation should come before our first pop
+        // success") — in plain words, since luck has not been met yet.
+        text: '⬢  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to price its pocket, then choose: POP now (pays sooner, and the plane sends more of what you pop) or keep growing it (a bigger pocket pays more than its pieces).',
       };
     }
 
-    if (!met.has('rare')) {
+    // Each rarity teaches ITSELF now (Marc's rehearsal find, 2026-08-20:
+    // "when getting both unique and magic in the same hand only the magic
+    // help popped" — one shared id burned the card for both). A hand
+    // holding both fires UNIQUE now and keeps MAGIC armed for the next
+    // quiet action; either alone fires at its own first appearance.
+    {
       const inHand = next.held === null ? next.draft : [...next.draft, next.held];
-      const rare =
-        inHand.find((tile) => tile.rarity === 'unique') ??
-        inHand.find((tile) => tile.rarity === 'magic');
-      if (rare !== undefined) {
+      if (!met.has('rareUnique') && inHand.some((tile) => tile.rarity === 'unique')) {
         // The once-a-run unique toast covers repeat runs; the device-wide
         // card covers the first ever. Both firing for one tile would say
         // the same thing twice.
-        if (rare.rarity === 'unique') this.#uniqueExplained = true;
+        this.#uniqueExplained = true;
+        return {
+          tier: 'card',
+          id: 'rareUnique',
+          text: '⬢  UNIQUE\nWild, and heavy: every match it is part of counts DOUBLE, for both sides. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.',
+        };
+      }
+      if (!met.has('rare') && inHand.some((tile) => tile.rarity === 'magic')) {
         return {
           tier: 'card',
           id: 'rare',
-          text:
-            rare.rarity === 'unique'
-              ? '⬢  UNIQUE\nWild, and heavy: every match it is part of counts DOUBLE, for both sides. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.'
-              : '⬢  MAGIC\nWild: it matches every neighbouring tile, whatever the colour, and they match it back. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.',
+          text: '⬢  MAGIC\nWild: it matches every neighbouring tile, whatever the colour, and they match it back. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.',
         };
       }
     }

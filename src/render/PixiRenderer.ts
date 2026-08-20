@@ -828,8 +828,14 @@ export class PixiRenderer implements Renderer {
       // Remembered ground is the faintest thing on the board on purpose: it
       // is a map, not a place you can act on, and it must never compete with
       // the run you are actually playing.
-      sprite.alpha =
-        surface.alpha * (cell.dimmed ? 0.25 : 1) * (cell.remembered ? this.#theme.fog.alpha : 1);
+      // A LENSED memory cell brightens past the fog (Marc, Day 2: "the lit
+      // shape is subtle") — the biome being studied rises toward live
+      // brightness while everything else in the fog steps back, so the
+      // known extent reads as one lit shape, not merely a less-dim one.
+      const fogAlpha = cell.lensed
+        ? Math.min(1, this.#theme.fog.alpha * 1.9)
+        : this.#theme.fog.alpha;
+      sprite.alpha = surface.alpha * (cell.dimmed ? 0.25 : 1) * (cell.remembered ? fogAlpha : 1);
       // The torch. Tint rather than alpha, because dropping alpha would show
       // the page through the board and turn distance into holes; tinting
       // toward the board's own dark reads as light falling away from you.
@@ -1048,6 +1054,20 @@ export class PixiRenderer implements Renderer {
 
   #strokeFor(cell: CellView, size: number): { width: number; colour: number } | null {
     const board = this.#theme.board;
+    // The lens outranks the MEMORY rules while it is held (Marc, Day 2:
+    // "the lit shape is subtle") — a matching fog cell wears its colour's
+    // own edge so the biome reads as one lit shape. Fog only, up here:
+    // live tiles keep ripe/targeted louder and take their lensed edge
+    // further down the ladder.
+    if (cell.lensed && cell.remembered) {
+      const own = cell.colour ?? cell.native;
+      if (own !== null) {
+        return {
+          width: Math.max(1.5, size * board.edgeWidth * 1.5),
+          colour: mix(this.#theme.terrain[own].fill, this.#theme.ink.ink, 0.45),
+        };
+      }
+    }
     // Memory gets no outline at all — an edge would read as a live cell —
     // EXCEPT the two anchors a next run is oriented by (Marc, 2026-08-20:
     // "we know where shrines are and where territories are — make them
@@ -1091,11 +1111,10 @@ export class PixiRenderer implements Renderer {
     // harvest decision — so it gets the loudest outline on the board.
     if (cell.ripe)
       return { width: Math.max(1.5, size * board.ripeEdgeWidth), colour: board.ripeEdge };
-    // The lens's positive half (Marc, 2026-08-20: "the selected tiles are
-    // highlighted with their respective color... distinct from the selected
-    // tiles were about to play"): a spotlit tile wears an edge in its own
-    // hue, lifted toward the ink so a dark fill still draws a visible line —
-    // never the gold that means "about to place".
+    // The lens's positive half on LIVE tiles (Marc: "highlighted with
+    // their respective color... distinct from the selected tiles were
+    // about to play") — below ripe/targeted so the harvest decision stays
+    // loudest; the fog half of the same rule sits at the ladder's top.
     if (cell.lensed) {
       const own = cell.colour ?? cell.native;
       if (own !== null) {
@@ -1243,13 +1262,24 @@ export class PixiRenderer implements Renderer {
     }
 
     // The ember tint: the pop's own flash colour, pulled toward the theme's
-    // accent — computed once for the whole harvest rather than per particle,
-    // since every ember in one pop shares it.
+    // accent — the fallback when a cell's colour is unknowable.
     const emberTint = mix(motion.popColour, this.#theme.ink.accent, 0.35);
 
     let index = 0;
     for (const cell of popped) {
       const { x, y } = place(cell, layout);
+
+      // Each tile bursts in ITS OWN colour (Marc, Day 2: "it could pop or
+      // have a little bit more arcade feel when popping with colors"):
+      // the popped tile's fill, lifted toward white so it reads as light,
+      // then a breath of the theme's flash so the cascade still belongs
+      // to the direction. Glow, embers and the reduced-motion hold all
+      // share it — a green pocket pops green, a tide pocket pops blue.
+      const source = wasRipe.get(cell.key);
+      const cellTint =
+        source?.colour != null
+          ? mix(mix(this.#theme.terrain[source.colour].fill, 0xffffff, 0.45), motion.popColour, 0.2)
+          : emberTint;
 
       // Reduced motion is not NO FEEDBACK — that was the bug: the early
       // return above used to skip everything, so a harvest left the board
@@ -1267,6 +1297,7 @@ export class PixiRenderer implements Renderer {
         // gone after a beat, just warmer where it overlaps the ground under
         // it. Feedback deepened, not feedback added.
         still.blendMode = 'add';
+        still.tint = cellTint;
         still.alpha = motion.popAlpha;
         this.#fx.addChild(still);
         this.#flashes.push({
@@ -1286,7 +1317,7 @@ export class PixiRenderer implements Renderer {
 
       const delayMs = index * motion.popStaggerMs;
 
-      this.#spawnEmbers(x, y, layout, delayMs, emberTint);
+      this.#spawnEmbers(x, y, layout, delayMs, cellTint);
 
       const glow = new Sprite(texture);
       glow.anchor.set(0.5);
@@ -1297,6 +1328,7 @@ export class PixiRenderer implements Renderer {
       // sprite laid over it, and a cascade's glows stack brighter where they
       // overlap instead of just re-covering the same alpha.
       glow.blendMode = 'add';
+      glow.tint = cellTint;
       glow.alpha = 0;
       this.#fx.addChild(glow);
 
@@ -1316,9 +1348,8 @@ export class PixiRenderer implements Renderer {
       // The tile itself leaps off its spot and falls away, leaving the stone
       // that is already drawn underneath. Same cached surface texture the board
       // uses, so the thing that jumps is exactly the thing that was there.
-      const popped = wasRipe.get(cell.key);
-      if (motion.popLift > 0 && popped !== undefined && popped.colour !== null) {
-        const surface = this.#theme.terrain[popped.colour];
+      if (motion.popLift > 0 && source !== undefined && source.colour !== null) {
+        const surface = this.#theme.terrain[source.colour];
         const tileTexture =
           this.#assets.get(surface.asset) ??
           this.#surfaces.get(surface, layout.size, layout.orientation);
@@ -1693,7 +1724,7 @@ export class PixiRenderer implements Renderer {
         // falling away, not as a ghost drifting up.
         flash.sprite.alpha = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
         flash.sprite.position.y = flash.baseY - flash.liftPx * 4 * t * (1 - t);
-        const swell = 1 + 0.12 * Math.sin(Math.PI * t);
+        const swell = 1 + 0.2 * Math.sin(Math.PI * t);
         flash.sprite.scale.set(flash.baseScaleX * swell, flash.baseScaleY * swell);
       }
       alive.push(flash);

@@ -5124,3 +5124,83 @@ gained §F: D17 (daily #1 = launch day), D18 (the stranger test alone
 gates the tag — ROADMAP's untagged paragraph reconciled to agree), D19
 (reborn pays no relics). The three docs that disagreed about the gate
 now say one thing.
+
+### Session 35 — Day two of launch week: the rehearsal's verdicts, and two bugs the phone found
+
+Marc played the rehearsal and reported as he went; this is that list, plus
+what verifying it turned up.
+
+1. **Dailies have no doors** ("in dailies, shrines have no meaning so they
+   should always be tile cache or points"): a world with no unlock ledger
+   has no use for a shrine, so `shrinesReborn` rewrites every one into a
+   cache or a site — inside `destinationAt`, from the same hash that placed
+   it, so the reveal, the beacons, the fog and the tap answers all agree
+   without a second rule anywhere. The daily flips the dial at the edge
+   (main.ts); home worlds keep their shrines, and a shared `?seed=` replay
+   keeps them too — a replay shows the sender's world as it was.
+2. **The lens is legible, and lets go** ("the lit shape is subtle", "letting
+   go is unclear"): a lensed memory cell brightens past the fog (fog alpha
+   ×1.9) and wears its colour's own edge at the TOP of the edge ladder, so
+   the known extent reads as one lit shape; and with the lens on, any fog
+   tap that is not a switch to a different colour releases it. Its existence
+   is taught once, on the first run that OPENS onto remembered ground —
+   the gesture was undiscoverable.
+3. **The pop is arcade** ("it could pop or have a little bit more arcade feel
+   when popping with colors"): each tile bursts in ITS OWN colour — the
+   popped fill lifted toward white, then a breath of the theme's flash —
+   shared by the glow, the embers and the reduced-motion hold, with the
+   swell lifted 0.12 → 0.2. A green pocket pops green.
+4. **EMBER is polka now** ("too much like ash texture; polka dot it
+   instead"): near-regular large bright rounds, barely jittered — ORDER is
+   the separation from ash's scattered pits, alongside size and polarity.
+5. **The teaching, retimed**: the now-vs-wait fork moved to the RIPE card,
+   where the choice is first true ("the early vs pop explanation should come
+   before our first pop success"); the arrival card dropped its third idea;
+   and UNIQUE got its own id, because one shared `rare` card meant a hand
+   holding both rarities taught only whichever landed first.
+6. **The numbers show up**: every pop names the bounty while one stands —
+   collected with its multiplier, missed with the recipe ("the ×3 applied or
+   not — success or not — with points or +0") — a single-payout pop prints
+   the points it just scored, and a claimed site states the actual figure
+   banked (`sitePays` × the distance multiplier at that hex) instead of
+   "points banked".
+
+**The bug under (6).** Writing the bounty line meant reading how the engine
+collects one, and it did not agree with itself: `collected` was spelled
+`choice !== 'burn'` while `scores` — the same question, asked six lines
+later — also excluded TREASURE. So a qualifying pocket taken as treasure
+CLEARED the bounty and paid nothing for it. Both now read one expression,
+`questPays && scores`, which is correct under either economy; spelling the
+rule out twice is what broke it twice (first `choice === 'points'` left
+bounties uncollectable when the payout fork was removed, then this).
+
+7. **A daily can be put down** (Marc, mid-session: "make sure we can resume a
+   daily too — right now it restarts if I'm mid-daily and restart the app").
+   Its own key, never a slot's — the home run must survive a detour, which
+   is the 2026-08-19 guard that made the daily safe at all — with the date
+   stored beside the board, so yesterday's abandoned expedition can never
+   open on today's shared world. Saving it was only half: an installed PWA
+   relaunches at its START URL with no `?daily=`, so the home door now
+   offers the board back (`RESUME DAILY … — PLACEMENT n`), and the daily's
+   own door says RESUME instead of BEGIN. An untouched board is not offered
+   — backing out of the daily leaves the badge exactly as it was. The
+   finished daily leaves storage at `finish`, for the reason the home run
+   does: an ended run that stays saved is re-finished by every reload, which
+   on this ladder means another try confessed, forever.
+8. **The map cannot get stuck zooming** (Marc: "sometimes our drag to move
+   the map converts to a zoom and we cant get out of this state without
+   leaving and coming back"). Every branch of `#mountGestures` keys off
+   `down.size`, and `down` only ever shrank on pointerup/pointercancel —
+   miss one lift and the board keeps a ghost finger forever, so every later
+   one-finger drag takes the pinch branch, with nothing in the session able
+   to clear it. `lostpointercapture` is the signal that cannot be missed
+   (we capture every pointer we track); it prunes, never taps, and is
+   deferred a turn so a browser that releases capture early cannot cost a
+   placement. A fresh gesture also resets its own residue.
+
+**Verified:** 611 tests (+4: the daily-run codec and its date guard, the
+treasure/bounty forfeit, the reborn-shrine dial), 8 e2e (+1: a daily put
+down mid-board, reopened at the start URL with no `?daily=`, offered back
+and resumed as the same try), typecheck/lint/format clean, build green,
+`pnpm sim` unmoved — the harness collects no bounties in any policy, so the
+engine fix is invisible to it, which is itself the reason it needed a test.

@@ -182,19 +182,21 @@ function bladeField(seed: number, pitch: number, ink: Rgb, alpha: number): strin
   return parts.join('');
 }
 
-/** Warm glints in the grass — EMBER's primary since 2026-08-20 (Marc:
- *  "dotted for ember its clearer"); sized from the theme's own radius the
- *  way `ashField` is, so the two dot vocabularies stay one system. */
+/** EMBER's polka rounds (Day 2 — Marc: "too much like ash texture; polka
+ *  dot it instead"): a near-REGULAR grid of large bright dots, barely
+ *  jittered and barely varied — order is the separation from ash's
+ *  scattered pits, alongside size and polarity. Still sized from the
+ *  theme's own radius the way `ashField` is. */
 function glintField(seed: number, pitch: number, ink: Rgb, alpha: number, radius: number): string {
   const r = rng(seed);
   const parts: string[] = [];
   for (let gy = pitch / 2; gy < TH; gy += pitch) {
     for (let gx = pitch / 2; gx < TW; gx += pitch) {
-      const px = gx + r.range(-pitch * 0.4, pitch * 0.4);
-      const py = gy + r.range(-pitch * 0.4, pitch * 0.4);
-      const rad = radius * r.range(0.7, 1.3);
+      const px = gx + r.range(-pitch * 0.06, pitch * 0.06);
+      const py = gy + r.range(-pitch * 0.06, pitch * 0.06);
+      const rad = radius * r.range(0.94, 1.06);
       parts.push(
-        `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${rad.toFixed(1)}" fill="${rgba(ink, alpha * r.range(0.8, 1.15))}"/>`,
+        `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${rad.toFixed(1)}" fill="${rgba(ink, alpha * r.range(0.95, 1.05))}"/>`,
       );
     }
   }

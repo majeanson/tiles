@@ -112,3 +112,72 @@ test('the daily door opens its own world, plainly, with no errors', async ({ pag
 
   expect(errors).toEqual([]);
 });
+
+/**
+ * The daily, put down and picked up (Marc, Day 2: "make sure we can resume a
+ * daily too — right now it restarts if I'm mid-daily and restart the app").
+ *
+ * The reopened-app path specifically: an installed PWA relaunches at its START
+ * URL, with no `?daily=` on it. Saving the board was only half the fix — this
+ * proves the way BACK exists, which is the half that was actually missing.
+ */
+test('a daily put down mid-board is offered back, and resumes the same try', async ({ page }) => {
+  const errors = watchErrors(page);
+
+  await page.goto('/');
+  await page.locator('#front-door-daily').click();
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+
+  const canvas = page.locator('#board canvas');
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const cx = box!.x + box!.width / 2;
+  const cy = box!.y + box!.height / 2;
+  // A virgin ledger's first-contact card sits over the board and eats taps;
+  // dismiss it so what follows is measuring placement, not the modal.
+  await page.locator('#event-card-dismiss').click();
+  await expect(page.locator('#event-card')).toBeHidden();
+
+  const tilesBefore = Number(await page.locator('[data-stat="tiles"] .stat-value').textContent());
+  // Tap the seed tile's ring until the purse moves — the hand arrives with a
+  // card already taken, so a board tap IS the placement. The legal ring is the
+  // six neighbours of one tile, and how many CSS pixels out that sits depends
+  // on the camera this world opened at, so the sweep walks several radii
+  // rather than assuming one. A placement is what makes this a board worth
+  // resuming rather than an untouched world.
+  const placed = async (): Promise<boolean> =>
+    Number(await page.locator('[data-stat="tiles"] .stat-value').textContent()) < tilesBefore;
+  for (const radius of [30, 45, 60, 80, 110]) {
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i;
+      await page.mouse.click(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+      if (await placed()) break;
+    }
+    if (await placed()) break;
+  }
+  const tilesAfter = Number(await page.locator('[data-stat="tiles"] .stat-value').textContent());
+  expect(tilesAfter).toBeLessThan(tilesBefore);
+
+  // The app comes back at its start URL — no `?daily=`, exactly as a
+  // relaunched PWA does — and the home door offers the board back.
+  await page.goto('/');
+  const daily = page.locator('#front-door-daily');
+  await expect(daily).toContainText(/RESUME DAILY (#\d+|\d{4}-\d{2}-\d{2}) — PLACEMENT [1-9]/);
+
+  await daily.click();
+  await expect(page.locator('#front-door-begin')).toContainText(
+    /RESUME DAILY .* — PLACEMENT [1-9]/,
+  );
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+  await expect(canvas).toBeVisible();
+
+  // The same try, resumed: the purse is where it was left, not back at the
+  // starting count — that is the difference between a resume and a restart.
+  const tilesResumed = Number(await page.locator('[data-stat="tiles"] .stat-value').textContent());
+  expect(tilesResumed).toBe(tilesAfter);
+
+  expect(errors).toEqual([]);
+});

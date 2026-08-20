@@ -9,7 +9,10 @@ import {
   dailySeed,
   dailyStreak,
   decodeDailyBook,
+  dailyRunFor,
+  decodeDailyRun,
   encodeDailyBook,
+  encodeDailyRun,
   isPlayableDaily,
   ordinal,
   recordDaily,
@@ -132,6 +135,17 @@ const SHRINE_RECEIPT_KEY = 'tiles.shrinereceipt.v1';
 const ERROR_STORAGE_KEY = 'tiles.lasterror.v1';
 /** The daily ladder: best and tries per date, plus the streak they imply. */
 const DAILY_STORAGE_KEY = 'tiles.daily.v1';
+/**
+ * The daily run in progress (Marc, Day 2: "make sure we can resume a daily
+ * too — right now it restarts if I'm mid-daily and restart the app").
+ *
+ * Its OWN key, never a slot's: the home run must survive a detour, which is
+ * the 2026-08-19 guard that made the daily safe to play at all. The date is
+ * kept beside the run because one key holds one daily — read back on a
+ * different date it answers nothing, so yesterday's abandoned board can never
+ * land on today's, and the next daily simply overwrites it.
+ */
+const DAILY_RUN_STORAGE_KEY = 'tiles.dailyrun.v1';
 /**
  * The hall of fame's diary (designed 2026-08-20 through Marc's own prompts):
  * every finished run a dated tick, milestone runs carrying their ✦ moments,
@@ -259,6 +273,40 @@ function writeDailyBook(book: DailyBook): void {
     localStorage.setItem(DAILY_STORAGE_KEY, encodeDailyBook(book));
   } catch {
     // Private mode: the daily still plays, the ladder just is not kept.
+  }
+}
+
+/**
+ * The daily put down mid-board, with the date it belongs to. Tolerant in the
+ * same way `decodeRun` is: anything that is not a shape this wrote reads as
+ * nothing, because a daily that refuses to resume is a small loss and a daily
+ * that resumes wrong is a broken promise on a shared world.
+ */
+function readDailyRun(date: string): GameState | null {
+  try {
+    const kept = dailyRunFor(decodeDailyRun(localStorage.getItem(DAILY_RUN_STORAGE_KEY)), date);
+    return kept === null ? null : decodeRun(kept);
+  } catch {
+    return null;
+  }
+}
+
+function writeDailyRun(date: string, state: GameState): void {
+  try {
+    localStorage.setItem(DAILY_RUN_STORAGE_KEY, encodeDailyRun({ date, run: encodeRun(state) }));
+  } catch {
+    // Private mode, or a full disk. The daily still plays; it just cannot be
+    // put down and picked up again. Deliberately NOT on the home run's
+    // shed-and-retry ladder: the run that must never be lost is the one in
+    // this device's own world, and a daily is a detour by definition.
+  }
+}
+
+function clearDailyRun(): void {
+  try {
+    localStorage.removeItem(DAILY_RUN_STORAGE_KEY);
+  } catch {
+    // Nothing to clear is fine too.
   }
 }
 
@@ -537,9 +585,18 @@ function runKeeping(
   // world — nothing banks, nothing merges, nothing overwrites the home run.
   const detour = replaySeed !== null || dailyDate !== null;
 
-  let saved = null;
+  // Where this boot's run-in-progress comes from. The daily has its own key
+  // since Day 2 — a daily put down is a pause, not a forfeit — and it must
+  // match TODAY'S date to be picked up, so an abandoned board never surfaces
+  // on a world it was not played on. A `?seed=` replay still resumes nothing:
+  // it is a one-off you re-open from the link itself, and it writes nowhere.
+  let saved: GameState | null = null;
   try {
-    saved = detour ? null : decodeRun(localStorage.getItem(keys.run));
+    if (dailyDate !== null) {
+      saved = readDailyRun(dailyDate);
+    } else if (replaySeed === null) {
+      saved = decodeRun(localStorage.getItem(keys.run));
+    }
   } catch {
     // Private mode. Every run is its own life; that is also a game.
   }
@@ -751,7 +808,17 @@ function runKeeping(
       // in progress and an abandoned replay could be resumed as your own —
       // exactly what `ideas/daily.md`'s scouting note believed was already
       // guarded. The daily depends on the guard, so now it exists.
-      if (detour) return;
+      //
+      // The daily keeps a save of its OWN (Day 2), under its own key, so
+      // closing the app mid-daily is a pause rather than a forfeit. It
+      // returns here rather than falling through: nothing below this line —
+      // the home run, the shed ladder, the world merge — belongs to a
+      // detour, which is what `detour` used to say in one word.
+      if (dailyDate !== null) {
+        writeDailyRun(dailyDate, state);
+        return;
+      }
+      if (replaySeed !== null) return;
       try {
         localStorage.setItem(keys.run, encodeRun(state));
         askPersistence();
@@ -818,6 +885,12 @@ function runKeeping(
       // would make the plain shared game a meta farm. The end screen's
       // RUN N / best lines read naturally as try N / today's best.
       if (dailyDate !== null) {
+        // The finished daily leaves storage HERE, for the reason the home run
+        // does (2026-08-18): an ended run that stayed saved is resumed by
+        // every reload, and each resume re-finishes it — which on this ladder
+        // means another try confessed and another diary tick, forever. The
+        // try is recorded; keeping its corpse around buys only the bug.
+        clearDailyRun();
         const result = recordDaily(readDailyBook(), dailyDate, state.points);
         writeDailyBook(result.book);
         // The diary's daily tick — same store as the home runs, its own tab
@@ -1774,11 +1847,19 @@ async function main(): Promise<void> {
     }
   });
   if (dailyDate !== null) {
-    frontDoorBegin.textContent = `BEGIN DAILY ${dailyName(dailyDate)}`;
+    // A daily in progress says so on its own door (Day 2), the same words the
+    // home door uses — resuming is not a new try, and the button must not
+    // read BEGIN over a board that is already half played.
+    const dailyResume = keeper.resume ?? null;
+    frontDoorBegin.textContent =
+      dailyResume === null
+        ? `BEGIN DAILY ${dailyName(dailyDate)}`
+        : `RESUME DAILY ${dailyName(dailyDate)} — PLACEMENT ${dailyResume.placements}`;
     frontDoorMode.hidden = false;
     frontDoorMode.textContent =
       'The daily: one shared world for this date, played plain — no upgrades, no perk. ' +
-      'Tries are counted and confessed; your own world is untouched.';
+      'Tries are counted and confessed; your own world is untouched.' +
+      (dailyResume === null ? '' : ' Your board is where you left it — this is the same try.');
     frontDoorHome.hidden = false;
   } else if (sharedSeed !== null) {
     frontDoorBegin.textContent = 'BEGIN — SHARED RUN';
@@ -1848,8 +1929,20 @@ async function main(): Promise<void> {
     const dailyBook = readDailyBook();
     const streak = dailyStreak(dailyBook, today);
     frontDoorDaily.hidden = false;
+    // The way BACK to a daily in progress (Day 2). Saving the board was only
+    // half the fix: a reopened PWA lands on its start URL with no `?daily=`,
+    // so without this door the resumable run had nowhere to be resumed from.
+    // Today's only — an unfinished board from another date is still kept, and
+    // still resumes if its own link is opened, but it is not what this button
+    // is for.
+    // An UNTOUCHED board is not something to resume — opening the daily and
+    // backing out must leave the door reading exactly as it did, or the badge
+    // (number, best, streak) would vanish for a run nobody has played yet.
+    const keptDaily = readDailyRun(today);
     frontDoorDaily.textContent =
-      dailyBadge(dailyBook, today) + (streak > 1 ? ` · streak ${streak}` : '');
+      keptDaily === null || keptDaily.placements === 0
+        ? dailyBadge(dailyBook, today) + (streak > 1 ? ` · streak ${streak}` : '')
+        : `RESUME DAILY ${dailyName(today)} — PLACEMENT ${keptDaily.placements}`;
     frontDoorDaily.addEventListener('click', () => {
       goWith('daily', today);
     });
@@ -2380,8 +2473,17 @@ async function main(): Promise<void> {
   // A shared `?seed=` link is somebody else's run and plays the plain
   // economy, because a replay scored under this device's upgrades would not
   // be a replay of anything.
+  // The daily has no ledger, so its shrines are meaningless doors (Marc,
+  // Day 2): the dial rewrites every one into a cache or a site inside
+  // `destinationAt`, deterministically per hex, so every phone's daily
+  // still agrees. Shared `?seed=` replays keep their shrines — a replay
+  // shows the sender's world as it was.
   const tuning =
-    sharedSeed === null && dailyDate === null ? applyProgress(unlocked, readProgress()) : unlocked;
+    sharedSeed === null && dailyDate === null
+      ? applyProgress(unlocked, readProgress())
+      : dailyDate !== null
+        ? { ...unlocked, shrinesReborn: true }
+        : unlocked;
   // Territories (and, since 2026-08-18, finds) the world already holds
   // arrive as plain data — the engine still knows nothing about storage, and
   // a replay is reproducible from seed + tuning + these two lists.

@@ -9,6 +9,9 @@ import {
   dailySeed,
   dailyStreak,
   decodeDailyBook,
+  decodeDailyRun,
+  dailyRunFor,
+  encodeDailyRun,
   encodeDailyBook,
   isDailyDate,
   isPlayableDaily,
@@ -160,5 +163,31 @@ describe('the badge and the playability rule (the simplify pass, 2026-08-19)', (
     expect(isPlayableDaily('2026-08-20')).toBe(true);
     expect(isPlayableDaily('2026-08-18')).toBe(false);
     expect(isPlayableDaily('not a date')).toBe(false);
+  });
+});
+
+describe('the daily put down and picked up (Day 2)', () => {
+  it('hands the board back for its own date, and for no other', () => {
+    const raw = encodeDailyRun({ date: '2026-08-26', run: '{"rootSeed":7}' });
+    const kept = decodeDailyRun(raw);
+    expect(kept).toEqual({ date: '2026-08-26', run: '{"rootSeed":7}' });
+
+    // The whole rule: yesterday's abandoned board never opens on today's
+    // shared world, because every phone playing a date must agree.
+    expect(dailyRunFor(kept, '2026-08-26')).toBe('{"rootSeed":7}');
+    expect(dailyRunFor(kept, '2026-08-27')).toBeNull();
+    expect(dailyRunFor(null, '2026-08-26')).toBeNull();
+  });
+
+  it('reads nothing back from anything it did not write', () => {
+    expect(decodeDailyRun(null)).toBeNull();
+    expect(decodeDailyRun('not json')).toBeNull();
+    expect(decodeDailyRun('[]')).toBeNull();
+    expect(decodeDailyRun('{}')).toBeNull();
+    // A date that is not a date, and an empty board, are both refusals —
+    // the same tolerance decodeRun keeps, for the same reason.
+    expect(decodeDailyRun('{"date":"nope","run":"{}"}')).toBeNull();
+    expect(decodeDailyRun('{"date":"2026-08-26","run":""}')).toBeNull();
+    expect(decodeDailyRun('{"date":"2026-08-26"}')).toBeNull();
   });
 });

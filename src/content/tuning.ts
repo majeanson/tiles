@@ -521,6 +521,14 @@ export type Tuning = {
   readonly titheMin: number;
 
   readonly singlePayout: boolean;
+  /**
+   * Every shrine on the plane reveals as a cache or a site instead (Marc,
+   * Day 2 of launch week: 'in dailies, shrines have no meaning') — a world
+   * with no unlock ledger has no use for a door to one. The daily flips
+   * this at the edge (main.ts); home worlds and shared replays keep their
+   * shrines. Applied inside destinationAt, so every surface agrees.
+   */
+  readonly shrinesReborn: boolean;
   readonly pointsPerPop: number;
   readonly burnLuck: number;
   readonly endReachBonus: number;
@@ -653,6 +661,7 @@ export const BARE_TUNING: Tuning = {
   colourBiasWeight: 0,
 
   singlePayout: false,
+  shrinesReborn: false,
   pointsPerPop: 0,
   burnLuck: 0,
   endReachBonus: 0,
@@ -851,6 +860,7 @@ export const TUNING: Tuning = {
   titheMin: 20,
 
   singlePayout: true,
+  shrinesReborn: false,
   pointsPerPop: 0.35,
   // Burning pays RELICS now, not luck. That was the open question, and the
   // answer arrived with the meta economy: a burn gives up the tiles keeping

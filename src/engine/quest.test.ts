@@ -120,6 +120,28 @@ describe('the bounty', () => {
     expect(popped.tiles - state.tiles).toBe(harvestValue(state, at).tiles);
   });
 
+  /**
+   * The other half of "the pop that SCORES it collects it" (Day 2). TREASURE
+   * trades the whole payout away for the rare tile — it banks no points — so
+   * it must leave the bounty standing, exactly as a burn does. It did not:
+   * `collected` was spelled `choice !== 'burn'` while `scores` excluded
+   * treasure too, so a qualifying pocket taken as treasure cleared the bounty
+   * and paid nothing for it. Both now read the one answer.
+   */
+  it('is forfeited by taking the pocket as TREASURE, which scores nothing', () => {
+    const site = key(3, 0);
+    // One pocket that qualifies for both, so the choice is the only variable.
+    const both: Tuning = { ...QUEST, treasureNeed: QUEST.questNeed };
+    const { state, at } = pocketAt(withQuest(site, both), 1, 0, QUEST.questNeed);
+    expect(harvestValue(state, at).questPays).toBe(true);
+    expect(harvestValue(state, at).treasure).not.toBeNull();
+
+    const taken = reduce(state, { type: 'HARVEST', choice: 'treasure', at });
+    expect(taken.points).toBe(state.points);
+    expect(taken.quest).not.toBeNull();
+    expect(taken.log.questsDone).toBe(0);
+  });
+
   it('refuses a pocket that is too small or too far', () => {
     const site = key(3, 0);
     const small = pocketAt(withQuest(site), 1, 0, QUEST.questNeed - 1);

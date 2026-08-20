@@ -162,6 +162,19 @@ export const TEACH_IDS = [
   'wall',
   'field',
   'rare',
+  // UNIQUE's own card (2026-08-20, Marc's rehearsal find: "when getting
+  // both unique and magic in the same hand only the magic help popped") —
+  // one shared `rare` id meant whichever rarity arrived first burned the
+  // card for both. Split: `rare` is MAGIC's card now, this is UNIQUE's;
+  // each fires once at its own first appearance, and a hand holding both
+  // fires one card now and keeps the other armed for the next quiet
+  // action. Veterans' ledgers predate the id, so — the colour-ids
+  // precedent — every device gets the UNIQUE card exactly once.
+  'rareUnique',
+  // The fog lens's one-line invitation (same day): a run that OPENS with
+  // remembered ground on screen says, once, that tapping it lights the
+  // biome — the gesture was undiscoverable (Marc: "hard to discover").
+  'lens',
   'luck',
   // The purse fold's own first opening (Marc, 2026-08-20: "explain all and
   // that you can lose it all too"): what each spend row IS, and that a

@@ -139,6 +139,45 @@ export function decodeDailyBook(raw: string | null): DailyBook {
 
 export const encodeDailyBook = (book: DailyBook): string => JSON.stringify(book);
 
+/**
+ * The daily board put down mid-run, wrapped with the date it belongs to
+ * (Marc, Day 2: "make sure we can resume a daily too").
+ *
+ * The run itself stays an opaque string — `save.ts` owns what a run is, and
+ * this module stays the pure date layer it has always been. What lives here
+ * is the DATE GUARD, which is the whole rule: one key holds one daily, so a
+ * board is only ever handed back for the date it was played on. Without it,
+ * yesterday's abandoned expedition would open on today's shared world — the
+ * one thing a daily may never do, since every phone must agree.
+ */
+export type DailyRun = { readonly date: string; readonly run: string };
+
+export const encodeDailyRun = (kept: DailyRun): string => JSON.stringify(kept);
+
+/** The kept daily, or null for anything this module did not write. */
+export function decodeDailyRun(raw: string | null): DailyRun | null {
+  if (raw === null) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+  const { date, run } = parsed as { date?: unknown; run?: unknown };
+  if (typeof date !== 'string' || !isDailyDate(date)) return null;
+  if (typeof run !== 'string' || run === '') return null;
+  return { date, run };
+}
+
+/**
+ * The board to resume for `date`, or null. The date mismatch is not an error
+ * — an unfinished board from another date is simply not today's, and stays
+ * kept for its own link.
+ */
+export const dailyRunFor = (kept: DailyRun | null, date: string): string | null =>
+  kept !== null && kept.date === date ? kept.run : null;
+
 /** Fold one finished daily in. Pure — the caller stores the result. */
 export function recordDaily(
   book: DailyBook,

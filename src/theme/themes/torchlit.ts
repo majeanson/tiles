@@ -145,10 +145,15 @@ export const TORCHLIT: Theme = {
     // faint undertone so the grass is still there under the sparks. Ember
     // stays unconfusable with ASH by polarity, not orientation: bright
     // warm sparks on the LIGHTEST ground against dark pits on dark rust.
+    // POLKA since Day 2 (Marc: "ember is too much like ash texture —
+    // polka dot it instead"): the spark dots grew into large, REGULAR,
+    // well-spaced rounds — ordered where ash's pits are scattered, big
+    // where they are small, bright where they are dark. Three separations
+    // instead of polarity alone.
     yellow: surface(0xc6b187, {
       fillTo: 0x98865f,
-      pattern: { kind: 'dots', ink: 0xffd28a, alpha: 0.28, radius: 1.2, pitch: 8 },
-      overlay: { kind: 'hatch', angleDeg: 90, ink: 0x000000, alpha: 0.1, bar: 1, gap: 5 },
+      pattern: { kind: 'dots', ink: 0xffd28a, alpha: 0.34, radius: 2.1, pitch: 14 },
+      overlay: { kind: 'hatch', angleDeg: 90, ink: 0x000000, alpha: 0.08, bar: 1, gap: 5 },
       asset: 'terrain.yellow',
     }),
     // BURIAL GROUND — mounded rows, catching the flame on the ridges. The

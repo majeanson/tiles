@@ -366,3 +366,23 @@ describe('elevation', () => {
     expect(elevationBandAt(5, 12, 12, flat)).toBe(0);
   });
 });
+
+describe('shrinesReborn — a world with no ledger has no shrines (Day 2, launch week)', () => {
+  it('rewrites every shrine into a cache or a site, deterministically, and only shrines', () => {
+    // Find real shrines under the shipped tuning, then look again with the
+    // dial on: same hexes, new faces, same answer every time.
+    const shrines = destinationsWithin(9, 60, TUNING).filter((d) => d.reward === 'shrine');
+    expect(shrines.length).toBeGreaterThan(0);
+    const reborn = { ...TUNING, shrinesReborn: true };
+    for (const s of shrines) {
+      const a = destinationAt(9, s.q, s.r, reborn);
+      expect(a).not.toBeNull();
+      expect(['cache', 'site']).toContain(a!.reward);
+      expect(destinationAt(9, s.q, s.r, reborn)).toEqual(a);
+    }
+    // Everything that was NOT a shrine is untouched by the dial.
+    for (const d of destinationsWithin(9, 60, TUNING).filter((x) => x.reward !== 'shrine')) {
+      expect(destinationAt(9, d.q, d.r, reborn)?.reward).toBe(d.reward);
+    }
+  });
+});

@@ -141,7 +141,18 @@ export function blockDestination(
 export function destinationAt(seed: number, q: number, r: number, t: Tuning): Destination | null {
   const size = Math.max(1, t.destinationEvery);
   const d = blockDestination(seed, Math.floor(q / size), Math.floor(r / size), t);
-  return d !== null && d.q === q && d.r === r ? d : null;
+  if (d === null || d.q !== q || d.r !== r) return null;
+  // A world with nothing to unlock has no use for shrines (Marc, Day 2:
+  // "in dailies, shrines have no meaning so they should always be tile
+  // cache or points"): the dial rewrites every shrine into a cache or a
+  // site, deterministically from the same hash that placed it — applied
+  // HERE so the reveal, the beacons, the fog and the tap answers all
+  // agree without a second rule anywhere. The daily flips it at the edge
+  // (main.ts); every world with a ledger keeps its shrines.
+  if (d.reward === 'shrine' && t.shrinesReborn) {
+    return { ...d, reward: hashAt(seed ^ 0x5e17ab1e, q, r) % 2 === 0 ? 'cache' : 'site' };
+  }
+  return d;
 }
 
 /**
