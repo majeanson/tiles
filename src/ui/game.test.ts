@@ -1811,7 +1811,12 @@ describe('the moments pack (2026-08-18)', () => {
     );
   });
 
-  it('names the cheapest unbought upgrade on the end screen, with the relics gap', () => {
+  // The next-rung line these two tests used to pin ("DEEPER PURSE in 15" /
+  // its bare price when affordable, 2026-08-18) was REMOVED on Marc's
+  // report (2026-08-20): at "DEEPER PURSE in 56" it read as noise, and the
+  // shelf inside prices every rung already. The door itself carries the
+  // emphasis now — count and GO BUY — pinned here in the rung line's place.
+  it('never teases the next rung; the door itself says the count and GO BUY', () => {
     const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
     let progress: Progress = { ...EMPTY_PROGRESS, relics: 5, met: [...TEACH_IDS] };
     const ctx = build(1, TUNING, {
@@ -1827,26 +1832,8 @@ describe('the moments pack (2026-08-18)', () => {
 
     const cheapest = [...UPGRADES].sort((a, b) => a.cost - b.cost)[0]!;
     const text = ctx.el.end.textContent ?? '';
-    expect(text).toContain(`${cheapest.name} in ${cheapest.cost - 5}`);
-  });
-
-  it('shows just the price once the cheapest upgrade is affordable', () => {
-    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
-    let progress: Progress = { ...EMPTY_PROGRESS, relics: 999, met: [...TEACH_IDS] };
-    const ctx = build(1, TUNING, {
-      resume: ended,
-      shop: {
-        read: () => progress,
-        write: (p) => {
-          progress = p;
-        },
-      },
-    });
-    ctx.game.start();
-
-    const cheapest = [...UPGRADES].sort((a, b) => a.cost - b.cost)[0]!;
-    const text = ctx.el.end.textContent ?? '';
-    expect(text).toContain(`${cheapest.name} ${cheapest.cost}`);
+    expect(text).not.toContain(`${cheapest.name} in ${cheapest.cost - 5}`);
+    expect(ctx.el.end.querySelector('#end-shop-open')?.textContent).toBe('RELICS5 · GO BUY ▸');
   });
 });
 
@@ -2065,11 +2052,19 @@ describe('the shelf', () => {
 
     (ctx.el.end.querySelector('#end-shop-back') as HTMLButtonElement).click();
     // Back on the run screen: the picture, the door, and no shop rows. The
-    // door is a payout row now (2026-08-18), not a bordered button — RELICS
-    // and the purse total, tappable.
+    // door is a promoted row (Marc, 2026-08-20) — the count and GO BUY,
+    // tappable, accent-forward — and the next-rung tease that sat under it
+    // ("DEEPER PURSE in 56") is gone by the same report: the shelf inside
+    // prices every rung already.
     expect(ctx.el.end.querySelector('.end-epitaph')).not.toBeNull();
     expect(ctx.el.end.querySelector('.shop-row')).toBeNull();
-    expect(ctx.el.end.querySelector('#end-shop-open')?.textContent).toMatch(/RELICS\d+/);
+    const door = ctx.el.end.querySelector('#end-shop-open');
+    expect(door?.textContent).toMatch(/RELICS\d+ · GO BUY/);
+    expect(door?.classList.contains('end-shop-door')).toBe(true);
+    // The rung line was always an UPPERCASE upgrade name + "in N" or its
+    // bare price — no end-facts line should carry that shape any more.
+    const facts = [...ctx.el.end.querySelectorAll('.end-facts')].map((f) => f.textContent ?? '');
+    expect(facts.some((f) => /^[A-Z][A-Z ]+ (in )?\d+$/.test(f))).toBe(false);
   });
 
   it('shows owned perks by name, and names only the COUNT of the rest', () => {

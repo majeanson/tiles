@@ -3013,36 +3013,29 @@ export class Game {
       (this.#met('relic') || this.#hooks.shop.read().relics > 0 || carriedRelics > 0)
     ) {
       const progress = this.#hooks.shop.read();
-      const door = row('end-payout-row end-link', 'RELICS', `${progress.relics} ▸`, {
-        link: () => {
-          this.#endView = 'shop';
-          this.#renderEnd(hud);
+      // Promoted back from a whisper (Marc, 2026-08-20: "make more emphasis
+      // on relics, count, go buy"). The demoted payout row was dim until
+      // something inside was already affordable — quiet exactly when the
+      // purse is short, which is when "go sacrifice one more pocket" is the
+      // message. The count is the value, GO BUY is the action, the accent
+      // is unconditional; `live` still marks the affordable state louder.
+      // The next-rung tease that sat under it ("STEADY PACE in 12",
+      // 2026-08-18) is gone by the same report — at "DEEPER PURSE in 56"
+      // it read as noise, and the shelf inside prices every rung already.
+      const door = row(
+        'end-payout-row end-link end-shop-door',
+        'RELICS',
+        `${progress.relics} · GO BUY ▸`,
+        {
+          link: () => {
+            this.#endView = 'shop';
+            this.#renderEnd(hud);
+          },
+          live: UPGRADES.some((u) => canAfford(progress, u)),
         },
-        live: UPGRADES.some((u) => canAfford(progress, u)),
-      });
+      );
       door.id = 'end-shop-open';
       parts.push(door);
-
-      // The next rung (2026-08-18): the cheapest unbought upgrade, named —
-      // "STEADY PACE in 12" when relics are short, just its price when they
-      // are not. The door already says how much you HAVE; this says what it
-      // is FOR, which is the reason to sacrifice one more pocket before NEW
-      // RUN rather than after.
-      let cheapest: { name: string; price: number } | null = null;
-      for (const upgrade of UPGRADES) {
-        const price = priceOf(progress, upgrade);
-        if (price === null) continue;
-        if (cheapest === null || price < cheapest.price) cheapest = { name: upgrade.name, price };
-      }
-      if (cheapest !== null) {
-        const gap = cheapest.price - progress.relics;
-        parts.push(
-          line(
-            'end-facts',
-            gap > 0 ? `${cheapest.name} in ${gap}` : `${cheapest.name} ${cheapest.price}`,
-          ),
-        );
-      }
     }
 
     // TRY AGAIN (the daily, 2026-08-19): the retry loop lives on the end

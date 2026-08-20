@@ -805,6 +805,23 @@ button.quiet {
   opacity: 1;
 }
 
+/* The shop door, promoted (Marc, 2026-08-20: "more emphasis on relics,
+   count, go buy"): the one row on this screen that asks for a tap wears the
+   accent unconditionally and a size up — still a row, not a second bordered
+   button; NEW RUN keeps that silhouette to itself. `live` (something is
+   affordable right now) says the same thing louder. */
+.end-shop-door {
+  color: var(--accent, #d7b45a);
+  opacity: 1;
+  font-size: 0.95rem;
+  font-family: var(--font-label, inherit);
+  letter-spacing: var(--label-tracking, 0.04em);
+}
+
+.end-shop-door.live {
+  font-weight: 600;
+}
+
 /* The payout breakdown: the score, in the three terms the engine actually
    pays it in. A grid of label/value pairs, same shape as the facts grid
    below it, with TOTAL set apart by weight rather than by a rule — the sum
