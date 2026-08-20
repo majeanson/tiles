@@ -289,9 +289,16 @@ milestone: M1.**
 - **Art is optional everywhere.** Every bitmap is a slot. Drop a PNG at
   `public/assets/<themeId>/<slotId>.png`, and a build-time scan writes the
   manifest the client reads; missing files are the normal case and cost neither a
-  request nor a failure. Procedural surfaces — four pattern kinds, exactly what
-  the three directions ask for — are the floor underneath. No art has been
-  imported yet: every slot is empty on purpose.
+  request nor a failure. Procedural surfaces are the floor underneath. **This
+  bullet used to end "no art has been imported yet: every slot is empty on
+  purpose" — stale since 2026-08-19, corrected 2026-08-20 by the pipeline's
+  fresh-eyes review**: torchlit's eight terrain/fx slots are FILLED, baked by
+  `scripts/terrain.ts` (deterministic, offline, regenerable — verified
+  byte-identical on rerun) per WORKPLAN Stage 3, and `verify-deploy` now
+  proves every file the live manifest names actually serves. `ui.logo` and
+  `ui.runEnd` are wired with live drawn/CSS defaults and no PNG yet;
+  `fog.hard`, `fog.soft` and `ui.cardFrame` stay empty because no mechanic
+  reads them.
 - **Hex orientation is a rendering decision, not an engine one.** Moved into
   `render/layout.ts` and parameterised; the geometry suite runs against both.
   The engine was not touched, because axial coordinates mean the same thing
@@ -337,10 +344,12 @@ milestone: M1.**
 - **All eleven sim policies play both worlds** — `pnpm sim --set world=endless`
   reruns the identical table under the other economy. The `bank<N>` family
   isolates harvest timing as a dial; 0 stalled, 0 capped everywhere.
-- **The draft cards show the tile.** Each card carries the baked hex surface
-  the board draws — same baker, same theme — with the flat swatch as the
-  no-canvas fallback. Prompted by the first human feedback on the prototype:
-  the hand read as "just click there".
+- **The draft cards show the tile.** Each card carries the hex surface the
+  board draws — the terrain slot's baked PNG once assets load (2026-08-20,
+  the fresh-eyes review: Stage 3's art briefly split the two surfaces, board
+  on PNG, cards on the procedural bake), the procedural bake as the floor,
+  the flat swatch as the no-canvas fallback. Prompted by the first human
+  feedback on the prototype: the hand read as "just click there".
 
 ## The gates
 

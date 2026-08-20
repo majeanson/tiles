@@ -38,9 +38,13 @@ export const THEMES: readonly Theme[] = [PLACEHOLDER, TORCHLIT];
  * register is the one the rarity system already speaks in — magic and unique
  * are Diablo's words, and Diablo is what the direction is named after.
  *
- * Reversible in one tap: every direction is still loaded, `?theme=` still
- * switches, and the picker is still one flag away. A default is a decision,
- * not a cage.
+ * Reversible in principle, not in a tap any more (2026-08-20, the fresh-eyes
+ * review, correcting this paragraph's own claim): the two losing directions
+ * were deleted 2026-08-19 — see `THEMES` above — so `?theme=` switches only
+ * between torchlit and the placeholder now, and reversing the DECISION would
+ * mean resurrecting a direction from git history first. A default is still a
+ * decision, not a cage; the cage just has fewer doors than this line used to
+ * say.
  */
 export const DEFAULT_THEME_ID: ThemeId = 'torchlit';
 

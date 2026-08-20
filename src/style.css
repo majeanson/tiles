@@ -718,13 +718,17 @@ button.quiet {
 
 /* The run drawn as its harvests: one bar per pop, the biggest in accent. A
    picture of Gate D's question — did the big number land near the end?
-   Enlarged 300×44 → 320×68 (2026-08-19, screen pass) to match the SVG's own
-   viewBox — the arc is the hero's centerpiece now, not one line among several. */
+   Enlarged with the screen pass (2026-08-19) — the arc is the hero's
+   centerpiece now, not one line among several. The box rides the SVG's own
+   300×72 viewBox ratio (2026-08-20, the fresh-eyes review: a fixed 68px
+   height letterboxed the drawing inside its own box, and the comment here
+   claimed a match the numbers didn't make). */
 .end-arc {
   display: block;
   width: 100%;
   max-width: 320px;
-  height: 68px;
+  height: auto;
+  aspect-ratio: 300 / 72;
   margin: 2px auto 8px;
 }
 
