@@ -36,6 +36,14 @@ const PRECACHE = [
   '/index.html',
   '/manifest.webmanifest',
   '/icon.svg',
+  // The install icons live in public/, outside the recursive assets walk —
+  // without them here an offline install prompt (and the apple-touch-icon)
+  // fell back to nothing (fresh-eyes, 2026-08-20).
+  '/icon-180.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
   ...JSON.parse('__PRECACHE_ASSETS__'),
 ];
 

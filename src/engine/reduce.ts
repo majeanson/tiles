@@ -184,8 +184,17 @@ function revealCell(
   fields: readonly Field[],
   claimed: ReadonlySet<HexKey> = new Set(),
   claimedFinds: ReadonlySet<HexKey> = new Set(),
+  rearmed: Readonly<Record<HexKey, 'cache' | 'site'>> = {},
 ): Cell {
   const { q, r } = parse(k);
+
+  // A spent one-time landmark, reborn (Marc, 2026-08-20): the shell rolled
+  // this hex a fresh face for THIS run — a cache or a site where a woken
+  // shrine or a claimed find used to sit — and the reveal simply obeys the
+  // map, the same trust `claimed` already gets. Unclaimed, so reaching it
+  // pays like any cache or site does.
+  const reborn = rearmed[k];
+  if (reborn !== undefined) return { kind: 'landmark', reward: reborn, claimed: false };
 
   const dest = destinationAt(rootSeed, q, r, t);
   if (dest !== null) {
@@ -233,6 +242,7 @@ function openWorld(
   claimed: readonly HexKey[],
   claimedFinds: readonly HexKey[],
   origin: { q: number; r: number },
+  rearmed: Readonly<Record<HexKey, 'cache' | 'site'>>,
 ): { cells: Record<HexKey, Cell>; draft: Tile[]; rng: RngStreams } {
   const seeded = rollTile(rng.tiles, rng.loot, t, 0);
   const cells: Record<HexKey, Cell> = {
@@ -242,7 +252,7 @@ function openWorld(
   const heldFinds = new Set(claimedFinds);
   const fields = claimedFields({ cells, claimed, rootSeed, tuning: t });
   for (const n of neighbourKeys(origin.q, origin.r)) {
-    cells[n] = revealCell(rootSeed, n, t, fields, held, heldFinds);
+    cells[n] = revealCell(rootSeed, n, t, fields, held, heldFinds, rearmed);
   }
 
   const { draft, tiles, loot } = rollDraft(seeded.tiles, seeded.loot, t, 0);
@@ -276,10 +286,13 @@ export function newRun(
   claimed: readonly HexKey[] = [],
   claimedFinds: readonly HexKey[] = [],
   wakeAt: HexKey | null = null,
+  // Spent one-time landmarks reborn for this run (Marc, 2026-08-20) — see
+  // `GameState.rearmed`. Plain data, the `claimed` contract's fourth rider.
+  rearmed: Readonly<Record<HexKey, 'cache' | 'site'>> = {},
 ): GameState {
   const streams = streamsFrom(rootSeed);
   const origin = wakeAt !== null ? parse(wakeAt) : { q: 0, r: 0 };
-  const opened = openWorld(rootSeed, streams, tuning, claimed, claimedFinds, origin);
+  const opened = openWorld(rootSeed, streams, tuning, claimed, claimedFinds, origin, rearmed);
 
   return {
     version: 1,
@@ -306,6 +319,7 @@ export function newRun(
     wakeAt,
     claimed,
     claimedFinds,
+    rearmed,
     log: { harvests: [], popped: 0, questsDone: 0 },
   };
 }
@@ -474,7 +488,7 @@ function place(state: GameState, hex: HexKey): GameState {
     const held = new Set(state.claimed);
     const heldFinds = new Set(state.claimedFinds);
     for (const n of neighbourKeys(q, r)) {
-      cells[n] ??= revealCell(state.rootSeed, n, t, fields, held, heldFinds);
+      cells[n] ??= revealCell(state.rootSeed, n, t, fields, held, heldFinds, state.rearmed);
     }
 
     // Reaching a destination: the tile you just placed touching an unclaimed
@@ -573,11 +587,16 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   // Treasure goes to the stash, which is where a tile you are saving for the
   // right moment belongs. It displaces whatever was held — taking a second
   // treasure while holding one is a choice about which rare tile you want.
+  // With the hand put down (`selected: -1`, 2026-08-20) there is no colour
+  // to forge the treasure FROM — the old `?? 'green'` fallback was
+  // unreachable defensive code that the empty hand turned into a silent
+  // wrong answer, so an empty-handed treasure pop simply keeps the stash.
+  const treasureSource = state.draft[state.selected];
   const stashed: Tile | null =
-    choice === 'treasure' && treasure !== null
+    choice === 'treasure' && treasure !== null && treasureSource !== undefined
       ? {
           id: `x${state.placements}`,
-          colour: state.draft[state.selected]?.colour ?? 'green',
+          colour: treasureSource.colour,
           rarity: treasure,
         }
       : state.held;

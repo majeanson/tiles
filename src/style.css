@@ -97,7 +97,9 @@ body {
      margins below centre it exactly like `center` while it fits, and yield
      to scrolling the moment it does not. */
   gap: 14px;
-  padding: 24px;
+  /* Safe-area aware (fresh-eyes, 2026-08-20): the door is inset 0 over the
+     whole screen, and 24px sits under a 34px home indicator. */
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
   overflow-y: auto;
   background: var(--bg, #14161c);
   text-align: center;
@@ -750,6 +752,18 @@ button.quiet {
   color: var(--unique, #d8892f);
 }
 
+/* The WORDS wear the colours too (Marc, 2026-08-20: "documentation and
+   anywhere it speaks about it") — `rarityInked` in game.ts wraps every
+   uppercase MAGIC / UNIQUE in prose: the manual, the toast, the event
+   cards, the purse row. */
+.ink-magic {
+  color: var(--magic, #9d7bd8);
+}
+
+.ink-unique {
+  color: var(--unique, #d8892f);
+}
+
 /* The stash: one more card, behind a divider and narrower than a draft card
    (Stage 2, 2026-08-18: "bottom-third reclaim") — it is not a fourth choice,
    it is a place to put one aside, and the row should read that difference
@@ -1123,6 +1137,17 @@ button.quiet {
   right: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom));
   z-index: 5;
+}
+
+/* A ROW since the fresh-eyes pass (2026-08-20): the note parks over the
+   purse and arrives unannounced mid-run, so its reload needs a way to be
+   declined — RELOAD wide, ✕ beside it. */
+#update-note {
+  display: flex;
+  gap: 8px;
+}
+
+#update-note button {
   min-height: 44px;
   font-size: 0.625rem;
   letter-spacing: 0.08em;
@@ -1131,11 +1156,25 @@ button.quiet {
   background: var(--panel, #1e222b);
 }
 
-/* The storage-full confession (`showStorageNote`): same shape, quieter
-   voice — information, not an action. */
+#update-reload {
+  flex: 1 1 auto;
+}
+
+#update-later {
+  flex: 0 0 44px;
+}
+
+/* The storage-full confession (`showStorageNote`): same shelf, quieter
+   voice — information, not an action — and one step UP from the update
+   bar so the two can never occupy the same rectangle. */
 #storage-note {
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  min-height: 44px;
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
   border-color: var(--panel-edge, #3a4150);
   color: var(--ink-dim, #8a91a0);
+  background: var(--panel, #1e222b);
 }
 
 /* The install nudge (2026-08-20): the end screen's quietest line, once

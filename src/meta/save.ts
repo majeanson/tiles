@@ -125,6 +125,16 @@ export function decodeRun(raw: string | null): GameState | null {
   const wakeAt = parsed['wakeAt'];
   const quest = parsed['quest'];
   const held = parsed['held'];
+  // Reborn landmarks (2026-08-20): a run saved before they existed simply
+  // had none — and a poked-at record keeps only entries wearing the two
+  // rewards the reveal knows.
+  const rearmedRaw = parsed['rearmed'];
+  const rearmed: Record<string, 'cache' | 'site'> = {};
+  if (isRecord(rearmedRaw)) {
+    for (const [k, v] of Object.entries(rearmedRaw)) {
+      if (v === 'cache' || v === 'site') rearmed[k] = v;
+    }
+  }
 
   const state = {
     ...parsed,
@@ -133,6 +143,7 @@ export function decodeRun(raw: string | null): GameState | null {
       Array.isArray(claimedFinds) && claimedFinds.every((k) => typeof k === 'string')
         ? claimedFinds
         : [],
+    rearmed,
     lastPlaced: typeof lastPlaced === 'string' ? lastPlaced : null,
     // The where-you-wake prototype's own field (2026-08-18): unreachable
     // from any UI, so no real save has ever written anything but `null`

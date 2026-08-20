@@ -200,6 +200,18 @@ export type GameState = {
   /** Second Wind is once a run, spent whether the coin was won or lost. */
   readonly usedSecondWind: boolean;
 
+  /**
+   * Spent one-time landmarks REBORN for this run (Marc, 2026-08-20:
+   * "shrines and hidden finds should transform into either points or cache
+   * (randomized) per new run"): hex → what it re-arms as. Plain data from
+   * the shell, like `claimed` — the shell rolls the mix per run
+   * (`meta/world.ts`'s `rearmedSpent`, salted by the world's run count) and
+   * the engine reveals whatever the map says, so a run stays reproducible
+   * from its state alone. Empty on detours and every world with nothing
+   * spent.
+   */
+  readonly rearmed: Readonly<Record<HexKey, 'cache' | 'site'>>;
+
   readonly cells: Readonly<Record<HexKey, Cell>>;
 
   readonly draft: readonly Tile[];

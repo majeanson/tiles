@@ -10,6 +10,7 @@ import {
   knownFraction,
   mergeRun,
   newWorld,
+  rearmedSpent,
   rememberRun,
   unlockedBy,
   UNLOCKS,
@@ -290,5 +291,29 @@ describe('shrines and the unlock ledger (M4)', () => {
   it('loads a world written before shrines existed', () => {
     const old = '{"worldSeed":5,"revealed":["0,0"],"territories":[],"runs":2}';
     expect(decodeWorld(old)?.shrines).toEqual([]);
+  });
+});
+
+describe('rearmedSpent — spent landmarks reborn per run (2026-08-20)', () => {
+  it('rolls every spent shrine and find a fresh face, deterministically', () => {
+    const w = { ...newWorld(42), shrines: [key(3, 0)], finds: [key(0, 4)], runs: 5 };
+    const a = rearmedSpent(w);
+    expect(rearmedSpent(w)).toEqual(a);
+    expect(Object.keys(a).sort()).toEqual([key(0, 4), key(3, 0)].sort());
+    for (const face of Object.values(a)) expect(['cache', 'site']).toContain(face);
+  });
+
+  it('rerolls the mix when the run count moves — per NEW run, as asked', () => {
+    const finds = Array.from({ length: 12 }, (_, i) => key(i + 1, -1));
+    const w = { ...newWorld(42), finds };
+    expect(rearmedSpent({ ...w, runs: 1 })).not.toEqual(rearmedSpent({ ...w, runs: 2 }));
+  });
+
+  it("keeps a fully awake world's shrines as shrines — the crossing's doors", () => {
+    const shrines = UNLOCKS.map((_, i) => key(i + 2, 0));
+    const w = { ...newWorld(42), shrines, finds: [key(9, 9)] };
+    const out = rearmedSpent(w);
+    for (const s of shrines) expect(out[s]).toBeUndefined();
+    expect(out[key(9, 9)]).toBeDefined();
   });
 });

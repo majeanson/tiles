@@ -254,5 +254,10 @@ export const TORCHLIT: Theme = {
   // memory under a torch should read as embers gone cold, pulled further
   // toward the board's own dark and sitting quieter under the live board
   // than the neutral direction bothers to ask for.
-  fog: { veil: 0.5, alpha: 0.26 },
+  // Lifted twice on 2026-08-20 (Marc, with a screenshot: "we still cant
+  // see grounds clearly in the fog, its too dark"): 0.5/0.26 over the
+  // torch falloff was black on black. The falloff no longer applies to
+  // memory (view.ts draws the map at full light), and the fog itself
+  // thinned — the ghost is legible now and still unmistakably a ghost.
+  fog: { veil: 0.3, alpha: 0.45 },
 };

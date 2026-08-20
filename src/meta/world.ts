@@ -1,6 +1,7 @@
 import { distance, parse, type HexKey } from '@engine/hex';
+import { rngNext, stream } from '@engine/rng';
 import type { GameState } from '@engine/state';
-import type { GoalId } from '@content/goals';
+import { REARM, type GoalId } from '@content/goals';
 
 const ORIGIN = { q: 0, r: 0 };
 
@@ -229,4 +230,38 @@ export function knownFraction(world: WorldMemory): number {
   const radius = Math.max(10, world.farthestReach);
   const disc = 3 * radius * (radius + 1) + 1;
   return Math.min(1, world.revealed.length / disc);
+}
+
+/**
+ * Spent one-time landmarks, reborn for the NEXT run (Marc, 2026-08-20:
+ * "shrines and hidden finds should transform into either points or cache
+ * (randomized) per new run"). Rolled here in the shell's territory — the
+ * engine just obeys the map (`GameState.rearmed`) — from a pure hash of
+ * (worldSeed, hex, the world's run count), so the mix REROLLS each time a
+ * run finishes and yet every reveal, resume and replay of one run agrees.
+ *
+ * The one exception is deliberate: on a FULLY AWAKE world the shrines stay
+ * shrines — they are the crossing's doors (Marc's own design), and a world
+ * with every shrine transformed would have no way onward. Claimed finds
+ * transform regardless; a find's gift was always once-ever.
+ *
+ * The numbers live in `content/goals.ts` (`REARM`): `chance` zeroes the
+ * whole system, `cacheShare` splits the roll.
+ */
+export function rearmedSpent(world: WorldMemory): Record<HexKey, 'cache' | 'site'> {
+  const out: Record<HexKey, 'cache' | 'site'> = {};
+  if (!(REARM.chance > 0)) return out;
+
+  const shrines = world.shrines.length >= UNLOCKS.length ? [] : world.shrines;
+  for (const k of [...shrines, ...world.finds]) {
+    const { q, r } = parse(k);
+    const mixed = stream(
+      (world.worldSeed ^ (q * 0x9e3779b9) ^ (r * 0x85ebca6b) ^ (world.runs * 0xc2b2ae35)) | 0,
+    );
+    const [gate, next] = rngNext(mixed);
+    if (gate >= REARM.chance) continue;
+    const [pick] = rngNext(next);
+    out[k] = pick < REARM.cacheShare ? 'cache' : 'site';
+  }
+  return out;
 }

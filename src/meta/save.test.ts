@@ -182,3 +182,20 @@ describe('runs saved before a field existed', () => {
     expect(Number.isNaN(next.tiles)).toBe(false);
   });
 });
+
+describe('reborn landmarks in a save (2026-08-20)', () => {
+  it('round-trips the rearmed map, and fills it empty on an older save', () => {
+    const state = { ...newRun(7, TUNING), rearmed: { '2,0': 'cache' as const } };
+    expect(decodeRun(encodeRun(state))?.rearmed).toEqual({ '2,0': 'cache' });
+
+    const old = JSON.parse(encodeRun(newRun(7, TUNING))) as Record<string, unknown>;
+    delete old['rearmed'];
+    expect(decodeRun(JSON.stringify(old))?.rearmed).toEqual({});
+  });
+
+  it('keeps only faces the reveal knows, from a poked-at record', () => {
+    const poked = JSON.parse(encodeRun(newRun(7, TUNING))) as Record<string, unknown>;
+    poked['rearmed'] = { '2,0': 'site', '3,0': 'shrine', '4,0': 7 };
+    expect(decodeRun(JSON.stringify(poked))?.rearmed).toEqual({ '2,0': 'site' });
+  });
+});

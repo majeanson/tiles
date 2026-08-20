@@ -965,11 +965,15 @@ export class PixiRenderer implements Renderer {
     const stroke = this.#strokeFor(cell, layout.size);
     if (stroke !== null) {
       const inset = surface.inset;
-      group.addChild(
-        new Graphics()
-          .poly(corners(x, y, layout.size * (1 - inset), layout.orientation))
-          .stroke({ width: stroke.width, color: stroke.colour, alignment: 0.5 }),
-      );
+      const edge = new Graphics()
+        .poly(corners(x, y, layout.size * (1 - inset), layout.orientation))
+        .stroke({ width: stroke.width, color: stroke.colour, alignment: 0.5 });
+      // The edge steps back WITH its cell (fresh-eyes, 2026-08-20): the
+      // surface sprite already dims to 0.25 under the colour lens, and an
+      // undimmed stroke over a dimmed cell left the fog full of bright
+      // empty outlines — brighter than before the lens, and unreadable.
+      edge.alpha = cell.dimmed ? 0.25 : 1;
+      group.addChild(edge);
     }
 
     /**

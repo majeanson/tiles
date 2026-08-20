@@ -4983,3 +4983,65 @@ what lit and how to let go. `rememberedNativeAt` (ui/view.ts) is the
 one answer both the painter and the tap share, held-territory fields
 first, so they can never disagree. 600 tests (+1: the lens toggles on
 known fog ground and off again).
+
+**Session 33 addendum 8 — spent ground reborn, the fog readable at last,
+the rarities everywhere, and the fresh-eyes fix batch.** Four of Marc's
+prompts and one audit, one commit.
+
+(1) **Reborn landmarks** ("shrines and hidden finds should transform into
+either points or cache (randomized) per new run"): a woken shrine or a
+claimed find re-arms each NEW run as a cache or a site — rolled in the
+shell (`rearmedSpent`, meta/world.ts) from a pure hash of (worldSeed,
+hex, run count), carried as plain data (`GameState.rearmed`, the
+`claimed` contract's fourth rider), obeyed by the reveal, worn by the
+fog, the beacons and the tap explanations, and kept by the save codec
+(old saves fill empty). The numbers live in content (`REARM` — `chance`
+zeroes the system, `cacheShare` splits the roll). One deliberate
+exception: a FULLY AWAKE world's shrines stay shrines — they are the
+crossing's doors, and transforming them would have deleted Marc's own
+way onward. The written question: does a spent world staying rich
+change how run twenty plays?
+
+(2) **The fog is legible** (Marc, with a screenshot: "we still cant see
+grounds clearly in the fog, its too dark"): the torch's distance falloff
+was multiplying INTO the fog's own alpha — remembered ground a few hexes
+from the live structure was black on black, and the new lens had nothing
+visible to light. Memory is a map being read, not ground being lit: it
+draws at FULL light now, and torchlit's fog thinned (veil 0.5 → 0.3,
+alpha 0.26 → 0.45). The two view tests that probed the falloff THROUGH
+memory cells now pin the new contract instead.
+
+(3) **Magic and unique, everywhere** ("in the held tiles too as well as
+documentation and anywhere it speaks about it"): the stash card sets
+`data-rarity` (it was the one card not doing so — border and badge now
+follow), and `rarityInked` wraps every uppercase MAGIC / UNIQUE in the
+manual, the toast, the event cards and the purse row in its own colour —
+one splitter, so prose and palette cannot disagree.
+
+(4) **The fresh-eyes fix batch** (same-day audit of the week's diff, ten
+findings fixed): the empty hand answers instead of dead-tapping (board
+and stash both say what is missing; the first-contact card says
+"unselect" instead of the ambiguous "puts it down"); a deselect that
+fires a teach card no longer stacks a sticky toast under the modal; the
+purse card never fires on detours (it sold relics on the daily, where
+relics do not exist — and burned itself device-wide doing it); the
+colour lens dims a cell's EDGE with the cell (it was leaving the fog
+full of bright empty outlines — exactly the anchors it was supposed to
+respect); an empty-handed treasure pop keeps the stash instead of
+silently forging green; the update note is dismissible (it parked an
+undismissable RELOAD over the purse row) and the storage note sits one
+step above it; the daily book LEFT the storage-shed ladder (11KB a year,
+the only unrecoverable record on the device); COPY REPORT survives a
+missing clipboard API instead of overwriting the very report it was
+copying; the WebGL probe runs only when the renderer never came up, and
+releases its context; the ember field's overlay steps to its spark dots
+when the collision fallback lands on its own geometry; RESET ALL counts
+a settled world as something to forget; the front door pads for the
+home indicator; the install icons joined the precache; and a dismissed
+share sheet reads as a change of mind, never as SHARING UNAVAILABLE.
+
+**Verified:** 605 tests (+6: reborn reveal, rearmedSpent determinism /
+reroll / crossing exception, save round-trip and poked-record leniency),
+typecheck/lint/format clean, build green, 7 e2e green, `pnpm sim`
+byte-identical (the rearm map is empty in every harness run — policies
+play fresh worlds).

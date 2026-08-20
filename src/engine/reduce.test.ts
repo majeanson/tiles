@@ -96,6 +96,19 @@ describe('placing', () => {
     }
   });
 
+  it('reveals a reborn landmark where the map says, whatever the hash thought', () => {
+    // Spent shrines and finds, reborn (2026-08-20): the shell hands a map
+    // of hex → new face and the reveal obeys it, unclaimed — so walking
+    // back pays like any cache or site. The claim mechanics themselves are
+    // the ordinary landmark path, already pinned; the new wiring is the
+    // override winning the reveal.
+    const ring = key(1, 0);
+    const state = newRun(2, PLAIN, [], [], null, { [ring]: 'cache', [key(0, 1)]: 'site' });
+    expect(state.cells[ring]).toEqual({ kind: 'landmark', reward: 'cache', claimed: false });
+    expect(state.cells[key(0, 1)]).toEqual({ kind: 'landmark', reward: 'site', claimed: false });
+    expect(state.rearmed[ring]).toBe('cache');
+  });
+
   it('puts the card down on SELECT -1, and nothing places while the hand is empty', () => {
     // The empty hand (2026-08-20): the UI sends -1 when the selected card is
     // tapped again. Placement waits for a card to be picked back up.

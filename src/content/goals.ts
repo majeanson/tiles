@@ -60,3 +60,19 @@ export const CROSSING = {
   baseRelics: 25,
   relicsPerTerritory: 10,
 };
+
+/**
+ * Spent one-time landmarks, reborn (Marc, 2026-08-20: "shrines and hidden
+ * finds should transform into either points or cache (randomized) per new
+ * run"): a woken shrine or a claimed find re-arms each NEW run as a cache
+ * or a site, rolled per run so a veteran world's map keeps changing faces.
+ * `chance` is the dial that zeroes the system (the standing contract);
+ * `cacheShare` splits the roll — the rest are sites. One deliberate
+ * exception lives in `meta/world.ts`: on a FULLY AWAKE world the shrines
+ * stay shrines, because they are the crossing's doors and transforming
+ * them would delete Marc's own way onward.
+ */
+export const REARM = {
+  chance: 1,
+  cacheShare: 0.5,
+};

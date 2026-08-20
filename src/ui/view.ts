@@ -356,7 +356,14 @@ export function toBoardView(
     if (onBoard.has(k)) continue;
     const { q, r } = parse(k);
     const ground = terrainAt(state.rootSeed, q, r, state.tuning);
-    const dest = destinationAt(state.rootSeed, q, r, state.tuning);
+    // A reborn landmark wears its NEW face in the fog too (2026-08-20): a
+    // woken shrine rolled into a cache this run must not still read ◈ on
+    // the map — the map is a promise about what walking there pays.
+    const reborn = state.rearmed[k];
+    const dest =
+      reborn !== undefined
+        ? { reward: reborn, colour: null }
+        : destinationAt(state.rootSeed, q, r, state.tuning);
     const nativeHere = dest === null && !ground.wall ? (heldFieldAt(q, r) ?? ground.native) : null;
     cells.push({
       key: k,
@@ -365,13 +372,20 @@ export function toBoardView(
       kind: dest !== null ? 'landmark' : ground.wall ? 'wall' : 'empty',
       colour: dest?.colour ?? null,
       landmark: dest?.reward ?? null,
-      claimed: dest !== null && state.claimed.includes(k),
+      claimed: dest !== null && reborn === undefined && state.claimed.includes(k),
       beacon: false,
       shimmer: false,
       remembered: true,
       rarity: null,
       native: nativeHere,
-      light: lit(q, r),
+      // MAP light, not torch light (Marc, 2026-08-20, with a screenshot:
+      // "we still cant see grounds clearly in the fog, its too dark"): the
+      // torch's distance falloff was multiplying INTO the fog's own alpha,
+      // so remembered ground more than a few hexes from the live structure
+      // was doubly dark — black on black. Memory is a map the player is
+      // reading, not ground the torch is lighting; it draws at full light
+      // and lets `fog.alpha` and `fog.veil` alone say "not this run".
+      light: 1,
       band: band(q, r),
       ripe: false,
       targeted: false,
@@ -394,14 +408,17 @@ export function toBoardView(
   // reach, so the next glow appears at the rim as you push toward the last.
   for (const d of beaconsFor(state, ctx.reach)) {
     if (onBoard.has(key(d.q, d.r))) continue;
+    // The beacon wears the reborn face too (2026-08-20) — a woken shrine
+    // rolled into a site this run glows as the ★ walking there will pay.
+    const reborn = state.rearmed[key(d.q, d.r)];
     cells.push({
       key: key(d.q, d.r),
       q: d.q,
       r: d.r,
       kind: 'landmark',
-      colour: d.colour,
-      landmark: d.reward,
-      claimed: state.claimed.includes(key(d.q, d.r)),
+      colour: reborn !== undefined ? null : d.colour,
+      landmark: reborn ?? d.reward,
+      claimed: reborn === undefined && state.claimed.includes(key(d.q, d.r)),
       beacon: true,
       shimmer: false,
       remembered: false,
@@ -1148,6 +1165,9 @@ export function rememberedNativeAt(state: GameState, hex: HexKey): Colour | null
   const { q, r } = parse(hex);
   const ground = terrainAt(state.rootSeed, q, r, state.tuning);
   if (ground.wall) return null;
+  // A reborn landmark (2026-08-20) is a landmark, not ground: the tap
+  // should describe the cache or site standing there, never turn the lens.
+  if (state.rearmed[hex] !== undefined) return null;
   if (destinationAt(state.rootSeed, q, r, state.tuning) !== null) return null;
   for (const ck of state.claimed) {
     const centre = parse(ck);

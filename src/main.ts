@@ -66,6 +66,7 @@ import {
   knownFraction,
   mergeRun,
   newWorld,
+  rearmedSpent,
   rememberRun,
   unlockedBy,
   UNLOCKS,
@@ -739,9 +740,14 @@ function runKeeping(
         // the diary and the daily ladder — records ABOUT play, and the two
         // stores that actually grow without bound — were never touched).
         // The world goes last, and the player is told what happened.
+        // The daily book left this ladder on the same day's fresh-eyes pass:
+        // it is ~30 bytes a DAY (a year of play ≈ 11KB), the only
+        // unrecoverable record on the device (per-date bests, the streak),
+        // and shedding it never freed enough to matter. The two stores that
+        // actually grow — the diary, then the world's revealed keys — are
+        // the ladder.
         const shed: readonly (() => void)[] = [
           () => localStorage.removeItem(TIMELINE_STORAGE_KEY),
-          () => localStorage.removeItem(DAILY_STORAGE_KEY),
           () => localStorage.removeItem(keys.world),
         ];
         for (const drop of shed) {
@@ -1014,9 +1020,14 @@ function runKeeping(
         if (file !== null) downloadFile(file);
         await navigator.clipboard.writeText(`${text} ${url.toString()}`);
         return 'copied';
-      } catch {
-        // Cancelled, or neither API exists. The button reports it — a copy
-        // nobody is told about reads as a button that does nothing.
+      } catch (error) {
+        // Dismissing the share sheet is the single most common outcome of
+        // tapping SHARE, and it used to be conflated with "sharing is
+        // unavailable" (the audit's words: the game lies). AbortError is
+        // the user changing their mind; the button stays quiet for it.
+        if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled';
+        // Neither API exists. The button reports it — a copy nobody is
+        // told about reads as a button that does nothing.
         return 'failed';
       }
     },
@@ -1655,7 +1666,10 @@ async function main(): Promise<void> {
     SLOTS.every((s) => s === slot || peekSlot(s) === null) &&
     Object.keys(readDailyBook()).length === 0 &&
     readProgress().relics === 0 &&
-    readProgress().found.length === 0;
+    readProgress().found.length === 0 &&
+    // A settled shared world writes a diary tick before any run finishes
+    // (fresh-eyes, 2026-08-20) — a device holding one is not virgin.
+    readTimeline().length === 0;
   let resetArmed = false;
   frontDoorReset.addEventListener('click', () => {
     if (!resetArmed) {
@@ -2251,6 +2265,7 @@ async function main(): Promise<void> {
 
   const renderer = new PixiRenderer(theme, AssetBook.empty(), prefersReducedMotion());
   await renderer.mount(elements.board);
+  rendererAlive = true;
 
   // A resumed run plays under the tuning it was saved with, by design —
   // rebalances never re-score a run in progress.
@@ -2276,6 +2291,10 @@ async function main(): Promise<void> {
   // a replay is reproducible from seed + tuning + these two lists.
   const held = seed === world.worldSeed ? world.territories : [];
   const heldFinds = seed === world.worldSeed ? world.finds : [];
+  // Spent shrines and finds, reborn as this run's caches and sites (Marc,
+  // 2026-08-20) — rolled per run count, home world only: a detour has no
+  // spent history, and the daily stays strictly plain.
+  const rearmed = seed === world.worldSeed ? rearmedSpent(world) : {};
   // The install nudge (2026-08-20, Marc's launch call — "adapt it for iOS
   // players on where to find the option manually"): one quiet line on the
   // end screen, once ever, in the words of THIS platform. iOS has no
@@ -2348,7 +2367,18 @@ async function main(): Promise<void> {
           },
         }),
   };
-  const game = new Game(renderer, elements, seed, theme, tuning, hooks, held, heldFinds, wakeAt);
+  const game = new Game(
+    renderer,
+    elements,
+    seed,
+    theme,
+    tuning,
+    hooks,
+    held,
+    heldFinds,
+    wakeAt,
+    rearmed,
+  );
   game.start();
 
   // The front door's own opener — same dialog the in-game ? opens, so
@@ -2444,17 +2474,31 @@ async function main(): Promise<void> {
  */
 function showUpdateNote(): void {
   if (document.getElementById('update-note') !== null) return;
-  const note = document.createElement('button');
-  note.type = 'button';
-  note.id = 'update-note';
-  note.textContent = 'NEW VERSION — TAP TO RELOAD';
-  note.addEventListener('click', () => {
-    location.reload();
-  });
   // On body, fixed (2026-08-20): it used to sit inside #game-shell beside
   // the stamp — which is `inert` the whole time the front door is up, so
-  // an update arriving on the menu was an untappable line. The overlay
-  // position in style.css keeps it live whatever state the game is in.
+  // an update arriving on the menu was an untappable line. Dismissible
+  // since the same day's fresh-eyes pass: it parks over the purse row, it
+  // arrives unannounced mid-run, and its only interaction was a reload —
+  // one mis-reach for the purse threw the player out of their run.
+  const note = document.createElement('div');
+  note.id = 'update-note';
+  note.setAttribute('role', 'status');
+  const reload = document.createElement('button');
+  reload.type = 'button';
+  reload.id = 'update-reload';
+  reload.textContent = 'NEW VERSION — TAP TO RELOAD';
+  reload.addEventListener('click', () => {
+    location.reload();
+  });
+  const later = document.createElement('button');
+  later.type = 'button';
+  later.id = 'update-later';
+  later.setAttribute('aria-label', 'Not now');
+  later.textContent = '✕';
+  later.addEventListener('click', () => {
+    note.remove();
+  });
+  note.append(reload, later);
   document.body.appendChild(note);
 }
 
@@ -2557,7 +2601,7 @@ function showFailure(error?: unknown): void {
   // all cannot draw the board, will not be fixed by CONTINUE, and loops on
   // RELOAD — telling that visitor "your run is saved" was a lie wearing a
   // stack trace. Name the real problem and the real fix instead.
-  const noWebgl = webglMissing();
+  const noWebgl = !rendererAlive && webglMissing();
   words.textContent = noWebgl
     ? `${NAME} needs WebGL to draw its board, and this browser has it missing or switched off. ` +
       'Try Safari or Chrome — or turn hardware acceleration back on.'
@@ -2598,14 +2642,23 @@ function showFailure(error?: unknown): void {
   copy.style.cssText = buttonCss;
   copy.addEventListener('click', () => {
     const report = `${NAME} ${__BUILD_SHA__.slice(0, 7)}\n${shown.textContent ?? ''}`;
-    navigator.clipboard.writeText(report).then(
-      () => {
-        copy.textContent = 'COPIED';
-      },
-      () => {
-        copy.textContent = 'SELECT THE TEXT ABOVE';
-      },
-    );
+    // `navigator.clipboard` is undefined outside secure contexts, and the
+    // property access THROWS synchronously — into the very error listener
+    // whose panel this button sits on, overwriting the report it was
+    // copying (fresh-eyes, 2026-08-20). The try is the fix.
+    try {
+      if (navigator.clipboard === undefined) throw new Error('no clipboard');
+      navigator.clipboard.writeText(report).then(
+        () => {
+          copy.textContent = 'COPIED';
+        },
+        () => {
+          copy.textContent = 'SELECT THE TEXT ABOVE';
+        },
+      );
+    } catch {
+      copy.textContent = 'SELECT THE TEXT ABOVE';
+    }
   });
   const row = document.createElement('div');
   row.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;justify-content:center;';
@@ -2617,15 +2670,28 @@ function showFailure(error?: unknown): void {
   document.body.appendChild(panel);
 }
 
-/** No WebGL at all — the one boot failure that is the browser's, not ours. */
+/**
+ * No WebGL at all — the one boot failure that is the browser's, not ours.
+ * Only ever consulted when the renderer NEVER came up (`rendererAlive`
+ * below): probing for a context while Pixi holds a live one can push a
+ * phone at its context limit to drop the oldest — which is the board
+ * (fresh-eyes, 2026-08-20). The probe also releases what it took.
+ */
 function webglMissing(): boolean {
   try {
     const probe = document.createElement('canvas');
-    return probe.getContext('webgl2') === null && probe.getContext('webgl') === null;
+    const gl = probe.getContext('webgl2') ?? probe.getContext('webgl');
+    if (gl === null) return true;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return false;
   } catch {
     return true;
   }
 }
+
+/** Set the moment `renderer.mount` succeeds — after that, a failure is never
+ *  "this browser has no WebGL" and the probe above must not run at all. */
+let rendererAlive = false;
 
 // A boot that dies (WebGL refused, an element missing, a bundle truncated)
 // used to be a silent blank page. The listeners catch what escapes later —

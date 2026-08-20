@@ -6,7 +6,6 @@ import { newRun, reduce } from '@engine/reduce';
 import { harvestMultiplier, harvestValue, legalPlacements, ripeKeys } from '@engine/rules';
 import type { GameState } from '@engine/state';
 import { destinationsWithin, findAt } from '@engine/world';
-import { brightness } from '@theme/tokens';
 import { toBoardView, toHudView } from './view';
 
 /**
@@ -293,22 +292,20 @@ describe('the light the structure carries', () => {
     expect(view.cells.find((c) => c.key === target)?.light).toBe(1);
   });
 
-  it('reads brightness(N) at a cell N beyond the structure’s edge', () => {
-    // A fresh run has exactly one built cell (the origin), so the structure's
-    // distance to a hex is plain hex distance from it — an exact number to
-    // pin the curve against.
+  it('draws remembered ground at FULL light, however far from the structure', () => {
+    // These two used to probe the torch falloff THROUGH memory cells —
+    // until 2026-08-20, when Marc's screenshot showed why that was wrong
+    // in play: the falloff multiplied into the fog's own alpha, and
+    // remembered ground a few hexes out was black on black. Memory is a
+    // map being read, not ground being lit; `fog.alpha`/`fog.veil` alone
+    // carry "not this run" now, so the pin inverts: full light at any
+    // distance. (The falloff itself is unchanged and still pinned by the
+    // live-board tests around this one.)
     const fresh = newRun(5, TINY);
-    const N = LIGHT.radius + 4;
-    const far = key(N, 0);
-    const view = toBoardView(fresh, null, null, [far], LIGHT);
-    expect(view.cells.find((c) => c.key === far)?.light).toBeCloseTo(brightness(LIGHT, N));
-  });
-
-  it('never drops below the floor, however far the structure’s edge sits', () => {
-    const fresh = newRun(5, TINY);
-    const veryFar = key(500, 0);
-    const view = toBoardView(fresh, null, null, [veryFar], LIGHT);
-    expect(view.cells.find((c) => c.key === veryFar)?.light).toBe(LIGHT.floor);
+    for (const far of [key(LIGHT.radius + 4, 0), key(500, 0)]) {
+      const view = toBoardView(fresh, null, null, [far], LIGHT);
+      expect(view.cells.find((c) => c.key === far)?.light).toBe(1);
+    }
   });
 
   it('never dims anything to nothing, however far out the board runs', () => {

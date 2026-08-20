@@ -679,7 +679,20 @@ export function fieldPattern(theme: Theme, colour: Colour): Pattern {
 export function fieldOverlayPattern(theme: Theme, colour: Colour): Pattern {
   const overlay = theme.terrain[colour].overlay;
   if (overlay.kind === 'none') return NO_PATTERN;
-  return thinnedField(theme, colour, overlay, FIELD_OVERLAY_WEIGHT);
+  const thinned = thinnedField(theme, colour, overlay, FIELD_OVERLAY_WEIGHT);
+  // The two layers must stay two GEOMETRIES (fresh-eyes, 2026-08-20):
+  // ember's collision fallback made its field base hatch@90 — the same
+  // bars its own overlay carries — which is the identical-grid-twice this
+  // weight table's doc forbids. When the thinned overlay lands on the
+  // base's geometry, the terrain's PATTERN steps in as the second layer
+  // instead: ember ground gets its spark dots back over the grass, and
+  // the field speaks its tile's full texture again.
+  const base = fieldPattern(theme, colour);
+  const shape = (p: Pattern): string => (p.kind === 'hatch' ? `hatch:${p.angleDeg}` : p.kind);
+  if (shape(thinned) === shape(base)) {
+    return thinnedField(theme, colour, theme.terrain[colour].pattern, FIELD_OVERLAY_WEIGHT);
+  }
+  return thinned;
 }
 
 /**

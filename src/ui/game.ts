@@ -212,7 +212,7 @@ export type GameHooks = {
   readonly share?: (
     state: GameState,
     card: ShareCardData,
-  ) => Promise<'shared' | 'copied' | 'failed'>;
+  ) => Promise<'shared' | 'copied' | 'cancelled' | 'failed'>;
   /**
    * What the next shrine will unlock, by how many this run has already
    * claimed. The ledger belongs to the world, which lives outside the game —
@@ -344,6 +344,28 @@ const POWER_NAMES: Record<Colour, string> = {
  * player's own board, where the manual's always-on section and the
  * long-press lens both wait to be found rather than arriving.
  */
+/**
+ * MAGIC and UNIQUE wear their own colours wherever the WORDS appear (Marc,
+ * 2026-08-20: "as well as documentation and anywhere it speaks about it") —
+ * one splitter shared by the manual, the toast, the event card and the
+ * purse row, so prose and palette can never disagree. Uppercase only: the
+ * capitals are the vocabulary; lowercase prose stays prose.
+ */
+function rarityInked(text: string): (Node | string)[] {
+  const parts: (Node | string)[] = [];
+  let last = 0;
+  for (const m of text.matchAll(/\b(MAGIC|UNIQUE)\b/g)) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    const span = document.createElement('span');
+    span.className = m[1] === 'MAGIC' ? 'ink-magic' : 'ink-unique';
+    span.textContent = m[1]!;
+    parts.push(span);
+    last = m.index + m[1]!.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 const COLOUR_TEACH: Record<Colour, TeachId> = {
   green: 'colourGreen',
   yellow: 'colourYellow',
@@ -579,13 +601,17 @@ export class Game {
     // the world origin, exactly as always. A resumed run ignores it: the
     // save carries its own.
     wakeAt: HexKey | null = null,
+    // Reborn landmarks (2026-08-20): what the shell rolled the world's
+    // spent shrines and finds into for THIS run. A resumed run ignores it
+    // for the same reason as wakeAt: the save carries its own.
+    rearmed: Readonly<Record<HexKey, 'cache' | 'site'>> = {},
   ) {
     this.#renderer = renderer;
     this.#el = elements;
     this.#theme = theme;
     this.#hooks = hooks;
     this.#helpOpener = elements.help;
-    this.#state = hooks.resume ?? newRun(seed, tuning, claimed, claimedFinds, wakeAt);
+    this.#state = hooks.resume ?? newRun(seed, tuning, claimed, claimedFinds, wakeAt, rearmed);
     // The world's own best as of right now — before this run's own actions
     // can move it. A resumed run may already have passed it in an earlier
     // session, which is exactly why NEW GROUND must not fire twice for the
@@ -764,7 +790,12 @@ export class Game {
       // carries the two facts a price cannot — what each row IS, and that
       // a purse you die on is mostly lost. Once, at the first deliberate
       // opening, which is exactly when someone is asking what this is.
-      if (!open && !this.#met('purse')) {
+      // Never on a detour (fresh-eyes, 2026-08-20): the card's own words —
+      // relics at the tithe, the run's-end conversion — describe an economy
+      // a daily does not have, and marking it met there would burn the
+      // lesson before the home world could teach it truly. The same guard
+      // RELIC_LESSON keeps, for the same reason.
+      if (!open && !this.#detour && !this.#met('purse')) {
         this.#markMet('purse');
         this.#showEventCard(this.#purseLesson());
       }
@@ -824,7 +855,7 @@ export class Game {
     if (met !== null && met.size === 0 && this.#state.placements === 0) {
       this.#markMet('place');
       this.#showEventCard(
-        '⬢  THE EXPEDITION\nTap a card in your hand, then tap a glowing hex to place it — tapping the card again puts it down. Tiles are the purse and the clock: when they run out, the run ends. Ripen tiles by surrounding them, then POP.',
+        '⬢  THE EXPEDITION\nTap a card in your hand, then tap a glowing hex to place it. (Tap the selected card again to unselect it.) Tiles are the purse and the clock: when they run out, the run ends. Ripen tiles by surrounding them, then POP.',
       );
     }
   }
@@ -1019,6 +1050,15 @@ export class Game {
       }
       // Sticky: you asked for this one, so it waits for you to be done.
       this.#showNote(this.#describe(hex), true);
+      return;
+    }
+
+    // The empty hand answers (fresh-eyes, 2026-08-20): with every card put
+    // down, the legal hexes still glow — legality is about the BOARD — and
+    // a tap on one used to be the silent no-op this very file's comment
+    // above condemns. Say what is missing instead.
+    if (this.#state.draft[this.#state.selected] === undefined) {
+      this.#showNote('Your hand is empty — tap a card below to pick one up.', true);
       return;
     }
 
@@ -1370,6 +1410,14 @@ export class Game {
       // shimmer, or ground this world remembers from an earlier run.
       const { q, r } = parse(hex);
       const remembered = this.#hooks.memory?.includes(hex) ?? false;
+      // A reborn landmark (2026-08-20): this run rolled a spent shrine or
+      // find into a fresh cache or site, and the tap answers for what
+      // walking there PAYS — the world's memory of what used to stand
+      // here is the diary's business, not the map's.
+      const reborn = this.#state.rearmed[hex];
+      if (reborn !== undefined) {
+        return `${destination(reborn, null, false)} Build your chain out to it.`;
+      }
       const dest = destinationAt(this.#state.rootSeed, q, r, t);
       if (dest !== null) {
         // Named only where the world has actually SHOWN it (Marc,
@@ -1520,7 +1568,7 @@ export class Game {
 
     const lines = section.lines.map((line) => {
       const p = document.createElement('p');
-      p.textContent = line;
+      p.replaceChildren(...rarityInked(line));
       return p;
     });
 
@@ -1544,7 +1592,7 @@ export class Game {
       summary,
       ...section.detail.map((line) => {
         const p = document.createElement('p');
-        p.textContent = line;
+        p.replaceChildren(...rarityInked(line));
         return p;
       }),
     );
@@ -2036,9 +2084,13 @@ export class Game {
     // is already the subject. Closed-state only — open already shows the
     // priced spends, which is the shop's own answer to "what does luck do".
     const odds = hud.odds === null || open ? '' : `  ${hud.odds}`;
-    this.#el.purseToggle.textContent = open
-      ? `${hud.luck} LUCK  ▾`
-      : `${hud.luck} LUCK${odds}  ${canBuy ? '· SPEND' : `· next ${cheapest}`}  ▸`;
+    this.#el.purseToggle.replaceChildren(
+      ...rarityInked(
+        open
+          ? `${hud.luck} LUCK  ▾`
+          : `${hud.luck} LUCK${odds}  ${canBuy ? '· SPEND' : `· next ${cheapest}`}  ▸`,
+      ),
+    );
     // Written rather than merely read, so the control states its own state
     // even on the first frame — a screen reader should not have to infer it.
     this.#el.purseToggle.setAttribute('aria-expanded', String(open));
@@ -2260,7 +2312,7 @@ export class Game {
       clearTimeout(this.#noteTimer);
       this.#noteTimer = null;
     }
-    this.#el.toast.textContent = text ?? '';
+    this.#el.toast.replaceChildren(...rarityInked(text ?? ''));
     this.#el.toast.hidden = text === null;
 
     if (text !== null && !sticky) {
@@ -2286,7 +2338,7 @@ export class Game {
     this.#showNote(null);
     const match = EVENT_GLYPH.exec(text);
     this.#el.eventCardGlyph.textContent = match?.[1] ?? '';
-    this.#el.eventCardText.textContent = match?.[2] ?? text;
+    this.#el.eventCardText.replaceChildren(...rarityInked(match?.[2] ?? text));
     // A card with a choice grows its second button; GOT IT reads as staying.
     if (this.#eventAction !== null) {
       this.#eventAction.hidden = action === undefined;
@@ -2985,7 +3037,9 @@ export class Game {
           // The share sheet is its own feedback; the clipboard is not. The
           // acknowledgement lives on the button because the button is what
           // the eye is already on.
-          if (outcome === 'shared') return;
+          // A dismissed share sheet is a change of mind, not a failure —
+          // the button says nothing, exactly like a completed share.
+          if (outcome === 'shared' || outcome === 'cancelled') return;
           share.textContent = outcome === 'copied' ? 'LINK COPIED' : 'SHARING UNAVAILABLE';
           setTimeout(() => {
             share.textContent = 'SHARE THIS RUN';
@@ -3510,7 +3564,11 @@ export class Game {
           // explanation asked for by hand. Dispatch first, note second, so
           // the lesson outlives whatever the quiet action wanted to say.
           this.#dispatch({ type: 'SELECT', index: tile.selected ? -1 : index });
-          if (tile.selected) {
+          // Only when the quiet action did not open a CARD (fresh-eyes,
+          // 2026-08-20): #teachCheck can fire a modal on this very
+          // dispatch, and a sticky toast under a modal is the two-surfaces
+          // overlap #showEventCard's own contract forbids.
+          if (tile.selected && this.#el.eventCard.hidden) {
             const rare = this.#rarityLine(tile.rarity);
             const lesson =
               this.#colourLesson(tile.colour) ??
@@ -3626,6 +3684,13 @@ export class Game {
     const button = document.createElement('button');
     button.className = 'tile hold';
     button.addEventListener('click', () => {
+      // The empty hand answers here too (fresh-eyes, 2026-08-20): with no
+      // card selected and nothing stashed, HOLD has nothing to swap and
+      // used to say nothing about it.
+      if (this.#state.held === null && this.#state.draft[this.#state.selected] === undefined) {
+        this.#showNote('Nothing in hand to stash — tap a card first.', true);
+        return;
+      }
       this.#dispatch({ type: 'HOLD' });
     });
 
@@ -3639,6 +3704,11 @@ export class Game {
     }
 
     button.dataset['colour'] = hud.held.colour;
+    // The held card wears its rarity like the hand does (Marc, 2026-08-20:
+    // "apply the magic and unique colors in the held tiles too") — the
+    // data-rarity attribute is what the border and badge colours key on,
+    // and the stash was the one card not setting it.
+    button.dataset['rarity'] = hud.held.rarity;
     const name = this.#theme.terrainNames[hud.held.colour];
     button.setAttribute('aria-label', `Swap the held ${name} tile back into the hand`);
 
