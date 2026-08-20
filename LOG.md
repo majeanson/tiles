@@ -4378,3 +4378,93 @@ light pooling or just brighter; whether torchlit's claim flare reads as a
 reward answering in light or as an unexplained flash on the toast; and the
 stage's own question — whether all of this reads as one world responding, or
 as noise on top of the feel pass he has not yet judged.
+
+**Addendum, 2026-08-20 — the fresh-eyes review of the visual pipeline.** A
+reviewer with no part in building Stages 1–4, hunting the same species the
+2026-08-18 review caught: the cross-stage seam no stage working alone could
+see. Walked `73b4428..80f5145` stage by stage and as one diff — the theme
+deletions against every decode path that might still name them, the three
+image bakers (og:image, share card, terrain) against the live tokens each
+claims to read, the new cache-key fields against every baker that caches,
+the motion tokens against the literals the renderer drew before the feel
+pass, the reduced-motion and layering contracts, the service worker and the
+deploy verifier against the new files, and every stage's own **Verified**
+paragraph re-run rather than believed. Three commits, each gated
+(`vitest` · `typecheck` · `lint` · `format:check`; `pnpm sim` untouched by
+construction AND re-proven against a clean `73b4428` worktree, not a stash):
+
+- `edcbe24` — **the hand stopped matching the board.** The board prefers a
+  terrain slot's PNG the moment the manifest loads; the draft cards kept
+  baking their hexes procedurally, so Stage 3's art split the one surface
+  the cards exist to mirror (`STATUS.md`'s own draft-cards bullet). Worse,
+  Stage 3's session account claims a Playwright pass confirmed the baked
+  art "on draft cards" — a claim the code could not have made true: EMBER's
+  blades exist only in the PNG, and the cards never loaded one.
+  `Game#setCardArt` now joins `setLogo`/`setRunEndArt` off the same single
+  manifest fetch, with the procedural bake kept as the floor and a test
+  pinning the re-dress.
+- `f8e2337` — **verify-deploy's HEAD checks were unfalsifiable.** The
+  worker's SPA fallback answers 200-with-index.html for any missing file —
+  `waitForVersion` has guarded against exactly this since the first deploy,
+  but `headOk` never did, so the icons, the manifest, the service worker
+  and Stage 1's own new og:image check would all pass with the files
+  deleted (probed live: `HEAD /definitely-missing-xyz.png → 200
+text/html`). `headOk` now treats a text/html answer as missing, and the
+  art joined the checked surface: the live asset manifest is fetched and
+  every file it names HEADed for real — a dropped PNG batch would
+  otherwise degrade every board to the procedural floor with no error
+  anywhere. Verified against the live site, green.
+- `653b48a` — **three claims contradicting the work they shipped with**:
+  `.end-arc` letterboxed the enlarged arc inside its own hero (320×68
+  forced onto a 300×72 viewBox, under a comment claiming they matched);
+  `DEFAULT_THEME_ID`'s docstring still promised "every direction is still
+  loaded" three paragraphs below Stage 1's deletion note in the same file;
+  and `STATUS.md` still swore "no art has been imported yet: every slot is
+  empty on purpose" a stage after eight slots were filled.
+
+**Claims re-verified, and their results.** 573 tests at `73b4428` (a fresh
+worktree run — Session 27's "was 573" arithmetic holds) and 557 at
+`80f5145`, matching every stage's count; `pnpm sim` byte-identical between
+HEAD and the `73b4428` worktree, and `engine/`/`content/`/`sim/` untouched
+across the whole range; both Playwright specs green against the production
+build; `scripts/terrain.ts` re-run and its eight PNGs came back
+byte-identical to the committed ones, luma ordering `blue < green < red <
+yellow` as logged; the greyscale threshold (0.05) untouched and torchlit
+still the tested default; placeholder's `popGlowScale: 3.2` and
+`emberLifeMs: 500` are the renderer's real pre-pipeline literals and the
+feel pass (`371afcb`) touched only CSS, so they predate it too; reduced
+motion still skips embers entirely and keeps its held glow, and both
+torchlit CSS flares live inside `prefers-reduced-motion: no-preference`;
+DPR cap and the context-loss path untouched; no live reference to
+`cold-survey`/`rot-bloom` outside history, and a stale stored theme id
+falls back to torchlit under test; `hidePoints` hides only the mid-run HUD
+score, so the share card's points agree with the end screen that reveals
+them; the daily card's ladder-line-and-no-seed is pinned; the new PNGs and
+og:image ride the worker's runtime cache rather than the precache, which
+is the designed floor, not a regression.
+
+**Recorded, not fixed.** Stage 4's commit message overstates "placeholder
+keeps the exact literals it always drew at" — `emberGravity: 0.4` is new
+behaviour for the control (the theme file itself is honest that it is mild
+rather than off, a deliberate call, so the code is right and the message
+is loose). Session 29's "212 KB total" is really ~200 KB (195 KiB) on
+disk. The terrain baker's luma self-check covers the four colour terrains
+only — wall/stone/ghost lean on `theme.test.ts`'s token pins alone. The
+desktop share edge where the card downloads and the clipboard then fails
+reports 'failed' despite a real file landing. Pre-existing and predating
+the pipeline (so recorded here, per this review's own brief): `STATUS.md`'s
+"Not started" section still lists the daily as parked though it shipped
+2026-08-19, and its "nothing visual is tested by this repository" note has
+been only half-true since `ce94f77`'s real-browser smoke — both were stale
+before `73b4428` and belong to the next checkpoint rewrite, not to this
+review's diff.
+
+**The verdict, honestly.** The pipeline did not cut corners in the code:
+engine purity, layering, the balance table, the reduced-motion and
+greyscale contracts, and the theme-data discipline all held under
+adversarial re-checking, and the stages' gate claims all reproduced. Where
+it cut them was in its own VERIFICATION PROSE — a Playwright claim about
+draft cards the code contradicts, a deploy check that could not fail, a
+CSS comment asserting a match the numbers refuse — the same genre the
+2026-08-18 review caught, one layer up: last time the numbers escaped,
+this time the claims did.

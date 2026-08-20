@@ -134,9 +134,36 @@ as noise on top of the feel pass's one motion language?
 
 **All four stages are now built.** The pipeline's build work ends here — a
 fresh-eyes review of all four stages together (the same species as the
-2026-08-18 pipeline's own closing review) is the next step, and per that
-review's own precedent it runs as its own separate pass, not tacked onto
-the stage that just shipped.
+2026-08-18 pipeline's own closing review) closed it out below.
+
+## Fresh-eyes review (STATUS: DONE)
+
+Ran 2026-08-20 as its own pass over `73b4428..80f5145`, per the precedent.
+Full account in `LOG.md`'s addendum of the same date. Three defects found
+and fixed, each gated and with `pnpm sim` re-proven against a clean
+`73b4428` worktree:
+
+- `edcbe24` — the draft cards never consumed Stage 3's terrain PNGs, so
+  the board and the hand split into two arts; `Game#setCardArt` rejoins
+  them off the same manifest fetch, procedural bake kept as the floor.
+- `f8e2337` — every `verify-deploy` HEAD check was unfalsifiable under the
+  worker's SPA fallback (missing file → 200 text/html); the check now
+  reads content-type and also verifies every file the live asset manifest
+  names.
+- `653b48a` — the truth pass: `.end-arc`'s letterboxed box vs. its own
+  "matches the viewBox" comment, `DEFAULT_THEME_ID`'s "every direction is
+  still loaded" docstring, and `STATUS.md`'s "every slot is empty" bullet,
+  all corrected in place.
+
+Every stage's Verified paragraph was re-run rather than believed: test
+counts (573 → 557 across the range, 558 with the review's own pin),
+sim byte-identity, both Playwright specs, the terrain baker's determinism
+(byte-identical PNGs on rerun) and luma ordering, the greyscale threshold,
+the reduced-motion contract, and the pre-pipeline motion literals all
+reproduced. Observations that are records rather than defects — Stage 4's
+overstated commit message, the 212-vs-200 KB count, the luma check's
+four-colour scope, two pre-pipeline `STATUS.md` stalenesses — live in the
+LOG addendum.
 
 ## After the pipeline
 
