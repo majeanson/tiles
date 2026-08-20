@@ -1081,8 +1081,12 @@ function oddsFor(state: GameState): string | null {
  * sentence's job is to say WHY it happened — the cost of a placement having
  * climbed past what the board could pay back is the whole arc of a run, and it
  * should be the last thing the player reads.
+ *
+ * Exported since 2026-08-20: the hall of fame's diary stores this sentence
+ * FINISHED on each run's tick (`RunDetail.epitaph`), so a reopened row says
+ * exactly what the screen said — one source of words, kept, not re-derived.
  */
-function epitaphFor(state: GameState): string {
+export function epitaphFor(state: GameState): string {
   if (state.death === 'spent') {
     const unripe = Object.values(state.cells).filter((c) => c.kind === 'tile').length;
     return (

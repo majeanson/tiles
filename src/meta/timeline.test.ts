@@ -92,6 +92,33 @@ describe('decodeTimeline', () => {
     const earlier = run({ at: 100, score: 2 });
     expect(decodeTimeline(encodeTimeline([later, earlier]))).toEqual([later, earlier]);
   });
+
+  it('round-trips the full run detail, and tolerates rows from before it existed', () => {
+    // RunDetail (2026-08-20, Marc: "a 'full detail' of the run"): kept on
+    // new ticks, absent on old ones — both shapes are the diary.
+    const detailed = run({
+      detail: {
+        placements: 121,
+        harvests: 28,
+        popped: 96,
+        bigPop: 412,
+        bigPopAt: 0.78,
+        claims: 3,
+        quests: 1,
+        relics: 5,
+        epitaph: 'Out of tiles on the plane, after 121 placements. They cost 6 each by the end.',
+      },
+    });
+    const bare = run();
+    expect(decodeTimeline(encodeTimeline([detailed, bare]))).toEqual([detailed, bare]);
+  });
+
+  it('drops a malformed detail alone — the tick it rides on survives', () => {
+    // The detail is the record's footnote, not the record: leniency here is
+    // the opposite call from the per-entry refusal above, on purpose.
+    const raw = JSON.stringify([{ ...run(), detail: { placements: 'many' } }]);
+    expect(decodeTimeline(raw)).toEqual([run()]);
+  });
 });
 
 describe('appendEntry', () => {

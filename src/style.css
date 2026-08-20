@@ -319,6 +319,31 @@ button.fame-run[aria-expanded='true'] {
   color: var(--ink-dim, #8a91a0);
 }
 
+/* The fold as that run's end screen in miniature (Marc, 2026-08-20: "a way
+   to see the end screen we had... a 'full detail' of the run") — the same
+   hierarchy the real one has: score loudest, the epitaph under it, the arc
+   as a picture, the facts and ✦ moments in the diary's own quiet voice. */
+.fame-score {
+  margin: 4px 0 0;
+  font-family: var(--font-display, inherit);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--ink, #e8ecf4);
+}
+
+.fame-epitaph {
+  margin: 0 0 2px;
+  font-size: 0.75rem;
+  color: var(--ink-faint, #767d8d);
+}
+
+.fame-arc {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+  letter-spacing: 0.14em;
+  color: var(--accent, #d7b45a);
+}
+
 /* min-height:0 lets this flex child actually shrink, which is what allows the
    canvas to size itself to the space left over rather than overflowing.
    touch-action:none hands EVERY gesture on the board to the game — tap, drag

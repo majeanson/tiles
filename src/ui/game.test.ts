@@ -2073,7 +2073,7 @@ describe('the shelf', () => {
     const ctx = shelf(['stonewalker'], ['stonewalker']);
     const text = ctx.el.end.textContent ?? '';
 
-    expect(text).toMatch(/THE SHELF/);
+    expect(text).toMatch(/THE SHELF · 1\/5 FOUND/);
     expect(text).toMatch(/STONEWALKER/);
     expect(text).toMatch(/beside stone cost 1 less/i);
     // Four perks unowned: one line naming the count, not four identical

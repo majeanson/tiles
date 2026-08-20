@@ -4879,3 +4879,24 @@ colour's field falls back to its own distinct ground mark — ember ground
 keeps the vertical dry grass its sparks sit in, and Marc's 2026-08-18
 four-distinct-grounds test stays exactly as strict as his eyes asked it
 to be. 595 tests; the bake's own greyscale ordering holds.
+
+**Session 33 addendum 3 — the shelf gets a size, the diary keeps the
+whole night (both Marc's prompts, same day).** (1) "The shelf is unclear
+that they are unique items you can find, show 0 / 5": the end-screen
+shop's shelf header reads `THE SHELF · N/5 FOUND` now, with one subtitle
+carrying what the old header and the slot line said — a fresh device's
+empty shelf reads as a collection with a size, not a section that failed
+to load. (2) "A way to see the end screen we had for the hall of fame
+when clicking on it... a 'full detail' of the run": every run row in the
+timeline is a button now, and the fold is that run's end screen in
+miniature — score at end-screen weight, the epitaph SENTENCE, reach ·
+world · date, the arc grown back to a picture, placements / tiles popped
+/ biggest pop and where / destinations / bounties / relics carried, then
+the ✦ moments. The diary stores it: `RunDetail`, an optional block on
+each new tick, written at finish by `runDetailOf` (main.ts) which
+mirrors `summariseRun` fact for fact and stores `epitaphFor`'s sentence
+FINISHED — one source of words, kept rather than re-derived. Old ticks
+stay valid and open with what they have; a malformed detail is dropped
+alone (the footnote, not the record — the deliberate opposite of the
+per-entry refusal). 597 tests (+2: the detail round-trip and the
+lenient-footnote pin; the shelf test now pins `1/5 FOUND`).

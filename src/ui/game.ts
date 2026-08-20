@@ -3232,12 +3232,21 @@ export class Game {
     // An owned perk shows its name, its sentence and the one toggle it has.
     // Undiscovered ones used to be four identical UNDISCOVERED rows with a
     // dash — the mystery was the point, but four blank rows read as a
-    // loading state rather than a promise. One line names the count instead.
+    // loading state rather than a promise. One line names the count instead —
+    // and since 2026-08-20 the HEADER carries it as N/5 FOUND (Marc: "the
+    // shelf is unclear that they are unique items you can find, show 0 / 5
+    // or similar"): a fresh device's empty shelf now reads as a collection
+    // with a size, not a shop section that failed to load.
+    const owned = PERKS.filter((perk) => progress.found.includes(perk.id));
+
     const shelfHead = document.createElement('p');
     shelfHead.className = 'shop-purse';
-    shelfHead.textContent = 'THE SHELF — found out in the world, never sold';
+    shelfHead.textContent = `THE SHELF · ${owned.length}/${PERKS.length} FOUND`;
 
-    const owned = PERKS.filter((perk) => progress.found.includes(perk.id));
+    const shelfNote = document.createElement('p');
+    shelfNote.className = 'end-facts';
+    shelfNote.textContent =
+      'Unique perks, found out in the world — never sold here. One perk may be worn at a time.';
     const shelf = owned.map((perk) => {
       const worn = progress.equipped.includes(perk.id);
 
@@ -3275,11 +3284,7 @@ export class Game {
         ? `${undiscovered} more ${undiscovered === 1 ? 'is' : 'are'} still out there, unnamed.`
         : 'Every perk in the pool has been found.';
 
-    const slotLine = document.createElement('p');
-    slotLine.className = 'end-facts';
-    slotLine.textContent = 'One perk may be worn at a time.';
-
-    return [...rows, shelfHead, ...shelf, mystery, slotLine];
+    return [...rows, shelfHead, shelfNote, ...shelf, mystery];
   }
 
   /**

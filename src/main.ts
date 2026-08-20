@@ -55,6 +55,7 @@ import {
   runHighlights,
   streamOf,
   type Highlight,
+  type RunDetail,
   type RunEntry,
   type TimelineEntry,
   type WorldEventEntry,
@@ -78,6 +79,7 @@ import { assetPath, DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from 
 import type { Orientation, Theme } from '@theme/tokens';
 import type { GameState, LandmarkReward } from '@engine/state';
 import { Game, type Elements, type GameHooks } from '@ui/game';
+import { epitaphFor } from '@ui/view';
 import { Sound } from '@ui/audio';
 
 // v2, 2026-08-14: the endless world became the default. Any device that ever
@@ -242,6 +244,38 @@ function readTimeline(): readonly TimelineEntry[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * The run's end screen, kept for the diary (Marc, 2026-08-20: "a 'full
+ * detail' of the run" behind every hall-of-fame row). Mirrors
+ * `summariseRun` (ui/view.ts) fact for fact — same counting, same epitaph
+ * function — so a reopened row says what the screen said that night.
+ */
+function runDetailOf(state: GameState): RunDetail {
+  let bigPop = 0;
+  let bigAt = 0;
+  for (const h of state.log.harvests) {
+    if (h.points > bigPop) {
+      bigPop = h.points;
+      bigAt = h.at;
+    }
+  }
+  let claims = 0;
+  for (const cell of Object.values(state.cells)) {
+    if (cell.kind === 'landmark' && cell.claimed) claims++;
+  }
+  return {
+    placements: state.placements,
+    harvests: state.log.harvests.length,
+    popped: state.log.popped,
+    bigPop,
+    bigPopAt: state.placements === 0 ? 0 : bigAt / state.placements,
+    claims,
+    quests: state.log.questsDone,
+    relics: state.relics,
+    epitaph: epitaphFor(state),
+  };
 }
 
 /** One entry onto the diary's end. A diary that cannot be written is still
@@ -864,6 +898,7 @@ function runKeeping(
           perksAfter: readProgress().found.length,
           campStart: state.wakeAt !== null,
         }),
+        detail: runDetailOf(state),
       });
 
       // The finished run leaves storage HERE, not on NEW RUN: an ended run
@@ -1906,25 +1941,57 @@ async function main(): Promise<void> {
       }
     };
 
-    /** A run's tick: a plain row when nothing ✦ happened; a real button
-     *  with its moments folded under it when something did (Marc's call:
-     *  "expandable when you click when the details are there, otherwise
-     *  just a line with summary"). */
+    /** A run's tick: every row is a button now (Marc, 2026-08-20: "a way
+     *  to see the end screen we had for the hall of fame when clicking on
+     *  it") — the fold is that run's end screen in miniature, from what
+     *  the diary keeps: the score at end-screen weight, reach and date
+     *  under it, the arc grown back to a picture, the ✦ moments last.
+     *  (It began as Marc's earlier call — expandable only where ✦ details
+     *  existed — until every run had a screen worth reopening.) */
     const fameRunRow = (e: RunEntry): HTMLElement[] => {
       const text =
         `${fameDate(e.at)} · W${e.slot} · ${e.score} pts · reach ${e.reach}` +
         (e.arc === '' ? '' : ` · ${e.arc}`);
-      if (e.highlights.length === 0) return [fameRow('fame-row', text)];
 
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'fame-row fame-run';
-      row.textContent = `${text} · ✦ ${e.highlights.length}`;
+      row.textContent = e.highlights.length === 0 ? text : `${text} · ✦ ${e.highlights.length}`;
       row.setAttribute('aria-expanded', 'false');
       const detail = document.createElement('div');
       detail.className = 'fame-detail';
       detail.hidden = true;
+      // The full detail rides on entries written since 2026-08-20
+      // (`RunDetail` — Marc: "a 'full detail' of the run"); older ticks
+      // open with the facts the diary kept from birth.
+      const d = e.detail;
       detail.replaceChildren(
+        fameRow('fame-score', `${e.score} pts`),
+        ...(d === undefined ? [] : [fameRow('fame-epitaph', d.epitaph)]),
+        fameRow('fame-row', `REACH ${e.reach} · WORLD ${e.slot} · ${fameDate(e.at)}`),
+        ...(e.arc === '' ? [] : [fameRow('fame-arc', e.arc)]),
+        ...(d === undefined
+          ? []
+          : [
+              fameRow(
+                'fame-row',
+                `${d.placements} placements · ${d.popped} tiles popped in ${d.harvests} ${d.harvests === 1 ? 'pop' : 'pops'}`,
+              ),
+              ...(d.bigPop > 0
+                ? [
+                    fameRow(
+                      'fame-row',
+                      `biggest pop ${d.bigPop} at ${Math.round(d.bigPopAt * 100)}%`,
+                    ),
+                  ]
+                : []),
+              fameRow(
+                'fame-row',
+                `${d.claims} destination${d.claims === 1 ? '' : 's'}` +
+                  (d.quests > 0 ? ` · ${d.quests} bount${d.quests === 1 ? 'y' : 'ies'}` : '') +
+                  (d.relics > 0 ? ` · ${d.relics} relics carried out` : ''),
+              ),
+            ]),
         ...e.highlights.map((h) => fameRow('fame-row', `✦ ${highlightWords(h, e)}`)),
       );
       row.addEventListener('click', () => {

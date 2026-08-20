@@ -41,6 +41,31 @@ export type HighlightKind =
 
 export type Highlight = { readonly kind: HighlightKind; readonly n?: number };
 
+/**
+ * The run's end screen, kept (2026-08-20, Marc: "a 'full detail' of the
+ * run" behind every hall-of-fame row). The same facts `summariseRun`
+ * (ui/view.ts) put on the screen the night it happened — including the
+ * epitaph SENTENCE, stored finished so the diary needs no engine to
+ * retell it. Optional on the entry: rows from before it existed stay
+ * valid and open with what they have.
+ */
+export type RunDetail = {
+  readonly placements: number;
+  /** Pops taken, and tiles popped across them. */
+  readonly harvests: number;
+  readonly popped: number;
+  /** The biggest single pop's points, and where it landed (0..1 of the run). */
+  readonly bigPop: number;
+  readonly bigPopAt: number;
+  /** Destinations claimed on the board, and bounties collected. */
+  readonly claims: number;
+  readonly quests: number;
+  /** Relics the run carried out. */
+  readonly relics: number;
+  /** The end screen's own cause-of-death sentence. */
+  readonly epitaph: string;
+};
+
 /** A finished home-world run: the timeline's tick. */
 export type RunEntry = {
   /** Epoch ms, shell-supplied; displayed as a date, never sorted by. */
@@ -56,6 +81,7 @@ export type RunEntry = {
   /** `arcSparkline` blocks; '' when the run never popped. */
   readonly arc: string;
   readonly highlights: readonly Highlight[];
+  readonly detail?: RunDetail;
 };
 
 /** A finished daily try. Same store, its own tab. */
@@ -119,6 +145,19 @@ const decodeHighlights = (v: unknown): readonly Highlight[] | null => {
   return out;
 };
 
+/** The optional end-screen block: absent on pre-detail rows, and decoded
+ *  LENIENTLY — a malformed detail is dropped alone rather than costing the
+ *  tick it rides on, because the row's own facts are the record and the
+ *  detail is the record's footnote. */
+const decodeDetail = (v: unknown): RunDetail | undefined => {
+  if (!isRecord(v)) return undefined;
+  const { placements, harvests, popped, bigPop, bigPopAt, claims, quests, relics, epitaph } = v;
+  if (!isCount(placements) || !isCount(harvests) || !isCount(popped)) return undefined;
+  if (!isCount(bigPop) || !isCount(bigPopAt) || !isCount(claims)) return undefined;
+  if (!isCount(quests) || !isCount(relics) || typeof epitaph !== 'string') return undefined;
+  return { placements, harvests, popped, bigPop, bigPopAt, claims, quests, relics, epitaph };
+};
+
 /** One stored entry, refused WHOLE if any field is missing or mistyped —
  *  a half-true row in a diary is worse than a missing one. */
 const decodeEntry = (v: unknown): TimelineEntry | null => {
@@ -131,7 +170,18 @@ const decodeEntry = (v: unknown): TimelineEntry | null => {
     const highlights = decodeHighlights(v['highlights']);
     if (!isCount(slot) || !isCount(worldSeed) || !isCount(score) || !isCount(reach)) return null;
     if (typeof arc !== 'string' || highlights === null) return null;
-    return { at, kind: 'run', slot, worldSeed, score, reach, arc, highlights };
+    const detail = decodeDetail(v['detail']);
+    return {
+      at,
+      kind: 'run',
+      slot,
+      worldSeed,
+      score,
+      reach,
+      arc,
+      highlights,
+      ...(detail === undefined ? {} : { detail }),
+    };
   }
 
   if (v['kind'] === 'daily') {
