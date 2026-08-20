@@ -4070,33 +4070,31 @@ were not to move; this stage moves paint.
    the `color-mix` trick the shop's bought-row flash already uses), and a PNG
    at the slot supersedes it as the backdrop the numbers sit ON — never in
    place of them, since the score is this run's own and no bitmap can carry
-   it. `Game#setRunEndArt` mirrors `#setLogo`'s own re-render-if-already-
-   ended guard; `main.ts` checks `AssetBook.has('ui.runEnd')` off the same
-   manifest fetch `ui.logo` already pays for. `ASSET_SLOTS` flips `wired:
-   true`; `/gallery` needed no code change, same as Stage 1. A `prefers-
-   contrast: more` rule darkens the art's own overlay rather than touching
-   any text colour, since the ink tokens under it already pass.
+   it. `Game#setRunEndArt` mirrors `#setLogo`'s own re-render-if-already-ended
+   guard; `main.ts` checks `AssetBook.has('ui.runEnd')` off the same manifest
+   fetch `ui.logo` already pays for. `ASSET_SLOTS` flips its `wired` column to
+   true; `/gallery` needed no code change, same as Stage 1. The player who
+   asks their OS for more contrast gets a darker overlay under the art rather
+   than a text colour change, since the ink tokens on top of it already pass.
 3. **The share card** (`src/render/shareCard.ts`, a `render/`-layer sibling
    to `scripts/social.ts`'s og:image baker, but Canvas2D instead of an SVG
    string, and rendered in the browser at share time instead of Node at
    build time): the mark (`ICON_DATA_URI`, the exact favicon), the name, the
-   headline, the score, REACH, the arc as bars, and a footer line — `SEED
-   ⟨rootSeed⟩` for a normal run, the daily's own ladder line
-   (`hooks.daily.label()`) in its place with no seed at all, since a date
-   means nothing outside this device's book and the existing text share
-   already drops it the same way. Drawn against `theme.type.display`/`.body`
-   and the theme's own ink tokens — the LIVE theme, not torchlit hand-picked
-   the way the build-time og:image is, which is why `theme` moved three
-   lines earlier in `main()` so `runKeeping`'s `share` hook could close over
-   it.
-4. **One source of truth.** `ShareCardData` is built inside `#renderEnd`
-   from the SAME `hud`/`isNewBest`/`this.#runNumber`/`this.#state.log.
-   harvests` the screen was just drawn from, in the same function, before
-   the button's own click handler closes over it — there is no second read
-   of anything, so the card cannot say a number the screen did not already
-   say. `GameHooks.share` grew a second parameter to carry it; every
-   existing mock (`(state) => …`) still type-checks, since a callback may
-   always ignore trailing arguments.
+   headline, the score, REACH, the arc as bars, and a footer line — the seed
+   for a normal run, the daily's own ladder line (`hooks.daily.label()`) in
+   its place with no seed at all, since a date means nothing outside this
+   device's book and the existing text share already drops it the same way.
+   Drawn against `theme.type.display`/`.body` and the theme's own ink tokens
+   — the LIVE theme, not torchlit hand-picked the way the build-time og:image
+   is, which is why `theme` moved three lines earlier in `main()` so
+   `runKeeping`'s `share` hook could close over it.
+4. **One source of truth.** `ShareCardData` is built inside `#renderEnd` from
+   the SAME `hud`, `isNewBest`, `this.#runNumber` and harvest log the screen
+   was just drawn from, in the same function, before the button's own click
+   handler closes over it — there is no second read of anything, so the card
+   cannot say a number the screen did not already say. `GameHooks.share` grew
+   a second parameter to carry it; every existing mock (`(state) => …`) still
+   type-checks, since a callback may always ignore trailing arguments.
 5. **Sending it.** `main.ts`'s `share` hook renders the card, wraps it as a
    `File`, and tries `navigator.canShare({ files: [file] })` before
    `navigator.share` with files; falling back to plain `navigator.share`
