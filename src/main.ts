@@ -2762,6 +2762,12 @@ async function main(): Promise<void> {
   // is listening — `soundLive` (above, beside the ♪ button that flips it)
   // decides at each moment sound would play, which is what makes the
   // toggle land mid-run rather than on the next load.
+  // The seed a DETOUR just played, or null in your own world — what SETTLE
+  // would keep. `seed` has already resolved the daily's date and the link's
+  // number by here, and a resumed daily resumes under that same seed, so
+  // this is always the geography that was actually on screen.
+  const detourSeed = dailyDate !== null || sharedSeed !== null ? seed : null;
+
   const hooks: GameHooks & { savedSeed: number | null } = {
     ...keeper,
     sound: {
@@ -2787,6 +2793,69 @@ async function main(): Promise<void> {
             label: (): string => dailyBadge(readDailyBook(), dailyDate),
             retry: (): void => {
               location.reload();
+            },
+          },
+        }),
+
+    // SETTLE, from the end screen (2026-08-20, Marc's own three answers: put
+    // it here, let the daily be settled too, allow settling over a full
+    // slot). Offered on any detour — a daily's geography is exactly as worth
+    // keeping as a shared link's — and never in your own world, which is
+    // already settled by definition.
+    //
+    // `seed` is the one that was actually PLAYED, so what settles is the
+    // world just seen: for a daily that is `dailySeed(date)`, for a link the
+    // number in the URL, and both arrive here already resolved.
+    ...(detourSeed === null
+      ? {}
+      : {
+          settle: {
+            slots: () =>
+              SLOTS.map((s) => {
+                const held = peekSlot(s);
+                return {
+                  slot: s,
+                  // What would be lost, in the atlas's own words — enough to
+                  // recognise a world by without opening it. A slot holding a
+                  // world nobody has played is free in every sense that
+                  // matters, and says so.
+                  holds:
+                    held === null || (held.runs === 0 && held.revealed.length === 0)
+                      ? null
+                      : `${held.runs} run${held.runs === 1 ? '' : 's'} · ${Math.round(knownFraction(held) * 100)}% known · best ${held.bestPoints}`,
+                };
+              }),
+            go: (slot: number): void => {
+              const target = SLOTS.find((s) => s === slot);
+              if (target === undefined) return;
+              // Everything the old slot held goes first — world, run,
+              // receipt AND its shop levels — or the new world would inherit
+              // a build it never earned, and a run saved under the old world
+              // would resume on top of the new one's geography.
+              const targetKeys = slotKeys(target);
+              for (const key of [
+                targetKeys.world,
+                targetKeys.run,
+                targetKeys.receipt,
+                targetKeys.shop,
+              ]) {
+                try {
+                  localStorage.removeItem(key);
+                } catch {
+                  // A storage that refuses the wipe still gets the world
+                  // written below; the worst case is a stale receipt.
+                }
+              }
+              createWorld(targetKeys, detourSeed);
+              appendTimeline({
+                at: Date.now(),
+                kind: 'world',
+                event: 'settled',
+                slot: target,
+                worldSeed: detourSeed,
+              });
+              setActiveSlot(target);
+              goHome();
             },
           },
         }),

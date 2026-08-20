@@ -2786,3 +2786,67 @@ describe('the daily’s end screen (2026-08-19)', () => {
     expect(ctx.el.end.querySelector('#end-new-run')?.textContent).toBe('BACK TO YOUR WORLD');
   });
 });
+
+describe('SETTLE on the end screen (2026-08-20)', () => {
+  const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+  const withSettle = (go: (slot: number) => void): ReturnType<typeof build> =>
+    build(1, TUNING, {
+      resume: ended,
+      replay: true,
+      newRun: () => undefined,
+      finish: () => ({ runs: 3, best: 900, isNewBest: false, previousBest: 900 }),
+      settle: {
+        slots: () => [
+          { slot: 1, holds: '12 runs · 30% known · best 4000' },
+          { slot: 2, holds: null },
+          { slot: 3, holds: '2 runs · 3% known · best 110' },
+        ],
+        go,
+      },
+    });
+
+  it('opens into the three worlds, and takes an EMPTY one on one tap', () => {
+    const taken: number[] = [];
+    const ctx = withSettle((slot) => taken.push(slot));
+    ctx.game.start();
+
+    // Folded away until asked for: the end screen's actions must not become a
+    // wall of four worlds for a button most runs never press.
+    const slots = ctx.el.end.querySelector('#end-settle-slots') as HTMLElement;
+    expect(slots.hidden).toBe(true);
+    (ctx.el.end.querySelector('#end-settle') as HTMLButtonElement).click();
+    expect(slots.hidden).toBe(false);
+
+    const empty = slots.querySelector('[data-slot="2"]') as HTMLButtonElement;
+    expect(empty.textContent).toContain('empty');
+    empty.click();
+    expect(taken).toEqual([2]);
+  });
+
+  it('arms before forgetting a world that holds something', () => {
+    const taken: number[] = [];
+    const ctx = withSettle((slot) => taken.push(slot));
+    ctx.game.start();
+    (ctx.el.end.querySelector('#end-settle') as HTMLButtonElement).click();
+
+    const held = ctx.el.end.querySelector('[data-slot="1"]') as HTMLButtonElement;
+    expect(held.textContent).toContain('12 runs');
+    // The two-tap contract NEW WORLD and RESET ALL keep: nothing that forgets
+    // a world happens on a single press.
+    held.click();
+    expect(taken).toEqual([]);
+    expect(held.textContent).toContain('TAP AGAIN');
+    held.click();
+    expect(taken).toEqual([1]);
+  });
+
+  it('is absent in your own world, which is already settled', () => {
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      newRun: () => undefined,
+      finish: () => ({ runs: 3, best: 900, isNewBest: false, previousBest: 900 }),
+    });
+    ctx.game.start();
+    expect(ctx.el.end.querySelector('#end-settle')).toBeNull();
+  });
+});

@@ -324,6 +324,31 @@ export type GameHooks = {
     readonly retry: () => void;
   };
   /**
+   * SETTLE, on the end screen (Marc, 2026-08-20, from his own option set).
+   *
+   * A world worth keeping can be kept: the seed becomes one of this device's
+   * three worlds, fresh and unexplored, played with your own economy — and
+   * with real shrines — from then on. Only the seed travels; the run that
+   * showed it to you stays what it was.
+   *
+   * It existed before today on the FRONT DOOR, for `?seed=` links, and only
+   * while a slot stood empty. All three limits were wrong in the same
+   * direction: the moment you know a world is worth keeping is the moment
+   * the run ENDS, a daily is exactly as worth keeping as a shared link, and
+   * a device holding three worlds is the one most likely to want to trade
+   * one away. Present on any detour; absent in your own world, which is
+   * already settled by definition.
+   */
+  readonly settle?: {
+    /** The three slots, in order, each saying what would be lost. */
+    readonly slots: () => readonly {
+      readonly slot: number;
+      /** What is there now — absent where the slot is free. */
+      readonly holds: string | null;
+    }[];
+    readonly go: (slot: number) => void;
+  };
+  /**
    * The install nudge (2026-08-20, launch polish): one quiet line on the end
    * screen — the moment a player has proven interest — saying how to put the
    * game on the home screen, in the words of THIS platform (iOS has no
@@ -3388,6 +3413,61 @@ export class Game {
         go();
       });
       parts.push(retry);
+    }
+
+    // SETTLE THIS WORLD (2026-08-20): keep the seed you have just played as
+    // one of your three worlds. Above the exits because it is the one thing
+    // on this screen that is about to become permanent, and the run that
+    // earned the thought is still on the page above it.
+    //
+    // It opens into a slot LIST rather than acting: with three worlds held
+    // there is no "the empty one" to assume, and even with a free slot,
+    // naming which one is the difference between a button and a surprise. A
+    // slot that holds something arms first, the same two-tap contract NEW
+    // WORLD and RESET ALL keep — this forgets a world, and nothing that
+    // forgets a world happens on one tap.
+    const settle = this.#hooks.settle;
+    if (settle !== undefined) {
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.id = 'end-settle';
+      open.className = 'quiet';
+      open.textContent = 'SETTLE THIS WORLD — keep the seed';
+
+      const slots = document.createElement('div');
+      slots.id = 'end-settle-slots';
+      slots.hidden = true;
+
+      open.addEventListener('click', () => {
+        slots.hidden = !slots.hidden;
+      });
+
+      for (const { slot, holds } of settle.slots()) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'quiet';
+        button.dataset['slot'] = String(slot);
+        const free = holds === null;
+        button.textContent = free ? `WORLD ${slot} — empty` : `WORLD ${slot} — ${holds}`;
+        let armed = false;
+        button.addEventListener('click', () => {
+          if (!free && !armed) {
+            armed = true;
+            button.textContent = `TAP AGAIN — forgets WORLD ${slot}`;
+            return;
+          }
+          settle.go(slot);
+        });
+        slots.append(button);
+      }
+
+      const note = document.createElement('p');
+      note.className = 'end-facts';
+      note.textContent =
+        'The seed becomes a world of your own — fresh, unexplored, and played with your relics and its own shrines from then on. This run stays exactly as it was.';
+      slots.append(note);
+
+      parts.push(open, slots);
     }
 
     // NEW RUN is the exit — and on a daily it says where the exit goes.

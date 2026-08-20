@@ -5324,3 +5324,41 @@ camera-churn smoke test that exists for exactly this class of change,
 typecheck / lint / format clean, build green. Every animation added sits
 inside `prefers-reduced-motion: no-preference`, and the camera tween has its
 own instant path for the same setting.
+
+### Session 38 — Day two, late: SETTLE grows up
+
+Marc's other three answers from the same option set, all about the transition
+he described as "use this seed as new world".
+
+The mechanism already existed — SETTLE THIS WORLD, built 2026-08-19 — with
+three limits that were all wrong in the same direction: it lived on the FRONT
+DOOR, it took only `?seed=` links, and it appeared only while a slot stood
+empty. But the moment you know a world is worth keeping is the moment the run
+ENDS; a daily's geography is exactly as worth keeping as a shared link's; and
+a device holding three worlds is the one most likely to want to trade one
+away. All three closed.
+
+**On the end screen**, above the exits — the one thing on that screen about to
+become permanent, with the run that earned the thought still on the page above
+it. It opens into a slot LIST rather than acting: with three worlds held there
+is no "the empty one" to assume, and even with a free slot, naming which one
+is the difference between a button and a surprise. A slot holding something
+says what would be lost in the atlas's own words (runs, % known, best) and
+arms first — the two-tap contract NEW WORLD and RESET ALL keep, because
+nothing that forgets a world may happen on one tap. A slot holding a world
+nobody has ever played reads as empty, which it is in every sense that
+matters.
+
+**Settling takes the old slot's whole footprint with it** — world, run,
+receipt AND shop levels. The shop key is the one that would have bitten: left
+behind, the new world would inherit a build it never earned, and an absent key
+means "older than the split" and would have handed it the device's legacy
+levels instead. `createWorld` writes the empty `{}` that says otherwise.
+
+The front door's own SETTLE stays as it was: it is the before-you-play version
+for a link you can already tell you want, and it costs nothing to keep.
+
+**Verified:** 615 tests (+3: the fold opens, an empty slot takes one tap, a
+held slot arms first, and the whole control is absent in your own world —
+which is already settled by definition), 8 e2e green, typecheck / lint /
+format clean, build green.

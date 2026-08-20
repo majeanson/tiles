@@ -672,6 +672,20 @@ button.quiet {
   opacity: 0.85;
 }
 
+/* SETTLE's slot list (2026-08-20): three worlds and what each would cost,
+   folded under the button that offers them. Indented so it reads as the
+   button's own answer rather than as three more actions on the end screen —
+   this is a choice WITHIN a choice, and only one of the three happens. */
+#end-settle-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--panel-edge, #3a4150);
+  text-align: left;
+}
+
 /*
  * A draft card is a swatch with the direction's own word on it. Both matter: the
  * colour is how you read the board at a glance, and the word is what makes the
