@@ -1356,3 +1356,73 @@ button.help-tab[data-on='true'] {
     color: var(--ink-dim, #8a91a0);
   }
 }
+
+/* ------------------------------------------------------------------- feel
+
+   The feel pass (2026-08-19, Marc: "ui/ux, animations, smoothness… so a new
+   player has a good feel of everything now that we're out of prototype
+   phases"). One motion language, three rules: every press ACKNOWLEDGES
+   (immediately, in the finger, not after the render); every arrival RISES
+   (the toast's own 6px lift, reused everywhere something appears); and
+   reduced-motion keeps every acknowledgement that does not move — colour
+   shifts stay, lifts and scales go. */
+
+/* Presses acknowledge in colour unconditionally… */
+button:not(:disabled):active {
+  background: var(--panel-edge, #3a4150);
+  border-color: var(--accent, #d7b45a);
+}
+
+/* …and desktop pointers get a quiet invitation before the press. */
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    border-color: var(--ink-faint, #767d8d);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button {
+    transition:
+      transform 80ms ease-out,
+      background-color 140ms ease-out,
+      border-color 140ms ease-out;
+  }
+
+  button:not(:disabled):active {
+    transform: scale(0.97);
+  }
+
+  /* The selected card sits up — the one card that is about to be spent
+     should read as the one in your hand, not one of a flat row. */
+  .tile[aria-pressed='true'] {
+    transform: translateY(-2px);
+  }
+
+  /* The manual and the end screen arrive the way the toast does. */
+  #help-panel:not([hidden]) {
+    animation: toast-in 160ms ease-out;
+  }
+
+  #end:not([hidden]) {
+    animation: toast-in 180ms ease-out;
+  }
+
+  /* The purse fold's prices rise into place when opened. */
+  #spends:not([hidden]) {
+    animation: toast-in 120ms ease-out;
+  }
+
+  /* The front door's menu settles in once per load — the game underneath
+     is already booted, so this costs nothing but reads as a curtain. */
+  #front-door:not([hidden]) {
+    animation: toast-in 220ms ease-out;
+  }
+}
+
+/* Placement, not just motion: RESET ALL is the one destructive control on
+   the door, and it sat flush in the same stack as BEGIN and HOW TO PLAY —
+   one mis-tap from the game's friendliest buttons. It steps back and away. */
+#front-door-reset {
+  margin-top: 20px;
+  opacity: 0.65;
+}
