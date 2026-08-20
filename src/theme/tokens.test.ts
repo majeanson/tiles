@@ -31,7 +31,12 @@ describe('field patterns', () => {
    * This replaced the per-colour shapes he asked for on 2026-08-16 and then
    * retired after playing them: at ground scale, orientation survives where
    * silhouette does not. The claim to hold, in EVERY loaded direction: no two
-   * colours' ground wears the same texture.
+   * colours' ground wears the same texture — and it survived 2026-08-20's
+   * ember-dots ruling intact, because `fieldPattern` resolves a TILE-texture
+   * collision (ember and ash both lead with dots now, kept apart up there by
+   * polarity) by falling back to the colliding colour's own distinct ground
+   * mark. Ground has no polarity — every field's ink is equalised — so this
+   * test stays exactly as strict as Marc's eyes asked it to be.
    */
   const signature = (p: ReturnType<typeof fieldPattern>): string =>
     p.kind === 'hatch' ? `hatch:${p.angleDeg}` : p.kind;
@@ -46,11 +51,20 @@ describe('field patterns', () => {
     }
   });
 
-  it('speaks the terrain’s own texture language where the terrain has one', () => {
+  it('speaks the terrain’s own texture language — except to break a ground collision', () => {
+    // The exception is 2026-08-20's ember ruling: when two tiles share a
+    // texture, the distinctness rule above outranks the language rule down
+    // here, and the colliding colour's field speaks its fallback instead.
+    const ground = (p: { kind: string; angleDeg?: number }): string =>
+      p.kind === 'hatch' ? `hatch:${p.angleDeg}` : p.kind;
     for (const theme of THEMES) {
       for (const c of COLOURS) {
         const terrain = theme.terrain[c].pattern;
         const field = fieldPattern(theme, c);
+        const collides = COLOURS.some(
+          (other) => other !== c && ground(theme.terrain[other].pattern) === ground(terrain),
+        );
+        if (collides) continue;
         if (terrain.kind === 'hatch') {
           expect(field).toMatchObject({ kind: 'hatch', angleDeg: terrain.angleDeg });
         }

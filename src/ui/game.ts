@@ -758,6 +758,16 @@ export class Game {
     this.#el.purseToggle.addEventListener('click', () => {
       const open = this.#el.purseToggle.getAttribute('aria-expanded') === 'true';
       this.#el.purseToggle.setAttribute('aria-expanded', String(!open));
+      // The fold's own first-contact card (Marc, 2026-08-20: "when the
+      // first time we expand the luck toggle explain all and that you can
+      // lose it all too"): the rows print their PRICES, so the card
+      // carries the two facts a price cannot — what each row IS, and that
+      // a purse you die on is mostly lost. Once, at the first deliberate
+      // opening, which is exactly when someone is asking what this is.
+      if (!open && !this.#met('purse')) {
+        this.#markMet('purse');
+        this.#showEventCard(this.#purseLesson());
+      }
       this.render();
     });
 
@@ -1629,9 +1639,18 @@ export class Game {
           lines: [
             'Tap any ripe tile to price its pocket — the board outlines it and the buttons show what it pays. The biggest pocket is priced by default.',
             'Popped tiles turn to STONE: still surrounds, never matches. Every pop makes that ground poorer, which is the pressure to keep moving.',
+            // The timing decision, stated as its two sides (Marc, 2026-08-20:
+            // "explain why to pop now or why to wait to pop too") — the
+            // now-side only where the luck and steering dials are live.
+            ...(t.luckPerPop > 0 && t.colourBiasDraws > 0
+              ? [
+                  'Why pop NOW: luck and steering. Luck arrives mostly per pop — many small pops out-earn one monster — and every pop tilts your next draws toward its own colour, so cashing a colour is how you draw more of it.',
+                ]
+              : []),
+            'Why WAIT: tiles and score. Every tile added to a pocket raises its neighbours’ worth, so a big pop pays more than the same tiles popped piecemeal.',
             t.runLength > 0
               ? 'Wait too long and the expedition ends around your unfinished pocket.'
-              : 'Wait too long and you can die broke with a fortune still in the ground.',
+              : 'But wait too long and you can die broke with a fortune still in the ground.',
           ],
           detail: [
             // What a pop PAYS is printed on the buttons and said again by the
@@ -2135,13 +2154,21 @@ export class Game {
     if (popped !== null) {
       if (harvested !== null && harvested.count > 0) this.#hooks.sound?.pop(harvested.count);
       // The first pop is a teaching moment AND a receipt (`ideas/teaching.md`):
-      // the held card carries the lesson — stone, and the pressure it makes —
-      // with this pop's own arithmetic under it, so nothing is lost to the
-      // card that the toast would have said.
+      // the held card carries the lesson — stone, the pressure it makes, and
+      // WHEN to pop (Marc, 2026-08-20: "explain why to pop now or why to
+      // wait to pop too") — with this pop's own arithmetic under it, so
+      // nothing is lost to the card that the toast would have said. The
+      // now-vs-wait sentences only speak where their dials are live.
       if (!this.#met('pop')) {
         this.#markMet('pop');
+        const t = this.#state.tuning;
+        const nowVsWait =
+          t.luckPerPop > 0 && t.colourBiasDraws > 0
+            ? ' Pop EARLY and often for luck — it pays mostly per pop, not per size — and to steer your next draws toward the popped colour. Let a pocket GROW and it pays more than its pieces: more tiles, more score. Waiting too long can kill you broke with a fortune in the ground.'
+            : ' A pocket left to grow pays more than its pieces; a pocket popped early pays sooner — waiting too long can kill you broke with a fortune in the ground.';
         this.#showEventCard(
-          '⬢  YOUR FIRST POP\nThe pocket turned to STONE — it still surrounds, but never matches, so popped ground grows poorer. The world stays rich farther out; that is the pressure to keep moving.' +
+          '⬢  YOUR FIRST POP\nThe pocket turned to STONE — it still surrounds, but never matches, so popped ground grows poorer; the world stays rich farther out.' +
+            nowVsWait +
             `\n\n${popped}${goalLine}`,
         );
       } else {
@@ -2329,7 +2356,7 @@ export class Game {
       return {
         tier: 'card',
         id: 'ripe',
-        text: '⬢  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to see what its pocket pays, then POP.',
+        text: '⬢  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to see what its pocket pays, then POP — or keep building around it: a pocket left to grow pays more than its pieces, a pocket popped early pays sooner.',
       };
     }
 
@@ -2429,6 +2456,34 @@ export class Game {
     }
 
     return null;
+  }
+
+  /**
+   * The purse fold's first-contact card (Marc, 2026-08-20), built from the
+   * LIVE tuning like every explanation in the game: only rows whose dials
+   * are on get named, the rates are the run's own numbers, and the one fact
+   * the fold's prices never say leads the close — luck is use-it-or-lose-it.
+   */
+  #purseLesson(): string {
+    const t = this.#state.tuning;
+    const rows = [
+      ...(t.luckRerollCost > 0 ? ['a fresh hand (REROLL)'] : []),
+      ...(t.luckSteerCost > 0 ? ['a hand drawn toward a colour you name (STEER)'] : []),
+      ...(t.luckForgeCost > 0 ? ['the selected card turned UNIQUE (FORGE)'] : []),
+    ];
+    const spends =
+      rows.length > 0
+        ? `Every row is priced in luck: ${rows.join(', ')}.`
+        : 'Every row is priced in luck.';
+    const tithe =
+      t.titheRate > 0
+        ? ` TITHE is the exit — the WHOLE purse traded for relics at ${Math.round(t.titheRate * 100)}%, better than dying on it.`
+        : '';
+    const lost =
+      t.luckToRelics > 0
+        ? `And you CAN lose it all: the run's end pays back only ${Math.round(t.luckToRelics * 100)}% of whatever is left, so a full purse you die on is mostly gone. Spend it.`
+        : 'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.';
+    return `⬢  LUCK IS FOR SPENDING\n${spends}${tithe}\n\n${lost}`;
   }
 
   #renderHud(hud: HudView): void {

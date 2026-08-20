@@ -163,6 +163,12 @@ export const TEACH_IDS = [
   'field',
   'rare',
   'luck',
+  // The purse fold's own first opening (Marc, 2026-08-20: "explain all and
+  // that you can lose it all too"): what each spend row IS, and that a
+  // purse you die on is mostly lost. Added after launch-week ledgers
+  // existed, so — like the colour ids before it — every device gets this
+  // card exactly once: words nobody had been shown, at the right cost.
+  'purse',
   'relic',
   // The four colour personalities (2026-08-19, same day — Marc: "the colors
   // are not explained"): each teaches itself once, at the FIRST placement of

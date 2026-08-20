@@ -4843,3 +4843,39 @@ after the spiral fix. `pnpm sim` — 200 seeds, 18 policies — 0 stalled,
 0 capped, existing rows unchanged.
 
 **Waits on the phone:** unchanged — RESET TEACHING, then the stranger.
+
+**Session 33 addendum — two more lessons, on Marc's prompts the same
+day.** (1) "Explain why to pop now or why to wait to pop too": the pop
+concept now carries its timing decision everywhere it is taught — the
+RIPE card offers the fork ("a pocket left to grow pays more than its
+pieces, a pocket popped early pays sooner"), YOUR FIRST POP states both
+sides in the live economy's own terms (early-and-often for luck and
+colour steering, grown-and-late for tiles and score, and the broke-with-
+a-fortune warning), and the manual's POP section gained "Why pop NOW" /
+"Why WAIT" lines — the now-side gated on the luck and steering dials
+being live, like every explanation. (2) "When the first time we expand
+the luck toggle explain all and that you can lose it all too": a new
+`purse` teach id fires one card at the fold's first deliberate opening —
+each spend row named (only where its dial is on), TITHE as the exit at
+its live rate, and the fact the prices never say: the run's end pays
+back only 10% of what is left, so a full purse you die on is mostly
+gone. Veterans' ledgers predate the id, so — the colour-ids precedent —
+every device sees it exactly once. 595 tests (+1 purse pin; the pop
+texts' existing pins held on their stable substrings).
+
+**Session 33 addendum 2 — EMBER leads with sparks (Marc: "a texture maybe
+dotted for ember its clearer (everywhere)").** The theme's yellow swapped
+its layers: the warm glints that were the overlay are the PATTERN now —
+bigger, brighter, sized off the theme's radius the way ash's are — and
+the 2026-08-18 vertical stalks fell to a faint undertone. The baked
+`terrain.yellow.png` regenerated to match (deterministic: the other
+seven files came out byte-identical), so board, cards, gallery and the
+ghosted field art all follow from the one definition. Ember stays
+unconfusable with ASH on the tile by POLARITY — bright sparks on the
+lightest ground against dark pits on dark rust. Ground has no polarity
+(every field's ink is equalised by `fieldDots`), so `fieldPattern` grew
+the collision rule: when two tiles share a texture, the colliding
+colour's field falls back to its own distinct ground mark — ember ground
+keeps the vertical dry grass its sparks sit in, and Marc's 2026-08-18
+four-distinct-grounds test stays exactly as strict as his eyes asked it
+to be. 595 tests; the bake's own greyscale ordering holds.

@@ -603,7 +603,7 @@ const FIELD_OVERLAY_WEIGHT = { dots: { radius: 1.0, pitch: 11 }, hatch: { bar: 1
 function thinnedField(
   theme: Theme,
   colour: Colour,
-  terrain: Pattern,
+  terrain: Pattern | (typeof FIELD_FALLBACK)[Colour],
   weight: typeof FIELD_WEIGHT,
 ): Pattern {
   const { ink, alpha } = fieldDots(theme, colour);
@@ -635,7 +635,24 @@ function thinnedField(
  * the gallery both, so the workbench can never disagree with the board.
  */
 export function fieldPattern(theme: Theme, colour: Colour): Pattern {
-  return thinnedField(theme, colour, theme.terrain[colour].pattern, FIELD_WEIGHT);
+  // Two terrains may share a texture ON THE TILE — EMBER and ASH both lead
+  // with dots since 2026-08-20 ("a texture maybe dotted for ember its
+  // clearer"), kept apart there by polarity: bright sparks against dark
+  // pits. Ground has no polarity — every field's ink is equalised by
+  // `fieldDots` — so geometry is the only channel left down here, and a
+  // collision falls back to the colour's OWN distinct ground mark. For
+  // ember that is the vertical dry grass its sparks sit in, which is also
+  // what a field is: the ground a colour grows from, not the gleam on top.
+  const own = theme.terrain[colour].pattern;
+  const ground = (p: Pattern): string | null =>
+    p.kind === 'hatch' ? `hatch:${p.angleDeg}` : p.kind === 'dots' ? 'dots' : null;
+  const mine = ground(own);
+  const collides =
+    mine !== null &&
+    (Object.keys(FIELD_FALLBACK) as Colour[]).some(
+      (c) => c !== colour && ground(theme.terrain[c].pattern) === mine,
+    );
+  return thinnedField(theme, colour, collides ? FIELD_FALLBACK[colour] : own, FIELD_WEIGHT);
 }
 
 /**

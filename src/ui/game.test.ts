@@ -2429,6 +2429,27 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     expect(again.el.eventCard.hidden).toBe(true);
   });
 
+  it('explains the whole purse — and that you can lose it all — on its first opening', () => {
+    // Marc, 2026-08-20: "when the first time we expand the luck toggle
+    // explain all and that you can lose it all too." The rows print their
+    // prices; the card carries what a price cannot say.
+    const dev = device();
+    const ctx = build(1, T, { shop: dev.shop });
+    ctx.game.start();
+
+    ctx.el.purseToggle.click();
+    expect(ctx.el.eventCard.hidden).toBe(false);
+    expect(ctx.el.eventCardText.textContent).toMatch(/lose it all/i);
+    expect(ctx.el.eventCardText.textContent).toMatch(/mostly gone|lost outright/);
+    expect(dev.current().met).toContain('purse');
+
+    // Taught is taught: close the card, fold and reopen — no second card.
+    ctx.el.eventCard.click();
+    ctx.el.purseToggle.click();
+    ctx.el.purseToggle.click();
+    expect(ctx.el.eventCard.hidden).toBe(true);
+  });
+
   it('teaches a colour’s personality at its first placement — once, per colour', () => {
     // Biomes off so a native field cannot take the toast; a pinned all-green
     // draft so the placed colour is the test's, not the seed's.

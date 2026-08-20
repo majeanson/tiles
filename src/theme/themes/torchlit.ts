@@ -122,19 +122,20 @@ export const TORCHLIT: Theme = {
       overlay: { kind: 'dots', ink: 0x7a9a5a, alpha: 0.16, radius: 1.3, pitch: 11 },
       asset: 'terrain.green',
     }),
-    // CEMETERY — low and dry, the lightest surface under the torch. Vertical
-    // stalks since 2026-08-18: it was the one terrain with no finish at all,
-    // which broke the direction's own "identity lives in surface height and
-    // finish" thesis — and the field markers now derive from these patterns,
-    // so a smooth terrain would have left ember ground speaking a borrowed
-    // language. Verticals complete the set: diagonal, vertical, dots,
-    // horizontal — four orientations no squint can confuse. The overlay adds
-    // warm glints between the stalks — dry grass catching firelight rather
-    // than just standing in it.
+    // CEMETERY — low and dry, the lightest surface under the torch. DOTS
+    // lead since 2026-08-20 (Marc, on the phone: "a texture maybe dotted
+    // for ember its clearer") — the warm glints that were the overlay are
+    // the identity now, bigger and brighter: embers catching in dry grass,
+    // which is what the colour is NAMED. The 2026-08-18 verticals argued
+    // "four orientations no squint can confuse", and play answered that
+    // thin bars at ground scale read as nothing at all; they stay as a
+    // faint undertone so the grass is still there under the sparks. Ember
+    // stays unconfusable with ASH by polarity, not orientation: bright
+    // warm sparks on the LIGHTEST ground against dark pits on dark rust.
     yellow: surface(0xc6b187, {
       fillTo: 0x98865f,
-      pattern: { kind: 'hatch', angleDeg: 90, ink: 0x000000, alpha: 0.14, bar: 1, gap: 5 },
-      overlay: { kind: 'dots', ink: 0xffd28a, alpha: 0.12, radius: 1.0, pitch: 13 },
+      pattern: { kind: 'dots', ink: 0xffd28a, alpha: 0.28, radius: 1.2, pitch: 8 },
+      overlay: { kind: 'hatch', angleDeg: 90, ink: 0x000000, alpha: 0.1, bar: 1, gap: 5 },
       asset: 'terrain.yellow',
     }),
     // BURIAL GROUND — mounded rows, catching the flame on the ridges. The

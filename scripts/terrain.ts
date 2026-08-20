@@ -182,17 +182,19 @@ function bladeField(seed: number, pitch: number, ink: Rgb, alpha: number): strin
   return parts.join('');
 }
 
-/** Warm glints between the blades — the EMBER overlay. */
-function glintField(seed: number, pitch: number, ink: Rgb, alpha: number): string {
+/** Warm glints in the grass — EMBER's primary since 2026-08-20 (Marc:
+ *  "dotted for ember its clearer"); sized from the theme's own radius the
+ *  way `ashField` is, so the two dot vocabularies stay one system. */
+function glintField(seed: number, pitch: number, ink: Rgb, alpha: number, radius: number): string {
   const r = rng(seed);
   const parts: string[] = [];
   for (let gy = pitch / 2; gy < TH; gy += pitch) {
     for (let gx = pitch / 2; gx < TW; gx += pitch) {
       const px = gx + r.range(-pitch * 0.4, pitch * 0.4);
       const py = gy + r.range(-pitch * 0.4, pitch * 0.4);
-      const rad = r.range(2, 4);
+      const rad = radius * r.range(0.7, 1.3);
       parts.push(
-        `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${rad.toFixed(1)}" fill="${rgba(ink, alpha)}"/>`,
+        `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${rad.toFixed(1)}" fill="${rgba(ink, alpha * r.range(0.8, 1.15))}"/>`,
       );
     }
   }
@@ -295,16 +297,26 @@ function greenSvg(): string {
 }
 
 function yellowSvg(): string {
+  // The roles swapped 2026-08-20 with the theme (Marc: "dotted for ember
+  // its clearer"): dots are the pattern now — bright sparks, sized off the
+  // theme's radius like ash's are — and the dry-grass blades read off the
+  // hatch OVERLAY, a quiet undertone beneath them.
   const s = T.terrain.yellow;
-  const primary = s.pattern.kind === 'hatch' ? s.pattern : null;
-  const overlay = s.overlay.kind === 'dots' ? s.overlay : null;
-  const pitch = primary !== null ? (primary.bar + primary.gap) * SCALE : 30;
-  const ink = primary?.ink ?? 0x000000;
-  const alpha = primary?.alpha ?? 0.14;
+  const primary = s.pattern.kind === 'dots' ? s.pattern : null;
+  const overlay = s.overlay.kind === 'hatch' ? s.overlay : null;
+  const bladePitch = overlay !== null ? (overlay.bar + overlay.gap) * SCALE : 30;
   return wrap(
     fillRect(s) +
-      bladeField(202, pitch, ink, alpha) +
-      (overlay !== null ? glintField(203, overlay.pitch * SCALE, overlay.ink, overlay.alpha) : '') +
+      (overlay !== null ? bladeField(202, bladePitch, overlay.ink, overlay.alpha) : '') +
+      (primary !== null
+        ? glintField(
+            203,
+            primary.pitch * SCALE,
+            primary.ink,
+            primary.alpha,
+            primary.radius * (SCALE - 1),
+          )
+        : '') +
       depthRect(),
     'clipYellow',
   );
