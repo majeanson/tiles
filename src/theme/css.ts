@@ -21,6 +21,8 @@ export function themeCssVars(theme: Theme): CssVars {
     '--ink-dim': hex(theme.ink.inkDim),
     '--ink-faint': hex(theme.ink.inkFaint),
     '--accent': hex(theme.ink.accent),
+    '--magic': hex(theme.ink.magic),
+    '--unique': hex(theme.ink.unique),
     '--danger': hex(theme.ink.danger),
     '--panel': hex(theme.ink.panel),
     '--panel-edge': hex(theme.ink.panelEdge),

@@ -4941,3 +4941,20 @@ actually leapt away, which is the sentence Marc wrote. Covers ride the
 same `#flashes` lifecycle as everything else, so the iOS eviction guard
 covers them for free. Reduced motion is untouched: nothing moves there
 by contract, so colour-to-grey stays instant.
+
+**Session 33 addendum 6 — magic and unique get their own voices (Marc:
+"make sure magic and unique have their own color, distinctive of the
+normal selected tile color").** The complaint was exact: in torchlit the
+selected card's ring (`panelEdgeActive`) and the accent were the SAME
+gold, so a rare card and a selected card spoke in one voice, and both
+rarities shared it besides. Two new theme tokens — `ink.magic` (torchlit:
+moonlit violet, the one cool note on a warm board) and `ink.unique`
+(open flame — hotter than the torch's muted gold, redder than the
+hearth, lighter than danger) — now speak everywhere rarity does: the
+card border, the card's badge, the board tile's quiet edge, and the
+placed star. The placeholder keeps its own plainer pair, because a
+contract that holds in one theme is not a contract. Wired through
+`themeCssVars` (`--magic`, `--unique`) for the DOM half and read
+straight off `theme.ink` in the renderer. Pinned: every theme's css-var
+set carries both, and a distinctness test holds the four voices apart —
+magic ≠ unique ≠ accent ≠ the selected ring. 599 tests.

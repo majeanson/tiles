@@ -59,6 +59,14 @@ export const TORCHLIT: Theme = {
     inkDim: 0xb9a480,
     inkFaint: 0x8a7452,
     accent: 0xc79a4b,
+    // The rarities' own voices (2026-08-20, Marc): the selected ring below
+    // is the SAME gold as the accent, so a rare card and a selected card
+    // were indistinguishable at a glance. MAGIC is moonlit violet — the
+    // one cool note on a warm board, the colour of the wild card that
+    // matches everything. UNIQUE is open flame — hotter than the torch's
+    // own muted gold, redder than the hearth ring, lighter than danger.
+    magic: 0xb08fe0,
+    unique: 0xf2914a,
     danger: 0xc1362b,
     panel: 0x1a140e,
     panelEdge: 0x433624,

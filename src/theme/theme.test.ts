@@ -216,13 +216,35 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
 
   it('exports a complete set of custom properties', () => {
     const vars = themeCssVars(theme);
-    for (const name of ['--bg', '--ink', '--accent', '--danger', '--font-display']) {
+    for (const name of [
+      '--bg',
+      '--ink',
+      '--accent',
+      '--magic',
+      '--unique',
+      '--danger',
+      '--font-display',
+    ]) {
       expect(vars[name], name).toBeTruthy();
     }
     for (const colour of COLOURS) {
       expect(vars[`--tile-${colour}`]).toMatch(/^#[0-9a-f]{6}$/);
       expect(vars[`--tile-${colour}-to`]).toMatch(/^#[0-9a-f]{6}$/);
     }
+  });
+
+  it('keeps the rarities’ colours their own — never the accent, never the selected ring', () => {
+    // Marc, 2026-08-20: "make sure magic and unique have their own color,
+    // distinctive of the normal selected tile color." In torchlit the
+    // selected ring and the accent were the same gold, so this is the
+    // contract as a test: four voices, no two alike.
+    const { accent, magic, unique, panelEdgeActive } = theme.ink;
+    expect(new Set([accent, magic, unique, panelEdgeActive]).size).toBeGreaterThanOrEqual(3);
+    expect(magic).not.toBe(accent);
+    expect(magic).not.toBe(panelEdgeActive);
+    expect(magic).not.toBe(unique);
+    expect(unique).not.toBe(accent);
+    expect(unique).not.toBe(panelEdgeActive);
   });
 
   it('points every asset slot it names at a slot that exists', () => {

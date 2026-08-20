@@ -994,14 +994,16 @@ export class PixiRenderer implements Renderer {
       const unique = cell.rarity === 'unique';
       // Floored like the labels (2026-08-19): far out, the star stops
       // shrinking with the hex and rides it like a pin — the whole point is
-      // finding rares from a distance.
+      // finding rares from a distance. In the rarity's OWN colour since
+      // 2026-08-20 (Marc: "their own color") — the star, the card border
+      // and the board edge all say the same word now.
       const r = Math.max(3, layout.size * (unique ? 0.22 : 0.18));
       const my = y - layout.size * 0.52;
       const mark = new Graphics()
         .circle(x, my, r * 1.3)
         .fill({ color: theme.board.background, alpha: 0.55 })
         .star(x, my, unique ? 5 : 4, r, r * (unique ? 0.5 : 0.42))
-        .fill({ color: theme.ink.accent, alpha: 0.95 });
+        .fill({ color: unique ? theme.ink.unique : theme.ink.magic, alpha: 0.95 });
       mark.alpha = cell.dimmed ? 0.25 : 1;
       group.addChild(mark);
     }
@@ -1079,10 +1081,14 @@ export class PixiRenderer implements Renderer {
     // carries the accent even at beacon distance. Claimed, it drops to chrome.
     if (cell.kind === 'landmark' && !cell.claimed)
       return { width: Math.max(1.5, size * board.ripeEdgeWidth), colour: this.#theme.ink.accent };
-    // Magic and unique tiles keep a quiet accent edge so their power stays
+    // Magic and unique tiles keep a quiet edge in their OWN colour
+    // (2026-08-20 — see `Ink.magic`/`Ink.unique`) so their power stays
     // findable on a full board without shouting over ripe.
     if (cell.kind === 'tile' && cell.rarity !== null && cell.rarity !== 'common')
-      return { width: Math.max(1, size * board.edgeWidth * 1.5), colour: this.#theme.ink.accent };
+      return {
+        width: Math.max(1, size * board.edgeWidth * 1.5),
+        colour: cell.rarity === 'unique' ? this.#theme.ink.unique : this.#theme.ink.magic,
+      };
     if (cell.legal) return { width: Math.max(1, size * board.edgeWidth), colour: board.legalEdge };
     if (cell.kind === 'empty') return null;
     // Home (2026-08-19): the quietest permanent mark on the board, checked

@@ -232,6 +232,17 @@ export type Ink = {
    */
   readonly accent: Rgb;
   /**
+   * The two rarities' OWN colours (Marc, 2026-08-20: "make sure magic and
+   * unique have their own color, distinctive of the normal selected tile
+   * color") — in torchlit the selected ring and the accent were the same
+   * gold, so a rare card and a selected card were saying different things
+   * in one voice. MAGIC is the wild card; UNIQUE the crown — card border,
+   * badge, board edge and the placed star all speak these two, and
+   * nothing else does.
+   */
+  readonly magic: Rgb;
+  readonly unique: Rgb;
+  /**
    * Loss. Every direction reserves one warm colour for the tile count, because
    * the tile count is the thing that kills you. Never used decoratively.
    */

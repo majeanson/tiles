@@ -44,6 +44,11 @@ export const PLACEHOLDER: Theme = {
     inkDim: 0xc3c9d6,
     inkFaint: 0x767d8d,
     accent: 0xe8ecf4,
+    // Plain but its own (2026-08-20): even the placeholder must keep the
+    // rarities apart from its white accent/selection, or the contract
+    // "magic and unique have their own colour" only holds in one theme.
+    magic: 0x9d7bd8,
+    unique: 0xd8892f,
     danger: 0xc98a6a,
     panel: 0x1e222b,
     panelEdge: 0x3a4150,

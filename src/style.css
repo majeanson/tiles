@@ -716,24 +716,38 @@ button.quiet {
 }
 
 /*
- * A rare draw is an event, and the card says so in the theme's accent — the
- * one colour every direction reserves for "look here". Values provisional;
- * Gate E stays shut. A heavier border, not a new colour (2026-08-19): the
- * accent alone on a 2px edge read as a tint rather than a signal at arm's
- * length; a third pixel is the whole fix. `box-shadow` stays free here for
- * the selected ring above — a card can be rare AND selected at once, and
- * the two states must never fight over the same property.
+ * A rare draw is an event, and the card says so in ITS OWN colour since
+ * 2026-08-20 (Marc: "make sure magic and unique have their own color,
+ * distinctive of the normal selected tile color" — in torchlit the
+ * selected ring and the old shared accent were literally the same gold).
+ * MAGIC and UNIQUE each carry a theme token now, worn by the border, the
+ * badge, the board edge and the placed star alike. The 3px border stays
+ * (2026-08-19: a 2px edge read as a tint at arm's length), and
+ * `box-shadow` stays free for the selected ring above — a card can be
+ * rare AND selected at once, and the two states must never fight over
+ * the same property.
  */
-.tile[data-rarity='magic'],
+.tile[data-rarity='magic'] {
+  border-width: 3px;
+  border-color: var(--magic, #9d7bd8);
+}
+
 .tile[data-rarity='unique'] {
   border-width: 3px;
-  border-color: var(--accent, #d7b45a);
+  border-color: var(--unique, #d8892f);
 }
 
 .tile-rarity {
   font-size: 0.5rem;
   letter-spacing: 0.12em;
-  color: var(--accent, #d7b45a);
+}
+
+.tile[data-rarity='magic'] .tile-rarity {
+  color: var(--magic, #9d7bd8);
+}
+
+.tile[data-rarity='unique'] .tile-rarity {
+  color: var(--unique, #d8892f);
 }
 
 /* The stash: one more card, behind a divider and narrower than a draft card
