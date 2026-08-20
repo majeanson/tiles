@@ -53,6 +53,19 @@ class StubRenderer implements Renderer {
   centerOn(hex: HexKey): void {
     this.centered.push(hex);
   }
+  /**
+   * The glided moves (2026-08-20) record exactly what the instant ones did —
+   * these tests are about WHICH hex the game asked for and at what zoom, and
+   * the easing between here and there is the renderer's own business.
+   */
+  flyToHex(hex: HexKey, zoom: number): void {
+    this.centered.push(hex);
+    this.zoom = Math.min(this.max, Math.max(1, zoom));
+  }
+  flyToFit(): void {
+    this.zoom = 1;
+    this.resets++;
+  }
   resetCamera(): void {
     this.zoom = 1;
     this.resets++;

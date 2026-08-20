@@ -396,6 +396,16 @@ const CAMERA_HERE_ZOOM = 2.4;
 /** Movement under this many pixels is still a tap; past it, a drag. */
 const TAP_SLOP = 8;
 
+/**
+ * How close to the side of the screen a touch has to begin before the board
+ * refuses the browser's back/forward swipe (2026-08-20).
+ *
+ * Wide enough to cover the band iOS actually watches, narrow enough that a
+ * thumb reaching for a hex near the edge is not affected — nothing is
+ * disabled by this, only the browser's own gesture is declined.
+ */
+const EDGE_SWIPE_PX = 28;
+
 /** Label, value, and whether this is the number counting down to the end. */
 type Stat = { readonly id: string; readonly label: string; readonly value: string };
 
@@ -715,11 +725,13 @@ export class Game {
     // do continuous zoom and pan; this is the one DISCRETE decision left on
     // screen, and it is a toggle rather than a step.
     this.#el.cameraToggle.addEventListener('click', () => {
+      // Flown rather than cut (Marc, 2026-08-20): HERE used to arrive as a
+      // different picture, and the whole value of zooming to your last
+      // placement is seeing WHERE it is relative to everything else.
       if (this.#renderer.zoomLevel() <= 1.001) {
-        this.#renderer.zoomBy(CAMERA_HERE_ZOOM);
-        this.#renderer.centerOn(this.#state.lastPlaced ?? key(0, 0));
+        this.#renderer.flyToHex(this.#state.lastPlaced ?? key(0, 0), CAMERA_HERE_ZOOM);
       } else {
-        this.#renderer.resetCamera();
+        this.#renderer.flyToFit();
       }
       this.#syncCamera();
     });
@@ -945,6 +957,34 @@ export class Game {
         // a drag that leaves the element just ends early.
       }
     });
+
+    // No swiping out of the game (Marc, 2026-08-20: "remove the back and
+    // forward navigation swipes, sometimes its frustrating while playing /
+    // dragging").
+    //
+    // `overscroll-behavior: none` already stops the pull-to-navigate on
+    // Chrome, but iOS Safari's edge swipe is a system gesture that ignores
+    // it — and a drag begun near the side of the screen, which is exactly
+    // where a thumb starts one, would leave the run instead of moving the
+    // map. The one thing Safari does honour is a prevented `touchstart`, so
+    // the board refuses the default for touches that begin in the edge
+    // band. Narrow on purpose: only this element, only that band, and
+    // pointer events (which every gesture above is built on) are unaffected,
+    // so nothing about placing or dragging changes.
+    board.addEventListener(
+      'touchstart',
+      (event) => {
+        if (!isBoardSurface(event.target)) return;
+        const width = window.innerWidth;
+        for (const touch of event.touches) {
+          if (touch.clientX <= EDGE_SWIPE_PX || touch.clientX >= width - EDGE_SWIPE_PX) {
+            event.preventDefault();
+            return;
+          }
+        }
+      },
+      { passive: false },
+    );
 
     // Desktop's native zoom gesture. The trackpad pinch arrives as a wheel
     // too, so this covers both mice and trackpads.
@@ -2264,7 +2304,13 @@ export class Game {
     // the buttons even with nothing tapped, so pressing POP cold — no tap,
     // straight to the button — could pop tiles the camera was never
     // pointed at. A press should show what it just did.
-    if (at !== null) this.#renderer.centerOn(at);
+    //
+    // GLIDED since 2026-08-20, at the zoom already held: a pop across the
+    // board used to cut, which showed you the aftermath without ever showing
+    // you where it was. The pocket keeps burning throughout — a pure pan
+    // carries the effects layer with it — so the journey and the pop play
+    // together rather than one erasing the other.
+    if (at !== null) this.#renderer.flyToHex(at, this.#renderer.zoomLevel());
     this.#dispatch(at === null ? { type: 'HARVEST', choice } : { type: 'HARVEST', choice, at });
   }
 

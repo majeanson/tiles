@@ -5265,3 +5265,62 @@ PROSE to close — the panel opens onto MENU and its controls swallow their
 own taps, so a bare centre click is a coin toss about layout), typecheck /
 lint / format clean, build green, `pnpm sim` byte-identical — the split is
 shell-side and `hidePoints` is display, so neither can reach the harness.
+
+### Session 37 — Day two, evening: the camera learns to travel
+
+Three asks, all about motion.
+
+1. **Automatic camera moves are flown, not cut** ("when we automatically need
+   to zoom in or out — new shrine pops, here/fit — do a transition instead of
+   being instantaneous"). A `#camera` tween on the existing ticker, eased in
+   and out, with zoom travelling GEOMETRICALLY so 1×→4× spends as long on
+   1→2 as on 2→4. Three moves use it: HERE, FIT, and the pan that shows what
+   a POP just did. Three deliberately do not — pinch, drag and wheel follow
+   a finger, and a board that lags a finger reads as broken rather than as
+   smooth. A drag also CANCELS a flight: a hand on the board outranks a
+   journey the board started on its own.
+
+   The pop's pan glides at the zoom already held, which matters for a reason
+   worth writing down: a pure pan translates the effects layer with the
+   board, so the pocket keeps burning the whole way across. Only a change of
+   SIZE invalidates flashes and needs the cells rebuilt, so the tween now
+   distinguishes the two — which is also why gliding to a pop no longer
+   costs a full teardown per frame.
+
+2. **The automatic zoom-OUT, softened.** The one Marc named first, and the
+   one with no button: at FIT the extent is recomputed from every cell on
+   every draw, so the placement that first reveals a distant beacon shrinks
+   the whole board between one frame and the next. Tweening the layout was
+   not an option — every cached texture is keyed by its pixel size — so the
+   board keeps drawing at the size it HAD and eases the difference back to
+   1 (`#refitEase`, 260ms). Guarded to FIT only, to real changes only (a 1%
+   slop, so a rounding wobble starts nothing), and never under reduced
+   motion.
+
+3. **The surfaces that still cut in.** The toast and the event card's panel
+   already rose; everything AROUND them did not — the card's curtain slammed
+   to 55% black under a panel politely rising through it, the manual (the
+   largest surface in the game) appeared whole, and the end screen, the most
+   drastic pop there is, simply replaced the run. One keyframe for all
+   three, at the 160–260ms the game already speaks, so this stays one motion
+   language. The end screen rises furthest and slowest: it is the arrival
+   that is also a full stop.
+
+4. **No swiping out of the game** ("remove the back and forward navigation
+   swipes, sometimes its frustrating while playing / dragging").
+   `overscroll-behavior: none` already stopped Chrome's pull-to-navigate,
+   but iOS Safari's edge swipe is a system gesture that ignores it — and a
+   drag begun near the side of the screen, exactly where a thumb starts one,
+   left the run instead of moving the map. Safari does honour a prevented
+   `touchstart`, so the board refuses the default for touches beginning in a
+   28px edge band. Narrow on purpose: this element only, that band only, and
+   pointer events are untouched, so nothing about placing or dragging
+   changes.
+
+**Verified:** 612 tests (the renderer stub grew `flyToHex`/`flyToFit`,
+recording what the instant moves recorded — which hex and at what zoom; the
+easing between is the renderer's own business), 8 e2e green including the
+camera-churn smoke test that exists for exactly this class of change,
+typecheck / lint / format clean, build green. Every animation added sits
+inside `prefers-reduced-motion: no-preference`, and the camera tween has its
+own instant path for the same setting.

@@ -147,11 +147,23 @@ export interface Renderer {
   resetCamera(): void;
   /**
    * Pan (only — zoom is untouched) so `hex` sits at the centre of the
-   * screen. The HERE half of the FIT ⇄ HERE toggle and pan-to-pocket both
-   * ride this: a jump to a known point rather than a step in a direction.
-   * A no-op before anything has ever been drawn.
+   * screen. A jump to a known point rather than a step in a direction, and a
+   * no-op before anything has ever been drawn.
+   *
+   * Instant. Every move the GAME makes on the player's behalf goes through
+   * `flyToHex`/`flyToFit` instead (2026-08-20) — this stays for the moves
+   * that must land in the same frame as the state change they belong to.
    */
   centerOn(hex: HexKey): void;
+  /**
+   * The camera moves the game makes for you, over time rather than in one
+   * frame: fly in on a hex at `zoom`, or back out to the fit that shows
+   * everything. A drag cancels whichever is in flight — a finger on the board
+   * outranks a journey the board started on its own — and reduced motion
+   * arrives instantly, which is the setting doing exactly what it says.
+   */
+  flyToHex(hex: HexKey, zoom: number): void;
+  flyToFit(): void;
   /** Current zoom, 1 = fit. For the buttons' disabled states. */
   zoomLevel(): number;
 

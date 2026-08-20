@@ -1425,7 +1425,49 @@ button.quiet {
    (2026-08-19): the same lift the toast below the board already uses, so
    the game speaks one motion language for "something just arrived" rather
    than two. */
+/* The three surfaces that still CUT in (Marc, 2026-08-20: "use transitions
+   and animations for other drastic pops — be thorough in your search of
+   where"). The toast and the event card's own panel already rose; what did
+   not was everything AROUND them.
+
+   - the card's curtain, which slammed to 55% black under a panel that was
+     politely rising through it,
+   - the manual, the largest surface in the game, appearing whole,
+   - the end screen, the most drastic pop there is: the run stops and a
+     different page is simply there.
+
+   One keyframe for all three, at the same 160-220ms the game's other
+   arrivals already speak, so this stays one motion language rather than a
+   fourth dialect. Inside `no-preference` like every other animation here. */
 @media (prefers-reduced-motion: no-preference) {
+  @keyframes surface-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  #event-card {
+    animation: surface-in 160ms ease-out;
+  }
+
+  #help-panel {
+    animation: event-card-in 180ms ease-out;
+  }
+
+  /* The end screen rises further than the rest — 10px rather than 6 — and
+     takes longer. It is the one arrival that is also a full stop, and a beat
+     of travel is what separates "the run ended" from "the screen changed". */
+  #end:not([hidden]) {
+    animation: end-in 260ms ease-out;
+  }
+
+  @keyframes end-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+
   #event-card-panel {
     animation: event-card-in 160ms ease-out;
   }

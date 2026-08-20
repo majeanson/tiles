@@ -27,6 +27,31 @@ const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
 
 /**
+ * How long a camera move the GAME makes takes (Marc, 2026-08-20: "do a
+ * transition instead of being instantaneous").
+ *
+ * Long enough to read as travel rather than a cut — the point is that you can
+ * see WHERE you went, so the board stays a place instead of becoming a
+ * different picture — and short enough that HERE still feels like a button.
+ * Only automatic moves use it: a pinch or a drag follows a finger and is
+ * never smoothed.
+ */
+const CAMERA_MS = 320;
+
+/**
+ * The same, for the board settling to a new fit size as it grows, and how
+ * much of a size change is worth softening at all.
+ *
+ * Faster than a camera move because it is a correction, not a journey — and
+ * it happens on a placement, which the player is already watching. The slop
+ * keeps a sub-percent rounding wobble from starting an animation nobody
+ * asked for; a real extent change (a beacon appearing, a wall pushing the
+ * frontier out) is far larger than this.
+ */
+const REFIT_MS = 260;
+const REFIT_SLOP = 0.01;
+
+/**
  * How big a hex may be got to, in pixels of radius, however large the world
  * has grown.
  *
@@ -253,6 +278,41 @@ export class PixiRenderer implements Renderer {
   #flashes: Flash[] = [];
 
   /**
+   * The camera in flight (Marc, 2026-08-20: "when we automatically need to
+   * zoom in or out — new shrine pops, here/fit — do a transition instead of
+   * being instantaneous").
+   *
+   * Only ever set by the moves the GAME makes on the player's behalf. A
+   * pinch, a drag and a wheel stay instant forever: they follow a finger, and
+   * a finger that its board lags behind reads as broken, not as smooth.
+   */
+  #camera: {
+    readonly fromZoom: number;
+    readonly toZoom: number;
+    readonly fromPanX: number;
+    readonly toPanX: number;
+    readonly fromPanY: number;
+    readonly toPanY: number;
+    elapsed: number;
+    readonly ms: number;
+  } | null = null;
+
+  /**
+   * The refit softener: how much to scale the board by ON TOP of `#zoom`,
+   * easing back to 1.
+   *
+   * At FIT the layout is recomputed from the full extent every draw, so the
+   * placement that first reveals a distant beacon shrinks the entire board in
+   * one frame — the automatic zoom-out Marc named. Rather than tween the
+   * layout itself (every cached texture is keyed by its pixel size), the
+   * board keeps drawing at the size it HAD and eases to the size it now
+   * wants: `#refitEase` starts at oldSize/newSize and walks to 1.
+   */
+  #refitEase = 1;
+  #refitFrom = 1;
+  #refitElapsed = 0;
+
+  /**
    * The ember pool. `#emberFree` holds recycled sprites ready to be reused —
    * checked before `#acquireEmber` ever creates a new one — and
    * `#emberSpriteCount` is the running total ever created, capped at
@@ -382,6 +442,7 @@ export class PixiRenderer implements Renderer {
       this.#clearFlashes();
     };
     const onTick = (ticker: Ticker): void => {
+      this.#advanceCamera(ticker.deltaMS);
       this.#advanceFlashes(ticker.deltaMS);
       this.#advanceEmbers(ticker.deltaMS);
       this.#advanceBeacons(ticker.deltaMS);
@@ -440,8 +501,29 @@ export class PixiRenderer implements Renderer {
       this.#frontierFit = fit;
       this.#frontierFor = { w, h };
     }
+
+    // The automatic zoom-out, softened (2026-08-20). At FIT the extent is
+    // recomputed every draw, so the placement that first reveals a distant
+    // beacon shrinks the whole board between one frame and the next. Keep
+    // drawing at the size it HAD and let `#advanceCamera` walk the difference
+    // back to 1. Guarded three ways: only at FIT (past it the frontier is
+    // held still and there is nothing to soften), only for a real change (a
+    // rounding wobble is not a zoom-out), and never under reduced motion or
+    // on the first draw, where there is no previous size to ease FROM.
+    if (
+      !this.#reducedMotion &&
+      this.#fitSize > 0 &&
+      fit.size > 0 &&
+      this.#zoom <= 1 &&
+      !dimsChanged &&
+      Math.abs(fit.size - this.#fitSize) / this.#fitSize > REFIT_SLOP
+    ) {
+      this.#refitFrom = (this.#refitEase * this.#fitSize) / fit.size;
+      this.#refitEase = this.#refitFrom;
+      this.#refitElapsed = 0;
+    }
     this.#fitSize = fit.size;
-    const layout = zoomLayout(fit, this.#zoom, w / 2, h / 2);
+    const layout = zoomLayout(fit, this.#zoom * this.#refitEase, w / 2, h / 2);
     this.#layout = layout;
     if (layout.size <= 0) return;
 
@@ -549,9 +631,127 @@ export class PixiRenderer implements Renderer {
   }
 
   panBy(dx: number, dy: number): void {
+    // A drag is the one camera move that must never be smoothed, and it also
+    // OUTRANKS one in flight: a finger on the board is the player taking the
+    // camera back, and a tween still walking toward HERE would fight it.
+    this.#camera = null;
     this.#panX += dx;
     this.#panY += dy;
     this.#applyPan();
+  }
+
+  /**
+   * Ease-in-out, the shape a camera should move in: it starts from rest and
+   * arrives at rest, so nothing on screen ever changes speed abruptly.
+   */
+  static #ease(t: number): number {
+    return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+  }
+
+  /**
+   * Drive whatever the game asked the camera to do, and settle the board back
+   * to its true fit size. Both are no-ops on the overwhelming majority of
+   * frames, which is why they can sit unconditionally on the ticker.
+   */
+  #advanceCamera(deltaMS: number): void {
+    let panned = false;
+    let zoomed = false;
+
+    const move = this.#camera;
+    if (move !== null) {
+      move.elapsed += deltaMS;
+      const t = Math.min(1, move.elapsed / move.ms);
+      const e = PixiRenderer.#ease(t);
+      // Zoom travels geometrically — a camera going 1× → 4× should spend as
+      // long on 1→2 as on 2→4, or the second half arrives in a rush.
+      const zoom = move.fromZoom * (move.toZoom / move.fromZoom) ** e;
+      zoomed ||= zoom !== this.#zoom;
+      this.#zoom = zoom;
+      this.#panX = move.fromPanX + (move.toPanX - move.fromPanX) * e;
+      this.#panY = move.fromPanY + (move.toPanY - move.fromPanY) * e;
+      panned = true;
+      if (t >= 1) {
+        this.#camera = null;
+        // The textures baked at every size the tween passed through are
+        // nobody's now — the same debt a pinch leaves, paid the same way.
+        if (zoomed) this.#safeEvict();
+      }
+    }
+
+    if (this.#refitEase !== 1) {
+      this.#refitElapsed += deltaMS;
+      const t = Math.min(1, this.#refitElapsed / REFIT_MS);
+      const e = PixiRenderer.#ease(t);
+      this.#refitEase = this.#refitFrom * (1 / this.#refitFrom) ** e;
+      if (t >= 1) this.#refitEase = 1;
+      zoomed = true;
+    }
+
+    // A pure PAN keeps its flashes: `#applyPan` translates the effects layer
+    // with the board, so a pop that fires while the camera is gliding toward
+    // its own pocket burns in the right place the whole way. Only a change of
+    // SIZE invalidates them — they were baked into a layout that no longer
+    // exists — and only a change of size needs the cells rebuilt at all.
+    if (zoomed) {
+      this.#clearFlashes();
+      this.#queueDraw();
+    } else if (panned) {
+      this.#applyPan();
+    }
+  }
+
+  /**
+   * Send the camera somewhere, over time. The one entry point for every move
+   * the GAME makes — HERE, FIT, and the pan that shows what a POP just did.
+   *
+   * Reduced motion arrives instantly, as everywhere else in this file: the
+   * setting asks for no movement, and a camera is the largest movement there
+   * is. An already-running tween is replaced rather than queued, so tapping
+   * the camera button twice does not play two journeys end to end.
+   */
+  #flyTo(zoom: number, panX: number, panY: number): void {
+    const toZoom = Math.min(this.#zoomMax(), Math.max(ZOOM_MIN, zoom));
+    if (this.#reducedMotion) {
+      this.#camera = null;
+      this.#zoom = toZoom;
+      this.#panX = panX;
+      this.#panY = panY;
+      this.#clearFlashes();
+      this.draw(this.#view);
+      this.#safeEvict();
+      return;
+    }
+    this.#camera = {
+      fromZoom: this.#zoom,
+      toZoom,
+      fromPanX: this.#panX,
+      toPanX: panX,
+      fromPanY: this.#panY,
+      toPanY: panY,
+      elapsed: 0,
+      ms: CAMERA_MS,
+    };
+  }
+
+  /**
+   * Zoom in on one hex — HERE, and the POP that wants to show its own pocket.
+   * The pan is computed against the layout THIS zoom will produce, not the
+   * one on screen now, or the hex lands off centre by exactly the difference.
+   */
+  flyToHex(hex: HexKey, zoom: number): void {
+    const app = this.#app;
+    const fit = this.#frontierFit ?? this.#layout;
+    if (app === null || fit === null) return;
+    const target = Math.min(this.#zoomMax(), Math.max(ZOOM_MIN, zoom));
+    const w = app.screen.width;
+    const h = app.screen.height;
+    const { x, y } = place(parse(hex), zoomLayout(fit, target, w / 2, h / 2));
+    this.#flyTo(target, w / 2 - x, h / 2 - y);
+  }
+
+  /** Back out to FIT, over time. The other half of the camera button. */
+  flyToFit(): void {
+    this.#flyTo(1, 0, 0);
   }
 
   /**
