@@ -86,6 +86,13 @@ export const TORCHLIT: Theme = {
     popColour: 0xf7e6be,
     popAlpha: 0.95,
     popLift: 0.8,
+    // The register, tuned (WORKPLAN Stage 4, 2026-08-20): the burst's light
+    // spills a little further into the pool than the control does, and its
+    // embers fall back harder and smoulder a beat longer before they go out
+    // — rise, settle, cool, the same arc a real coal takes.
+    popGlowScale: 3.6,
+    emberGravity: 0.65,
+    emberLifeMs: 620,
   },
 
   // The voice (ideas/sound.md): warm and woody — triangle waves, low bells,

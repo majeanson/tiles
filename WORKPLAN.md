@@ -115,7 +115,7 @@ rather than four tinted hexes on black?
    DPR cap 2 and the WebGL context-loss path untouched · old saves and
    `pnpm sim` byte-identical (art is paint, not rules).
 
-## Stage 4 — The torchlit motion pass (STATUS: NOT STARTED)
+## Stage 4 — The torchlit motion pass (STATUS: DONE, commit PENDING)
 
 **Question:** does motion in torchlit's register (light responding, embers
 settling) make pop/claim/arrival feel MORE like one world — or does it read

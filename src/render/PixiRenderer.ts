@@ -78,6 +78,15 @@ const EMBER_MAX = 7;
  */
 const EMBER_CAP = 140;
 
+/**
+ * The ripen pulse's own glow size, as a fraction of the pop's `popGlowScale`
+ * (WORKPLAN Stage 4, 2026-08-20) — the exact ratio the two hand-typed sizes
+ * (`2.6` and `3.2`) always had, kept as a constant rather than a second theme
+ * token: a ripen only ever needs to stay proportionally quieter than a pop,
+ * never an independent dial a direction tunes on its own.
+ */
+const RIPEN_GLOW_RATIO = 2.6 / 3.2;
+
 // BAND_LIFT — how much brighter one contour band draws than the one below —
 // moved to @theme/tokens (2026-08-18) so the gallery can draw the bands with
 // the same number the board uses.
@@ -141,9 +150,12 @@ type Flash = {
 
 /**
  * One ember, pooled rather than allocated per burst — see `#acquireEmber`.
- * Gravity-less: a straight-line drift from the popped hex to `start + drift`
- * over its life, no acceleration, so it reads as light rising and thinning
- * rather than something falling.
+ *
+ * Rises fast (an eased curve toward `startY + driftY`), then gravity pulls it
+ * back down before it fades (WORKPLAN Stage 4, 2026-08-20) — `sinkPx` is that
+ * fall's own size, computed once at spawn from the theme's `emberGravity` so
+ * `#advanceEmbers` only ever does arithmetic, never a token lookup, on its
+ * hot path.
  */
 type Ember = {
   readonly sprite: Sprite;
@@ -155,6 +167,7 @@ type Ember = {
   readonly startY: number;
   readonly driftX: number;
   readonly driftY: number;
+  readonly sinkPx: number;
   readonly peak: number;
 };
 
@@ -1119,7 +1132,12 @@ export class PixiRenderer implements Renderer {
         const still = new Sprite(texture);
         still.anchor.set(0.5);
         still.position.set(x, y);
-        still.setSize(layout.size * 3.2, layout.size * 3.2);
+        still.setSize(layout.size * motion.popGlowScale, layout.size * motion.popGlowScale);
+        // Additive (WORKPLAN Stage 4): the light-pool answering the burst
+        // rather than a decal sitting on top of it — still no motion, still
+        // gone after a beat, just warmer where it overlaps the ground under
+        // it. Feedback deepened, not feedback added.
+        still.blendMode = 'add';
         still.alpha = motion.popAlpha;
         this.#fx.addChild(still);
         this.#flashes.push({
@@ -1142,7 +1160,12 @@ export class PixiRenderer implements Renderer {
       const glow = new Sprite(texture);
       glow.anchor.set(0.5);
       glow.position.set(x, y);
-      glow.setSize(layout.size * 3.2, layout.size * 3.2);
+      glow.setSize(layout.size * motion.popGlowScale, layout.size * motion.popGlowScale);
+      // Additive, same reasoning as the reduced-motion glow above: the burst
+      // reads as light spilling onto the ground around it rather than a
+      // sprite laid over it, and a cascade's glows stack brighter where they
+      // overlap instead of just re-covering the same alpha.
+      glow.blendMode = 'add';
       glow.alpha = 0;
       this.#fx.addChild(glow);
 
@@ -1204,7 +1227,10 @@ export class PixiRenderer implements Renderer {
    */
   #spawnPulse(cell: CellView, layout: Layout, texture: Texture, motion: Theme['motion']): void {
     const { x, y } = place(cell, layout);
-    const size = layout.size * 2.6;
+    // Rides the pop's own light-spill dial at the same ratio the two sizes
+    // (2.6 vs. 3.2) always had, rather than a second theme token for a glow
+    // that only ever needs to stay proportionally smaller than the pop's.
+    const size = layout.size * motion.popGlowScale * RIPEN_GLOW_RATIO;
     const peak = motion.popAlpha * 0.7;
 
     if (this.#reducedMotion) {
@@ -1212,6 +1238,7 @@ export class PixiRenderer implements Renderer {
       still.anchor.set(0.5);
       still.position.set(x, y);
       still.setSize(size, size);
+      still.blendMode = 'add';
       still.alpha = peak;
       this.#fx.addChild(still);
       this.#flashes.push({
@@ -1231,6 +1258,7 @@ export class PixiRenderer implements Renderer {
     glow.anchor.set(0.5);
     glow.position.set(x, y);
     glow.setSize(size, size);
+    glow.blendMode = 'add';
     glow.alpha = 0;
     this.#fx.addChild(glow);
     this.#flashes.push({
@@ -1330,11 +1358,12 @@ export class PixiRenderer implements Renderer {
   }
 
   /**
-   * A burst of tiny warm particles from one popped hex — 4 to 7, each a
-   * straight-line drift away from the hex with no gravity, additive-blended
-   * so they read as light rather than confetti. `delayMs` rides the same
-   * distance-ordered stagger the hex's own glow uses, so the embers of a
-   * cascade light up in the same ripple.
+   * A burst of tiny warm particles from one popped hex — 4 to 7, each rising
+   * away from the hex then settling back under its own theme's gravity (see
+   * `Ember` and `#advanceEmbers`), additive-blended so they read as light
+   * rather than confetti. `delayMs` rides the same distance-ordered stagger
+   * the hex's own glow uses, so the embers of a cascade light up in the same
+   * ripple.
    *
    * Randomness here is render-side jitter, not a rule the replay depends
    * on — `Math.random` is legal in `src/render` (only `src/engine` and
@@ -1342,6 +1371,7 @@ export class PixiRenderer implements Renderer {
    * which this file's config block does not include).
    */
   #spawnEmbers(x: number, y: number, layout: Layout, delayMs: number, tint: number): void {
+    const motion = this.#theme.motion;
     const count = EMBER_MIN + Math.floor(Math.random() * (EMBER_MAX - EMBER_MIN + 1));
     for (let i = 0; i < count; i++) {
       const sprite = this.#acquireEmber();
@@ -1358,12 +1388,14 @@ export class PixiRenderer implements Renderer {
         sprite,
         delayMs,
         elapsedMs: 0,
-        lifeMs: 500 + Math.random() * 200,
+        lifeMs: motion.emberLifeMs + Math.random() * 200,
         startX: x,
         startY: y,
-        // Mostly sideways drift and always upward — "rising", never falling.
+        // Mostly sideways drift, and up first — the settle is what pulls it
+        // back down, in `#advanceEmbers`.
         driftX: (Math.random() * 2 - 1) * layout.size * 0.6,
         driftY: -layout.size * (0.5 + Math.random() * 0.7),
+        sinkPx: layout.size * motion.emberGravity * (0.7 + Math.random() * 0.6),
         peak: 0.8,
       });
     }
@@ -1413,11 +1445,21 @@ export class PixiRenderer implements Renderer {
         continue;
       }
 
-      // Fast in, slower out — the same shape the pop's own glow fades on —
-      // and a gravity-less straight-line drift from where it was popped.
+      // Fast in, slower out — the same shape the pop's own glow fades on.
       const curve = t < 0.12 ? t / 0.12 : Math.pow(1 - (t - 0.12) / 0.88, 1.5);
       ember.sprite.alpha = ember.peak * curve;
-      ember.sprite.position.set(ember.startX + ember.driftX * t, ember.startY + ember.driftY * t);
+      // Rise, then settle (WORKPLAN Stage 4, 2026-08-20): `rise` is an
+      // eased climb that reaches its own drift by t≈0.45 and holds — the
+      // thermal updraft running out of heat — while `sink` grows from
+      // t≈0.3 on, quadratic like a real fall's acceleration, and pulls the
+      // ember back down under `driftY` before it fades out. One smooth arc,
+      // never a bounce: `sink` only ever grows, so nothing reverses twice.
+      const rise = 1 - Math.pow(1 - Math.min(t / 0.45, 1), 2);
+      const sink = ember.sinkPx * Math.pow(Math.max(0, (t - 0.3) / 0.7), 2);
+      ember.sprite.position.set(
+        ember.startX + ember.driftX * t,
+        ember.startY + ember.driftY * rise + sink,
+      );
       ember.sprite.scale.set(1 - 0.3 * t);
       alive.push(ember);
     }

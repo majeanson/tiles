@@ -324,6 +324,29 @@ export type Motion = {
    * away while the flash burns underneath it.
    */
   readonly popLift: number;
+  /**
+   * How far the pop's own light spills, as a multiplier of the hex size — the
+   * light-pool answering the burst rather than a decal sitting on top of it
+   * (WORKPLAN Stage 4, 2026-08-20). Replaces a hand-typed `3.2` that used to
+   * live in `PixiRenderer.ts`; the ripen pulse rides the same dial at its own
+   * fixed ratio so the two keep the proportion they always had.
+   */
+  readonly popGlowScale: number;
+  /**
+   * How hard a rising ember gets pulled back down before it fades, as a
+   * fraction of the hex size (WORKPLAN Stage 4). An ember used to drift in a
+   * straight line and never come back — reads as smoke, not fire. Zero would
+   * restore that straight drift; every direction gives it some gravity so the
+   * burn reads as rise-and-settle rather than rise-and-vanish. Never enough
+   * to overshoot back past where it started — see `#advanceEmbers`.
+   */
+  readonly emberGravity: number;
+  /**
+   * Base lifetime of one ember, in milliseconds, before render-side jitter
+   * (WORKPLAN Stage 4). Longer is a slower smoulder, not a bigger burst —
+   * the ember count is tuned once in `PixiRenderer.ts` for every direction.
+   */
+  readonly emberLifeMs: number;
 };
 
 export type ThemeId = string;

@@ -64,6 +64,14 @@ export const PLACEHOLDER: Theme = {
     popColour: 0xe8ecf4,
     popAlpha: 0.85,
     popLift: 0.9,
+    // The control (WORKPLAN Stage 4, 2026-08-20): `popGlowScale` is the exact
+    // `3.2` `PixiRenderer.ts` hand-typed before this was a token, and the
+    // ember settle is mild rather than off — a flat straight-line drift
+    // would make the placeholder a THIRD opinion (no gravity at all) rather
+    // than the plain one torchlit's tuned register is judged against.
+    popGlowScale: 3.2,
+    emberGravity: 0.4,
+    emberLifeMs: 500,
   },
 
   // The voice (ideas/sound.md): plain sines, no fiction — the placeholder

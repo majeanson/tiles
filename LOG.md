@@ -4261,3 +4261,120 @@ double ripple read as depth or as noise at arm's length; whether stone
 finally reads as SPENT rather than as a fourth terrain; and whether the
 new `fx.pop` flare feels like more of an ember burst than the plain glow
 it replaces, or busier for no reason.
+
+### Session 30 — The torchlit motion pass
+
+**Question:** does motion in torchlit's register (light responding, embers
+settling) make pop/claim/arrival feel MORE like one world — or does it read
+as noise on top of the feel pass's one motion language?
+
+`WORKPLAN.md`'s Stage 4 of the 2026-08-19 visual pipeline, the pipeline's
+last build stage, on top of Stage 3 (`3e23968`) and the feel pass (`371afcb`,
+outside the pipeline but the motion language this stage has to keep speaking).
+Scope: the pop's burst reads as flame/ember and the light-pool answers it; the
+claim and the arrival get the same register; the vocabulary extends as theme
+data where it can, render-side where it must; reduced motion keeps its own
+quieter pop; the feel pass's press-acknowledgement timing is untouched. Marc
+has not yet judged the feel pass, so this builds on it conservatively —
+deepen, do not rewrite.
+
+**Done.**
+
+1. **Embers rise and settle, instead of rising and vanishing.** The pop
+   already threw a pooled ember burst (pre-pipeline, `2d1f61e`); its own
+   comment called it "gravity-less: a straight-line drift… no acceleration."
+   `#advanceEmbers` in `src/render/PixiRenderer.ts` now composes two curves
+   over the same particle: `rise`, an eased climb that reaches the ember's
+   own `driftY` by roughly 45% of its life and holds there (the thermal
+   updraft running out of heat), and `sink`, a quadratic pull — gravity's own
+   acceleration shape, not a straight ramp — that grows from 30% of life
+   onward and drags the ember back down under where it rose to before it
+   fades out. One smooth arc, monotonic in `sink`, so nothing reverses twice
+   or bounces: the brief's own "nothing bounces like rubber" is structural
+   here, not a style choice made by eye. `sinkPx` — how hard one ember falls
+   back — is computed once at spawn from the new `emberGravity` theme token
+   and carried on the pooled `Ember` record, so the hot per-frame path stays
+   arithmetic on a plain number, no token lookup, no allocation.
+2. **The light-pool answers the burst.** The pop's flash sprite (and the
+   ripen pulse's, the same family) used to draw at normal blend — a
+   translucent disc laid over the ground. Both now draw `blendMode: 'add'`
+   (the same additive mode the embers and the beacon halos already use),
+   so the glow actually brightens the tiles it overlaps instead of just
+   sitting on top of them, and a cascade's overlapping glows stack brighter
+   where they meet rather than re-covering the same alpha — light pooling,
+   not decals stacking. Applied unconditionally, both themes, both the
+   animated and the reduced-motion-held glow: a rendering refinement in the
+   same family as Stage 3's `paintDepth` (its own precedent for "every
+   surface, every direction, not a flag"), not a system a direction opts
+   into.
+3. **The spill itself is theme data.** The hand-typed `3.2` (how large the
+   pop's glow sprite draws, in hex-radii) is now `Motion.popGlowScale`;
+   the ripen pulse's own `2.6` keeps riding the same dial at the exact ratio
+   the two literals always had (`RIPEN_GLOW_RATIO`), rather than gaining a
+   second token for a glow that only ever needs to stay proportionally
+   quieter than a pop's. `Motion` also grew `emberGravity` (how hard an
+   ember sinks back, as a fraction of hex size) and `emberLifeMs` (base
+   smoulder time before render-side jitter, was a bare `500` inline).
+   Placeholder is the control: `popGlowScale: 3.2` (the literal it always
+   drew at), `emberGravity: 0.4` (mild rather than zero — a dead-flat
+   straight-line drift would make the placeholder a THIRD opinion, no
+   gravity at all, rather than the plain baseline torchlit's tuned register
+   is judged against), `emberLifeMs: 500` (the exact old constant). Torchlit
+   tunes the register: `popGlowScale: 3.6` (the light reaches further into
+   the pool), `emberGravity: 0.65` (a harder, more visible fall), `emberLifeMs:
+620` (a beat longer smoulder before the coal goes out).
+4. **The claim gets the same register, scoped so the placeholder stays the
+   control.** The toast (a claim's receipt) and the event card (a find,
+   shrine or territory — the rarer claim) already arrive on the feel pass's
+   6px rise; torchlit now also flares its own accent in as a fading
+   `box-shadow` riding the exact same animation duration (140ms / 160ms,
+   `ease-out`, no new timing to regress), via `[data-theme='torchlit']`
+   overrides of `toast-in`/`event-card-in` — `toast-in-ember` and
+   `event-card-in-ember` — that win on specificity alone, so `placeholder`'s
+   two base keyframes are untouched, byte-for-byte the feel pass shipped
+   them. Both new keyframes are explicit `from`/`to` pairs (not an implicit
+   end state) so the two-shadow list interpolates cleanly rather than
+   risking a browser's no-op fallback on a shadow-count mismatch.
+5. **What did NOT change, on purpose.** The front door, manual, purse fold
+   and end screen's own arrivals (the feel pass's other three `toast-in`
+   users) are untouched — they are UI chrome, not a reward, and giving every
+   panel on the page an ember flare is exactly the "four effects from
+   different games" the brief warned against; only the two moments the game
+   already calls a CLAIM got the register. `popMs`, `popStaggerMs`,
+   `popColour`, `popAlpha`, `popLift` and every button/press rule from the
+   feel pass are byte-for-byte what they were. Draws stay coalesced to one a
+   frame; nothing here adds a per-frame allocation — `sinkPx` is computed
+   once at spawn, `#advanceEmbers`' extra work is a few multiplications on
+   numbers already in hand, and the ember pool's hard cap (`EMBER_CAP`) is
+   unchanged.
+
+**Verified:** 557 tests (unchanged from Stage 3 — nothing here is checkable
+without a 2D canvas, the same limit `STATUS.md`'s gates section states
+outright), typecheck/lint/format clean, both Playwright smoke specs green,
+`pnpm sim` byte-identical by stash-and-rerun (nothing here touches `engine/`
+or `content/`, and no number in `src/content/` moved).
+
+**Judgment calls, for the record:** additive blend for the pop/ripen glow is
+applied uniformly rather than as a per-theme toggle, the same reasoning
+Stage 3 used for `paintDepth`; the claim's ember register was scoped to the
+toast and the event card only, not the feel pass's other arrival surfaces,
+because those are chrome rather than reward and the brief's own "restraint is
+correct here" pointed at leaving them alone; `emberGravity` and
+`emberLifeMs` got real (nonzero) placeholder values rather than the literal
+"off" a strict zero would be, so the control stays a plain baseline the
+tuned register can be judged against rather than a third, untuned opinion;
+and "the light-pool answers it" was built as the glow's own blend mode and
+spill radius rather than reaching into the static per-cell torch brightness
+`ui/view.ts` computes once per draw — re-tinting nearby cells for the
+duration of a burst would mean tracking affected cells and re-applying tint
+every frame outside the existing FX-sprite path, which is exactly the kind
+of per-frame cost and complexity the brief asked this stage to stay clear of.
+
+**Left for Marc's eyes, on the phone**, per `WORKPLAN.md`'s own standing
+constraint — this is shipped-and-wired, not judged: whether the ember's new
+rise-and-settle reads as fire cooling or is too subtle to notice next to the
+existing jump-and-flash; whether the additive glow makes a cascade feel like
+light pooling or just brighter; whether torchlit's claim flare reads as a
+reward answering in light or as an unexplained flash on the toast; and the
+stage's own question — whether all of this reads as one world responding, or
+as noise on top of the feel pass he has not yet judged.

@@ -1007,6 +1007,33 @@ button.quiet {
       transform: translateY(6px);
     }
   }
+
+  /* Torchlit's own register on the same rise (WORKPLAN Stage 4, 2026-08-20):
+     a claim is a small reward, and this direction answers a reward in light —
+     the accent flares in with the toast and burns off over the same 140ms
+     the plain rise already takes, never a second's more. Placeholder keeps
+     `toast-in` exactly as shipped; this is an addition scoped by
+     `[data-theme]`, not a change to the control. */
+  [data-theme='torchlit'] #toast {
+    animation: toast-in-ember 140ms ease-out;
+  }
+
+  @keyframes toast-in-ember {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+      box-shadow:
+        0 0 16px 3px color-mix(in srgb, var(--accent, #c79a4b) 60%, transparent),
+        0 6px 18px rgb(0 0 0 / 45%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      box-shadow:
+        0 0 16px 3px transparent,
+        0 6px 18px rgb(0 0 0 / 45%);
+    }
+  }
 }
 
 /* -------------------------------------------------------------- event card
@@ -1083,6 +1110,31 @@ button.quiet {
     from {
       opacity: 0;
       transform: translateY(6px);
+    }
+  }
+
+  /* The rarer claim gets the same register the toast's receipt does, at its
+     own size (WORKPLAN Stage 4, 2026-08-20) — a find, a shrine or a
+     territory is the loudest reward in the game, so its arrival earns the
+     same light the toast's smaller one does, not a louder effect. */
+  [data-theme='torchlit'] #event-card-panel {
+    animation: event-card-in-ember 160ms ease-out;
+  }
+
+  @keyframes event-card-in-ember {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+      box-shadow:
+        0 0 22px 4px color-mix(in srgb, var(--accent, #d7b45a) 60%, transparent),
+        0 12px 32px rgb(0 0 0 / 55%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      box-shadow:
+        0 0 22px 4px transparent,
+        0 12px 32px rgb(0 0 0 / 55%);
     }
   }
 }
