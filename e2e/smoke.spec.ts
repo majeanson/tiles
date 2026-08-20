@@ -66,11 +66,17 @@ test('boots, begins, places, reads the manual, works the camera — no errors', 
   expect(tilesAfter).toBeLessThan(tilesBefore);
 
   // The manual opens as a dialog and closes on a tap, without wounding the
-  // board underneath.
+  // board underneath. It opens onto MENU (2026-08-20) — the ways out of a
+  // run and the world's own numbers — with the prose tabs behind it.
   await page.locator('#help').click();
   await expect(page.locator('#help-panel')).toBeVisible();
+  await expect(page.locator('#help-menu')).toContainText('A SHARED RUN');
   await expect(page.locator('#help-manual')).toContainText('WHAT YOU SEE');
-  await page.locator('#help-panel').click();
+  // Tapped on PROSE, deliberately: the controls swallow their own taps (a
+  // panel closing under an arming button could never be tapped twice), so
+  // clicking the panel's bare centre is a coin toss about which half of it
+  // the layout happens to put there.
+  await page.locator('#help-name').click();
   await expect(page.locator('#help-panel')).toBeHidden();
 
   // The camera toggle jumps in and back out; the wheel zooms. Every one of

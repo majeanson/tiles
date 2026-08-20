@@ -42,11 +42,13 @@ import {
   EMPTY_PROGRESS,
   PERKS,
   TEACH_IDS,
+  UPGRADES,
   applyProgress,
   decodeProgress,
   encodeProgress,
   grantFind,
   type Progress,
+  type UpgradeId,
 } from '@meta/progress';
 import { decodeRun, encodeRun } from '@meta/save';
 import {
@@ -196,19 +198,36 @@ const inAppBrowser = (): boolean =>
   /FBAN|FBAV|Instagram|Line\/|TikTok|Twitter|Snapchat|; wv\)/i.test(navigator.userAgent);
 
 /** Every stored thing that belongs to ONE world, keyed by its slot. */
-type SlotKeys = { readonly world: string; readonly run: string; readonly receipt: string };
+type SlotKeys = {
+  readonly world: string;
+  readonly run: string;
+  readonly receipt: string;
+  readonly shop: string;
+};
 
 /**
  * Slot 1 keeps the legacy key names on purpose: every device that existed
  * before slots IS slot 1, with no migration and nothing to re-read.
+ *
+ * `shop` is the exception and is new for every slot (2026-08-20): the levels
+ * it holds used to live in the device-wide progress blob, and slot 1 pointing
+ * at that blob would make the split a no-op for the one slot every existing
+ * device plays. Absent means "inherit the old device-wide levels once" —
+ * see `readShopLevels`.
  */
 function slotKeys(slot: Slot): SlotKeys {
   return slot === 1
-    ? { world: WORLD_STORAGE_KEY, run: RUN_STORAGE_KEY, receipt: SHRINE_RECEIPT_KEY }
+    ? {
+        world: WORLD_STORAGE_KEY,
+        run: RUN_STORAGE_KEY,
+        receipt: SHRINE_RECEIPT_KEY,
+        shop: 'tiles.shop.s1.v1',
+      }
     : {
         world: `tiles.world.s${slot}.v1`,
         run: `tiles.run.s${slot}.v1`,
         receipt: `tiles.shrinereceipt.s${slot}.v1`,
+        shop: `tiles.shop.s${slot}.v1`,
       };
 }
 
@@ -451,13 +470,72 @@ function resolveThemeId(): string {
  */
 let progressCache: { raw: string | null; decoded: Progress } | null = null;
 
+/**
+ * Which world's shop levels `readProgress` and `writeProgress` speak for.
+ *
+ * The split (Marc, 2026-08-20: "purse global, levels per-world") is done out
+ * here rather than inside `Progress`, so `applyProgress`, `buy`, `priceOf`
+ * and the whole shop UI keep taking one object and never learn that half of
+ * it comes from somewhere else. Null until the active slot is known at boot,
+ * which is the only window where nothing has asked yet.
+ */
+let shopKeys: SlotKeys | null = null;
+
+/**
+ * A world's bought levels, or null where the world predates the split.
+ *
+ * Its own small key rather than a field on `WorldMemory`: the world blob
+ * carries every revealed hex, and `readProgress` runs several times per tap,
+ * so folding it in would mean decoding the largest thing on the device to
+ * answer "how many levels of DEEPER PURSE". Kept tiny, it is free.
+ */
+function readShopLevels(keys: SlotKeys): Progress['bought'] | null {
+  try {
+    const raw = localStorage.getItem(keys.shop);
+    if (raw === null) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+    const clean: Partial<Record<UpgradeId, number>> = {};
+    const known = new Set<string>(UPGRADES.map((u) => u.id));
+    for (const [id, n] of Object.entries(parsed)) {
+      if (known.has(id) && typeof n === 'number' && Number.isFinite(n) && n > 0) {
+        clean[id as UpgradeId] = Math.floor(n);
+      }
+    }
+    return clean;
+  } catch {
+    return null;
+  }
+}
+
+function writeShopLevels(keys: SlotKeys, bought: Progress['bought']): void {
+  try {
+    localStorage.setItem(keys.shop, JSON.stringify(bought));
+  } catch {
+    // Private mode. The purchase holds for this session and no longer.
+  }
+}
+
 function readProgress(): Progress {
   try {
     const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
-    if (progressCache !== null && progressCache.raw === raw) return progressCache.decoded;
-    const decoded = decodeProgress(raw);
-    progressCache = { raw, decoded };
-    return decoded;
+    const device =
+      progressCache !== null && progressCache.raw === raw
+        ? progressCache.decoded
+        : ((): Progress => {
+            const decoded = decodeProgress(raw);
+            progressCache = { raw, decoded };
+            return decoded;
+          })();
+
+    if (shopKeys === null) return device;
+    // The migration, and it is a one-way generosity: a world that has never
+    // written a shop key predates the split, so it INHERITS the device-wide
+    // levels rather than resetting to nothing. Every world a device already
+    // held keeps exactly the build it had; only worlds settled after today
+    // start bare, which is the point of the split.
+    const levels = readShopLevels(shopKeys) ?? device.bought;
+    return levels === device.bought ? device : { ...device, bought: levels };
   } catch {
     return EMPTY_PROGRESS;
   }
@@ -465,7 +543,14 @@ function readProgress(): Progress {
 
 function writeProgress(progress: Progress): void {
   try {
-    localStorage.setItem(PROGRESS_STORAGE_KEY, encodeProgress(progress));
+    // The purse, the shelf and the teaching are the device's; the LEVELS
+    // belong to the world they were bought for. The device blob keeps its own
+    // `bought` untouched — it is the legacy floor that worlds older than the
+    // split still inherit from, and rewriting it here would silently move the
+    // build of every OTHER world that has not been played since.
+    const legacy = decodeProgress(localStorage.getItem(PROGRESS_STORAGE_KEY)).bought;
+    localStorage.setItem(PROGRESS_STORAGE_KEY, encodeProgress({ ...progress, bought: legacy }));
+    if (shopKeys !== null) writeShopLevels(shopKeys, progress.bought);
   } catch {
     // Private mode. The run still plays; it just never compounds.
   }
@@ -542,8 +627,22 @@ function loadWorld(keys: SlotKeys): WorldMemory {
   } catch {
     // Private mode: every visit is a new world, which is a fine game too.
   }
-  const world = newWorld(Date.now() & 0x7fffffff);
+  return createWorld(keys, Date.now() & 0x7fffffff);
+}
+
+/**
+ * Settle a slot on a seed: the world, plus the EMPTY shop that makes it a
+ * fresh build (2026-08-20).
+ *
+ * Writing `{}` is the load-bearing half. An absent shop key means "older than
+ * the split, inherit the device's levels", so a world created without one
+ * would arrive wearing the build of the world it was started to get away
+ * from. Every place a world is born goes through here for that reason.
+ */
+function createWorld(keys: SlotKeys, worldSeed: number): WorldMemory {
+  const world = newWorld(worldSeed);
   saveWorld(keys, world);
+  writeShopLevels(keys, {});
   return world;
 }
 
@@ -663,6 +762,11 @@ function runKeeping(
       localStorage.removeItem(keys.world);
       localStorage.removeItem(keys.run);
       localStorage.removeItem(keys.receipt);
+      // The build goes with the world it was bought for (2026-08-20). Left
+      // behind, the next world settled in this slot would inherit it — and a
+      // slot whose shop key is absent reads as "older than the split", which
+      // would hand it the device's legacy levels instead of a fresh start.
+      localStorage.removeItem(keys.shop);
     } catch {
       // A storage that refuses the wipe reloads into the old world — with
       // anything already banked kept, which errs kind.
@@ -1259,6 +1363,26 @@ function mountSettings(
     world: WorldMemory;
     slot: Slot;
     abandon: () => void;
+    /**
+     * The MENU tab's body (Marc, 2026-08-20). Everything about the WORLD —
+     * the atlas, the unlock ledger, the survey — plus the three ways out of
+     * a run, moved here off the bottom of the settings scroll. Nothing it
+     * holds is repeated in the manual's other tabs.
+     */
+    menuHost: HTMLElement;
+    /** Back to the front door. The run is saved, so it is a pause. */
+    mainMenu: () => void;
+    /**
+     * Which game this is (Marc, 2026-08-20: "separate clearly worlds vs
+     * daily, right now a lot of things are intertwined").
+     *
+     * A detour is not a world, and until now the two shared one panel: the
+     * atlas printed YOUR world's seed and shrines while you were playing
+     * somebody else's, and NEW WORLD offered to abandon a world the run was
+     * not being played on. The MENU tab now shows exactly one of the two,
+     * with exits that mean something where you actually are.
+     */
+    mode: { kind: 'world' } | { kind: 'daily'; name: string; badge: string } | { kind: 'shared' };
     /** The board's ♪ button and this panel's SOUND switch are one wire —
      *  a flip here must land on the button's face and the live gate too. */
     syncSound: (on: boolean) => void;
@@ -1301,10 +1425,9 @@ function mountSettings(
   // (`.fact`/`.fact-label`/`.fact-value` — shared with the end screen's own
   // grid, 2026-08-18) rather than a seven-fact sentence a reader had to
   // parse apart. A fact you have to pull out of a run-on is a fact half-shown.
-  const atlas = document.createElement('p');
-  atlas.className = 'help-title';
-  atlas.textContent = 'YOUR WORLD';
-
+  // The atlas's own heading is the MENU tab's title now — it names the slot
+  // as well ("YOUR WORLD · 2 OF 3"), so a second one here would be a
+  // duplicate of the thing directly above it.
   const w = live.world;
   const fact = (label: string, value: string): HTMLElement => {
     const c = document.createElement('div');
@@ -1583,20 +1706,82 @@ function mountSettings(
   restart.textContent = 'NEW RUN with these settings';
   restart.addEventListener('click', startNewRun);
 
-  host.replaceChildren(
-    heading,
-    intro,
-    privacy,
-    atlas,
-    atlasGrid,
-    ledger,
-    shrineHint,
-    perksLine,
-    ...(surveyStarted ? [surveyHeading, survey] : []),
-    abandon,
-    developer,
-    restart,
-  );
+  // Back to the front door. Not destructive and not arming: the run is saved
+  // after every action (and, since Day 2, so is a daily), so this is a pause
+  // rather than a forfeit — which is exactly what the label has to promise.
+  const toMenu = document.createElement('button');
+  toMenu.type = 'button';
+  toMenu.id = 'to-main-menu';
+  toMenu.textContent = live.mode.kind === 'world' ? 'MAIN MENU' : 'BACK TO YOUR WORLD';
+  toMenu.addEventListener('click', live.mainMenu);
+
+  const toMenuNote = document.createElement('p');
+  toMenuNote.className = 'flag-note';
+  toMenuNote.textContent =
+    live.mode.kind === 'world'
+      ? 'Your board is kept — RESUME picks it up exactly where it is.'
+      : 'This board is kept too — the door offers it back until you finish it.';
+
+  // The MENU tab, in one of two shapes. A detour never sees the atlas, the
+  // ledger, the survey or NEW WORLD: none of them are about the game being
+  // played, and printing them here is what made the two modes feel like one
+  // tangled thing.
+  const menuTitle = document.createElement('p');
+  menuTitle.className = 'help-title';
+  const menuNote = document.createElement('p');
+  menuNote.className = 'flag-note';
+
+  const menuParts: HTMLElement[] = [];
+  if (live.mode.kind === 'world') {
+    menuTitle.textContent = `YOUR WORLD · ${live.slot} OF 3`;
+    menuNote.textContent =
+      'Your own map, kept between runs. Relics travel to every world; what you buy with them stays here.';
+    menuParts.push(
+      menuTitle,
+      menuNote,
+      atlasGrid,
+      ledger,
+      shrineHint,
+      perksLine,
+      ...(surveyStarted ? [surveyHeading, survey] : []),
+      toMenu,
+      toMenuNote,
+      restart,
+      abandon,
+    );
+  } else {
+    if (live.mode.kind === 'daily') {
+      menuTitle.textContent = `THE DAILY · ${live.mode.name}`;
+      menuNote.textContent =
+        'One world everybody gets today, played plain — no upgrades, no perk, no shrines. Nothing here touches your own world, and nothing it earns is banked.';
+      const badge = document.createElement('p');
+      badge.className = 'flag-note';
+      badge.textContent = live.mode.badge;
+      menuParts.push(menuTitle, menuNote, badge, toMenu, toMenuNote);
+    } else {
+      menuTitle.textContent = 'A SHARED RUN';
+      menuNote.textContent =
+        "Somebody else's world and seed, played plain. Nothing here is kept, and your own world is untouched.";
+      menuParts.push(menuTitle, menuNote, toMenu, toMenuNote);
+    }
+  }
+
+  // The CONTROLS swallow their taps — NEW WORLD arms on the first one, and a
+  // panel that closed underneath it would make the second tap impossible —
+  // but the prose above them does not: tapping what you have finished reading
+  // closes the panel, which is the contract every other tab keeps.
+  for (const control of [toMenu, restart, abandon]) {
+    control.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+  }
+  live.menuHost.replaceChildren(...menuParts);
+
+  // SETTINGS keeps the switches, the privacy note and the developer fold —
+  // what the DEVICE does, rather than what this world is. NEW RUN and NEW
+  // WORLD moved to MENU above; repeating them here is the intertwining the
+  // MENU tab exists to undo.
+  host.replaceChildren(heading, intro, privacy, developer);
 }
 
 /**
@@ -1628,6 +1813,10 @@ async function main(): Promise<void> {
   // front door's menu switches, settles and begins the others.
   const slot = activeSlot();
   const keys = slotKeys(slot);
+  // Before the first `readProgress` anywhere: the shop levels this boot reads
+  // and writes are THIS world's (2026-08-20's split). Set here, once, because
+  // the active slot cannot change without a reload.
+  shopKeys = keys;
   const world = loadWorld(keys);
 
   // Teaching (`ideas/teaching.md`, 2026-08-19): `decodeProgress` already
@@ -1757,6 +1946,7 @@ async function main(): Promise<void> {
     help: required<HTMLButtonElement>('help'),
     helpPanel: required('help-panel'),
     helpManual: required('help-manual'),
+    helpMenu: required('help-menu'),
     toast: required('toast'),
     eventCard: required('event-card'),
     eventCardGlyph: required('event-card-glyph'),
@@ -1895,7 +2085,7 @@ async function main(): Promise<void> {
         // The seed settles EXACTLY as played — the old 31-bit mask would
         // have settled a different world than the one just previewed
         // whenever a hand-typed seed was negative.
-        saveWorld(slotKeys(emptySlot), newWorld(sharedSeed));
+        createWorld(slotKeys(emptySlot), sharedSeed);
         // The diary's arrival entry, before the navigation that follows —
         // settling is a world-scale moment, not a run, and it happens on a
         // door no run-end hook ever sees.
@@ -2445,6 +2635,21 @@ async function main(): Promise<void> {
           keeper.dropWorld();
           goHome();
         },
+        menuHost: required('help-menu'),
+        mainMenu: goHome,
+        // Which game the ? panel is describing. Read fresh on every paint,
+        // like everything else here, though these three cannot change without
+        // a reload — the URL is what decides them.
+        mode:
+          dailyDate !== null
+            ? {
+                kind: 'daily',
+                name: dailyName(dailyDate),
+                badge: dailyBadge(readDailyBook(), dailyDate),
+              }
+            : sharedSeed !== null
+              ? { kind: 'shared' }
+              : { kind: 'world' },
         syncSound,
       },
       keeper.newRun ?? (() => location.reload()),

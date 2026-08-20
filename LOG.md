@@ -5204,3 +5204,64 @@ down mid-board, reopened at the start URL with no `?daily=`, offered back
 and resumed as the same try), typecheck/lint/format clean, build green,
 `pnpm sim` unmoved — the harness collects no bounties in any policy, so the
 engine fix is invisible to it, which is itself the reason it needed a test.
+
+### Session 36 — Day two, afternoon: the split economy, the MENU tab, and a header of live numbers
+
+Four asks from Marc, answered in his own option-set form for the first one.
+
+1. **The economy splits** (his choice from three: "purse global, levels
+   per-world"). Relics stay device-wide — money travels, and the 2026-08-15
+   ruling that a new world is never a reset survives in the half that
+   matters — but the LEVELS bought with them belong to the world they were
+   bought in, so a new world is a fresh build as well as a fresh map.
+
+   Done at the shell's edge, not in `Progress`: `applyProgress`, `buy`,
+   `priceOf` and the whole shop UI still take one object and never learn
+   that half of it comes from somewhere else. Levels live in their own small
+   per-slot key rather than on `WorldMemory`, because `readProgress` runs
+   several times per tap and the world blob carries every revealed hex —
+   folding it in would mean decoding the largest thing on the device to
+   answer "how many levels of DEEPER PURSE".
+
+   The migration is a one-way generosity: a slot with no shop key predates
+   the split and INHERITS the device's old levels, so every world a device
+   already held keeps exactly the build it had. Only worlds settled after
+   today start bare — which is why `createWorld` writes an empty `{}` at
+   birth, and why `dropWorld` takes the shop with it. The shop says the deal
+   out loud in its own first line; the manual's AFTER tab, which claimed
+   purchases "follow you into every world", now says what is true.
+
+2. **A MENU tab, first in the `?` panel** ("add a menu in ? or similar to go
+   back to main menu, new run, new world, etc. with the 'your world' stats.
+   dont repeat this info in other help tabs"). MAIN MENU (new — the run is
+   saved, so it is a pause), NEW RUN and NEW WORLD, gathered with the atlas,
+   the unlock ledger and the survey, all of which came OFF the bottom of a
+   long settings scroll. SETTINGS keeps what the DEVICE does: the switches,
+   the privacy note, the developer fold. The AFTER tab lost the three lines
+   that restated any of it and points at the tab instead. Its body is built
+   by main.ts and relocated into the tab by `#buildManual`, the same trick
+   the theme picker already used.
+
+3. **Worlds and the daily stop being intertwined** ("separate clearly worlds
+   vs daily, right now a lot of things are intertwined"). The MENU tab is
+   one of two things and never both: YOUR WORLD · n OF 3, with the atlas and
+   the exits — or THE DAILY · #N (or A SHARED RUN), with what a detour IS,
+   its own badge, and one way out. A detour never sees the atlas, the
+   ledger, the survey or NEW WORLD: none of them are about the game being
+   played, and printing YOUR world's seed and shrines while somebody else's
+   world is on screen is what made the two feel like one tangled thing.
+
+4. **The header is live numbers only** ("in the reach, show our best in the
+   settings but not in the header... we could show current points too").
+   REACH drops its "· best N" rider — the world's farthest is a RECORD and
+   it already sits in the atlas as FARTHEST — and POINTS and LUCK stop
+   sharing one slot, so the score a run is FOR is finally on screen while
+   the run is alive. `hidePoints` goes false in TUNING, where it was set on
+   2026-08-15 for a game whose pops did not all score.
+
+**Verified:** 612 tests (+1: the score and the purse shown at once; the
+REACH test repointed at the new contract), 8 e2e (the manual spec now taps
+PROSE to close — the panel opens onto MENU and its controls swallow their
+own taps, so a bare centre click is a coin toss about layout), typecheck /
+lint / format clean, build green, `pnpm sim` byte-identical — the split is
+shell-side and `hidePoints` is display, so neither can reach the harness.

@@ -161,6 +161,17 @@
         <div id="help-meta"></div>
       </div>
 
+      <!-- The MENU tab's contents (Marc, 2026-08-20: "add a menu in ? or
+           similar to go back to main menu, new run, new world, etc. with the
+           'your world' stats"). Declared out here and relocated into the
+           manual's first tab by `#buildManual`, the same trick #themes uses
+           below: the atlas and the ledger are read from storage, which is
+           main.ts's business, while the tab that frames them is the Game's.
+           The ways OUT of a run used to be the last thing on a long settings
+           scroll, and the world's own numbers sat beside the switches; both
+           are now the first thing the ? panel opens onto. -->
+      <div id="help-menu"></div>
+
       <!-- Art directions, one button each. Declared here rather than inside
            #game-shell — `mountSettings` (main.ts) relocates this exact node
            into #help-meta, under the DEVELOPER fold's ui.themePicker row,

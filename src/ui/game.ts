@@ -115,6 +115,13 @@ export type Elements = {
   /** The manual's half of the panel. The settings half belongs to main.ts. */
   readonly helpManual: HTMLElement;
   /**
+   * The MENU tab's body (2026-08-20). Filled by main.ts — the world's numbers
+   * and the ways out of a run are both storage's business — and relocated
+   * into the manual's first tab here, so the panel opens onto the exits
+   * instead of onto prose.
+   */
+  readonly helpMenu: HTMLElement;
+  /**
    * The popup over the board: what you just claimed, or what the glyph you
    * tapped does. Loud enough to be read, gone on a tap or after a few
    * seconds — the hint line was too quiet for something that just happened.
@@ -1612,7 +1619,15 @@ export class Game {
    * way the settings rows already do.
    */
   #buildManual(): HTMLElement[] {
-    const tabs = this.#helpSections();
+    // MENU first (Marc, 2026-08-20): the ways out of a run, and the world
+    // they belong to. Its body is main.ts's — relocated, not rebuilt — and
+    // it takes the tab bar's first seat because "how do I get back to the
+    // menu" is a question asked mid-run, not after reading four tabs of
+    // prose. Absent where nothing filled it (the gallery, a bare test), so
+    // the manual still stands alone.
+    const menu: HelpTab[] =
+      this.#el.helpMenu.childElementCount > 0 ? [{ id: 'menu', label: 'MENU', sections: [] }] : [];
+    const tabs = [...menu, ...this.#helpSections()];
     const bar = document.createElement('div');
     bar.className = 'help-tabs';
 
@@ -1620,6 +1635,10 @@ export class Game {
       const panel = document.createElement('div');
       panel.className = 'help-panel-body';
       panel.hidden = index !== 0;
+      if (tab.id === 'menu') {
+        panel.append(this.#el.helpMenu);
+        return panel;
+      }
       panel.replaceChildren(...tab.sections.flatMap((section) => this.#helpSection(section)));
       // One quiet line where the ledger is still hiding something — never a
       // per-section placeholder, never a count (`ideas/teaching.md`).
@@ -2022,7 +2041,7 @@ export class Game {
                 lines: [
                   'Relics are not points. Points are what a run is worth; relics buy the NEXT run — and both come out of the same pockets, so every ripe pocket asks which game you are playing.',
                   'SACRIFICE a pocket and it pays relics and nothing else — no tiles to live on, no score.',
-                  'Spend them in the SHOP, behind its own button on the end screen. Everything you buy is permanent and follows you into every world.',
+                  'Spend them in the SHOP, behind its own button on the end screen. Relics themselves are yours on every world; what you BUY with them belongs to the world you bought it in.',
                   'PERKS are not for sale. They are FOUND — hidden somewhere out in the world — and you may wear one at a time.',
                 ],
                 detail: [
@@ -2041,13 +2060,18 @@ export class Game {
                   'LEFT reaches zero: the expedition is over. Anything already ripe can still be POPPED.',
                 ]
               : []),
-            'This device keeps up to THREE worlds — the front door switches between them — and each one remembers: ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
+            // What a world IS, and the ways out of one, live in the MENU tab
+            // — with this world's own numbers beside them (2026-08-20, Marc:
+            // "don't repeat this info in other help tabs"). Three lines that
+            // used to restate it from memory are gone; the pointer is not a
+            // restatement, and it is what makes the tab findable.
+            'Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
             ...(this.#hooks.crossing !== undefined && show('shrine')
               ? [
                   'Once every shrine unlock is woken, any further shrine is a crossing: step through to a NEW WORLD, carrying relics for what you leave behind.',
                 ]
               : []),
-            'SETTINGS shows what your world has seen, and can start a NEW WORLD outright — unpaid, but your shop and perks always travel.',
+            'The MENU tab, at the top of this panel, holds your world’s own numbers and every way out of a run.',
           ],
           detail: [
             ...(t.territoryTiles > 0
@@ -3383,6 +3407,16 @@ export class Game {
     if (shop === undefined) return [];
     const progress = shop.read();
 
+    // What travels and what does not (Marc, 2026-08-20: "purse global, levels
+    // per-world"). Said once, here, at the moment money is about to be spent —
+    // without it, opening a second world and finding DEEPER PURSE back at zero
+    // reads as lost progress rather than as the deal. Absent where the hook
+    // cannot tell us there is more than one world to travel between.
+    const scope = document.createElement('p');
+    scope.className = 'end-facts';
+    scope.textContent =
+      'Relics are yours on every world. What you buy with them belongs to THIS world — a new world is a fresh build as well as a fresh map.';
+
     const rows = UPGRADES.map((upgrade) => {
       const level = levelOf(progress, upgrade.id);
       const price = priceOf(progress, upgrade);
@@ -3486,7 +3520,7 @@ export class Game {
         ? `${undiscovered} more ${undiscovered === 1 ? 'is' : 'are'} still out there, unnamed.`
         : 'Every perk in the pool has been found.';
 
-    return [...rows, shelfHead, shelfNote, ...shelf, mystery];
+    return [scope, ...rows, shelfHead, shelfNote, ...shelf, mystery];
   }
 
   /**
@@ -3502,20 +3536,6 @@ export class Game {
    * colour for that reason.
    */
   #renderStats(hud: HudView): void {
-    // REACH · best N (2026-08-18): the world's own farthest reach, read
-    // fresh off `worldStats` — the same hook the end screen's CARRIED OUT
-    // strip uses — so a run that just passed its own world's old best
-    // shows it changing live, not merely at the end of the story. No prior
-    // best (a fresh world, or the hook absent) prints plain REACH N.
-    const world = this.#hooks.worldStats?.();
-    // "· best N" is the world's origin-anchored farthest; a camp run's own
-    // reach is camp-anchored, so the rider comes off rather than comparing
-    // two different rulers on one line.
-    const reachValue =
-      world !== undefined && world.farthestReach > 0 && this.#state.wakeAt === null
-        ? `${hud.depthValue} · best ${world.farthestReach}`
-        : String(hud.depthValue);
-
     // LUCK holds its slot only once this device has luck to hold, or has
     // already been taught what luck is (`ideas/teaching.md`: the HUD appears
     // as it matters, paired with the card so the appearance IS the event).
@@ -3523,14 +3543,24 @@ export class Game {
 
     const stats: readonly Stat[] = [
       { id: 'tiles', label: 'TILES', value: String(hud.tiles) },
-      // Score where it is worth watching; otherwise the purse, which is the
-      // number this game is actually played against.
+      // POINTS and LUCK are both live numbers now (Marc, 2026-08-20: "we
+      // could show current points too"). They used to share one slot, which
+      // meant the score — the thing the run is FOR — was invisible in every
+      // economy that had a purse to show instead.
       ...(hud.showPoints
         ? [{ id: 'points', label: 'POINTS', value: String(hud.points) } satisfies Stat]
-        : luckVisible
-          ? [{ id: 'luck', label: 'LUCK', value: String(hud.luck) } satisfies Stat]
-          : []),
-      { id: 'map', label: 'REACH', value: reachValue },
+        : []),
+      ...(luckVisible
+        ? [{ id: 'luck', label: 'LUCK', value: String(hud.luck) } satisfies Stat]
+        : []),
+      // REACH is THIS run's, and only this run's (Marc, same day: "show our
+      // best in the settings but not in the header — only show current
+      // reach, like tiles, luck, cost"). The world's farthest still stands,
+      // as FARTHEST in the MENU tab's atlas, where a record belongs: the
+      // header is the six numbers you are playing against right now, and a
+      // best sitting inside one of them was a different kind of fact wearing
+      // the same slot.
+      { id: 'map', label: 'REACH', value: String(hud.depthValue) },
       { id: 'cost', label: 'COST', value: `−${hud.cost}` },
       // The clock, where there is one. Last on the row because it is the
       // number you check rather than the number you watch — but on screen

@@ -108,6 +108,7 @@ function build(
       </div>
       <div id="help-panel" hidden>
         <div id="help-manual"></div>
+        <div id="help-menu"></div>
         <div id="help-meta"></div>
       </div>
     </div>
@@ -146,6 +147,7 @@ function build(
     help: pick<HTMLButtonElement>('help'),
     helpPanel: pick('help-panel'),
     helpManual: pick('help-manual'),
+    helpMenu: pick('help-menu'),
     toast: pick('toast'),
     eventCard: pick('event-card'),
     eventCardGlyph: pick('event-card-glyph'),
@@ -186,25 +188,29 @@ describe('the game loop', () => {
   it('draws and fills the hud on start', () => {
     expect(ctx.renderer.views.length).toBeGreaterThan(0);
     expect(stat('tiles')).toBe(String(ctx.game.state.tiles));
-    // Score is off screen while a run is alive; LUCK holds that slot, and
-    // depth is REACH. The stash rides at the end of the draft row.
+    // LUCK has its own slot (it shared one with the score until 2026-08-20),
+    // and depth is REACH. The stash rides at the end of the draft row.
     expect(stat('luck')).toBe('0');
     expect(stat('map')).toBe('0');
     expect(stat('cost')).toBe('−1');
     expect(ctx.el.draft.children.length).toBeGreaterThanOrEqual(ctx.game.state.draft.length);
   });
 
-  // REACH · best N (2026-08-18): the world's own farthest reach, read live
-  // off `worldStats` — the same hook the end screen's CARRIED OUT strip
-  // uses. No prior best (the hook absent, or a fresh world) is plain REACH N.
-  it('shows the world’s best reach beside the live one, or nothing new to say', () => {
+  // REACH is THIS run's, and only this run's (Marc, 2026-08-20: "show our
+  // best in the settings but not in the header — only show current reach,
+  // like tiles, luck, cost"). The world's farthest is a RECORD, and it lives
+  // with the other records in the MENU tab's atlas; between 2026-08-18 and
+  // now it rode along inside the live number as "· best N", which put two
+  // different kinds of fact in one slot.
+  it('shows the live reach alone, whatever the world’s best happens to be', () => {
     const withBest = build(4, TUNING, {
       worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 18 }),
     });
     withBest.game.start();
     const value = withBest.el.stats.querySelector('[data-stat="map"] .stat-value')?.textContent;
-    expect(value).toBe('0 · best 18');
+    expect(value).toBe('0');
 
+    // And identically where there is no best to have said anything about.
     const fresh = build(4, TUNING, {
       worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 0 }),
     });
@@ -215,6 +221,14 @@ describe('the game loop', () => {
     // No hook at all (the gallery, a bare game.test.ts build()) is the same
     // plain number, not an error.
     expect(stat('map')).toBe('0');
+  });
+
+  // POINTS and LUCK stopped sharing one slot on 2026-08-20 (Marc: "we could
+  // show current points too"). Both are live numbers; the score being the
+  // thing a run is FOR, it must not be the one that gets hidden.
+  it('shows the score and the purse at once, not one instead of the other', () => {
+    expect(stat('points')).toBe(String(ctx.game.state.points));
+    expect(stat('luck')).toBe(String(ctx.game.state.luck));
   });
 
   // The draft cards carry the theme's word for a colour, not the colour id. The

@@ -842,7 +842,15 @@ export const TUNING: Tuning = {
   luckMagicPerPop: 0,
   luckUniquePerPop: 0,
   luckCap: 99999,
-  hidePoints: true,
+  // The score is on screen again (Marc, 2026-08-20: "we could show current
+  // points too now that I think about it longer"). It was hidden on
+  // 2026-08-15, when POINTS and LUCK shared one HUD slot and the purse was
+  // the number a live run was actually played against. Since the single
+  // payout every pop scores, so the score moves constantly and is worth
+  // watching — and the slot is no longer shared, so showing it costs LUCK
+  // nothing. The world's REACH record left the header the same day, in the
+  // other direction: live numbers here, records in the MENU tab.
+  hidePoints: false,
   luckRerollCost: 12,
   luckSteerCost: 30,
   luckForgeCost: 75,
