@@ -29,6 +29,8 @@ export type Summary = {
   readonly medianClaims: number;
   /** Bounties collected, median per run. */
   readonly medianQuests: number;
+  /** Relics carried out, median per run — the meta-economy's income side. */
+  readonly medianRelics: number;
   /**
    * Gate B, over every harvest this policy took: the share taken as tiles.
    * The gate asks that neither side exceed ~70%, so this column is the gate
@@ -67,6 +69,7 @@ export function summarise(policy: string, runs: readonly RunResult[]): Summary {
     medianHarvests: median(runs.map((r) => r.harvests)),
     medianClaims: median(runs.map((r) => r.claims)),
     medianQuests: median(runs.map((r) => r.quests)),
+    medianRelics: median(runs.map((r) => r.relics)),
     tilesShare: (() => {
       const tiles = runs.reduce((n, r) => n + r.tilesTaken, 0);
       const points = runs.reduce((n, r) => n + r.pointsTaken, 0);
@@ -89,6 +92,7 @@ const COLUMNS: readonly (readonly [string, (s: Summary) => string])[] = [
   ['harvests', (s) => String(Math.round(s.medianHarvests))],
   ['claims', (s) => String(Math.round(s.medianClaims))],
   ['quests', (s) => String(Math.round(s.medianQuests))],
+  ['relics', (s) => String(Math.round(s.medianRelics))],
   ['%tiles', (s) => (s.tilesShare === null ? '—' : `${Math.round(s.tilesShare * 100)}`)],
   ['pops/place', (s) => s.popsPerPlacement.toFixed(2)],
   ['arc', (s) => s.arc.toFixed(2)],

@@ -4900,3 +4900,28 @@ stay valid and open with what they have; a malformed detail is dropped
 alone (the footnote, not the record — the deliberate opposite of the
 per-entry refusal). 597 tests (+2: the detail round-trip and the
 lenient-footnote pin; the shelf test now pins `1/5 FOUND`).
+
+**Session 33 addendum 4 — relics tighten, and memory's anchors light up
+(both Marc's prompts, same day).** (1) "Make sure its harder overall to
+get relics": the harness first grew a `relics` column (RunResult /
+Summary / the sim table — the meta-economy's income side had never been
+measurable), which showed 24-47 median relics a run, the ending luck
+conversion the widest faucet — a 20-50-relic shop rung every run, for
+free. Every faucet then came down together, all in content: burn 2 → 1
+per tile, claims 3 → 2, ending conversion 10% → 5%, TITHE 25% → 15%
+(the 3× ratio over death's rate kept — the DECISION is the ratio),
+survey goals 230 → 155 total, the crossing dowry 40+15/territory →
+25+10. Re-measured at 200 seeds × 18 policies: 13-24 median relics a
+run — halved — with every point, reach and placement number
+byte-identical, because the cut touches only what runs CARRY, never how
+they play. (2) "Between runs we know where shrines are and where
+territories are — make them clearer, its hard to see... but then
+shrines are all randomized?": they are NOT randomized — destinations
+are a pure hash of (worldSeed, hex), fixed per world and remembered
+forever; orienting runs by them is the designed loop (BEGIN AT CAMP
+starts at one). What was missing was legibility: a remembered shrine or
+territory now draws its glyph at FULL strength (memory's other
+landmarks stay faint) and wears the accent veiled by the same fog its
+ground is — a waypoint on a map, distinct from any live cell. Caches
+and sites stay quiet stops; finds stay as reticent in memory as
+everywhere else. 597 tests; sim 0 stalled/capped.

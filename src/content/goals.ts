@@ -33,12 +33,15 @@ export type Goal = {
   readonly target?: number;
 };
 
+// Tightened 2026-08-20 with every other relic faucet (Marc: "make sure its
+// harder overall to get relics") — same ~35% cut as the per-run sources,
+// so a milestone still feels like a bonus rung, just not a free one.
 export const GOALS: readonly Goal[] = [
-  { id: 'reach20', label: 'Reach 20 hexes from home', reward: 40, target: 20 },
-  { id: 'territories4', label: 'Hold 4 territories', reward: 45, target: 4 },
-  { id: 'known40', label: 'Know 40% of the world', reward: 50, target: 0.4 },
-  { id: 'shrinesAll', label: 'Wake every shrine', reward: 35 },
-  { id: 'perksAll', label: 'Find every perk', reward: 60 },
+  { id: 'reach20', label: 'Reach 20 hexes from home', reward: 25, target: 20 },
+  { id: 'territories4', label: 'Hold 4 territories', reward: 30, target: 4 },
+  { id: 'known40', label: 'Know 40% of the world', reward: 35, target: 0.4 },
+  { id: 'shrinesAll', label: 'Wake every shrine', reward: 25 },
+  { id: 'perksAll', label: 'Find every perk', reward: 40 },
 ];
 
 /**
@@ -47,12 +50,13 @@ export const GOALS: readonly Goal[] = [
  * awake, every FURTHER shrine reached offers passage to a fresh world; what
  * carries is relics, scaled by the world being left behind, so finishing a
  * world thoroughly pays better than rushing its exit. A finished world with
- * four territories pays 40 + 60 = 100 relics — two or three shop levels,
- * a real dowry beside the goals above without dwarfing them. Balance
+ * four territories pays 25 + 40 = 65 relics — one or two shop levels, a
+ * real dowry beside the goals above without dwarfing them (tightened
+ * 2026-08-20 with every other faucet, from 40 + 15/territory). Balance
  * numbers, so they live here; the offer itself is shell work (`main.ts`),
  * because leaving a world outlives any run.
  */
 export const CROSSING = {
-  baseRelics: 40,
-  relicsPerTerritory: 15,
+  baseRelics: 25,
+  relicsPerTerritory: 10,
 };

@@ -43,6 +43,10 @@ export type RunResult = {
   readonly claims: number;
   /** Bounties collected. Gate B's manufactured reason to take points. */
   readonly quests: number;
+  /** Relics the run carried out — claims, burns, tithes and the ending
+   *  luck conversion, as the engine banked them. The meta-economy's whole
+   *  income side, measurable since 2026-08-20 (the relic retune's ask). */
+  readonly relics: number;
   /** Harvests taken each way — Gate B's subject, per run. */
   readonly tilesTaken: number;
   readonly pointsTaken: number;
@@ -118,6 +122,7 @@ function summarise(
     popped: state.log.popped,
     claims,
     quests: state.log.questsDone,
+    relics: state.relics,
     tilesTaken,
     pointsTaken,
     bestHarvest,

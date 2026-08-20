@@ -505,9 +505,11 @@ export type Tuning = {
   /**
    * TITHE (2026-08-18): a fourth luck price, and the only one that does not
    * buy the draft. Converts the WHOLE purse to relics, on the spot, at
-   * `titheRate` — better than what dying with luck still in the purse pays
-   * (`luckToRelics`, 10%), so tithing is a live alternative to hoarding
-   * rather than a strictly worse version of the same thing.
+   * `titheRate` — a multiple of what dying with luck still in the purse
+   * pays (`luckToRelics`), so tithing is a live alternative to hoarding
+   * rather than a strictly worse version of the same thing. The RATIO is
+   * the decision; the absolute rates are the relic economy's faucet and
+   * moved together in the 2026-08-20 tightening.
    *
    * `titheMin` is the floor: below it, tithing would convert a few luck into
    * a fraction of a relic, which is a trap dressed as an option rather than
@@ -835,13 +837,17 @@ export const TUNING: Tuning = {
   luckRerollCost: 12,
   luckSteerCost: 30,
   luckForgeCost: 75,
-  // TITHE (2026-08-18): 25%, better than the 10% death pays on unspent luck,
-  // so cashing out mid-run is a real alternative to hoarding rather than a
-  // strictly worse version of it. `titheMin` 20 keeps a token tithe (a
-  // handful of luck for one relic) off the row — 20 luck is roughly two
-  // pops' worth, below `luckSteerCost`, so the floor sits under the shop's
-  // own cheapest colour purchase rather than above it.
-  titheRate: 0.25,
+  // TITHE (2026-08-18): a clean 3× what death pays on unspent luck, so
+  // cashing out mid-run stays a real alternative to hoarding. Both rates
+  // came down in the 2026-08-20 tightening (0.25/0.10 → 0.15/0.05, Marc:
+  // "make sure its harder overall to get relics") — the harness's new
+  // relics column showed the ending conversion was the meta-economy's
+  // widest faucet, ~25-45 relics a run against 20-50-relic shop rungs, a
+  // shop level a run with no decision made to earn it. `titheMin` 20
+  // keeps a token tithe (a handful of luck for one relic) off the row —
+  // 20 luck is roughly two pops' worth, below `luckSteerCost`, so the
+  // floor sits under the shop's own cheapest colour purchase.
+  titheRate: 0.15,
   titheMin: 20,
 
   singlePayout: true,
@@ -852,9 +858,18 @@ export const TUNING: Tuning = {
   // wrong price because popping paid luck too, so the sacrifice bought
   // nothing the safe move did not.
   burnLuck: 0,
-  burnRelics: 2,
-  claimRelics: 3,
-  luckToRelics: 0.1,
+  // The 2026-08-20 tightening (Marc: "make sure its harder overall to get
+  // relics"): every per-run faucet came down together — burn halved (a
+  // 20-pocket burned paid 40 relics, two shop levels for one sacrifice),
+  // claims 3 → 2, and the ending luck conversion halved (see the tithe
+  // note above — it was the widest faucet). Measured at 200 seeds × 18
+  // policies: median relics a run fell ~26-35 → ~13-18, so a 20-50-relic
+  // shop rung is one-to-three runs of earning instead of one run of
+  // existing. The survey and crossing (content/goals.ts) tightened the
+  // same day, same ratio.
+  burnRelics: 1,
+  claimRelics: 2,
+  luckToRelics: 0.05,
   endReachBonus: 40,
   endClaimBonus: 60,
 

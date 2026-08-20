@@ -1006,9 +1006,12 @@ export class PixiRenderer implements Renderer {
     // shrink into mush; only sub-3px hexes — where even a floored label is
     // paint noise over paint noise — stay wordless. Remembered ground stays
     // unlabelled EXCEPT its landmarks (same day, Marc's fog-memory call:
-    // memory shows what it saw) — a remembered shrine or cache draws its
+    // memory shows what it saw) — a remembered cache or site draws its
     // glyph faint, so walking back is an informed decision instead of a
-    // guess the tap explanation then confirms.
+    // guess. Remembered SHRINES and TERRITORIES draw at full strength
+    // (Marc, 2026-08-20: "make them clearer, its hard to see" — they are
+    // the two anchors a next run is oriented by, fixed per world by the
+    // hash and remembered forever; see `#strokeFor`'s veiled edge too).
     const label = labelFor(cell);
     if (
       label !== null &&
@@ -1016,8 +1019,15 @@ export class PixiRenderer implements Renderer {
       !cell.dimmed &&
       (!cell.remembered || cell.kind === 'landmark')
     ) {
+      const anchor =
+        cell.kind === 'landmark' && (cell.landmark === 'shrine' || cell.landmark === 'territory');
       group.addChild(
-        this.#drawLabel(cell.remembered ? { ...label, faint: true } : label, x, y, layout.size),
+        this.#drawLabel(
+          cell.remembered && !anchor ? { ...label, faint: true } : label,
+          x,
+          y,
+          layout.size,
+        ),
       );
     }
 
@@ -1026,8 +1036,26 @@ export class PixiRenderer implements Renderer {
 
   #strokeFor(cell: CellView, size: number): { width: number; colour: number } | null {
     const board = this.#theme.board;
-    // Memory gets no outline at all — an edge would read as a live cell.
-    if (cell.remembered) return null;
+    // Memory gets no outline at all — an edge would read as a live cell —
+    // EXCEPT the two anchors a next run is oriented by (Marc, 2026-08-20:
+    // "we know where shrines are and where territories are — make them
+    // clearer, its hard to see"): a remembered shrine or territory wears
+    // the accent veiled by the same fog the memory's paint is, so it reads
+    // as a waypoint on a map rather than a live cell. Caches and sites
+    // stay edgeless (they are stops, not anchors), and a find stays as
+    // quiet in memory as it is everywhere else.
+    if (cell.remembered) {
+      if (
+        cell.kind === 'landmark' &&
+        (cell.landmark === 'shrine' || cell.landmark === 'territory')
+      ) {
+        return {
+          width: Math.max(1, size * board.edgeWidth),
+          colour: mix(this.#theme.ink.accent, this.#theme.board.background, this.#theme.fog.veil),
+        };
+      }
+      return null;
+    }
     // A shimmer is a rumour, not a landmark: no edge, no accent, no promise.
     if (cell.shimmer) return null;
     // The pocket being priced outranks even ripe: on the plane the harvest
