@@ -42,7 +42,7 @@ import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { COLOUR_MARK, type Theme } from '@theme/tokens';
 import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
-import { renderContext, toBoardView, toHudView, type HudView } from './view';
+import { rememberedNativeAt, renderContext, toBoardView, toHudView, type HudView } from './view';
 
 /**
  * The loop: hold a state, turn taps into actions, redraw.
@@ -996,6 +996,27 @@ export class Game {
     // contextual help: tap a glyph, learn what it does. Nothing to learn a
     // mode for, and it costs a gesture that did nothing before.
     if (!canPlaceAt(this.#state.cells, hex, this.#state.tuning)) {
+      // The fog lens (Marc, 2026-08-20: "on clicking a tile in the fog
+      // that we know the biome it highlights the whole known biome"):
+      // tapping remembered ground with a known native colour turns the
+      // colour lens — the same one the cards long-press — on that colour,
+      // and the lens reaches into memory now, so every known patch of it
+      // reads as one shape through the fog. The same tap lets go.
+      if (this.#state.cells[hex] === undefined && (this.#hooks.memory?.includes(hex) ?? false)) {
+        const known = rememberedNativeAt(this.#state, hex);
+        if (known !== null) {
+          this.#spotlight = this.#spotlight === known ? null : known;
+          const ground = this.#theme.terrainNames[known];
+          this.#showNote(
+            this.#spotlight === null
+              ? `${ground} ground, remembered. The lens is off.`
+              : `Remembered ${ground} ground — every known patch of it is lit. Tap it again to let go.`,
+            true,
+          );
+          this.render();
+          return;
+        }
+      }
       // Sticky: you asked for this one, so it waits for you to be done.
       this.#showNote(this.#describe(hex), true);
       return;

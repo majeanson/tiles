@@ -329,12 +329,35 @@ export function toBoardView(
   // everything: terrain re-derived from the same pure hash that made it, so
   // only the keys had to be kept. It is scenery and a map, never playable —
   // this run still has to grow its own way out there.
+  //
+  // Held territories unfurl their FIELDS in memory too (Marc, 2026-08-20:
+  // "i still dont see clearly the territories" — the live reveal has
+  // painted a held territory's field since P4a via the engine's
+  // `claimedFields`, but this reconstruction read native ground off the
+  // bare terrain hash, so a remembered territory was one ◈ standing in
+  // plain ground with no footprint around it).
+  const heldFields: { q: number; r: number; colour: Colour }[] = [];
+  for (const ck of state.claimed) {
+    const { q, r } = parse(ck);
+    const held = destinationAt(state.rootSeed, q, r, state.tuning);
+    if (held?.reward === 'territory' && held.colour !== null) {
+      heldFields.push({ q, r, colour: held.colour });
+    }
+  }
+  const heldFieldAt = (q: number, r: number): Colour | null => {
+    for (const f of heldFields) {
+      if (distance({ q, r }, f) <= state.tuning.territoryRadius) return f.colour;
+    }
+    return null;
+  };
+
   const onBoard = new Set(Object.keys(state.cells));
   for (const k of memory) {
     if (onBoard.has(k)) continue;
     const { q, r } = parse(k);
     const ground = terrainAt(state.rootSeed, q, r, state.tuning);
     const dest = destinationAt(state.rootSeed, q, r, state.tuning);
+    const nativeHere = dest === null && !ground.wall ? (heldFieldAt(q, r) ?? ground.native) : null;
     cells.push({
       key: k,
       q,
@@ -347,12 +370,17 @@ export function toBoardView(
       shimmer: false,
       remembered: true,
       rarity: null,
-      native: dest === null ? ground.native : null,
+      native: nativeHere,
       light: lit(q, r),
       band: band(q, r),
       ripe: false,
       targeted: false,
-      dimmed: false,
+      // The lens reaches into memory (Marc, 2026-08-20: "it highlights the
+      // whole known biome"): with a colour spotlit — a card long-pressed,
+      // or known fog ground tapped — every remembered patch NOT of that
+      // colour steps back, so the known extent of one colour's ground
+      // reads as a single shape through the fog.
+      dimmed: spotlight !== null && (dest?.colour ?? nativeHere) !== spotlight,
       worth: 0,
       home: false,
       legal: false,
@@ -1105,4 +1133,32 @@ export function epitaphFor(state: GameState): string {
     `Out of tiles ${where}, after ${state.placements} placements. ` +
     `They cost ${cost} each by the end.`
   );
+}
+
+/**
+ * The native colour the FOG shows at a remembered hex — the tap's answer,
+ * exported so `game.ts`'s fog lens (Marc, 2026-08-20: "on clicking a tile
+ * in the fog that we know the biome it highlights the whole known biome")
+ * names exactly the colour `toBoardView`'s memory pass painted there:
+ * a held territory's unfurled field first, the terrain's own native
+ * ground otherwise, nothing on walls and landmarks. Null is "the fog
+ * knows no colour here", and the lens has nothing to hold.
+ */
+export function rememberedNativeAt(state: GameState, hex: HexKey): Colour | null {
+  const { q, r } = parse(hex);
+  const ground = terrainAt(state.rootSeed, q, r, state.tuning);
+  if (ground.wall) return null;
+  if (destinationAt(state.rootSeed, q, r, state.tuning) !== null) return null;
+  for (const ck of state.claimed) {
+    const centre = parse(ck);
+    const held = destinationAt(state.rootSeed, centre.q, centre.r, state.tuning);
+    if (
+      held?.reward === 'territory' &&
+      held.colour !== null &&
+      distance({ q, r }, centre) <= state.tuning.territoryRadius
+    ) {
+      return held.colour;
+    }
+  }
+  return ground.native;
 }

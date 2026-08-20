@@ -11,6 +11,7 @@ import { EMPTY_PROGRESS, TEACH_IDS, UPGRADES, type Progress } from '@meta/progre
 import type { BoardView, Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { Game, type Elements, type GameHooks } from './game';
+import { rememberedNativeAt } from './view';
 
 /**
  * The wiring, checked without a canvas.
@@ -1099,6 +1100,37 @@ describe('the remembered world on screen', () => {
     // A hex that is BOTH remembered and on the board is drawn once, live.
     expect(drawn.filter((c) => c.key === onBoard)).toHaveLength(1);
     expect(drawn.find((c) => c.key === onBoard)?.remembered).toBe(false);
+  });
+
+  it('turns the colour lens on known fog ground with a tap, and off with another', () => {
+    // The fog lens (Marc, 2026-08-20): tapping remembered ground whose
+    // native colour the fog shows lights every known patch of that colour.
+    // Scan outward for a hex this seed's terrain makes native — the world
+    // hash is deterministic, so the walk always lands somewhere.
+    const base = newRun(7, TUNING);
+    let known: HexKey | null = null;
+    outer: for (let q = -14; q <= 14; q++) {
+      for (let r = -14; r <= 14; r++) {
+        const k = key(q, r);
+        if (base.cells[k] !== undefined) continue;
+        if (rememberedNativeAt(base, k) !== null) {
+          known = k;
+          break outer;
+        }
+      }
+    }
+    expect(known).not.toBeNull();
+
+    const ctx = build(1, TUNING, { resume: base, memory: [known!] });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = known;
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toMatch(/every known patch of it is lit/i);
+
+    // Off again on the same tap — and the toast says so.
+    tap(ctx.el.board);
+    expect(ctx.el.toast.textContent).toMatch(/lens is off/i);
   });
 });
 

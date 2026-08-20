@@ -1057,9 +1057,19 @@ export class PixiRenderer implements Renderer {
         cell.kind === 'landmark' &&
         (cell.landmark === 'shrine' || cell.landmark === 'territory')
       ) {
+        // Half the fog's veil, not the whole of it (2026-08-20, second
+        // pass — Marc: "i still dont see clearly"): at torchlit's 0.5
+        // veil over 0.26-alpha ground the first cut read as one more
+        // ghost. The edge sits closer to the live accent now, a touch
+        // wider than ordinary chrome; the ghosted ground under it is
+        // still what says "memory, not this run".
         return {
-          width: Math.max(1, size * board.edgeWidth),
-          colour: mix(this.#theme.ink.accent, this.#theme.board.background, this.#theme.fog.veil),
+          width: Math.max(1.5, size * board.edgeWidth * 1.5),
+          colour: mix(
+            this.#theme.ink.accent,
+            this.#theme.board.background,
+            this.#theme.fog.veil * 0.5,
+          ),
         };
       }
       return null;

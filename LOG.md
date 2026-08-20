@@ -4958,3 +4958,28 @@ contract that holds in one theme is not a contract. Wired through
 straight off `theme.ink` in the renderer. Pinned: every theme's css-var
 set carries both, and a distinctness test holds the four voices apart —
 magic ≠ unique ≠ accent ≠ the selected ring. 599 tests.
+
+**Session 33 addendum 7 — the fog learns to show what it holds (Marc's
+status report from the phone: "i still dont see clearly the territories
+biomes and also shrines stay the same?", then "on clicking a tile in the
+fog that we know the biome it highlights the whole known biome too").**
+Three answers. (1) Shrines and territories were never randomized —
+destinations are a pure hash of (worldSeed, hex); the question is closed
+in addendum 4's record too. (2) The REAL hole his eyes found: the live
+reveal has painted a held territory's unfurled field since P4a
+(`claimedFields`), but the fog-memory reconstruction read native ground
+off the bare terrain hash — a remembered territory was one ◈ standing
+in plain ground with no footprint. `toBoardView`'s memory pass now
+computes held-territory fields from `state.claimed` and paints them, so
+a territory's whole ground shows through the fog; and the remembered
+anchor edge sheds half its veil and gains half a width (at torchlit's
+0.5 veil over 0.26-alpha ground, the first cut read as one more ghost).
+(3) The FOG LENS: tapping remembered ground whose native colour the fog
+shows toggles the colour lens — the same lens the cards long-press —
+onto that colour, and the lens reaches into memory now: every
+remembered patch not of that colour steps back, so one colour's known
+extent reads as a single shape through the fog. The tap's toast says
+what lit and how to let go. `rememberedNativeAt` (ui/view.ts) is the
+one answer both the painter and the tap share, held-territory fields
+first, so they can never disagree. 600 tests (+1: the lens toggles on
+known fog ground and off again).
