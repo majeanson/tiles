@@ -69,10 +69,34 @@
         <div id="front-door-worlds" hidden></div>
         <button id="front-door-settle" type="button" class="quiet" hidden>SETTLE</button>
         <button id="front-door-home" type="button" class="quiet" hidden>YOUR WORLD</button>
+        <!-- The hall of fame (Marc, 2026-08-20): what this device has done,
+             across all three worlds — the door exists now, the timeline it
+             will grow is planned through its own prompts. Home mode only,
+             like the worlds above. -->
+        <button id="front-door-fame" type="button" class="quiet" hidden>HALL OF FAME</button>
         <button id="front-door-help" type="button" class="quiet">HOW TO PLAY</button>
         <!-- The one true wipe: run, world, shop, records, settings — the
              stranger-handing-back-the-phone control. Two taps, like NEW WORLD. -->
         <button id="front-door-reset" type="button">RESET ALL</button>
+      </div>
+
+      <!-- The hall of fame's own screen, OUTSIDE #game-shell for the same
+           inert reason the manual is: it opens from the front door, before
+           the shell is ever live. Filled by main.ts from the same storage
+           the door's own rows read. -->
+      <div
+        id="fame-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fame-title"
+        tabindex="-1"
+        hidden
+      >
+        <div id="fame-head">
+          <p id="fame-title">HALL OF FAME</p>
+          <button id="fame-back" type="button">BACK</button>
+        </div>
+        <div id="fame-body"></div>
       </div>
 
       <!-- The manual and the switchboard, OUTSIDE #game-shell on purpose: an

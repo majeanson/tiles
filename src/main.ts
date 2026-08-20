@@ -1593,27 +1593,108 @@ async function main(): Promise<void> {
       }
     }
 
-    // The other two worlds (Marc, 2026-08-19: "3 save game possibilities"):
-    // a settled slot switches to it, an empty one begins there — either way
-    // the switch is a reload, the same cheap honesty the theme picker keeps.
+    // The world slots (Marc, 2026-08-19: "3 save game possibilities";
+    // 2026-08-20: "offer all 3 worlds"): all three listed, always. The
+    // active one is marked NOW and enters the same run BEGIN does; a
+    // settled other switches; an empty one begins there — a switch is a
+    // reload, the same cheap honesty the theme picker keeps.
+    const worldFacts = (w: WorldMemory): string =>
+      `${w.runs} ${w.runs === 1 ? 'run' : 'runs'} · best ${w.bestPoints} · ${w.territories.length} held`;
     frontDoorWorlds.hidden = false;
     frontDoorWorlds.replaceChildren(
-      ...SLOTS.filter((s) => s !== slot).map((s) => {
-        const other = peekSlot(s);
+      ...SLOTS.map((s) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'quiet';
-        button.textContent =
-          other === null
-            ? `WORLD ${s} — begin new`
-            : `WORLD ${s} — ${other.runs} ${other.runs === 1 ? 'run' : 'runs'} · best ${other.bestPoints} · ${other.territories.length} held`;
-        button.addEventListener('click', () => {
-          setActiveSlot(s);
-          goHome();
-        });
+        if (s === slot) {
+          button.textContent = `WORLD ${s} · NOW — ${world.runs > 0 ? worldFacts(world) : 'untouched'}`;
+          button.addEventListener('click', () => frontDoorBegin.click());
+        } else {
+          const other = peekSlot(s);
+          button.textContent =
+            other === null ? `WORLD ${s} — begin new` : `WORLD ${s} — ${worldFacts(other)}`;
+          button.addEventListener('click', () => {
+            setActiveSlot(s);
+            goHome();
+          });
+        }
         return button;
       }),
     );
+
+    // The hall of fame (Marc, 2026-08-20: "make the button now" — the
+    // timeline it grows into is planned through its own prompts later).
+    // This first screen states only what storage already knows: the three
+    // worlds, the daily ladder, the perks found. It keeps nothing new.
+    const fameOpen = required<HTMLButtonElement>('front-door-fame');
+    const famePanel = required<HTMLElement>('fame-panel');
+    const fameBody = required('fame-body');
+    const fameRow = (cls: string, text: string): HTMLElement => {
+      const p = document.createElement('p');
+      p.className = cls;
+      p.textContent = text;
+      return p;
+    };
+    const closeFame = (): void => {
+      famePanel.hidden = true;
+      fameOpen.focus();
+    };
+    required<HTMLButtonElement>('fame-back').addEventListener('click', closeFame);
+    famePanel.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeFame();
+    });
+    fameOpen.hidden = false;
+    fameOpen.addEventListener('click', () => {
+      const rows: HTMLElement[] = [fameRow('fame-h', 'WORLDS')];
+      for (const s of SLOTS) {
+        const w = s === slot ? world : peekSlot(s);
+        rows.push(
+          w === null || w.runs === 0
+            ? fameRow('fame-row dim', `World ${s} — untouched`)
+            : fameRow(
+                'fame-row',
+                `World ${s} — ${worldFacts(w)} · ${w.revealed.length} hexes known`,
+              ),
+        );
+      }
+
+      const book = readDailyBook();
+      const dates = Object.keys(book);
+      rows.push(fameRow('fame-h', 'THE DAILY'));
+      if (dates.length === 0) {
+        rows.push(fameRow('fame-row dim', 'Never played.'));
+      } else {
+        const best = Math.max(...dates.map((d) => book[d]!.best));
+        const tries = dates.reduce((n, d) => n + book[d]!.tries, 0);
+        const streak = dailyStreak(book, today);
+        rows.push(
+          fameRow(
+            'fame-row',
+            `${dates.length} ${dates.length === 1 ? 'day' : 'days'} played · best ${best} · ${tries} tries` +
+              (streak > 1 ? ` · streak ${streak}` : ''),
+          ),
+        );
+      }
+
+      const progress = readProgress();
+      rows.push(fameRow('fame-h', 'PERKS FOUND'));
+      if (progress.found.length === 0) {
+        rows.push(fameRow('fame-row dim', 'None yet — hidden finds are out there.'));
+      } else {
+        for (const perk of PERKS.filter((p) => progress.found.includes(p.id))) {
+          rows.push(
+            fameRow(
+              'fame-row',
+              `✦ ${perk.name}${progress.equipped.includes(perk.id) ? ' — worn' : ''}`,
+            ),
+          );
+        }
+      }
+
+      fameBody.replaceChildren(...rows);
+      famePanel.hidden = false;
+      famePanel.focus();
+    });
   }
   frontDoorBegin.addEventListener('click', () => {
     frontDoor.hidden = true;

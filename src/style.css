@@ -97,13 +97,24 @@ body {
   text-align: center;
 }
 
-/* The other two world slots (2026-08-19): a small stack inside the door's
-   own column, one quiet button per world, same rhythm as the door. */
+/* The world slots (2026-08-19; all three since 2026-08-20): a small stack
+   inside the door's own column, one quiet button per world, same rhythm as
+   the door. */
 #front-door-worlds {
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-self: stretch;
+  align-items: center;
+}
+
+/* One width for every door on the door (Marc, 2026-08-20: "make sure all
+   buttons have the same width") — BEGIN keeps its height and accent, the
+   quiet ones keep their voice, but the column reads as one menu. */
+#front-door button,
+#front-door-worlds button {
+  width: 100%;
+  max-width: 260px;
 }
 
 /* The global `button { flex: 1 1 0 }` was written for rows of siblings that
@@ -145,12 +156,6 @@ body {
   color: var(--ink-dim, #8a91a0);
 }
 
-#front-door-begin,
-#front-door-help {
-  width: 100%;
-  max-width: 260px;
-}
-
 #front-door-begin {
   min-height: 52px;
   /* RESUME — PLACEMENT N wraps on narrow phones; padded and line-heighted so
@@ -167,14 +172,12 @@ body {
   min-height: 44px;
 }
 
-/* Detached from the ceremony above it: the wipe is a doorway-out control,
-   not part of starting a run. Text-quiet but still a 44px target. */
+/* In the column with everything else now (Marc, 2026-08-20: one menu, one
+   width) — still the quietest voice on the door, still a 44px target, and
+   a step of air above it so the wipe never sits flush against a friendly
+   button. */
 #front-door-reset {
-  position: absolute;
-  bottom: max(20px, env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
-  width: auto;
+  margin-top: 14px;
   min-height: 44px;
   padding: 0 18px;
   border-color: transparent;
@@ -186,6 +189,61 @@ body {
 #front-door-reset.armed {
   border-color: var(--danger, #c1362b);
   color: var(--danger, #c1362b);
+}
+
+/* The hall of fame (Marc, 2026-08-20): the manual's own panel shape — what
+   this device has done, per world and device-wide. The timeline it will
+   grow into is planned separately; this screen states only what storage
+   already knows. */
+#fame-panel {
+  position: fixed;
+  inset: 8px;
+  z-index: 4;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 6px;
+  background: var(--panel, #1e222b);
+  color: var(--ink, #e8ecf4);
+  font-family: var(--font-body, inherit);
+}
+
+#fame-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+#fame-title {
+  margin: 0;
+  font-family: var(--font-label, inherit);
+  letter-spacing: var(--label-tracking, 0.04em);
+}
+
+#fame-back {
+  width: auto;
+  min-height: 44px;
+}
+
+.fame-h {
+  margin: 14px 0 4px;
+  font-family: var(--font-label, inherit);
+  letter-spacing: var(--label-tracking, 0.04em);
+  font-size: 0.75rem;
+  color: var(--ink-dim, #8a91a0);
+}
+
+.fame-row {
+  margin: 0 0 4px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink, #e8ecf4);
+}
+
+.fame-row.dim {
+  color: var(--ink-dim, #8a91a0);
 }
 
 /* min-height:0 lets this flex child actually shrink, which is what allows the
