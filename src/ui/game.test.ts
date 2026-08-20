@@ -2551,3 +2551,32 @@ describe('camps (waypoints, 2026-08-19)', () => {
     expect(ctx.el.toast.textContent ?? '').not.toMatch(/NEW GROUND/);
   });
 });
+
+describe('the daily’s end screen (2026-08-19)', () => {
+  it('wears its badge, offers TRY AGAIN, and names where the exit goes', () => {
+    let retried = 0;
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      replay: true,
+      newRun: () => undefined,
+      finish: () => ({ runs: 3, best: 900, isNewBest: false, previousBest: 900 }),
+      daily: {
+        label: () => 'DAILY #1 · best 900 · 3 tries',
+        retry: () => {
+          retried++;
+        },
+      },
+    });
+    ctx.game.start();
+
+    const text = ctx.el.end.textContent ?? '';
+    // Tries read as TRY N — the counted, confessed retries of the design.
+    expect(text).toContain('TRY 3');
+    expect(text).toContain('DAILY #1 · best 900 · 3 tries');
+
+    (ctx.el.end.querySelector('#end-retry') as HTMLButtonElement).click();
+    expect(retried).toBe(1);
+    expect(ctx.el.end.querySelector('#end-new-run')?.textContent).toBe('BACK TO YOUR WORLD');
+  });
+});

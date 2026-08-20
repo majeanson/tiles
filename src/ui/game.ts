@@ -291,6 +291,16 @@ export type GameHooks = {
     claim(kind: LandmarkReward): void;
     dry(): void;
   };
+  /**
+   * Present exactly when this run IS the daily: the badge the end screen
+   * prints (number, best, tries — read fresh, because finish() just moved
+   * them) and the retry that plays the same date again. NEW RUN reads as
+   * BACK TO YOUR WORLD beside it, because that is what it does there.
+   */
+  readonly daily?: {
+    readonly label: () => string;
+    readonly retry: () => void;
+  };
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -2657,7 +2667,20 @@ export class Game {
     // The game says its own name here, because this is the screen that gets
     // screenshotted and shared — a picture of a run should say whose run.
     const parts: Element[] = [line('end-title', NAME)];
-    if (this.#runNumber !== null) parts.push(line('end-run', `RUN ${this.#runNumber}`));
+    if (this.#runNumber !== null) {
+      parts.push(
+        line(
+          'end-run',
+          this.#hooks.daily === undefined ? `RUN ${this.#runNumber}` : `TRY ${this.#runNumber}`,
+        ),
+      );
+    }
+    // The daily badge (2026-08-19): which daily this was and where you
+    // stand on it — the same facts the share line carries, visible before
+    // sharing is even considered.
+    if (this.#hooks.daily !== undefined) {
+      parts.push(line('end-run', this.#hooks.daily.label()));
+    }
     if (isNewBest) parts.push(line('end-headline', 'NEW BEST'));
     parts.push(line('end-epitaph', hud.epitaph ?? ''));
     parts.push(line('end-score', `${hud.points} pts`));
@@ -2861,13 +2884,27 @@ export class Game {
       }
     }
 
-    // NEW RUN is the only thing on this screen still shaped like a button —
-    // everything else here is read or tapped as a row.
+    // TRY AGAIN (the daily, 2026-08-19): the retry loop lives on the end
+    // screen where the itch actually is — the tries counter above confesses
+    // every press, per the design's own honesty rule.
+    if (this.#hooks.daily !== undefined) {
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.id = 'end-retry';
+      retry.textContent = 'TRY AGAIN';
+      const go = this.#hooks.daily.retry;
+      retry.addEventListener('click', () => {
+        go();
+      });
+      parts.push(retry);
+    }
+
+    // NEW RUN is the exit — and on a daily it says where the exit goes.
     if (this.#hooks.newRun !== undefined) {
       const again = document.createElement('button');
       again.type = 'button';
       again.id = 'end-new-run';
-      again.textContent = 'NEW RUN';
+      again.textContent = this.#hooks.daily === undefined ? 'NEW RUN' : 'BACK TO YOUR WORLD';
       const start = this.#hooks.newRun;
       again.addEventListener('click', () => {
         start();

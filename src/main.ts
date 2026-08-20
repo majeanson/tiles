@@ -1622,9 +1622,33 @@ async function main(): Promise<void> {
   // here where the flag and the theme meet, handed in as a hook so the game
   // stays deaf to whether anyone is listening. Takes effect on load, which
   // the flag's own note says.
-  const hooks: GameHooks & { savedSeed: number | null } = isEnabled(features, 'ui.sound')
-    ? { ...keeper, sound: new Sound(theme.voice) }
-    : keeper;
+  const soundOn = isEnabled(features, 'ui.sound');
+  const hooks: GameHooks & { savedSeed: number | null } = {
+    ...keeper,
+    ...(soundOn ? { sound: new Sound(theme.voice) } : {}),
+    // The daily's own end-screen voice (2026-08-19): the badge reads the
+    // book FRESH — finish() has just moved best and tries — and TRY AGAIN
+    // replays the same date. The reload lands on the front door saying
+    // BEGIN DAILY #N, which is the menu doing its job, not a detour.
+    ...(dailyDate === null
+      ? {}
+      : {
+          daily: {
+            label: (): string => {
+              const rec = readDailyBook()[dailyDate];
+              return (
+                `DAILY #${dailyNumber(dailyDate)}` +
+                (rec === undefined
+                  ? ''
+                  : ` · best ${rec.best} · ${rec.tries} ${rec.tries === 1 ? 'try' : 'tries'}`)
+              );
+            },
+            retry: (): void => {
+              location.reload();
+            },
+          },
+        }),
+  };
   const game = new Game(renderer, elements, seed, theme, tuning, hooks, held, heldFinds, wakeAt);
   game.start();
 
