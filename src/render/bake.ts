@@ -26,6 +26,18 @@ import { corners } from './layout';
 export const OVERSAMPLE = 2;
 
 /**
+ * A native field's ghost (2026-08-20): the terrain slot's own art, drawn
+ * over the flat ground fill at a fraction of its strength rather than at the
+ * full opacity a placed TILE draws it. `image` is whatever the caller has
+ * already loaded — the renderer hands over a Pixi texture's own resource,
+ * this file stays Pixi-free either way.
+ */
+export type Ghost = {
+  readonly image: CanvasImageSource;
+  readonly alpha: number;
+};
+
+/**
  * One hex of `surface`, on a plain canvas, with no Pixi anywhere near it.
  *
  * Exported because the style gallery draws the same surfaces the board does, and
@@ -36,6 +48,7 @@ export function bakeSurface(
   surface: Surface,
   size: number,
   orientation: Orientation,
+  ghost: Ghost | null = null,
 ): HTMLCanvasElement | null {
   const halfW = orientation === 'pointy' ? (Math.sqrt(3) / 2) * size : size;
   const halfH = orientation === 'pointy' ? size : (Math.sqrt(3) / 2) * size;
@@ -65,10 +78,25 @@ export function bakeSurface(
   paintFill(ctx, surface, w, h);
   paintPattern(ctx, surface.pattern, w, h);
   paintPattern(ctx, surface.overlay, w, h);
+  if (ghost !== null) paintGhost(ctx, ghost, w, h);
   paintDepth(ctx, w, h);
   if (surface.scorch) paintScorch(ctx, w, h);
 
   return canvas;
+}
+
+/**
+ * The ghost itself: `ghost.image` drawn full-frame at `ghost.alpha`, inside
+ * the same hex clip every other layer paints through, so the PNG never
+ * bleeds past the corners a rectangular `drawImage` would otherwise fill.
+ * Drawn before `paintDepth` so the light-from-above/dark-toward-floor gloss
+ * every surface gets lands on top of the ghost too — one whisper of
+ * material, not a decal sitting apart from it.
+ */
+function paintGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, w: number, h: number): void {
+  ctx.globalAlpha = ghost.alpha;
+  ctx.drawImage(ghost.image, 0, 0, w, h);
+  ctx.globalAlpha = 1;
 }
 
 /**

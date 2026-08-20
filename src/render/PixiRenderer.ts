@@ -2,11 +2,12 @@ import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } 
 import { distance, key, parse, type HexKey } from '@engine/hex';
 import {
   BAND_LIFT,
+  fieldGround,
   LANDMARK_GLYPH,
-  fieldPattern,
   hex,
   mix,
   rgba,
+  type AssetId,
   type Orientation,
   type Surface,
   type Theme,
@@ -684,20 +685,33 @@ export class PixiRenderer implements Renderer {
 
   // ---------------------------------------------------------------- cells
 
-  #surfaceFor(cell: CellView): Surface {
+  /**
+   * A ground's surface plus, for a native field the terrain slot has art
+   * for, the ghost to composite over it (2026-08-20's `fieldGround`,
+   * `@theme/tokens`). Almost every cell has no ghost — `null` there is the
+   * whole rest of the board, unchanged.
+   */
+  #surfaceFor(cell: CellView): {
+    readonly surface: Surface;
+    readonly ghost: { readonly asset: AssetId; readonly alpha: number } | null;
+  } {
     const theme = this.#theme;
+    const plain = (surface: Surface): { surface: Surface; ghost: null } => ({
+      surface,
+      ghost: null,
+    });
     switch (cell.kind) {
       case 'wall':
-        return theme.wall;
+        return plain(theme.wall);
       case 'stone':
-        return theme.stone;
+        return plain(theme.stone);
       case 'landmark': {
         // A hidden find's shimmer: the same glow vocabulary, quieter, and
         // saying strictly less — accent dots at low alpha, no glyph, no
         // outline. The player learns that SOMETHING is near, and that is the
         // whole message the sense upgrade sells.
         if (cell.shimmer) {
-          return {
+          return plain({
             ...theme.wall,
             pattern: {
               kind: 'dots' as const,
@@ -707,7 +721,7 @@ export class PixiRenderer implements Renderer {
               pitch: 5,
             },
             alpha: 0.3,
-          };
+          });
         }
         // A destination wears the wall's ground — it is solid, and it should
         // read as a THING standing on the plane — lit with the theme's accent
@@ -729,37 +743,70 @@ export class PixiRenderer implements Renderer {
                 pitch: 5,
               },
             };
-        return cell.beacon ? { ...base, alpha: 0.55 } : base;
+        return plain(cell.beacon ? { ...base, alpha: 0.55 } : base);
       }
       case 'empty': {
-        // Native ground wears its colour's OWN terrain texture, thinned to a
-        // whisper — moss ground carries moss's diagonal hatch, ash ground its
-        // dots (Marc, 2026-08-18: the per-colour shapes this replaced were
-        // "too lookalike" at ground scale; orientation survives smallness
-        // where silhouette does not). `fieldPattern` owns the derivation, and
-        // the gallery draws from the same function, so the workbench and the
-        // board cannot disagree.
+        // Native ground (2026-08-20: `fieldGround` owns the WHOLE decision,
+        // not just the pattern — the gallery draws from the same function,
+        // so the workbench and the board cannot disagree). With the
+        // terrain slot's own art loaded, the ground is `theme.empty` plus
+        // that PNG ghosted over it; without, it is the procedural texture
+        // fields have always worn, now carrying the terrain's overlay too.
         if (cell.native !== null) {
-          return { ...theme.empty, pattern: fieldPattern(theme, cell.native) };
+          const assetId = theme.terrain[cell.native].asset;
+          const hasArt = assetId !== null && this.#assets.has(assetId);
+          const ground = fieldGround(theme, cell.native, hasArt);
+          return ground.kind === 'art'
+            ? { surface: ground.base, ghost: { asset: ground.asset, alpha: ground.ghostAlpha } }
+            : plain(ground.surface);
         }
-        return theme.empty;
+        return plain(theme.empty);
       }
       case 'tile':
         // A `tile` with no colour cannot happen — `view.ts` sets colour on every
         // tile — but the view type permits it, and a board that silently vanishes
         // is worse than one that shows stone.
-        return cell.colour === null ? theme.stone : theme.terrain[cell.colour];
+        return plain(cell.colour === null ? theme.stone : theme.terrain[cell.colour]);
     }
+  }
+
+  /**
+   * Ground beats plain baked ground: real art for a cell's own surface
+   * beats the procedural bake exactly as before; a native field's ghost
+   * (`ghost`, non-null only from the `'empty'` branch above) rides the
+   * SAME baked-and-cached path with the terrain PNG composited in, resolved
+   * to a plain drawable via `AssetBook#image` since a 2D canvas cannot draw
+   * a GPU-resident Pixi texture. If that resolution fails — the slot's
+   * texture has not finished loading, or its resource is a kind `bake.ts`
+   * cannot draw — the field falls back to its plain baked ground rather
+   * than drawing nothing.
+   */
+  #groundTexture(
+    surface: Surface,
+    ghost: { readonly asset: AssetId; readonly alpha: number } | null,
+    layout: Layout,
+  ): Texture | null {
+    if (ghost !== null) {
+      const image = this.#assets.image(ghost.asset);
+      if (image !== null) {
+        return this.#surfaces.get(surface, layout.size, layout.orientation, {
+          id: ghost.asset,
+          image,
+          alpha: ghost.alpha,
+        });
+      }
+    }
+    const art = this.#assets.get(surface.asset);
+    return art ?? this.#surfaces.get(surface, layout.size, layout.orientation);
   }
 
   #drawCell(cell: CellView, layout: Layout): Container {
     const theme = this.#theme;
     const group = new Container();
     const { x, y } = place(cell, layout);
-    const surface = this.#surfaceFor(cell);
+    const { surface, ghost } = this.#surfaceFor(cell);
 
-    const art = this.#assets.get(surface.asset);
-    const texture = art ?? this.#surfaces.get(surface, layout.size, layout.orientation);
+    const texture = this.#groundTexture(surface, ghost, layout);
 
     if (texture !== null) {
       const sprite = new Sprite(texture);

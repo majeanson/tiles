@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { THEMES } from '@theme/index';
 import { surface, type Surface } from '@theme/tokens';
 import { bakeSurface } from './bake';
-import { BakedCache, surfaceKey, SurfaceTextures } from './surfaces';
+import { BakedCache, ghostKey, surfaceKey, SurfaceTextures } from './surfaces';
 
 /**
  * The baker, where it fails.
@@ -200,5 +200,52 @@ describe('overlay and scorch (2026-08-19, WORKPLAN Stage 3)', () => {
     const plain = surface(0x334455);
     const scorched: Surface = { ...plain, scorch: true };
     expect(surfaceKey(plain)).not.toBe(surfaceKey(scorched));
+  });
+});
+
+describe('the field ghost (2026-08-20, native fields wearing the terrain slot’s own PNG)', () => {
+  /**
+   * `theme.empty` is the SAME `Surface` for every colour, so `surfaceKey`
+   * alone cannot tell two colours' ghosted ground apart — that is exactly
+   * the job `ghostKey` exists to do, extending `SurfaceTextures.get`'s key
+   * the same way Stage 3 extended it for `overlay` and `scorch` above. A
+   * fake image stands in for a loaded one; `ghostKey` never looks past
+   * `id`/`alpha`, so its identity does not matter to this file.
+   */
+  const image = {} as CanvasImageSource;
+
+  it('keeps a plain surface apart from its own ghosted version', () => {
+    expect(ghostKey(null)).not.toBe(ghostKey({ id: 'terrain.green', image, alpha: 0.3 }));
+  });
+
+  it('keeps two colours ghosting the identical surface apart', () => {
+    expect(ghostKey({ id: 'terrain.green', image, alpha: 0.3 })).not.toBe(
+      ghostKey({ id: 'terrain.blue', image, alpha: 0.3 }),
+    );
+  });
+
+  it('keeps the same asset apart at two different ghost alphas — a future retune stays safe', () => {
+    expect(ghostKey({ id: 'terrain.green', image, alpha: 0.3 })).not.toBe(
+      ghostKey({ id: 'terrain.green', image, alpha: 0.5 }),
+    );
+  });
+
+  it('still agrees with itself — the kept half of the guard', () => {
+    expect(ghostKey({ id: 'terrain.green', image, alpha: 0.3 })).toBe(
+      ghostKey({ id: 'terrain.green', image, alpha: 0.3 }),
+    );
+  });
+
+  it('SurfaceTextures.get accepts a ghost and still degrades to null with no canvas, like every other bake', () => {
+    const textures = new SurfaceTextures();
+    expect(
+      textures.get(surface(0x151310), 23, 'flat', { id: 'terrain.green', image, alpha: 0.3 }),
+    ).toBeNull();
+    textures.destroy();
+  });
+
+  it('bakeSurface with a ghost still returns null with no canvas context, and never throws on a degenerate size', () => {
+    expect(bakeSurface(surface(0x151310), 23, 'flat', { image, alpha: 0.3 })).toBeNull();
+    expect(() => bakeSurface(surface(0x151310), 0, 'flat', { image, alpha: 0.3 })).not.toThrow();
   });
 });

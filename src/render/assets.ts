@@ -56,6 +56,33 @@ export class AssetBook {
   }
 
   /**
+   * The same slot's art as a plain drawable, for `bake.ts`'s 2D-canvas ghost
+   * compositing (2026-08-20, native fields — see `fieldGround` in
+   * `@theme/tokens`) — a canvas can `drawImage` a browser image, never a
+   * GPU-resident Pixi `Texture`. Every texture here came from `Assets.load`
+   * on a PNG, so its source resource is ordinarily one of these few
+   * canvas-drawable kinds; `null` is the honest answer for anything else
+   * (or a missing/unloaded slot) rather than risking `drawImage` throwing
+   * on a resource kind it does not recognise.
+   */
+  image(id: AssetId | null): CanvasImageSource | null {
+    const resource: unknown = this.get(id)?.source.resource;
+    if (typeof HTMLImageElement !== 'undefined' && resource instanceof HTMLImageElement) {
+      return resource;
+    }
+    if (typeof HTMLCanvasElement !== 'undefined' && resource instanceof HTMLCanvasElement) {
+      return resource;
+    }
+    if (typeof ImageBitmap !== 'undefined' && resource instanceof ImageBitmap) {
+      return resource;
+    }
+    if (typeof OffscreenCanvas !== 'undefined' && resource instanceof OffscreenCanvas) {
+      return resource;
+    }
+    return null;
+  }
+
+  /**
    * Whether a slot has a file, for the DOM slots this class never turns into
    * a Pixi texture request for (`ui.logo`, wired 2026-08-19 for the front
    * door and end screen — plain `<img>`, not canvas). Reuses this class's

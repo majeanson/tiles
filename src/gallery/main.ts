@@ -1,14 +1,20 @@
-import { COLOURS } from '@content/tuning';
+import { COLOURS, type Colour } from '@content/tuning';
 import { bakeSurface, OVERSAMPLE } from '@render/bake';
 import { corners } from '@render/layout';
-import { ASSET_SLOTS, decodeManifest, manifestHas, type AssetManifest } from '@theme/assets';
+import {
+  ASSET_SLOTS,
+  assetPath,
+  decodeManifest,
+  manifestHas,
+  type AssetManifest,
+} from '@theme/assets';
 import { themeCssVars } from '@theme/css';
 import { THEMES } from '@theme/index';
 import {
   BAND_LIFT,
   LANDMARK_GLYPH,
   brightness,
-  fieldPattern,
+  fieldGround,
   hex,
   luma,
   mix,
@@ -238,17 +244,65 @@ function landmarkRow(theme: Theme): HTMLElement {
 }
 
 /**
- * Native ground as the board actually paints it: each colour's own terrain
- * texture thinned to ground weight, from the same `fieldPattern` the
- * renderer uses. This is the exact thing the playtest keeps asking about
- * ("too subtle, about right, or too busy?"), judged here without a run.
+ * Native ground as the board actually paints it, from the SAME `fieldGround`
+ * the renderer's `PixiRenderer#surfaceFor` calls — Marc's report of
+ * 2026-08-20 ("the background tiles of territories colors have not switched
+ * textures like the others... make sure it follows automatically and add it
+ * to the gallery so we know it follows too"). One function decides WITH
+ * slot art or WITHOUT; this card shows exactly that decision and SAYS which
+ * one it made, so a future PNG drop or token retune is visible here without
+ * reading a diff.
+ *
+ * The art path is drawn the DOM way (`bakeSurface`'s flat ground under a
+ * plain `<img>` at the ghost's own alpha) rather than through
+ * `bake.ts`'s canvas-ghost overload the renderer uses — the same reason
+ * `ui.logo`/`ui.runEnd` are plain `<img>` tags on this page (`assets.ts`'s
+ * own doc): the gallery only ever has the MANIFEST, never a loaded image
+ * object to hand a canvas, and stacking two elements is the pattern
+ * `ghostStrip` already uses for exactly this kind of layered proof.
  */
-function fieldRow(theme: Theme): HTMLElement {
-  const row = el('div', 'row');
-  for (const c of COLOURS) {
-    const surface: Surface = { ...theme.empty, pattern: fieldPattern(theme, c) };
-    row.appendChild(surfaceCard(`${theme.terrainNames[c]} FIELD`, surface, theme, false));
+function fieldCard(theme: Theme, colour: Colour, manifest: AssetManifest): HTMLElement {
+  const assetId = theme.terrain[colour].asset;
+  const hasArt = assetId !== null && manifestHas(manifest, theme.id, assetId);
+  const ground = fieldGround(theme, colour, hasArt);
+
+  const box = el('div', 'surface field');
+  box.style.position = 'relative';
+
+  const canvas = bakeSurface(
+    ground.kind === 'art' ? ground.base : ground.surface,
+    23,
+    theme.orientation,
+  );
+  if (canvas !== null) box.appendChild(canvas);
+
+  if (ground.kind === 'art') {
+    // Sized by `.field-ghost` in `gallery.css`, the same fixed 46px width
+    // `.surface canvas` already draws every other card at — real art is
+    // authored to the hex's own bounding box (`bake.ts`'s own comment), so
+    // the PNG's intrinsic ratio lands within a pixel of the canvas below it.
+    const ghost = document.createElement('img');
+    ghost.src = assetPath(theme.id, ground.asset);
+    ghost.alt = '';
+    ghost.className = 'field-ghost';
+    ghost.style.opacity = String(ground.ghostAlpha);
+    box.appendChild(ghost);
   }
+
+  box.appendChild(el('span', 'surface-name', `${theme.terrainNames[colour]} FIELD`));
+  box.appendChild(
+    el(
+      'span',
+      'surface-value field-marker',
+      ground.kind === 'art' ? `wearing ${ground.asset} art` : 'procedural floor',
+    ),
+  );
+  return box;
+}
+
+function fieldRow(theme: Theme, manifest: AssetManifest): HTMLElement {
+  const row = el('div', 'row');
+  for (const c of COLOURS) row.appendChild(fieldCard(theme, c, manifest));
   return row;
 }
 
@@ -523,8 +577,8 @@ function themeCard(theme: Theme, manifest: AssetManifest): HTMLElement {
     landmarkRow(theme),
     labelled('BEACONS · ONE FRAME OF THE HALO’S BREATH (0.35–1× OVER 2.6s ON THE BOARD)'),
     beaconHaloStrip(theme),
-    labelled('NATIVE FIELDS · THE SHAPE EACH COLOUR GROWS'),
-    fieldRow(theme),
+    labelled('NATIVE FIELDS · THE SHAPE EACH COLOUR GROWS · WITH ART OR WITHOUT, LABELLED'),
+    fieldRow(theme, manifest),
     labelled('THE GHOST · OUTLINE-FORWARD, IN THE HELD TILE’S OWN COLOUR'),
     ghostStrip(theme),
     labelled('REMEMBERED GROUND · THE FOG VEIL (TINT + 30% ALPHA)'),

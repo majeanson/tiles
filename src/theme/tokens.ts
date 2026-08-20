@@ -576,6 +576,51 @@ const FIELD_FALLBACK: Readonly<
   blue: { kind: 'hatch', angleDeg: 0 },
 };
 
+/** Fixed ground-weight geometry for a field's own pattern (unchanged since 2026-08-18). */
+const FIELD_WEIGHT = { dots: { radius: 1.4, pitch: 6 }, hatch: { bar: 1, gap: 5 } };
+
+/**
+ * A second, looser ground-weight geometry for a field's OVERLAY layer
+ * (2026-08-20). Deliberately different numbers from `FIELD_WEIGHT` — a
+ * field overlay stacked at the same pitch as the field's own pattern would
+ * draw the identical dot or bar grid twice in the same spot, which reads as
+ * one flat layer rather than the "second frequency" every terrain's own
+ * `overlay` is written to add (see `torchlit.ts`'s per-colour comments: "a
+ * pitch that shares no common factor with the first"). Wider/lighter than
+ * `FIELD_WEIGHT` for the same reason the terrain overlays themselves read
+ * looser than their base pattern.
+ */
+const FIELD_OVERLAY_WEIGHT = { dots: { radius: 1.0, pitch: 11 }, hatch: { bar: 1, gap: 9 } };
+
+/**
+ * Thin one geometry (a terrain's `pattern` or its `overlay`) to ground
+ * weight, sharing the ink/alpha every field on this theme is equalised to.
+ * The shared half of `fieldPattern` and `fieldOverlayPattern` below — one
+ * place that turns "a terrain's own texture" into "a whisper about what
+ * grows well here", called twice with two different weight tables so the
+ * two layers a field can carry never collide.
+ */
+function thinnedField(
+  theme: Theme,
+  colour: Colour,
+  terrain: Pattern,
+  weight: typeof FIELD_WEIGHT,
+): Pattern {
+  const { ink, alpha } = fieldDots(theme, colour);
+  const geometry =
+    terrain.kind === 'hatch' || terrain.kind === 'dots' ? terrain : FIELD_FALLBACK[colour];
+  return geometry.kind === 'dots'
+    ? { kind: 'dots', ink, alpha, radius: weight.dots.radius, pitch: weight.dots.pitch }
+    : {
+        kind: 'hatch',
+        angleDeg: geometry.angleDeg,
+        ink,
+        alpha,
+        bar: weight.hatch.bar,
+        gap: weight.hatch.gap,
+      };
+}
+
 /**
  * The pattern a native field wears: the COLOUR'S OWN terrain texture, thinned
  * to ground weight (Marc, 2026-08-18: "they should use the proper pattern —
@@ -590,14 +635,76 @@ const FIELD_FALLBACK: Readonly<
  * the gallery both, so the workbench can never disagree with the board.
  */
 export function fieldPattern(theme: Theme, colour: Colour): Pattern {
-  const { ink, alpha } = fieldDots(theme, colour);
-  const terrain = theme.terrain[colour].pattern;
+  return thinnedField(theme, colour, theme.terrain[colour].pattern, FIELD_WEIGHT);
+}
 
-  const geometry =
-    terrain.kind === 'hatch' || terrain.kind === 'dots' ? terrain : FIELD_FALLBACK[colour];
-  return geometry.kind === 'dots'
-    ? { kind: 'dots', ink, alpha, radius: 1.4, pitch: 6 }
-    : { kind: 'hatch', angleDeg: geometry.angleDeg, ink, alpha, bar: 1, gap: 5 };
+/**
+ * The field's second layer: the terrain's own Stage-3 `overlay`
+ * (2026-08-19, WORKPLAN Stage 3), thinned the same way `fieldPattern` thins
+ * the base texture (2026-08-20, Marc: "the background tiles of territories
+ * colors have not switched textures like the others"). Stage 3 gave board
+ * TILES a second, deepening layer over their axis pattern; fields carried
+ * only the axis, so ground fell one layer behind the tiles standing on it.
+ * `NO_PATTERN` where the terrain has no overlay at all — nothing to thin —
+ * which is exactly the placeholder direction's case today.
+ */
+export function fieldOverlayPattern(theme: Theme, colour: Colour): Pattern {
+  const overlay = theme.terrain[colour].overlay;
+  if (overlay.kind === 'none') return NO_PATTERN;
+  return thinnedField(theme, colour, overlay, FIELD_OVERLAY_WEIGHT);
+}
+
+/**
+ * The ground a native field draws, WITH slot art or WITHOUT (2026-08-20).
+ *
+ * Marc's report: Stage 3 gave board tiles baked PNGs and a second procedural
+ * `overlay`; `fieldPattern` saw neither, because it only ever read
+ * `theme.terrain[colour].pattern`. Territory ground kept the pre-Stage-3
+ * look while everything standing on it moved on. This is the one place that
+ * decides what a field looks like, so the renderer and `/gallery` derive
+ * the identical answer from the identical inputs — a new PNG dropped in a
+ * slot, or a token retune, reaches the ground with no other file touched.
+ *
+ * WITH art (`hasArt` true and the colour's terrain slot names one): the
+ * ground wears `theme.empty`'s flat fill with that PNG ghosted over it at
+ * `ghostAlpha` — the same file the board's TILES draw at full strength, at
+ * a fraction of it, so a claimed hex and the field around it read as one
+ * material at two weights rather than two eras of art.
+ *
+ * WITHOUT: today's `fieldPattern`, plus `fieldOverlayPattern` riding
+ * alongside it — the procedural floor, now following the terrain's full
+ * two-layer depth rather than only its axis.
+ */
+export type FieldGround =
+  | {
+      readonly kind: 'art';
+      readonly base: Surface;
+      readonly asset: AssetId;
+      readonly ghostAlpha: number;
+    }
+  | { readonly kind: 'procedural'; readonly surface: Surface };
+
+export function fieldGround(theme: Theme, colour: Colour, hasArt: boolean): FieldGround {
+  const asset = theme.terrain[colour].asset;
+  if (hasArt && asset !== null) {
+    // Reuses `fieldDots`' own equalised alpha rather than one flat number
+    // for all four colours — the exact reasoning `fieldDots`' doc gives for
+    // the dots it was built for: a fixed alpha reads differently against
+    // four different ground lightnesses (torchlit's own history: blue at a
+    // flat 0.22 was invisible, yellow at the same number shouted). The
+    // ghost asks the identical question — "how strongly must this colour's
+    // mark show against ITS OWN ground to read the same as the other
+    // three" — so it gets the identical answer.
+    return { kind: 'art', base: theme.empty, asset, ghostAlpha: fieldDots(theme, colour).alpha };
+  }
+  return {
+    kind: 'procedural',
+    surface: {
+      ...theme.empty,
+      pattern: fieldPattern(theme, colour),
+      overlay: fieldOverlayPattern(theme, colour),
+    },
+  };
 }
 
 /**

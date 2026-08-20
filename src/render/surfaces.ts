@@ -1,5 +1,5 @@
 import { Texture } from 'pixi.js';
-import type { Orientation, Pattern, Surface } from '@theme/tokens';
+import type { AssetId, Orientation, Pattern, Surface } from '@theme/tokens';
 import { bakeSurface } from './bake';
 
 /**
@@ -65,23 +65,58 @@ export class BakedCache<T> {
   }
 }
 
+/**
+ * A native field's ghost, as the cache needs it (2026-08-20): `id` is the
+ * asset slot being ghosted, kept apart from `bake.ts`'s own `Ghost` (which
+ * only needs the drawable image and the alpha to paint) because the cache
+ * key has to tell two colours ghosting the SAME `theme.empty` surface apart,
+ * and `id` is the one field of the three that does that.
+ */
+export type FieldGhost = {
+  readonly id: AssetId;
+  readonly image: CanvasImageSource;
+  readonly alpha: number;
+};
+
+/**
+ * The ghost half of a cache key, exported for its own guard test — the same
+ * discipline Stage 3's `surfaceKey`/`patternKey` set: a field this omitted
+ * would hand two different colours' ghosted ground the same cached texture,
+ * because `theme.empty` (the `surface` half of the key) is identical for
+ * all four.
+ */
+export function ghostKey(ghost: FieldGhost | null): string {
+  return ghost === null ? 'none' : `${ghost.id}:${ghost.alpha}`;
+}
+
 export class SurfaceTextures {
   readonly #cache = new BakedCache<Texture>((texture) => {
     texture.destroy(true);
   });
 
   /**
-   * A hex of `surface`, sized for a cell of circumradius `size` CSS pixels.
+   * A hex of `surface`, sized for a cell of circumradius `size` CSS pixels —
+   * or, with `ghost` (2026-08-20), that same hex with a native field's
+   * terrain PNG ghosted over it, from `theme/tokens.ts`'s `fieldGround`.
+   * One cache either way: `ghostKey` extends the key exactly as far as the
+   * new input goes, so the two never collide and a plain surface never
+   * shares a texture with its own ghosted version.
    *
    * `size` is rounded before it reaches the key: a resize that moves the board by
    * a third of a pixel must not throw away every texture on the board.
    */
-  get(surface: Surface, size: number, orientation: Orientation): Texture | null {
+  get(
+    surface: Surface,
+    size: number,
+    orientation: Orientation,
+    ghost: FieldGhost | null = null,
+  ): Texture | null {
     if (size <= 0) return null;
 
     const px = Math.max(4, Math.round(size));
-    return this.#cache.get(`${orientation}:${px}:${surfaceKey(surface)}`, () => {
-      const canvas = bakeSurface(surface, px, orientation);
+    const key = `${orientation}:${px}:${surfaceKey(surface)}:${ghostKey(ghost)}`;
+    return this.#cache.get(key, () => {
+      const canvas = bakeSurface(surface, px, orientation, ghost);
       return canvas === null ? null : Texture.from(canvas);
     });
   }
