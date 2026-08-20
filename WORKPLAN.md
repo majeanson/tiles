@@ -69,7 +69,7 @@ a link unfurling in a chat)?
    written goodbye in `LOG.md` in the repo's voice, gallery and picker
    reflect the two-theme registry.
 
-## Stage 2 — The end screen earns the screenshot (STATUS: NOT STARTED)
+## Stage 2 — The end screen earns the screenshot (STATUS: DONE, commit `64b7d97`)
 
 **Question:** would a stranger post this screen in a chat unprompted — and
 does the share image say "beat my run" without a caption?
