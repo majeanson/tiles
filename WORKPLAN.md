@@ -91,7 +91,7 @@ does the share image say "beat my run" without a caption?
    end-screen fields the screen reads — one source, so the picture cannot
    contradict the screen.
 
-## Stage 3 — The torchlit art pass (STATUS: NOT STARTED)
+## Stage 3 — The torchlit art pass (STATUS: DONE, commit `3e23968`)
 
 **Question:** at arm's length, on a phone, in daylight — do the four
 colours, walls, stone and the pop read at a glance as one torchlit world
