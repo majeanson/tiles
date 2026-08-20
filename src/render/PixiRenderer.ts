@@ -146,6 +146,17 @@ type Flash = {
   /** Jump only: rest height and leap height, in pixels. */
   readonly baseY: number;
   readonly liftPx: number;
+  /**
+   * The sprite's scale right after `setSize` fitted it to the board — the
+   * animated kinds multiply THIS instead of calling `scale.set(1 + …)`.
+   * `setSize` works by writing `scale`, so an absolute reset silently
+   * resizes the sprite back to its texture's native pixels. That was
+   * invisible while every texture was baked at board size (scale 1 WAS the
+   * fit), and became a full-screen tile the day the 414×358 slot PNGs
+   * arrived (found on the phone, 2026-08-20).
+   */
+  readonly baseScaleX: number;
+  readonly baseScaleY: number;
 };
 
 /**
@@ -159,6 +170,9 @@ type Flash = {
  */
 type Ember = {
   readonly sprite: Sprite;
+  /** Scale after `setSize` fitted the dot — `#advanceEmbers` multiplies this,
+   * same contract (and same found bug) as `Flash.baseScaleX/Y`. */
+  readonly baseScale: number;
   /** Milliseconds until it starts — the same stagger the hex's own flash uses. */
   delayMs: number;
   elapsedMs: number;
@@ -1149,6 +1163,8 @@ export class PixiRenderer implements Renderer {
           peak: motion.popAlpha,
           baseY: y,
           liftPx: 0,
+          baseScaleX: still.scale.x,
+          baseScaleY: still.scale.y,
         });
         continue;
       }
@@ -1176,6 +1192,8 @@ export class PixiRenderer implements Renderer {
         elapsedMs: 0,
         lifeMs: motion.popMs,
         peak: motion.popAlpha,
+        baseScaleX: glow.scale.x,
+        baseScaleY: glow.scale.y,
         baseY: y,
         liftPx: 0,
       });
@@ -1209,6 +1227,8 @@ export class PixiRenderer implements Renderer {
             peak: 1,
             baseY: y,
             liftPx: layout.size * motion.popLift,
+            baseScaleX: jumper.scale.x,
+            baseScaleY: jumper.scale.y,
           });
         }
       }
@@ -1250,6 +1270,8 @@ export class PixiRenderer implements Renderer {
         peak,
         baseY: y,
         liftPx: 0,
+        baseScaleX: still.scale.x,
+        baseScaleY: still.scale.y,
       });
       return;
     }
@@ -1270,6 +1292,8 @@ export class PixiRenderer implements Renderer {
       peak,
       baseY: y,
       liftPx: 0,
+      baseScaleX: glow.scale.x,
+      baseScaleY: glow.scale.y,
     });
   }
 
@@ -1386,6 +1410,7 @@ export class PixiRenderer implements Renderer {
 
       this.#embersActive.push({
         sprite,
+        baseScale: sprite.scale.x,
         delayMs,
         elapsedMs: 0,
         lifeMs: motion.emberLifeMs + Math.random() * 200,
@@ -1460,7 +1485,7 @@ export class PixiRenderer implements Renderer {
         ember.startX + ember.driftX * t,
         ember.startY + ember.driftY * rise + sink,
       );
-      ember.sprite.scale.set(1 - 0.3 * t);
+      ember.sprite.scale.set(ember.baseScale * (1 - 0.3 * t));
       alive.push(ember);
     }
     this.#embersActive = alive;
@@ -1515,14 +1540,16 @@ export class PixiRenderer implements Renderer {
         // asymmetry is what makes it read as something having happened.
         const curve = t < 0.15 ? t / 0.15 : Math.pow(1 - (t - 0.15) / 0.85, 2);
         flash.sprite.alpha = flash.peak * curve;
-        flash.sprite.scale.set(1 + t * 0.35);
+        const swell = 1 + t * 0.35;
+        flash.sprite.scale.set(flash.baseScaleX * swell, flash.baseScaleY * swell);
       } else {
         // The leap: a parabola peaking mid-life, visible at once, fading only
         // on the way down — so it reads as the tile jumping off the board and
         // falling away, not as a ghost drifting up.
         flash.sprite.alpha = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
         flash.sprite.position.y = flash.baseY - flash.liftPx * 4 * t * (1 - t);
-        flash.sprite.scale.set(1 + 0.12 * Math.sin(Math.PI * t));
+        const swell = 1 + 0.12 * Math.sin(Math.PI * t);
+        flash.sprite.scale.set(flash.baseScaleX * swell, flash.baseScaleY * swell);
       }
       alive.push(flash);
     }
