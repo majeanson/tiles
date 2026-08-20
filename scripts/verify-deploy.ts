@@ -5,12 +5,15 @@
  *   pnpm verify:deploy
  *   DEPLOY_URL=https://... pnpm verify:deploy
  *
- * Two checks, in order:
+ * Three checks, in order:
  *   1. /version.json (emitted by the vite build) reports the expected sha,
  *      polled to ride out edge propagation.
  *   2. / references hashed bundles and every one of them serves 200 — this is
  *      what catches the "new index.html, missing assets" broken deploy, which
  *      a plain 200 on / would happily call success.
+ *   3. The install surface, the social preview and every art file the asset
+ *      manifest names actually serve — where "serve" means the file itself,
+ *      not the SPA fallback's 200-with-index.html for a path that has none.
  *
  * The custom domain sits behind the zone's bot protection, which 403s plain
  * fetches from CI datacenter IPs. When (and only when) that happens, the same
@@ -100,6 +103,24 @@ async function checkAssets(base: string): Promise<void> {
     await headOk(base, path);
   }
   console.log('ok  manifest, service worker, icons and the social preview serve 200');
+
+  // The art (2026-08-20, the pipeline's fresh-eyes review): the torchlit
+  // terrain PNGs are part of the shipped product now, and a deploy that
+  // dropped them would degrade every board to the procedural floor without
+  // an error anywhere — the exact "breaks nothing visible" class the block
+  // above exists for. The asset manifest is the authority on what should
+  // exist, so this reads it live and checks every file it names; no
+  // hand-kept list to go stale.
+  const manifest = await get(base, `/assets/manifest.json?t=${Date.now()}`);
+  if (manifest.status !== 200 || manifest.body.trimStart().startsWith('<')) {
+    throw new Error('/assets/manifest.json missing (SPA fallback or non-200)');
+  }
+  const slots = Object.entries(JSON.parse(manifest.body) as Record<string, readonly string[]>);
+  for (const [themeId, ids] of slots) {
+    for (const id of ids) await headOk(base, `/assets/${themeId}/${id}.png`);
+  }
+  const total = slots.reduce((n, [, ids]) => n + ids.length, 0);
+  console.log(`ok  asset manifest live and all ${total} art files it names serve 200`);
 }
 
 /**
@@ -109,11 +130,18 @@ async function checkAssets(base: string): Promise<void> {
  * so each asset gets its own short retry before it counts as missing.
  */
 async function headOk(base: string, path: string): Promise<void> {
-  let last = 0;
+  let last = '';
   for (let attempt = 1; attempt <= ASSET_ATTEMPTS; attempt++) {
     const res = await fetch(`${base}${path}`, { method: 'HEAD', cache: 'no-store' });
-    if (res.status === 200) return;
-    last = res.status;
+    // A 200 alone proves nothing here (2026-08-20, the pipeline's fresh-eyes
+    // review): the worker's SPA fallback answers 200 with index.html for any
+    // path that has no file — `waitForVersion` already knows this and none
+    // of the files this function is ever pointed at are HTML, so a text/html
+    // answer means "missing", not "served".
+    const type = res.headers.get('content-type') ?? '';
+    if (res.status === 200 && !type.includes('text/html')) return;
+    last =
+      res.status === 200 ? `200 but ${type || 'no content-type'} (SPA fallback)` : `${res.status}`;
     if (attempt < ASSET_ATTEMPTS) await sleep(ASSET_DELAY_MS);
   }
   throw new Error(`HEAD ${path} -> ${last} after ${ASSET_ATTEMPTS} attempts`);
