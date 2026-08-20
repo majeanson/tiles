@@ -1242,6 +1242,35 @@ describe('a stranger arriving', () => {
     expect(heroAfter.style.getPropertyValue('--run-end-art')).toContain('ui.runEnd.png');
   });
 
+  // The hand follows the board (2026-08-20, the pipeline's fresh-eyes
+  // review): the board prefers a terrain slot's PNG the moment assets load,
+  // and the card's whole reason to carry art is to show the tile the board
+  // draws — so `setCardArt` must dress the already-rendered hand in the
+  // same files. Before the fix, Stage 3's PNGs split the two surfaces: the
+  // board drew the baked art while the cards kept the procedural bake.
+  it('dresses the hand in the board’s own terrain art when it lands', () => {
+    const ctx = build(1, TUNING);
+    ctx.game.start();
+    // happy-dom has no 2D canvas, so the procedural bake yields no art here
+    // — which is exactly the blank slate this needs.
+    expect(ctx.el.draft.querySelector('.tile-art')).toBeNull();
+
+    ctx.game.setCardArt({
+      green: '/assets/torchlit/terrain.green.png',
+      yellow: '/assets/torchlit/terrain.yellow.png',
+      red: '/assets/torchlit/terrain.red.png',
+      blue: '/assets/torchlit/terrain.blue.png',
+    });
+
+    const cards = [...ctx.el.draft.querySelectorAll<HTMLButtonElement>('.tile[data-colour]')];
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      const img = card.querySelector<HTMLImageElement>('.tile-art');
+      expect(img).not.toBeNull();
+      expect(img!.getAttribute('src')).toContain(`terrain.${card.dataset['colour']}.png`);
+    }
+  });
+
   it('names the run’s ending when the clock runs out', () => {
     const spent: GameState = {
       ...newRun(4, TUNING),

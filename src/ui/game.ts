@@ -621,6 +621,22 @@ export class Game {
     }
   }
 
+  /**
+   * Wire the hand's cards to the terrain art (2026-08-20, the pipeline's
+   * fresh-eyes review). The constructor bakes each card's hex procedurally —
+   * the only option when no PNG exists, and the floor this falls back to —
+   * but the BOARD prefers the baked PNG at a terrain slot the moment one
+   * loads, and the card's whole reason to carry art is to show the tile the
+   * board draws (`STATUS.md`'s own bullet). Without this, Stage 3's PNGs
+   * split the two: richer ground on the board, the plainer procedural bake
+   * still on the card. `main.ts` calls this off the same manifest fetch
+   * `ui.logo` and `ui.runEnd` already ride.
+   */
+  setCardArt(art: Partial<Record<Colour, string>>): void {
+    Object.assign(this.#art, art);
+    this.#renderDraft(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+  }
+
   start(): void {
     this.#mountGestures();
 

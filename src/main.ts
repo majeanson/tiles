@@ -1,4 +1,4 @@
-import { TUNING, type Tuning } from '@content/tuning';
+import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { CROSSING, GOALS } from '@content/goals';
 import { distance, parse } from '@engine/hex';
 import { reachOf } from '@engine/rules';
@@ -1767,6 +1767,19 @@ async function main(): Promise<void> {
       if (assets.has('ui.runEnd')) {
         game.setRunEndArt(assetPath(theme.id, 'ui.runEnd'));
       }
+
+      // The hand's cards (2026-08-20, the pipeline's fresh-eyes review): the
+      // board prefers a terrain slot's PNG the moment it loads, and the
+      // card's whole job is to show the tile the board draws — so the cards
+      // switch to the same files, off this same fetch. A colour whose slot
+      // is empty keeps its procedural bake, the floor everything falls
+      // back to.
+      const cardArt: Partial<Record<Colour, string>> = {};
+      for (const colour of COLOURS) {
+        const slot = theme.terrain[colour].asset;
+        if (slot !== null && assets.has(slot)) cardArt[colour] = assetPath(theme.id, slot);
+      }
+      if (Object.keys(cardArt).length > 0) game.setCardArt(cardArt);
     })
     // A manifest that fails to fetch (flaky network, a hostile cache) must
     // not become an unhandled rejection — before 2026-08-19 that was one of
