@@ -183,10 +183,15 @@ M1–M6 are built, verified and deployed. What the checklist actually says now:
       no amount of code produces.
 - [x] **Post-1.0 parking lot** — below.
 
-**v1.0 is deliberately untagged.** The roadmap's own definition of done
-requires the stranger test and Gate B's successor question answered by Marc
-on the phone (`uniques.md` resolved and built, 2026-08-18). Tagging without
-them would be the first cut corner in twenty sessions.
+**v1.0 is deliberately untagged.** The definition of done requires the
+stranger test — **and the stranger test alone** (Marc's ruling,
+2026-08-20: Gate B's successor question, pop-vs-burn-vs-wait timing, is a
+standing v1.1 question answered over weeks of real play, not a tag gate.
+This paragraph used to list both while `DECISIONS.md` disagreed; the
+ruling reconciles them). Tagging without the stranger would be the first
+cut corner in twenty sessions. Planned tag day: **2026-08-25** — the
+daily epoch is pinned to it; if the day moves, `DAILY_EPOCH` moves with
+the tag commit.
 
 ## Post-1.0 parking lot
 

@@ -5106,3 +5106,21 @@ half of Day 1, the launch audits' list:
 opens a fold; the daily spec passes on both sides of launch day),
 typecheck/lint/format clean, build green, fonts and icons in the
 precache.
+
+**Session 34 addendum — the paper half of Day 1.** FOLLOWUP.md rewritten
+as the launch-week script: the RESET-TEACHING-then-DAILY rehearsal in
+order (RESET TEACHING previews the lessons, not a stranger's game — its
+own SETTINGS note now says so), the ELEVEN look-at-it verdicts the day
+shipped, the relic-pace numbers to react to (13-18 median a run;
+STEADY PACE rung 1 ≈ 2 runs; the full ladder ≈ 95-175), and the standing
+decisions current through D19. PLAYTEST.md rewritten whole — the old one
+was a 2026-08-15 script for a deleted game (the 260 clock, Gate B's
+tally, theme URLs that throw) titled as the NEXT session; it is now the
+three launch-week phone sessions. STATUS gained the Day-1 evening
+checkpoint and two in-place corrections its own house style demanded
+(the teaching count, TITHE's rates). WORKPLAN closed with a stamp — all
+four stages carry their hashes; the live work is FOLLOWUP's. DECISIONS
+gained §F: D17 (daily #1 = launch day), D18 (the stranger test alone
+gates the tag — ROADMAP's untagged paragraph reconciled to agree), D19
+(reborn pays no relics). The three docs that disagreed about the gate
+now say one thing.

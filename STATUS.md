@@ -4,8 +4,41 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-20** — launch week opened. Three audits (code,
-parked work, public surface), three rulings by Marc (points scale stays;
+Last checkpoint: **2026-08-20, evening — launch week Day 1 closed.** The
+afternoon's prompts and audits, all shipped and deployed (Sessions 33
+addenda 4–8 and Session 34, LOG.md): the relic economy HALVED (burn 1,
+claims 2, ending conversion 5%, TITHE 15% — the 3× ratio kept; survey
+155, crossing 25+10; measured before and after with the harness's new
+`relics` column: 24-47 → 13-24 median a run) and reborn ground pays none
+of it; spent shrines and finds REBORN each run as randomized caches/
+sites (`rearmedSpent`, `GameState.rearmed`, `REARM` in content —
+fully-awake worlds keep their shrines as the crossing's doors); the fog
+finally LEGIBLE (memory draws at map light, not torch light; veil
+thinned) with held-territory fields painted and a tappable colour LENS
+that lights one biome's known extent; EMBER leads with spark dots
+(rebaked); MAGIC violet and UNIQUE flame everywhere rarity speaks —
+cards, held card, board edges, stars, and the WORDS; the pop cascade
+holds colour until each tile's own leap; the hall of fame's rows (both
+tabs) unfold into the end screen each night kept (`RunDetail`, epitaph
+included); Marc's three Day-1 rulings (daily #1 = launch day
+2026-08-25 with rehearsal dates named by date; the stranger test ALONE
+gates the tag; reborn pays no relics — DECISIONS.md D17-19); and the
+strangers'-first-click batch: self-hosted fonts (the Google link made
+"nothing leaves your phone" false — pinned so it cannot return), an
+honest sentence for iOS ≤16.3 instead of a dead BEGIN, the door
+re-dating itself across midnight, worker update checks on interval and
+foreground, a real one-tap Android INSTALL button, an in-app-browser
+warning, the share card on the desktop CLIPBOARD, a slimmer virgin door
+(empty hall of fame hidden, fresh-world mode line), canonical/og meta,
+manifest identity, immutable asset caching, AA contrast on the faint
+ink. Two fresh-eyes audits of the week's own diff found and closed
+fourteen defects between them. 607 tests; 7 e2e; sim 18 policies
+0 stalled. **FOLLOWUP.md is the launch-week script now; PLAYTEST.md the
+phone sessions; the one gate is the Day-4 stranger test.**
+
+Previous checkpoint: **2026-08-20, midday** — launch week opened. Three
+audits (code, parked work, public surface), three rulings by Marc (points
+scale stays;
 the timeline is ALWAYS ON — `fame.timeline` deleted a week after its
 birth, launch day being the only clean epoch; sound ships off with an
 easy way in), and the stranger-proofing batch: the front door scrolls
@@ -34,9 +67,10 @@ trip, fame tabs, the ♪ wire), and three player-profile policies —
 timid / greedy / tourist beside chooser's veteran — with seven balance
 pins: timidity survivable, greed a legible lesson, wandering paid in
 distance, the veteran on top, run one real, the maxed ladder worth its
-relics, every perk stall-free. 594 tests; 7 e2e; `pnpm sim` 18 policies,
-0 stalled/capped. **The two human blockers stand: Marc's RESET TEACHING
-pass, then the stranger test.**
+relics, every perk stall-free. 594 tests then; 7 e2e; `pnpm sim` 18 policies,
+0 stalled/capped. (The blocker line this checkpoint closed with is
+superseded above: the rehearsal is Day 2's script, and the stranger test
+is the one gate.)
 
 Previous checkpoint: **2026-08-19** — the second debrief; the game learned to
 teach itself; the day then kept going: the balance batch, the daily, the
@@ -73,7 +107,7 @@ crossing, three world slots, and the no-phone program. 568 tests.
   found perk could not be inspected mid-run. Full record: LOG.md Session 26.
 - **The teaching pack shipped whole the same day** (`ideas/teaching.md`,
   designed on Marc's option-set answers and built in one pass): a per-device
-  `met` ledger in `Progress` fires thirteen first-contact moments once each
+  `met` ledger in `Progress` fires its first-contact moments once each (thirteen when this was written; TWENTY by launch week — the four colours, the last-gasp rule, place and purse joined; corrected in place 2026-08-20)
   — cards for ripe/pop/glow/rare/luck/relic, toasts for cost-rise/wall/
   native-field, claims teaching through their own notes with a first SITE
   upgraded to the held card; the manual GROWS with the ledger (one quiet
@@ -118,7 +152,7 @@ fresh-eyes review that closed the pipeline out, all in one run. 518 tests.
   moments pack (seven once-per-run truths), deep water (the destination
   reward MIX tilting with depth, not just its density), the survey (five
   world-scale goals paying relics once each) and TITHE (a fourth luck price,
-  converting the whole purse at 25% — better than death's 10%). Full account
+  converting the whole purse at a multiple of what death pays on unspent luck — 25%/10% when written, 15%/5% since the 2026-08-20 relic tightening; corrected in place). Full account
   in `LOG.md`'s 2026-08-18 addenda; `WORKPLAN.md` carries the commit hashes.
 - **Where-you-wake was prototyped and FAILED** (`42c9ec8`, harness only —
   see "Not started" below for the verdict). Kept as dead engine code on

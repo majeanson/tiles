@@ -32,7 +32,7 @@ The remembered world made runs richer, not duller — caches confirmed as
 lifelines in human hands, territories worth holding. Nobody has asked to
 unwind the machinery. `LOG.md` Session 26.
 
-### D4 — The stranger test — **OPEN. The last blocker.**
+### D4 — The stranger test — **OPEN. The last blocker — and by the 2026-08-20 ruling, the ONLY one.**
 
 Someone who is not Marc, on their own phone, unaided: do they finish a
 run and start another? (a) tags v1.0; (b) names the next milestone.
@@ -118,3 +118,28 @@ The standing rhythm: his play reports and option-set answers steer;
 Exactly as recommended, and how every session since has run: long
 autonomous stretches, with Marc's forks put to him as option sets
 (the memory of this preference is now explicit).
+
+---
+
+## F. Launch-week rulings (2026-08-20, Day 1 — prompted, answered, shipped same day)
+
+### D17 — The daily's #1 — launch day
+
+`DAILY_EPOCH` moved to 2026-08-25 (the planned tag day): the first daily
+strangers ever see and share is #1. Rehearsal-week dailies stay playable
+(`DAILY_FIRST`) and print their DATE instead of a #0. If the launch day
+moves, the epoch moves WITH the tag commit — and never after a stranger
+has shared a line.
+
+### D18 — What gates the tag — the stranger test alone
+
+Gate B's successor question (pop-vs-burn-vs-wait timing) is a standing
+v1.1 question, answered over weeks of real play. ROADMAP and FOLLOWUP
+used to disagree with this file about it; the ruling reconciled them.
+
+### D19 — Reborn ground pays no relics
+
+Spent shrines and finds re-arm each run as caches/sites (Marc's Day-1
+feature) — they pay their tiles and points, never the claim relic, so
+the 2026-08-20 relic tightening stays intact and relics stay about
+ground never reached before.

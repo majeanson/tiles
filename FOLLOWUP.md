@@ -1,111 +1,91 @@
 # Human follow-up
 
-Updated 2026-08-19 — Marc played two full runs and answered the standing
-prompts (LOG.md, Session 26). What was answered is marked ANSWERED and kept
-for the record; what remains open leads. Everything here needs Marc, not
-code.
+Rewritten 2026-08-20, launch week Day 1 — the old file predated a day of
+thirteen sessions' worth of shipping and named ONE of the eleven visual
+verdicts now waiting on your phone. Everything here needs Marc, not code.
+The tag plan: rehearsal Day 2, verdict run Day 3, **stranger test Day 4**,
+tag Day 5 (2026-08-25 — the daily epoch is set to it; if the launch day
+moves, move `DAILY_EPOCH` with it, never after).
 
-## 1. Play a run on the phone — PLAYED 2026-08-19. One blocker left.
+## 1. THE REHEARSAL — your next phone session, scripted (Day 2)
 
-**https://tiles.marcportal.com** — two long runs, 11k and 4k, "I had fun."
+**https://tiles.marcportal.com** — reload twice first so the newest build
+is certain (or tap the NEW VERSION bar if it offers).
 
-- **The rebalance verdict — ANSWERED, positive.** Both runs were long and
-  fun; the 11k run went longer _because of the tile caches_ (Marc's own
-  attribution). The lean start did not read as punishing; the far caches
-  fund the push outward exactly as built. Still unremarked: STEADY PACE —
-  whether 30 relics feels worth it has not come up yet.
-- **Gate B's successor question — HALF-ANSWERED.** Luck was spent in play
-  and TITHE was taken deliberately at a run's end, so the advantages ARE
-  getting bought — the half the harness could never show. Whether
-  pop-vs-burn-vs-wait reads as a real _timing_ decision is still open.
-- **The stranger test — OPEN, and now the only §1 blocker.** Someone who is
-  not you, on their own phone, unaided: do they finish a run and start
-  another? The v1.0 tag stays blocked on it. **The teaching pack is BUILT**
-  (same day — `ideas/teaching.md`, all three stages, LOG.md's build
-  addendum): first-contact cards, the growing manual, HUD that appears as
-  it matters, NUMBERS pruned, stats tappable. **Your move before the
-  stranger: SETTINGS ▸ DEVELOPER ▸ RESET TEACHING** on your own phone, then
-  play a run one — that is the stranger's exact first minute, and the
-  written question ("can a stranger's first run teach itself?") is yours to
-  answer before handing anyone a link.
+RESET TEACHING previews the LESSONS a stranger sees, not their game —
+your shop, perks and known world all survive it. The closest true
+rehearsal, in order:
 
-## 2. Hidden finds — first contact's defect FIXED (built 2026-08-19)
+1. **SETTINGS ▸ DEVELOPER ▸ RESET TEACHING.**
+2. Back out, **BEGIN DAILY** — the daily plays plain and fully fogged,
+   which IS a stranger's run one (it even fires the first-contact card).
+3. Play it cold, notebook in hand. The written question is §1's oldest:
+   **can a stranger's first run teach itself?** Every card should arrive
+   at its moment: THE EXPEDITION at the door-lift, RIPE at the first
+   surround, YOUR FIRST POP (now carrying why-now-vs-why-wait), LUCK,
+   and LUCK IS FOR SPENDING at your first purse tap.
+4. Then one HOME run for the world-shaped lessons the daily suppresses
+   (the relic card, the purse card's true economy).
 
-The defect from game two ("I didn't know where to equip, unequip, check
-what it does") is closed in the teaching pack's build: the find card now
-says what the perk DOES and whether it is already worn, and **WHAT YOU
-CARRY** in the ? panel's HAND tab reads the worn perk mid-run — the shop
-shelf stays where it changes. Still open in play: does a hidden find change
-how you GROW your ground, does KEEN NOSE feel worth 40 relics, and does the
-worn perk change your next placement the way a unique should?
+**The stranger test (Day 4) stays the one v1.0 gate** — your 2026-08-20
+ruling, now consistent across every doc: someone who is not you, their
+own phone, unaided — do they finish a run and start another? Gate B's
+successor question (pop-vs-burn-vs-wait timing) is a **standing v1.1
+question**, answered over weeks, not a tag blocker.
 
-## 3. Stage 3 shipped three more written questions — same phone, same run
+## 2. ELEVEN LOOK-AT-ITS — one pass, same session (all shipped 2026-08-20, none judged)
 
-The 2026-08-18 pipeline's new-systems stage (`WORKPLAN.md`, `LOG.md`'s Stage
-3 addendum) added three systems each with its own open question, none of
-them answerable by the harness:
+Every one is a by-looking verdict the repo cannot test:
 
-- **Deep water.** The destination reward MIX now tilts with how far you've
-  pushed, not just how often one shows up — does that give the middle of a
-  run a shape the income ramp alone didn't?
-- **The survey.** Five world-scale goals (reach 20, hold 4 territories, know
-  40%, wake every shrine, find every perk), each paying relics once and
-  listed in SETTINGS' YOUR WORLD — does a legible ledger of what the world
-  has proven change the line you take through it?
-- **TITHE — ANSWERED YES (2026-08-19).** Marc took it deliberately at a
-  run's end ("sacrificed some at the end"). The cash-out is a live
-  decision in human hands; question closed on first contact.
+1. **The fog overall** — legible now? (Map-light + thinned veil; your
+   screenshot drove it.)
+2. **Remembered shrine/territory anchors** — findable at a glance?
+3. **The fog lens** — tap known ground: does the biome light as one
+   shape, and do the colour-edged tiles read?
+4. **Reborn landmarks** — a woken shrine showing as + or ★ this run:
+   does the world feel alive or confusing?
+5. **Ember's spark dots** — clearer, everywhere (board, cards, fields)?
+6. **Magic violet / unique flame** — distinct from gold selection at
+   arm's length, on cards, held card, stars, and the coloured WORDS?
+7. **The pop cascade holding colour** — tiles grey only after their leap?
+8. **The purse card and pop-timing wording** — right words, right length?
+9. **THE SHELF · N/5 FOUND** — reads as a collection now?
+10. **The hall of fame folds** — tap any run or daily row: the night
+    comes back? (Rows written before today open with less — expected.)
+11. **The relic pace** — see §4's numbers first, then feel it.
 
-Also settled the same day, one level up: **score and feel are two separate
-rewards, by ruling.** A run rich in caches/shrines/finds may feel better
-than its score says, and that is fine — score is the points axis; relics,
-shrines and finds are their own progression. Not a bug to fix.
+## 3. OPEN PLAY QUESTIONS (unchanged, still yours)
 
-## 4. Standing decisions that remain one line to reverse
+- Deep water: does the middle of a run have a shape now?
+- The survey: does the ledger change your line through the world?
+- Sound (♪ once): does it change WHEN you pop?
+- The daily: does the plain economy hold attention; does the share line
+  read right in a chat?
+- The crossing (one shrine-walk away on your all-shrines world) and
+  BEGIN AT CAMP (gates the parked waypoint-perk earn).
+- Hidden finds: do they change how you GROW? KEEN NOSE worth 40?
+- The worn perk: does it change your next placement?
+- The timeline's spine-vs-✦ question — waits on a week of ticks (v1.1).
 
-- **The name: ASHWAKE** (`src/meta/identity.ts`).
-- **The art direction: torchlit** (`DEFAULT_THEME_ID` in `src/theme/index.ts`).
-  Correction, 2026-08-19: this used to say `?theme=cold-survey` /
-  `?theme=rot-bloom` compared it on the phone — both directions are deleted
-  (WORKPLAN Stage 1's goodbye; the registry is `placeholder` + `torchlit`
-  now), so there is nothing left to compare against. The decision still
-  reverses in one line if it ever needs to.
-- **The points scale — RULED 2026-08-20, kept as is.** Good runs score
-  tens of thousands; one constant still divides it, but the reversal
-  window closes the day strangers post daily scores — changing it after
-  launch invalidates every shared number, so this line graduates from
-  "one line to reverse" to "decided" the moment the link goes public.
+## 4. THE RELIC PACE — the number to react to (Day 3's run)
 
-## 5. What is ready and waiting
+After the halving + reborn-pays-no-relics: competent play banks a median
+**13–18 relics a run** (timid 18, greedy 24 — the harness's `relics`
+column). STEADY PACE rung 1 (30) ≈ **2 runs**; a 50-relic rung ≈ 3;
+maxing the whole shop (2,285) ≈ **95–175 runs** — roughly double the
+pre-halving climb. The question only your hands can answer: **do runs
+1–10 feel like they are earning anything?** If not, the dials are all in
+`src/content` and the sim re-measures in one command — but per your own
+D10 ruling, nothing retunes after Day 3.
 
-- **v1.0 tag** — one command, blocked on §1's stranger test and Gate B's
-  successor question.
-- **Sound** — you chose a silent 1.0 and that ruling stands as the
-  DEFAULT; since 2026-08-20 the ♪ button beside the camera toggle flips
-  it mid-run (and SETTINGS' switch is the same wire). Worth one tap on
-  the phone: the pop's rising bells, the claim's struck note, the
-  running-dry fade.
-- **The daily is LIVE** (built 2026-08-19 on your call): DAILY on the front
-  door's new playstyle menu, one shared plain world per local date, counted
-  retries, the sparkline share. Worth a play: does the plain economy hold a
-  daily's attention, and does the share line read right in a chat?
-- **The crossing is LIVE** (your design, same day): once a world is fully
-  awake, any further shrine offers a NEW WORLD with relics carried for the
-  territories left behind — and SETTINGS' old ABANDON is now the unpaid
-  NEW WORLD. Your all-shrines world is one shrine-walk from testing it.
-- **Camps are LIVE** (waypoints, built 2026-08-19 on your anchor call): a
-  fifth shrine rung — your all-shrines world needs one more shrine to wake
-  it — then BEGIN AT CAMP on the front door starts a fresh run at your
-  farthest territory, climb measured from where you wake.
-- **The feel pass is LIVE**: press feedback, arrivals on one motion
-  language, TRY AGAIN on the daily's end screen. Judge it with thumbs.
-- **The hall of fame timeline is ALWAYS ON** (designed 2026-08-20 through
-  your own prompts, LOG.md Session 31; your launch ruling the same week
-  deleted the `fame.timeline` flag — launch day is the only clean epoch
-  the record will ever get): every finished run a dated tick, ✦ moments
-  folded under their run, crossings and settlings their own lines,
-  dailies on their own tab, the old ledger under TOTALS. The written
-  question waits on a week of real ticks: is the spine of ordinary rows
-  what makes the history worth opening, or do you only ever tap the ✦
-  rows?
-- The rest of the parking lot is at the bottom of `ROADMAP.md`.
+## 5. Standing decisions, current as of Day 1
+
+- **The name: ASHWAKE** · **the direction: torchlit** — both standing,
+  both one line to reverse until strangers arrive.
+- **Points scale: KEPT** (ruled 2026-08-20). Window closes at launch.
+- **Daily #1 = launch day** (ruled Day 1). `DAILY_EPOCH = 2026-08-25`;
+  rehearsal-week dailies print their date. Window closes at launch.
+- **Sound: silent default, ♪ is the door** (ruled 2026-08-20).
+- **Timeline: always on** (ruled 2026-08-20).
+- **Relics: harder overall; reborn ground pays none** (ruled Day 1).
+- **v1.0 gate: the stranger test alone** (ruled Day 1).

@@ -1,6 +1,9 @@
-# WORKPLAN — the 2026-08-19 visual pipeline
+# WORKPLAN — the 2026-08-19 visual pipeline (CLOSED 2026-08-20)
 
-Live tracker for the four-stage visual/identity pipeline Marc green-lit on
+All four stages are built, verified and recorded — LOG.md carries the full
+accounts and STATUS.md the checkpoint. This file is the RECORD of how the
+pipeline ran, kept for the next pipeline to copy; the live work moved to
+FOLLOWUP.md (the launch-week plan) the day launch week opened. It was a live tracker for the four-stage visual/identity pipeline Marc green-lit on
 2026-08-19 (option sets, this session). The previous pipeline (2026-08-18:
 correctness · UI/UX · new systems) is DONE and fully recorded in `LOG.md`'s
 addenda; its tracker text was retired with it.

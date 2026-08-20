@@ -1438,9 +1438,11 @@ function mountSettings(
   const resetTeachingNote = document.createElement('p');
   resetTeachingNote.className = 'flag-note';
   resetTeachingNote.textContent =
-    'Forgets which concepts have been explained — nothing else — so the game ' +
-    'teaches itself again from its next moment. How a veteran device previews ' +
-    'what a stranger will see.';
+    'Forgets which concepts have been explained — nothing else — so every ' +
+    'card and toast fires again from its next moment. It previews the ' +
+    'LESSONS a stranger sees, not their game: your shop, perks and known ' +
+    'world all stay. The closest true rehearsal is RESET TEACHING, then ' +
+    'BEGIN DAILY — the daily plays plain and fully fogged, like their run one.';
 
   // LAST ERROR (2026-08-19): whatever `showFailure` last caught, readable
   // and selectable here — the report channel for a phone with no console.

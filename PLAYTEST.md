@@ -1,117 +1,51 @@
-# The next play session
+# PLAYTEST.md — the launch-week phone script
 
-Written 2026-08-15, after M1–M6. Short on purpose — read it once before you
-start, then forget it and play. The only thing you must do is **read the end
-screen**; everything else is "notice if it happens".
+Rewritten 2026-08-20. The previous version of this file was a 2026-08-15
+script for a game that no longer exists — a fixed 260-placement clock,
+Gate B's tally, theme URLs for directions since deleted — and it was
+actively misleading with a launch five days out. This is the live script;
+`FOLLOWUP.md` carries the full question list this file walks.
 
-**Where:** https://tiles.marcportal.com — bare URL, phone, portrait.
-**How long:** two runs, ~15 minutes each. The second one matters as much as
-the first, because it is the first run that has a world behind it.
+**Always against https://tiles.marcportal.com, on the phone, in
+portrait.** Reload twice first (or tap NEW VERSION) so the build is
+today's.
 
----
+## Session A — the stranger rehearsal (~20 min, Day 2)
 
-## Before you start
+1. SETTINGS ▸ DEVELOPER ▸ **RESET TEACHING** (it forgets only the
+   lessons; your game survives).
+2. **BEGIN DAILY.** Play it cold. This is the closest thing to a
+   stranger's run one that exists on your phone: plain economy, full fog,
+   first-contact card and all.
+3. Write down every moment you needed something the screen did not say —
+   those sentences are Day 3's fixes.
+4. One **home** run after, for the relic/purse lessons the daily
+   deliberately suppresses.
+5. The eleven look-at-its (`FOLLOWUP.md` §2) in one sweep on the same
+   world: fog, anchors, lens, reborn landmarks, ember, rarity colours,
+   pop cascade, wording, shelf count, fame folds, relic pace.
 
-Reload once. You should see the manual open by itself — that is the stranger's
-first minute, and it only happens on a device that has never played. If you
-have played on this phone it will not appear; that is correct, not a bug.
+## Session B — the verdict run (~20 min, Day 3)
 
-> **Look at:** does the first screen tell you what to do, or do you close it
-> and still not know where to tap?
+One long home-world run, two questions:
 
----
+- **Pop-vs-burn-vs-wait** — does WHEN feel like a decision? (A standing
+  v1.1 question by your ruling; still worth the first datapoint.)
+- **The relic pace** — `FOLLOWUP.md` §4 has the numbers; do early runs
+  feel like they earn? After this session the balance freezes for launch.
 
-## Run 1 — the minute, and the choice
+## Session C — the stranger test (Day 4, the v1.0 gate)
 
-**1. The board, first ten placements.** The dotted ground was invisible on
-half the colours until an hour ago. It is the thing I most want a second
-opinion on.
+One person who is not you. Their phone. Send the link, say nothing
+beyond "try this". Watch the first minute only, then leave them alone.
 
-> **Look at:** can you see which ground is native to which colour — for ALL
-> four, not just the bright ones? Is it too subtle, about right, or now too
-> busy?
+- Record: did they place without help? pop? finish? **start another?**
+- The last one is the gate. Evidence goes in `LOG.md`; `DECISIONS.md` D4
+  gets its answer; the tag follows on Day 5.
 
-**2. The first cache.** A `+` glowing in the dark, some hexes out. Walking to
-it is now how you fund the run, not a bonus.
+## Standing rules
 
-> **Look at:** did you go for it? Did reaching it feel like a rescue, or like
-> picking up litter?
-
-**3. The first bounty.** Claim a `★` site and the hint line names a bounty:
-_pop 8+ within 6 hexes of it as PTS → ×3_. When a pocket qualifies, the pts
-button grows a ★.
-
-> **Look at:** did you go and do it? This is the single mechanism built to
-> make points worth taking, so if you ignored it, say so plainly.
-
-**4. LEFT, around 100.** The run is 260 placements. Somewhere past halfway the
-cost curve kicks in and the clock starts mattering.
-
-> **Look at:** is there a stretch in the middle where you are just placing
-> with nothing to aim at? That was your complaint last time and it is what
-> bounties were meant to fix.
-
-**5. The last twenty placements.** Tiles you never spend are worth nothing
-now.
-
-> **Look at:** did the ending feel like a deadline you played toward, or like
-> being cut off?
-
----
-
-## The end screen — the one thing to report
-
-It prints a line like:
-
-> across 3 runs: 21 harvests, **64% tiles / 36% pts**
-
-**That number is Gate B.** The gate wants neither side above ~70% over twenty
-harvests. Play both runs, then tell me that line verbatim. If it says 80%+
-tiles, the fix did not work on a human and I will cut the payout to a single
-automatic choice rather than keep pretending it is a decision.
-
-Also on that screen: your biggest pop and **where in the run it landed** (a
-percentage). Near the end means the run had an arc.
-
-> **Look at:** does the end screen make you want to press NEW RUN?
-
----
-
-## Run 2 — the world remembers
-
-Press NEW RUN. Same world, same seed, but your ground from run 1 is now drawn
-faintly under everything, and any territory you claimed is already yours.
-
-> **Look at:** does knowing the map make run 2 more interesting, or does it
-> make it a commute? This is P4a's whole question, and it is the one I would
-> bet against myself on.
-
-If you found a shrine (`◈`), check SETTINGS — the unlock ledger shows what it
-switched on and what the next one gives.
-
----
-
-## Things I know I guessed at
-
-Judge these only if they annoy you; I have opinions but no evidence.
-
-- **The name is ASHWAKE** and the four colours are **MOSS · EMBER · ASH ·
-  TIDE**. Both were mine.
-- **The art direction is torchlit.** Compare on the phone with
-  `?theme=cold-survey` and `?theme=rot-bloom`.
-- **Points are big** — a good run scores tens of thousands. Legible, or
-  meaningless?
-- **The treasure payout is off** by default. Turn it on in SETTINGS if you
-  want to see the third button (a big pocket becomes a rare tile).
-
----
-
-## What to tell me afterwards
-
-Five lines is plenty:
-
-1. The tally line, verbatim.
-2. Was there still a boring stretch? Where?
-3. Did you chase a bounty / a cache / a shrine — or ignore them?
-4. Run 2 vs run 1: better, or a commute?
-5. Anything that looked broken or unreadable.
+- A confusing moment is a FINDING, not a failure — one sentence each.
+- No coaching during the stranger test. A question they ask IS the bug.
+- Nothing retunes after Session B. Launch-day changes are copy and
+  crashes only.
