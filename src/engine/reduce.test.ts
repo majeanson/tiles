@@ -89,11 +89,27 @@ describe('placing', () => {
       { type: 'PLACE', hex: occupied },
       { type: 'PLACE', hex: detached },
       { type: 'SELECT', index: 99 },
-      { type: 'SELECT', index: -1 },
+      { type: 'SELECT', index: -2 },
       { type: 'HARVEST', choice: 'tiles' },
     ] satisfies Action[]) {
       expect(reduce(state, action)).toBe(state);
     }
+  });
+
+  it('puts the card down on SELECT -1, and nothing places while the hand is empty', () => {
+    // The empty hand (2026-08-20): the UI sends -1 when the selected card is
+    // tapped again. Placement waits for a card to be picked back up.
+    const state = newRun(2, PLAIN);
+    const down = reduce(state, { type: 'SELECT', index: -1 });
+    expect(down.selected).toBe(-1);
+    expect(reduce(down, { type: 'SELECT', index: -1 })).toBe(down);
+
+    const spot = legalPlacements(state.cells)[0]!;
+    expect(reduce(down, { type: 'PLACE', hex: spot })).toBe(down);
+
+    const up = reduce(down, { type: 'SELECT', index: 1 });
+    expect(up.selected).toBe(1);
+    expect(reduce(up, { type: 'PLACE', hex: spot }).placements).toBe(1);
   });
 
   it('never lets the budget go negative', () => {

@@ -32,6 +32,13 @@ export const NAME = 'Ashwake';
 export const TAGLINE = 'An expedition into a dark plane. Place, ripen, pop, and push on.';
 
 /**
+ * Where the game lives, for the surfaces that leave the phone — the share
+ * card is a PNG that gets screenshotted OUT of its chat, and a picture with
+ * a score but no address is a dead end (2026-08-20, launch audit).
+ */
+export const SITE = 'tiles.marcportal.com';
+
+/**
  * The mark: a hex with an ember spark in it, drawn as an inline SVG data URI
  * so it costs no request and cannot 404. The shape lives in `./mark.ts`,
  * which is also what `scripts/icons.ts` writes to `public/icon.svg` and

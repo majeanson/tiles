@@ -76,7 +76,7 @@ import { renderShareCard } from '@render/shareCard';
 import { applyTheme } from '@theme/apply';
 import { assetPath, DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
 import type { Orientation, Theme } from '@theme/tokens';
-import type { GameState } from '@engine/state';
+import type { GameState, LandmarkReward } from '@engine/state';
 import { Game, type Elements, type GameHooks } from '@ui/game';
 import { Sound } from '@ui/audio';
 
@@ -133,9 +133,11 @@ const DAILY_STORAGE_KEY = 'tiles.daily.v1';
  * every finished run a dated tick, milestone runs carrying their ✦ moments,
  * dailies and crossings alongside. Append-only, kept forever, device-wide —
  * and the first thing the hall of fame keeps for itself, breaking the
- * door's "nothing new is kept" birth rule on purpose. Recording and the
- * tabs both live behind `fame.timeline`, and the clean start makes the
- * flag flip the day the record begins.
+ * door's "nothing new is kept" birth rule on purpose. Born behind
+ * `fame.timeline`; ruled ON for everyone the same week (Marc, launch
+ * decision 2026-08-20) — launch day is the only clean epoch the record
+ * would ever get, and what predates a device's first tick is stated live
+ * from the aggregate stores as prehistory.
  */
 const TIMELINE_STORAGE_KEY = 'tiles.timeline.v1';
 /**
@@ -146,6 +148,9 @@ const TIMELINE_STORAGE_KEY = 'tiles.timeline.v1';
  * The shop, perks, teaching and records stay device-wide, as ever.
  */
 const ACTIVE_SLOT_KEY = 'tiles.slot.v1';
+/** The install nudge's once-ever marker (2026-08-20): set the first time the
+ *  end screen offers ADD TO HOME SCREEN, so no one is nagged twice. */
+const INSTALL_NUDGE_KEY = 'tiles.installnudge.v1';
 
 type Slot = 1 | 2 | 3;
 const SLOTS: readonly Slot[] = [1, 2, 3];
@@ -458,11 +463,10 @@ function runKeeping(
   // renders the share card against it, the same theme the screen the card
   // is a picture OF was drawn in.
   theme: Theme,
-  // The timeline (Session 31): which slot this run's tick belongs to, and
-  // whether the diary is recording at all — `fame.timeline` gates the
-  // appends here the same way it gates the tabs that read them.
+  // The timeline (Session 31): which slot this run's tick belongs to. The
+  // diary always records (launch ruling, 2026-08-20 — the flag it was born
+  // behind died the same week it was born).
   slot: Slot,
-  timelineOn: boolean,
 ): GameHooks & { savedSeed: number | null; dropWorld: () => void } {
   // Asked once: the URL cannot change mid-session without a reload, and this
   // used to construct fresh URLSearchParams three times per action across
@@ -666,16 +670,14 @@ function runKeeping(
                 // it names is dropped and the page navigates — a crossing
                 // that outran its own record would leave no trace of the
                 // world it closed.
-                if (timelineOn) {
-                  appendTimeline({
-                    at: Date.now(),
-                    kind: 'world',
-                    event: 'crossed',
-                    slot,
-                    worldSeed: world.worldSeed,
-                    n: dowry,
-                  });
-                }
+                appendTimeline({
+                  at: Date.now(),
+                  kind: 'world',
+                  event: 'crossed',
+                  slot,
+                  worldSeed: world.worldSeed,
+                  n: dowry,
+                });
                 const progress = readProgress();
                 writeProgress({ ...progress, relics: progress.relics + dowry });
                 dropWorld();
@@ -696,16 +698,30 @@ function runKeeping(
         localStorage.setItem(keys.run, encodeRun(state));
         askPersistence();
       } catch {
-        // Storage full or forbidden. Before giving up on the run — the one
-        // thing in storage that cannot be regenerated — shed the world
-        // memory, which can: it regrows from play, the run does not. Only
-        // then is an unkept run accepted as the cost of a hostile browser.
-        try {
-          localStorage.removeItem(keys.world);
-          localStorage.setItem(keys.run, encodeRun(state));
-          askPersistence();
-        } catch {
-          // Forbidden outright (private mode). Every run is its own life.
+        // Storage full or forbidden. The run is the one thing that cannot
+        // be regenerated, so other stores are shed to make room — cheapest
+        // loss first (reordered 2026-08-20: the old fallback went straight
+        // for the world, whose shrines and territories never regrow, while
+        // the diary and the daily ladder — records ABOUT play, and the two
+        // stores that actually grow without bound — were never touched).
+        // The world goes last, and the player is told what happened.
+        const shed: readonly (() => void)[] = [
+          () => localStorage.removeItem(TIMELINE_STORAGE_KEY),
+          () => localStorage.removeItem(DAILY_STORAGE_KEY),
+          () => localStorage.removeItem(keys.world),
+        ];
+        for (const drop of shed) {
+          try {
+            drop();
+            localStorage.setItem(keys.run, encodeRun(state));
+            askPersistence();
+            showStorageNote();
+            break;
+          } catch {
+            // Still full — shed the next thing. (Private mode throws on
+            // every attempt and falls through silent: every run its own
+            // life, exactly as before.)
+          }
         }
       }
       // The world learns as the run happens, not only when it ends. Ground
@@ -744,18 +760,16 @@ function runKeeping(
         // The diary's daily tick — same store as the home runs, its own tab
         // when read. Rides the same once-per-ended-transition guarantee the
         // ladder write above does.
-        if (timelineOn) {
-          appendTimeline({
-            at: Date.now(),
-            kind: 'daily',
-            date: dailyDate,
-            score: state.points,
-            reach: reachOf(state),
-            arc: arcSparkline(state.log.harvests),
-            try: result.record.tries,
-            best: result.isNewBest,
-          });
-        }
+        appendTimeline({
+          at: Date.now(),
+          kind: 'daily',
+          date: dailyDate,
+          score: state.points,
+          reach: reachOf(state),
+          arc: arcSparkline(state.log.harvests),
+          try: result.record.tries,
+          best: result.isNewBest,
+        });
         return {
           runs: result.record.tries,
           best: result.record.best,
@@ -836,23 +850,21 @@ function runKeeping(
       // this PAGE booted with against the world the run ended with (a run
       // resumed across a reload will not badge its pre-reload moments; the
       // facts themselves are safe in WorldMemory).
-      if (timelineOn) {
-        appendTimeline({
-          at: Date.now(),
-          kind: 'run',
-          slot,
-          worldSeed: world.worldSeed,
-          score: state.points,
-          reach: reachOf(state),
-          arc: arcSparkline(state.log.harvests),
-          highlights: runHighlights(world, current, {
-            points: state.points,
-            perksBefore: perksAtBoot,
-            perksAfter: readProgress().found.length,
-            campStart: state.wakeAt !== null,
-          }),
-        });
-      }
+      appendTimeline({
+        at: Date.now(),
+        kind: 'run',
+        slot,
+        worldSeed: world.worldSeed,
+        score: state.points,
+        reach: reachOf(state),
+        arc: arcSparkline(state.log.harvests),
+        highlights: runHighlights(world, current, {
+          points: state.points,
+          perksBefore: perksAtBoot,
+          perksAfter: readProgress().found.length,
+          campStart: state.wakeAt !== null,
+        }),
+      });
 
       // The finished run leaves storage HERE, not on NEW RUN: an ended run
       // that stayed saved was resumed on every reload, and each resume banked
@@ -913,10 +925,15 @@ function runKeeping(
      * the text+link that shipped first: every path below still sends it.
      */
     share: async (state, card) => {
-      const url = new URL(location.href);
+      // Built from the bare pathname, never location.href (2026-08-20, both
+      // launch audits found this independently): href drags this device's
+      // own test rig into the link — ?ff=, ?theme=, ?hex=, ?camp= — and an
+      // arriving ?ff= is PERSISTED by resolveFeatures, so a stale override
+      // would install itself on every phone the link ever reaches. A share
+      // link carries only what the receiver needs: the seed, or the date.
+      const url = new URL(location.pathname, location.href);
       let text: string;
       if (dailyDate !== null) {
-        url.searchParams.delete('seed');
         url.searchParams.set('daily', dailyDate);
         const reach = reachOf(state);
         const tries = readDailyBook()[dailyDate]?.tries ?? 1;
@@ -1078,6 +1095,9 @@ function mountSettings(
     world: WorldMemory;
     slot: Slot;
     abandon: () => void;
+    /** The board's ♪ button and this panel's SOUND switch are one wire —
+     *  a flip here must land on the button's face and the live gate too. */
+    syncSound: (on: boolean) => void;
   },
   startNewRun: () => void,
 ): void {
@@ -1102,6 +1122,16 @@ function mountSettings(
     '(?ff=ui.sound, ?ff=debug.overlay), each note carrying the decision ' +
     'that set its default. NEW RUN is how a changed one actually takes ' +
     'effect; it never touches the run in progress.';
+
+  // The privacy fact (2026-08-20, launch polish): it was true since Session
+  // 0 and written only in a README no player ever sees. One quiet line,
+  // here where a person wondering about their data would actually look.
+  const privacy = document.createElement('p');
+  privacy.className = 'flag-note';
+  privacy.textContent =
+    'Nothing leaves your phone: no account, no analytics, no server — every ' +
+    'run, record and setting lives in this device’s own storage, and ' +
+    'sharing only ever sends what you see in the share sheet.';
 
   // The atlas, as a label/value grid in the stat row's own language
   // (`.fact`/`.fact-label`/`.fact-value` — shared with the end screen's own
@@ -1249,8 +1279,9 @@ function mountSettings(
         persistFeatures(features);
         paint();
 
-        // The one live wire so far: the theme picker mounts and unmounts in
-        // place. Everything world-shaped waits for the next run by design.
+        // The live wires: the theme picker mounts and unmounts in place,
+        // and sound flips the same gate the board's ♪ button reads (both
+        // 2026-08-20). Everything world-shaped waits for the next run.
         if (f.id === 'ui.themePicker') {
           if (isEnabled(features, f.id)) {
             mountThemePicker(live.themesHost, live.theme, live.facing);
@@ -1259,6 +1290,7 @@ function mountSettings(
             live.themesHost.replaceChildren();
           }
         }
+        if (f.id === 'ui.sound') live.syncSound(isEnabled(features, f.id));
       });
     }
 
@@ -1388,6 +1420,7 @@ function mountSettings(
   host.replaceChildren(
     heading,
     intro,
+    privacy,
     atlas,
     atlasGrid,
     ledger,
@@ -1466,7 +1499,6 @@ async function main(): Promise<void> {
   // renderer, baked draft cards, layout — sees one consistent orientation.
   const theme: Theme = facing === null ? picked : { ...picked, orientation: facing };
 
-  const timelineOn = isEnabled(features, 'fame.timeline');
   const keeper = runKeeping(
     world,
     isEnabled(features, 'debug.overlay'),
@@ -1474,7 +1506,6 @@ async function main(): Promise<void> {
     keys,
     theme,
     slot,
-    timelineOn,
   );
   const resuming = keeper.resume !== null && keeper.resume !== undefined;
   // Resumed run > the daily > shared seed link > THIS DEVICE'S WORLD. The
@@ -1580,6 +1611,16 @@ async function main(): Promise<void> {
   // enumerated rather than listed and cannot go stale when a key is added.
   // Two taps, the same arming contract ABANDON THIS WORLD keeps.
   const frontDoorReset = required<HTMLButtonElement>('front-door-reset');
+  // A device with nothing to forget gets no wipe (2026-08-20, launch
+  // polish): on a virgin phone RESET ALL is a trap on the first screen a
+  // stranger ever sees. It appears once there is anything worth wiping.
+  frontDoorReset.hidden =
+    world.runs === 0 &&
+    world.revealed.length === 0 &&
+    SLOTS.every((s) => s === slot || peekSlot(s) === null) &&
+    Object.keys(readDailyBook()).length === 0 &&
+    readProgress().relics === 0 &&
+    readProgress().found.length === 0;
   let resetArmed = false;
   frontDoorReset.addEventListener('click', () => {
     if (!resetArmed) {
@@ -1666,15 +1707,13 @@ async function main(): Promise<void> {
         // The diary's arrival entry, before the navigation that follows —
         // settling is a world-scale moment, not a run, and it happens on a
         // door no run-end hook ever sees.
-        if (timelineOn) {
-          appendTimeline({
-            at: Date.now(),
-            kind: 'world',
-            event: 'settled',
-            slot: emptySlot,
-            worldSeed: sharedSeed,
-          });
-        }
+        appendTimeline({
+          at: Date.now(),
+          kind: 'world',
+          event: 'settled',
+          slot: emptySlot,
+          worldSeed: sharedSeed,
+        });
         setActiveSlot(emptySlot);
         goHome();
       });
@@ -1749,12 +1788,10 @@ async function main(): Promise<void> {
 
     // The hall of fame (Marc, 2026-08-20: "make the button now"; the
     // timeline it grew into was designed the same day through his own
-    // prompts — LOG.md Session 31). Behind `fame.timeline` this panel is
-    // three tabs: TIMELINE (the diary of runs and crossings, ✦ moments
-    // folded under their run), DAILY (the diary's daily ticks under the
-    // ladder's own line), TOTALS (the original flat ledger, unmoved).
-    // Flag off, it is that first screen exactly: only what storage already
-    // knows, nothing new kept.
+    // prompts — LOG.md Session 31, and ruled always-on for launch the same
+    // week). Three tabs: TIMELINE (the diary of runs and crossings, ✦
+    // moments folded under their run), DAILY (the diary's daily ticks under
+    // the ladder's own line), TOTALS (the original flat ledger, unmoved).
     const fameOpen = required<HTMLButtonElement>('front-door-fame');
     const famePanel = required<HTMLElement>('fame-panel');
     const fameBody = required('fame-body');
@@ -1774,8 +1811,7 @@ async function main(): Promise<void> {
     });
     fameOpen.hidden = false;
 
-    /** The original flat ledger — the TOTALS tab now, and the whole panel
-     *  while `fame.timeline` is off. */
+    /** The original flat ledger — the TOTALS tab. */
     const fameTotalsRows = (): HTMLElement[] => {
       const rows: HTMLElement[] = [fameRow('fame-h', 'WORLDS')];
       for (const s of SLOTS) {
@@ -2008,13 +2044,6 @@ async function main(): Promise<void> {
     };
 
     fameOpen.addEventListener('click', () => {
-      if (!timelineOn) {
-        fameBody.replaceChildren(...fameTotalsRows());
-        famePanel.hidden = false;
-        famePanel.focus();
-        return;
-      }
-
       // The diary and the prehistory it has not lived: the record book's
       // device-wide run count and the daily ladder's summed tries, minus
       // what the timeline already holds — computed live, never stored,
@@ -2084,16 +2113,55 @@ async function main(): Promise<void> {
     mountThemePicker(required('themes'), theme, facing);
   }
 
+  // The voice (ideas/sound.md, behind ui.sound — off by default): the ♪
+  // button in the board chrome and SETTINGS' switch are the same wire
+  // (Marc's launch call, 2026-08-20: "a way to toggle on/off easily") —
+  // `soundLive` is the truth the hook facade below consults at each moment
+  // sound would play, so a flip lands on the very next pop rather than the
+  // next load, and both surfaces persist through the one stored flag.
+  let soundLive = isEnabled(features, 'ui.sound');
+  const soundReal = new Sound(theme.voice);
+  const storedFeatures = (): FeatureSet => {
+    try {
+      return decodeFeatures(localStorage.getItem(FEATURE_STORAGE_KEY));
+    } catch {
+      return features;
+    }
+  };
+  const soundToggle = required<HTMLButtonElement>('sound-toggle');
+  const paintSoundToggle = (): void => {
+    soundToggle.setAttribute('aria-pressed', String(soundLive));
+    soundToggle.setAttribute(
+      'aria-label',
+      soundLive ? 'Sound on — tap to mute' : 'Sound off — tap for sound',
+    );
+    soundToggle.classList.toggle('muted', !soundLive);
+  };
+  const syncSound = (on: boolean): void => {
+    soundLive = on;
+    paintSoundToggle();
+  };
+  paintSoundToggle();
+  soundToggle.addEventListener('click', () => {
+    syncSound(!soundLive);
+    persistFeatures(withOverrides(storedFeatures(), { 'ui.sound': soundLive }));
+    // Hearing IS the feedback: one small bell on enable, silence on mute —
+    // and this tap is the user gesture Web Audio wants the context born in.
+    if (soundLive) soundReal.pop(1);
+  });
+
   // The settings half of the ? panel — mounted here rather than in Game
   // because flags are resolved at this edge and stay out of the engine.
   // Rebuilt every time the panel is opened, from storage rather than from the
   // snapshot this page loaded with: a shrine woken at placement 40 has to
-  // show as found the moment you go and look, not after the run ends.
+  // show as found the moment you go and look, not after the run ends — and
+  // since the board's ♪ button writes the ui.sound flag between opens, the
+  // switchboard itself re-reads STORAGE too, not this page's boot snapshot.
   const settingsHost = required('help-meta');
   const paintSettings = (): void =>
     mountSettings(
       settingsHost,
-      features,
+      storedFeatures(),
       {
         themesHost: required('themes'),
         theme,
@@ -2107,6 +2175,7 @@ async function main(): Promise<void> {
           keeper.dropWorld();
           goHome();
         },
+        syncSound,
       },
       keeper.newRun ?? (() => location.reload()),
     );
@@ -2140,14 +2209,63 @@ async function main(): Promise<void> {
   // a replay is reproducible from seed + tuning + these two lists.
   const held = seed === world.worldSeed ? world.territories : [];
   const heldFinds = seed === world.worldSeed ? world.finds : [];
-  // The voice (ideas/sound.md, behind ui.sound — off by default): created
-  // here where the flag and the theme meet, handed in as a hook so the game
-  // stays deaf to whether anyone is listening. Takes effect on load, which
-  // the flag's own note says.
-  const soundOn = isEnabled(features, 'ui.sound');
+  // The install nudge (2026-08-20, Marc's launch call — "adapt it for iOS
+  // players on where to find the option manually"): one quiet line on the
+  // end screen, once ever, in the words of THIS platform. iOS has no
+  // install prompt at all — the Share sheet is the only door, and nothing
+  // on the page ever says so; Android's own banner appears or it doesn't.
+  // Absent for anyone already installed, on desktop, or told before.
+  const installNudge = ((): { readonly note: string; readonly shown: () => void } | null => {
+    try {
+      if (localStorage.getItem(INSTALL_NUDGE_KEY) !== null) return null;
+    } catch {
+      // A storage that keeps nothing would re-nudge every run. Stay quiet.
+      return null;
+    }
+    try {
+      const standalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (navigator as { standalone?: boolean }).standalone === true;
+      if (standalone) return null;
+    } catch {
+      // Unqueryable display mode reads as a browser tab, which nudges.
+    }
+    const ua = navigator.userAgent;
+    // iPadOS 13+ masquerades as a Mac; the touch points give it away.
+    const ios = /iPad|iPhone|iPod/.test(ua) || (/Mac/.test(ua) && navigator.maxTouchPoints > 1);
+    if (!ios && !/Android/i.test(ua)) return null;
+    return {
+      note: ios
+        ? `${NAME} can live on your home screen — full screen, works offline. In Safari: tap SHARE (the square with the arrow), then ADD TO HOME SCREEN.`
+        : `${NAME} can live on your home screen — full screen, works offline. In your browser's menu: ADD TO HOME SCREEN (or INSTALL APP).`,
+      shown: () => {
+        try {
+          localStorage.setItem(INSTALL_NUDGE_KEY, '1');
+        } catch {
+          // It will offer again next run. Harmless.
+        }
+      },
+    };
+  })();
+
+  // The game reports through this facade and stays deaf to whether anyone
+  // is listening — `soundLive` (above, beside the ♪ button that flips it)
+  // decides at each moment sound would play, which is what makes the
+  // toggle land mid-run rather than on the next load.
   const hooks: GameHooks & { savedSeed: number | null } = {
     ...keeper,
-    ...(soundOn ? { sound: new Sound(theme.voice) } : {}),
+    sound: {
+      pop: (count: number): void => {
+        if (soundLive) soundReal.pop(count);
+      },
+      claim: (kind: LandmarkReward): void => {
+        if (soundLive) soundReal.claim(kind);
+      },
+      dry: (): void => {
+        if (soundLive) soundReal.dry();
+      },
+    },
+    ...(installNudge === null ? {} : { install: installNudge }),
     // The daily's own end-screen voice (2026-08-19): the badge reads the
     // book FRESH — finish() has just moved best and tries — and TRY AGAIN
     // replays the same date. The reload lands on the front door saying
@@ -2266,9 +2384,32 @@ function showUpdateNote(): void {
   note.addEventListener('click', () => {
     location.reload();
   });
-  const stamp = document.getElementById('stamp');
-  if (stamp !== null) stamp.insertAdjacentElement('beforebegin', note);
-  else document.body.appendChild(note);
+  // On body, fixed (2026-08-20): it used to sit inside #game-shell beside
+  // the stamp — which is `inert` the whole time the front door is up, so
+  // an update arriving on the menu was an untappable line. The overlay
+  // position in style.css keeps it live whatever state the game is in.
+  document.body.appendChild(note);
+}
+
+/**
+ * Storage ran dry mid-run and something regrowable was shed to keep the
+ * run (`onChange`'s fallback ladder). One line, the update note's shape,
+ * gone on tap or after ten seconds — the player deserves to know why the
+ * hall of fame's diary just got shorter, and nothing else says it.
+ */
+function showStorageNote(): void {
+  if (document.getElementById('storage-note') !== null) return;
+  const note = document.createElement('button');
+  note.type = 'button';
+  note.id = 'storage-note';
+  note.textContent = 'STORAGE FULL — some history was cleared so your run could be saved';
+  note.addEventListener('click', () => {
+    note.remove();
+  });
+  document.body.appendChild(note);
+  setTimeout(() => {
+    note.remove();
+  }, 10000);
 }
 
 /** One line a human can send: name, message, and the top of the stack. */
@@ -2345,8 +2486,15 @@ function showFailure(error?: unknown): void {
     'align-items:center;justify-content:center;background:rgba(16,18,24,0.94);color:#e6e9f0;' +
     'font-family:system-ui,sans-serif;padding:24px;text-align:center;';
   const words = document.createElement('p');
-  words.textContent =
-    'Something broke. Your run is saved — CONTINUE if the game still works underneath, RELOAD if it does not.';
+  // The honest split (2026-08-20 launch audit): a browser with no WebGL at
+  // all cannot draw the board, will not be fixed by CONTINUE, and loops on
+  // RELOAD — telling that visitor "your run is saved" was a lie wearing a
+  // stack trace. Name the real problem and the real fix instead.
+  const noWebgl = webglMissing();
+  words.textContent = noWebgl
+    ? `${NAME} needs WebGL to draw its board, and this browser has it missing or switched off. ` +
+      'Try Safari or Chrome — or turn hardware acceleration back on.'
+    : 'Something broke. Your run is saved — CONTINUE if the game still works underneath, RELOAD if it does not.';
   const count = document.createElement('p');
   count.id = 'boot-failure-count';
   count.textContent = `seen ×${failureCount}`;
@@ -2375,11 +2523,41 @@ function showFailure(error?: unknown): void {
   reload.addEventListener('click', () => {
     location.reload();
   });
+  // COPY REPORT (2026-08-20): the whole reason the detail is on screen is
+  // so a phone can report it — one tap beats reading a stack trace aloud.
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.textContent = 'COPY REPORT';
+  copy.style.cssText = buttonCss;
+  copy.addEventListener('click', () => {
+    const report = `${NAME} ${__BUILD_SHA__.slice(0, 7)}\n${shown.textContent ?? ''}`;
+    navigator.clipboard.writeText(report).then(
+      () => {
+        copy.textContent = 'COPIED';
+      },
+      () => {
+        copy.textContent = 'SELECT THE TEXT ABOVE';
+      },
+    );
+  });
   const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:12px;';
-  row.append(go, reload);
+  row.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;justify-content:center;';
+  // A WebGL-less browser has no game underneath to continue INTO, and
+  // nothing useful to report — the message already says everything.
+  if (noWebgl) row.append(reload);
+  else row.append(go, reload, copy);
   panel.replaceChildren(words, count, shown, row);
   document.body.appendChild(panel);
+}
+
+/** No WebGL at all — the one boot failure that is the browser's, not ours. */
+function webglMissing(): boolean {
+  try {
+    const probe = document.createElement('canvas');
+    return probe.getContext('webgl2') === null && probe.getContext('webgl') === null;
+  } catch {
+    return true;
+  }
 }
 
 // A boot that dies (WebGL refused, an element missing, a bundle truncated)
@@ -2390,7 +2568,12 @@ window.addEventListener('error', (event) => {
   if (event.error !== undefined && event.error !== null) showFailure(event.error);
 });
 window.addEventListener('unhandledrejection', (event) => {
-  showFailure(event.reason);
+  // Only real Errors raise the panel (2026-08-20): a stray non-Error
+  // rejection — an extension's, an aborted fetch's DOMException-less
+  // reason, a bare string from some library — is noise this game did not
+  // write, and the full-screen alarm over a playable board was the scarier
+  // bug. Real failures in our own code reject with Error objects.
+  if (event.reason instanceof Error) showFailure(event.reason);
 });
 
 void main().catch((error: unknown) => {

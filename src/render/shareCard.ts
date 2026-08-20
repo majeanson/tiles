@@ -1,4 +1,4 @@
-import { ICON_DATA_URI, NAME } from '@meta/identity';
+import { ICON_DATA_URI, NAME, SITE } from '@meta/identity';
 import { hex, type Theme } from '@theme/tokens';
 
 /**
@@ -119,6 +119,15 @@ export async function renderShareCard(theme: Theme, data: ShareCardData): Promis
     ctx.font = `24px ${theme.type.body}`;
     ctx.fillText(data.footerLine, 90, H - 40);
   }
+
+  // Where to go do something about it (2026-08-20): this card's whole life
+  // is being screenshotted out of the chat that had the link — without the
+  // address it is a score with no door. Right-aligned, the footer's twin.
+  ctx.fillStyle = inkFaint;
+  ctx.font = `24px ${theme.type.body}`;
+  ctx.textAlign = 'right';
+  ctx.fillText(SITE, W - 90, H - 40);
+  ctx.textAlign = 'left';
 
   return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/png'));
 }

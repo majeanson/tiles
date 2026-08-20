@@ -17,6 +17,11 @@
     <meta name="theme-color" content="#0a0806" />
     <meta name="color-scheme" content="dark" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <!-- iOS reads its own trio, not the standard above: without these an
+         added-to-home-screen Ashwake opens inside Safari chrome. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Ashwake" />
     <meta
       name="description"
       content="An expedition into a dark plane. Place, ripen, pop, and push on."
@@ -39,7 +44,9 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <!-- PNG, not SVG: iOS ignores SVG here and falls back to a screenshot. -->
     <link rel="apple-touch-icon" href="/icon-180.png" />
-    <title>Ashwake</title>
+    <!-- The long form for crawlers and history lists; main.ts trims the tab
+         back to the bare name the moment it boots. -->
+    <title>Ashwake — an expedition into a dark plane</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -50,9 +57,17 @@
            this screen, so dismissing it costs nothing. Quiet HOW TO PLAY
            opens the same manual the in-game ? does, via Game#openHelp. -->
       <div id="front-door" role="dialog" aria-modal="true" tabindex="-1">
-        <img id="front-door-logo" alt="" width="56" height="56" />
-        <p id="front-door-name"></p>
-        <p id="front-door-tagline"></p>
+        <!-- Name, mark and tagline are IN the markup (2026-08-20, launch
+             audit): the pre-JS first paint used to be a nameless dark
+             screen. main.ts overwrites all three idempotently at boot. -->
+        <img id="front-door-logo" src="/icon.svg" alt="" width="56" height="56" />
+        <p id="front-door-name">Ashwake</p>
+        <p id="front-door-tagline">
+          An expedition into a dark plane. Place, ripen, pop, and push on.
+        </p>
+        <noscript>
+          <p>Ashwake is a game, and it needs JavaScript switched on to play.</p>
+        </noscript>
         <!-- The playstyle menu (2026-08-19): main.ts names which game BEGIN
              opens — your world, the daily, or a shared run — and shows the
              other doors beside it. The mode line and the two quiet buttons
@@ -71,7 +86,7 @@
         <button id="front-door-home" type="button" class="quiet" hidden>YOUR WORLD</button>
         <!-- The hall of fame (Marc, 2026-08-20): what this device has done,
              across all three worlds. The timeline it was promised arrived
-             the same day (LOG.md Session 31, behind fame.timeline):
+             the same day (LOG.md Session 31; always on since launch week):
              TIMELINE · DAILY · TOTALS tabs, filled by main.ts. Home mode
              only, like the worlds above. -->
         <button id="front-door-fame" type="button" class="quiet" hidden>HALL OF FAME</button>
@@ -143,6 +158,19 @@
                fixed word. -->
           <div id="camera">
             <button id="help" type="button" aria-label="How to play">?</button>
+            <!-- Sound, mid-run (Marc's launch call, 2026-08-20): mute
+                 exactly where sound happens. Ships muted — the silent-1.0
+                 ruling stands as the default; this is the easy way in.
+                 main.ts owns its state, label and the flag it persists. -->
+            <button
+              id="sound-toggle"
+              type="button"
+              class="muted"
+              aria-pressed="false"
+              aria-label="Sound off — tap for sound"
+            >
+              ♪
+            </button>
             <button id="camera-toggle" type="button">FIT</button>
           </div>
           <!-- What just happened, or what the glyph you tapped does. Over the

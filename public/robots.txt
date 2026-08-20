@@ -1,0 +1,6 @@
+# Ashwake — the game is the page. The gallery is a development workbench
+# that ships with it (testing happens on the deployed site); it is not for
+# search results.
+User-agent: *
+Disallow: /gallery.html
+Allow: /

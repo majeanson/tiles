@@ -58,18 +58,10 @@ export const FEATURES = [
     defaultOn: false,
     wired: true,
   },
-  {
-    id: 'fame.timeline',
-    label: 'Hall of fame timeline',
-    note:
-      'The hall of fame keeps a diary (designed 2026-08-20 through Marc’s own prompts): ' +
-      'every finished run leaves a dated tick, milestone runs carry their ✦ moments, and ' +
-      'the panel grows TIMELINE · DAILY · TOTALS tabs. Gates the recording AND the tabs — ' +
-      'the clean start means flipping this on is the day the record begins, and nothing ' +
-      'is lost by the wait: what came before is stated live from the aggregate stores.',
-    defaultOn: false,
-    wired: true,
-  },
+  // fame.timeline lived here from its birth (2026-08-20) to launch week
+  // (same week): Marc ruled the diary ON for everyone — record-keeping,
+  // engine-invisible, and launch day is the only clean epoch the record
+  // will ever get. One game for everybody, the world.endless precedent.
   {
     id: 'ui.sound',
     label: 'Sound',
@@ -78,7 +70,8 @@ export const FEATURES = [
       'run of bells, one struck note per claim kind, and a low fade when the purse runs ' +
       'near dry. Web Audio, zero assets, voiced by the theme. Off by default — Marc chose ' +
       'a silent 1.0 (2026-08-15), and a phone game that surprises a quiet room is ' +
-      'uninstalled. Takes effect on the next load.',
+      'uninstalled. The ♪ button by the camera flips it mid-run (2026-08-20); this switch ' +
+      'is the same wire.',
     defaultOn: false,
     wired: true,
   },

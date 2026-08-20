@@ -90,11 +90,28 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* NOT justify-content: center (2026-08-20, launch audit): the door grew
+     from 3 buttons to ~10, and a centred column taller than a small phone
+     clips BOTH ends with no way to scroll — RESET ALL was unreachable on an
+     iPhone SE, and any phone in landscape got a broken menu. The auto
+     margins below centre it exactly like `center` while it fits, and yield
+     to scrolling the moment it does not. */
   gap: 14px;
   padding: 24px;
+  overflow-y: auto;
   background: var(--bg, #14161c);
   text-align: center;
+}
+
+/* The centring spacers: two equal flexible struts instead of auto margins
+   on real children, because the last child can be [hidden] (RESET ALL on a
+   virgin device) and an auto margin on a display:none element centres
+   nothing. They collapse to zero exactly when the menu is taller than the
+   screen, which is when scrolling takes over. */
+#front-door::before,
+#front-door::after {
+  content: '';
+  flex: 1 1 0;
 }
 
 /* The world slots (2026-08-19; all three since 2026-08-20): a small stack
@@ -193,8 +210,8 @@ body {
 
 /* The hall of fame (Marc, 2026-08-20): the manual's own panel shape — what
    this device has done, per world and device-wide. The timeline it was
-   promised arrived the same day (Session 31, behind fame.timeline); with
-   the flag off this screen still states only what storage already knows. */
+   promised arrived the same day (Session 31) and was ruled always-on for
+   launch the same week. */
 #fame-panel {
   position: fixed;
   inset: 8px;
@@ -246,7 +263,7 @@ body {
   color: var(--ink-dim, #8a91a0);
 }
 
-/* The timeline (Session 31, behind fame.timeline). The tab bar reuses the
+/* The timeline (Session 31; always on since launch week). The tab bar reuses the
    manual's own .help-tabs/.help-tab; only what has no precedent is new:
    the world-filter chips, the expandable run row, and its folded detail. */
 .fame-chips {
@@ -353,6 +370,15 @@ button.fame-run[aria-expanded='true'] {
    under `#camera` to win outright rather than tie on source order. */
 #camera #camera-toggle {
   font-size: 0.5625rem;
+}
+
+/* The ♪ (Marc's launch call, 2026-08-20): sound's easy way in, exactly
+   where sound happens. Muted is the shipped default — the silent-1.0
+   ruling — so the off state reads plainly as "there is sound here, and it
+   is off" rather than as broken chrome. */
+#sound-toggle.muted {
+  opacity: 0.45;
+  text-decoration: line-through;
 }
 
 /* One screen of sentences, gone on tap. `position: fixed` rather than
@@ -1047,14 +1073,39 @@ button.quiet {
 
 /* A new build took over mid-session (the worker claims immediately, by
    design) and until tapped this is the only sign. One line in the stamp's
-   voice, wearing the accent because it is the one thing here you can act on. */
-#update-note {
-  flex: 0 0 auto;
-  margin: 4px 10px 0;
+   voice, wearing the accent because it is the one thing here you can act on.
+   Fixed on body since 2026-08-20: it used to render inside the inert
+   #game-shell, untappable exactly when it most often fires — while the
+   front door is up. Above the door's z-index 3 and the panels' 4. */
+#update-note,
+#storage-note {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 5;
+  min-height: 44px;
   font-size: 0.625rem;
   letter-spacing: 0.08em;
   border-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
+  background: var(--panel, #1e222b);
+}
+
+/* The storage-full confession (`showStorageNote`): same shape, quieter
+   voice — information, not an action. */
+#storage-note {
+  border-color: var(--panel-edge, #3a4150);
+  color: var(--ink-dim, #8a91a0);
+}
+
+/* The install nudge (2026-08-20): the end screen's quietest line, once
+   ever — an invitation after the actions, never between them. */
+.end-install {
+  margin-top: 14px;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--ink-faint, #767d8d);
 }
 
 /* The unlock ledger in the atlas: found things stand out, locked ones stay
@@ -1684,4 +1735,88 @@ button:not(:disabled):active {
 #front-door-reset {
   margin-top: 20px;
   opacity: 0.65;
+}
+
+/* ------------------------------------------------- other shapes of screen
+
+   Portrait phone is the design target and always will be (CLAUDE.md's own
+   testing rule). But launch (2026-08-20) sends first-click traffic from
+   chats on laptops, and phones get rotated: neither may greet a stranger
+   with a broken page. Two rules, both additive — nothing above changes on
+   the target device. */
+
+/* A desktop browser gets the phone's own column, centred, at phone width —
+   not a full-bleed stretch of a layout designed 400px wide. The min-height
+   guard keeps this away from the landscape-phone rule below. */
+@media (min-width: 700px) and (min-height: 561px) {
+  #app,
+  #front-door,
+  #help-panel,
+  #fame-panel {
+    max-width: 480px;
+    margin-inline: auto;
+  }
+
+  #app,
+  #front-door {
+    border-inline: 1px solid var(--panel-edge, #3a4150);
+  }
+
+  /* Fixed overlays centre with insets + auto margins; the panels keep
+     their 8px breathing room inside the frame's width. */
+  #update-note,
+  #storage-note {
+    max-width: 456px;
+    margin-inline: auto;
+  }
+}
+
+/* A phone on its side: the board takes the left, everything that was above
+   and below it stacks into a right-hand rail. Same elements, same order of
+   reading, no scrolling fight with the canvas. */
+@media (orientation: landscape) and (max-height: 560px) {
+  #game-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 42vw);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+
+  #board {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    min-height: 0;
+  }
+
+  #stats {
+    grid-column: 2;
+    grid-row: 1;
+    flex-wrap: wrap;
+  }
+
+  #hint {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  #controls {
+    grid-column: 2;
+    grid-row: 3;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
+  }
+
+  /* The end screen replaces the controls (they are never visible together)
+     and scrolls in the same rail cell. */
+  #end:not([hidden]) {
+    grid-column: 2;
+    grid-row: 3;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  #stamp {
+    grid-column: 2;
+    grid-row: 4;
+  }
 }

@@ -70,15 +70,21 @@ shrines and finds are their own progression. Not a bug to fix.
   (WORKPLAN Stage 1's goodbye; the registry is `placeholder` + `torchlit`
   now), so there is nothing left to compare against. The decision still
   reverses in one line if it ever needs to.
-- **The points scale.** Good runs score tens of thousands; one constant
-  divides it if you ever want human-sized numbers.
+- **The points scale — RULED 2026-08-20, kept as is.** Good runs score
+  tens of thousands; one constant still divides it, but the reversal
+  window closes the day strangers post daily scores — changing it after
+  launch invalidates every shared number, so this line graduates from
+  "one line to reverse" to "decided" the moment the link goes public.
 
 ## 5. What is ready and waiting
 
 - **v1.0 tag** — one command, blocked on §1's stranger test and Gate B's
   successor question.
-- **Sound** — you chose a silent 1.0; the pop, the claim and running dry are
-  the three moments that most want a noise.
+- **Sound** — you chose a silent 1.0 and that ruling stands as the
+  DEFAULT; since 2026-08-20 the ♪ button beside the camera toggle flips
+  it mid-run (and SETTINGS' switch is the same wire). Worth one tap on
+  the phone: the pop's rising bells, the claim's struck note, the
+  running-dry fade.
 - **The daily is LIVE** (built 2026-08-19 on your call): DAILY on the front
   door's new playstyle menu, one shared plain world per local date, counted
   retries, the sparkline share. Worth a play: does the plain economy hold a
@@ -93,13 +99,13 @@ shrines and finds are their own progression. Not a bug to fix.
   farthest territory, climb measured from where you wake.
 - **The feel pass is LIVE**: press feedback, arrivals on one motion
   language, TRY AGAIN on the daily's end screen. Judge it with thumbs.
-- **The hall of fame timeline is BUILT** (designed 2026-08-20 through your
-  own prompts, LOG.md Session 31), behind `fame.timeline` — visit
-  **`?ff=fame.timeline`** once and your phone records from then on: every
-  finished run a dated tick, ✦ moments folded under their run, crossings
-  and settlings their own lines, dailies on their own tab, the old ledger
-  under TOTALS. The clean start means the flip IS the day the record
-  begins. The written question waits on a week of real ticks: is the spine
-  of ordinary rows what makes the history worth opening, or do you only
-  ever tap the ✦ rows?
+- **The hall of fame timeline is ALWAYS ON** (designed 2026-08-20 through
+  your own prompts, LOG.md Session 31; your launch ruling the same week
+  deleted the `fame.timeline` flag — launch day is the only clean epoch
+  the record will ever get): every finished run a dated tick, ✦ moments
+  folded under their run, crossings and settlings their own lines,
+  dailies on their own tab, the old ledger under TOTALS. The written
+  question waits on a week of real ticks: is the spine of ordinary rows
+  what makes the history worth opening, or do you only ever tap the ✦
+  rows?
 - The rest of the parking lot is at the bottom of `ROADMAP.md`.

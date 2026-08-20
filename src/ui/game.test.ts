@@ -692,11 +692,13 @@ describe('the camera, and staying oriented', () => {
 
   // The long-press does not steal the ordinary tap: `contextmenu` and
   // `click` are different events, and a normal press must still select.
+  // (An UNselected card — tapping the selected one puts it down instead,
+  // 2026-08-20, covered by its own test below.)
   it('still selects the card on an ordinary tap, long-press or not', () => {
-    const card = ctx.el.draft.children[0] as HTMLButtonElement;
+    const card = ctx.el.draft.children[1] as HTMLButtonElement;
     card.dispatchEvent(new window.MouseEvent('contextmenu', { cancelable: true }));
     card.click();
-    expect(ctx.game.state.selected).toBe(0);
+    expect(ctx.game.state.selected).toBe(1);
   });
 
   it('always says what to do now, and hides the harvest until it exists', () => {
@@ -2407,6 +2409,26 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     expect(manual).not.toContain('More appears here as you meet it.');
   });
 
+  it('tells a genuinely virgin device how to place, once, when the door lifts', () => {
+    // The very first lesson (2026-08-20): an EMPTY ledger — fresh install or
+    // RESET TEACHING — gets one card at announceArrival. Any prior teaching
+    // marks the device a veteran: the `place` id arrived after launch-week
+    // ledgers existed, and none of them may be greeted like a stranger.
+    const dev = device();
+    const first = build(1, T, { shop: dev.shop });
+    first.game.start();
+    first.game.announceArrival();
+    expect(first.el.eventCard.hidden).toBe(false);
+    expect(first.el.eventCardText.textContent).toMatch(/glowing hex/);
+    expect(dev.current().met).toContain('place');
+
+    const veteran = device({ ...EMPTY_PROGRESS, met: ['ripe'] });
+    const again = build(1, T, { shop: veteran.shop });
+    again.game.start();
+    again.game.announceArrival();
+    expect(again.el.eventCard.hidden).toBe(true);
+  });
+
   it('teaches a colour’s personality at its first placement — once, per colour', () => {
     // Biomes off so a native field cannot take the toast; a pinned all-green
     // draft so the placed colour is the test's, not the seed's.
@@ -2439,7 +2461,7 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     expect(second.el.toast.textContent ?? '').not.toMatch(/CROWDS/);
   });
 
-  it('explains the selected card’s colour on a second tap', () => {
+  it('puts the selected card down on a second tap, explaining it as it goes', () => {
     const ctx = build();
     ctx.game.start();
     const selected = ctx.el.draft.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
@@ -2447,7 +2469,11 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     selected!.click();
     expect(ctx.el.toast.hidden).toBe(false);
     expect(ctx.el.toast.textContent).toMatch(/CROWDS|COMPANY|ASH|TIDE/);
-    // A question, not an action: the selection did not move.
+    // The hand empties (Marc, 2026-08-20: "we can always unselect a selected
+    // tile by tapping it again") — and a tap on any card picks back up.
+    expect(ctx.game.state.selected).toBe(-1);
+    const card = ctx.el.draft.children[0] as HTMLButtonElement;
+    card.click();
     expect(ctx.game.state.selected).toBe(0);
   });
 

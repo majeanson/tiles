@@ -138,10 +138,20 @@ function serviceWorkerStamp(sha: string): Plugin {
       // worked from the second visit: the worker registers after the first
       // frame, so visit one's bundle was never cached, and an offline return
       // served an index.html whose script the cache did not hold.
+      //
+      // Walked recursively since 2026-08-20: the flat listing skipped the
+      // theme art in dist/assets/<themeId>/ and assets/manifest.json, so
+      // offline silently fell back to procedural surfaces — shipping the
+      // placeholder look to exactly the audience Gate E was opened for.
       const assetsDir = fileURLToPath(new URL('./dist/assets', import.meta.url));
-      const bundle = readdirSync(assetsDir)
-        .filter((name) => name.endsWith('.js') || name.endsWith('.css'))
-        .map((name) => `/assets/${name}`);
+      const walk = (dir: string, prefix: string): string[] =>
+        readdirSync(dir).flatMap((name) => {
+          const full = join(dir, name);
+          return statSync(full).isDirectory()
+            ? walk(full, `${prefix}${name}/`)
+            : [`${prefix}${name}`];
+        });
+      const bundle = walk(assetsDir, '/assets/').filter((p) => /\.(js|css|png|webp|json)$/.test(p));
       const listed = stamped.replace(
         "'__PRECACHE_ASSETS__'",
         JSON.stringify(JSON.stringify(bundle)),

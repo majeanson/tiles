@@ -203,6 +203,13 @@ export type GameState = {
   readonly cells: Readonly<Record<HexKey, Cell>>;
 
   readonly draft: readonly Tile[];
+  /**
+   * Index into `draft` of the card in hand, or `-1` for an empty hand —
+   * SELECT with index -1 puts the card down (2026-08-20; the UI sends it
+   * when the selected card is tapped again). Consumers read
+   * `draft[selected]` and treat `undefined` as "no tile", so `-1` places
+   * nothing, holds nothing and forges nothing until a card is picked up.
+   */
   readonly selected: number;
   /**
    * The stash: a drafted tile kept for later, swapped with the selected card

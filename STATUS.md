@@ -4,7 +4,29 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-19** — the second debrief; the game learned to
+Last checkpoint: **2026-08-20** — launch week opened. Three audits (code,
+parked work, public surface), three rulings by Marc (points scale stays;
+the timeline is ALWAYS ON — `fame.timeline` deleted a week after its
+birth, launch day being the only clean epoch; sound ships off with an
+easy way in), and the stranger-proofing batch: the front door scrolls
+instead of clipping small phones, a virgin device gets one first-contact
+card ("tap a card, then tap a glowing hex"), a second tap on the selected
+card puts it down (engine `SELECT -1`) while showing its lesson, share
+links stop carrying the sender's `?ff=`/`?theme=` test rig into
+receivers' storage forever, the ♪ board-chrome toggle flips `ui.sound`
+mid-run, the failure overlay tells a WebGL-less browser the truth (and
+grew COPY REPORT; stray non-Error rejections no longer raise it), first
+paint has a name/tagline/`<noscript>`, the update note is tappable while
+the front door is up, offline precaches the torchlit art it silently
+skipped, storage-full triage sheds the diary before the world, an
+install nudge speaks iOS's manual path once ever, desktop gets a
+centred phone-width frame and rotated phones a real landscape rail, the
+share card PNG names tiles.marcportal.com, and the gallery is
+noindexed. 587 tests; e2e smoke green against the built bundle. Full
+account: LOG.md Session 32. **The two human blockers stand: Marc's
+RESET TEACHING pass, then the stranger test.**
+
+Previous checkpoint: **2026-08-19** — the second debrief; the game learned to
 teach itself; the day then kept going: the balance batch, the daily, the
 crossing, three world slots, and the no-phone program. 568 tests.
 
@@ -13,7 +35,11 @@ crossing, three world slots, and the no-phone program. 568 tests.
   wear a star; labels survive every zoom; base rare odds halved and
   shrines thinned 8% → 5% (finds rescaled with them), swept at 200
   runs/policy; the error panel became a reporting overlay (LAST ERROR
-  under DEVELOPER) for the unresolved iOS crash; fog memory shows what it
+  under DEVELOPER) for what was then an unresolved iOS crash — **the
+  crash itself is FIXED** (same day: the renderer caps DPR at 2,
+  `#safeEvict` guards texture eviction, and WebGL context loss is
+  survived; this line kept calling it "unresolved" a day after the fix
+  landed, corrected 2026-08-20); fog memory shows what it
   saw and the tap-scan divining rod is closed; the deliberate last-gasp
   rule is taught; BEST left the draft cards. Then the fresh-worlds
   answer: the DAILY (one shared plain world per local date, own ladder,
@@ -414,13 +440,15 @@ Manual deploy still works: `pnpm build && pnpm exec wrangler deploy`.
 
 Everything above this line has shipped. What has not, honestly:
 
-- **Sound.** Designed to done in `ideas/sound.md` (three moments, Web Audio,
-  zero assets, sound as theme data) — scoped, not built. Post-1.0 by
-  `ROADMAP.md`'s own call.
-- **The daily seed.** Designed to done in `ideas/daily.md` (local-midnight
-  rollover, one permanent ladder, counted retries, an arc-sparkline share) —
-  every open fork resolved on option sets 2026-08-18, build parked until
-  Marc calls it.
+- **Sound — BUILT, this bullet was stale.** It said "scoped, not built" two
+  checkpoints after `ui/audio.ts` shipped (2026-08-19, behind `ui.sound`,
+  voiced per theme). Corrected 2026-08-20, the day the ♪ board-chrome
+  toggle made it one tap away; it still SHIPS silent — the silent-1.0
+  ruling stands as the default.
+- **The daily — LIVE, this bullet was stale.** It said "build parked until
+  Marc calls it"; he called it and it shipped 2026-08-19 (DAILY on the
+  front door, one shared plain world per local date, counted retries, the
+  sparkline share). Corrected 2026-08-20.
 - **Tier-1 uniques.** Parked whole, post-1.0, per the 2026-08-18 uniques
   design session — scope, not merit; see `ideas/uniques.md`.
 - **A leaderboard.** No backend exists to hold one; not designed past being

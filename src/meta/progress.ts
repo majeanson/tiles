@@ -145,6 +145,12 @@ export const perkById = (id: PerkId): Perk | undefined => PERKS.find((p) => p.id
  * them, so every existing player sees nothing, with no flag to flip.
  */
 export const TEACH_IDS = [
+  // The very first lesson (2026-08-20, the launch audit's finding: nobody was
+  // ever told how to place a tile outside the opt-in manual): one card, at
+  // the start of a genuinely virgin device's first run — see
+  // `Game#announceArrival`, which guards it on an EMPTY ledger so a veteran
+  // device that predates this id never sees it.
+  'place',
   'ripe',
   'pop',
   'costRise',

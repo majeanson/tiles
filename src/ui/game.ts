@@ -315,6 +315,18 @@ export type GameHooks = {
     readonly label: () => string;
     readonly retry: () => void;
   };
+  /**
+   * The install nudge (2026-08-20, launch polish): one quiet line on the end
+   * screen — the moment a player has proven interest — saying how to put the
+   * game on the home screen, in the words of THIS platform (iOS has no
+   * install prompt at all; the Share sheet is the only door). The shell
+   * passes it only when it applies (a browser tab, never shown before) and
+   * `shown()` marks it so it never repeats.
+   */
+  readonly install?: {
+    readonly note: string;
+    readonly shown: () => void;
+  };
 };
 
 /** The colour POWERS' names, for the lens line. Plain words, Marc's word. */
@@ -792,6 +804,19 @@ export class Game {
     const perk = startingPerk(this.#state.tuning, this.#state.claimed.length);
     if (perk > 0) parts.push(`+${perk} tiles from territories held.`);
     if (parts.length > 0) this.#showNote(parts.join(' '));
+
+    // The very first lesson (2026-08-20): a genuinely virgin device — an
+    // EMPTY teaching ledger, which is a fresh install or RESET TEACHING, and
+    // never a veteran whose ledger merely predates the `place` id — is told
+    // how to play at the one moment nothing else is speaking. A shared link
+    // or the daily can BE first contact, so a detour teaches this too.
+    const met = this.#metSet();
+    if (met !== null && met.size === 0 && this.#state.placements === 0) {
+      this.#markMet('place');
+      this.#showEventCard(
+        '⬢  THE EXPEDITION\nTap a card in your hand, then tap a glowing hex to place it — tapping the card again puts it down. Tiles are the purse and the clock: when they run out, the run ends. Ripen tiles by surrounding them, then POP.',
+      );
+    }
   }
 
   /**
@@ -2709,6 +2734,11 @@ export class Game {
       // guarding it behind `#recordLines`'s own null-check buys for free.
       this.#snapshot = this.#renderer.snapshot(SNAPSHOT_MAX_PX);
 
+      // The install nudge is marked shown at the same exactly-once
+      // transition everything else on this screen banks on — the LINE keeps
+      // rendering for the life of this end screen, but no later run repeats it.
+      this.#hooks.install?.shown();
+
       // A run can end with the relic moment still unmet — its first relics
       // arriving only in the ending bonus, after the last quiet action that
       // could have taught them. Said here, once, at the same transition that
@@ -3066,6 +3096,15 @@ export class Game {
       parts.push(again);
     }
 
+    // The install nudge, once ever: quietest voice on the screen, after the
+    // actions — an invitation, not a gate. `shown()` was marked at this end
+    // screen's exactly-once transition above, so a reload never re-offers.
+    if (this.#hooks.install !== undefined) {
+      const nudge = line('end-install', this.#hooks.install.note);
+      nudge.id = 'end-install';
+      parts.push(nudge);
+    }
+
     this.#el.end.replaceChildren(...parts);
   }
 
@@ -3382,20 +3421,21 @@ export class Game {
         // question the numbers answer better.
 
         button.addEventListener('click', () => {
-          // A second tap on the already-selected card used to be a silent
-          // no-op (the engine returns the same state) — it is now the
-          // question it looks like: what IS this card? Sticky, like every
-          // explanation asked for by hand (2026-08-19, "the colors are not
-          // explained").
+          // A second tap on the selected card puts it DOWN (Marc, 2026-08-20:
+          // "we can always unselect a selected tile by tapping it again") —
+          // SELECT -1 empties the hand — and still answers the question the
+          // tap used to be (2026-08-19, "the colors are not explained"):
+          // the lesson shows as the card goes down. Sticky, like every
+          // explanation asked for by hand. Dispatch first, note second, so
+          // the lesson outlives whatever the quiet action wanted to say.
+          this.#dispatch({ type: 'SELECT', index: tile.selected ? -1 : index });
           if (tile.selected) {
             const rare = this.#rarityLine(tile.rarity);
             const lesson =
               this.#colourLesson(tile.colour) ??
               `${name} — worth one per matching neighbour when it ripens.`;
             this.#showNote(rare === null ? lesson : `${lesson}\n${rare}`, true);
-            return;
           }
-          this.#dispatch({ type: 'SELECT', index });
         });
         // Long-press (touch), right-click (mouse), or the keyboard's own
         // context-menu key (Menu / Shift+F10 on a focused button) all fire

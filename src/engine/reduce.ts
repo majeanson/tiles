@@ -421,10 +421,17 @@ function hold(state: GameState): GameState {
 
 function selectDraft(state: GameState, index: number): GameState {
   if (state.phase !== 'placing') return state;
+  // `-1` is the explicit EMPTY HAND (Marc, 2026-08-20: "we can always
+  // unselect a selected tile by tapping it again" — the UI sends -1 on that
+  // second tap): previews clear and nothing places until a card is picked
+  // up again. Legal by construction: every consumer reads `draft[selected]`
+  // and treats `undefined` as "no tile in hand".
+  if (index === -1) return state.selected === -1 ? state : { ...state, selected: -1 };
   if (index < 0 || index >= state.draft.length) return state;
   // Re-selecting what is already selected is not a change. Returning a fresh
   // object for it would make "did that action do anything?" unanswerable by
-  // identity, which is exactly how the harness first deadlocked.
+  // identity, which is exactly how the harness first deadlocked — and the
+  // sim's policies still lead every placement with a SELECT, selected or not.
   if (index === state.selected) return state;
   return { ...state, selected: index };
 }

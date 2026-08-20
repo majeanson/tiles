@@ -39,13 +39,32 @@ const PRECACHE = [
   ...JSON.parse('__PRECACHE_ASSETS__'),
 ];
 
+// The shell the game cannot boot without: the page and its bundle. These
+// stay all-or-nothing — a half-cached shell is the white screen this worker
+// exists to prevent, so failing the install (and retrying next visit) is
+// the correct outcome. Everything else (icons, art, manifests) is comfort:
+// cached best-effort, because one flaky art fetch voiding ALL of offline
+// was the all-or-nothing addAll's silent failure mode (2026-08-20).
+const isCore = (url) =>
+  url === '/' || url === '/index.html' || url.endsWith('.js') || url.endsWith('.css');
+
 self.addEventListener('install', (event) => {
   // Take over as soon as the new build is cached: a game with no server state
   // has nothing to migrate, so waiting for every tab to close buys nothing.
   event.waitUntil(
     caches
       .open(VERSION)
-      .then((cache) => cache.addAll(PRECACHE))
+      .then((cache) =>
+        cache
+          .addAll(PRECACHE.filter(isCore))
+          .then(() =>
+            Promise.all(
+              PRECACHE.filter((url) => !isCore(url)).map((url) =>
+                cache.add(url).catch(() => undefined),
+              ),
+            ),
+          ),
+      )
       .then(() => self.skipWaiting()),
   );
 });

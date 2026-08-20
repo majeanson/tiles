@@ -4666,3 +4666,108 @@ timeline holds no balance number to escape anywhere.
 
 **Waits on the phone:** `?ff=fame.timeline` once, then finish a run — the
 written question above is Marc's to answer after a week of real ticks.
+
+### Session 32 — Launch week opens: three audits, three rulings, the stranger-proofing batch
+
+**Question:** the public ship is a week out — what breaks in a stranger's
+hands that Marc's own veteran phone can never show?
+
+Three parallel audits (code-level ship gaps, the parked-ideas inventory,
+the public-launch surface) answered with one launch blocker, a batch of
+stranger-hostile edges, and three decisions that would turn expensive the
+moment strangers arrive. Marc closed the decisions the same day: **the
+points scale stays** (tens of thousands; still one constant to divide,
+but only until strangers post daily scores), **the timeline is always on**
+(`fame.timeline` deleted one week after its birth — launch day is the only
+clean epoch the record will ever get; the world.endless precedent, one
+game for everybody), and **sound stays off by default but gets an easy
+way in** (the silent-1.0 ruling stands; the toggle is the door). Two more
+option-set rounds settled the rest: sound lives in the board chrome
+beside FIT⇄HERE, landscape gets a real layout (not a rotate curtain),
+the install nudge speaks iOS's manual path, and the first lesson is a
+first-contact card — plus "we can always unselect a selected tile by
+tapping it again... we can show its lesson as we unselect."
+
+**Done.**
+
+1. **The front door scrolls** (the launch blocker): ~10 buttons ×
+   centred-no-overflow clipped BOTH ends on an iPhone SE — RESET ALL
+   unreachable — and broke every phone in landscape. Two flexible
+   pseudo-element struts centre while it fits, scrolling takes over when
+   it does not (real children can be `[hidden]`, so auto margins on them
+   centre nothing).
+2. **The very first lesson**: `place` joins TEACH_IDS; a genuinely VIRGIN
+   ledger (empty `met` — fresh install or RESET TEACHING, never a veteran
+   whose ledger predates the id) gets one card at `announceArrival`: tap
+   a card, tap a glowing hex, tap the card again to put it down. Fires on
+   detours too — a shared link IS many strangers' first contact.
+3. **The empty hand**: `SELECT -1` in the engine puts the selected card
+   down (previews clear, nothing places, `draft[selected]` is undefined
+   by construction); the UI sends it on the selected card's second tap
+   and shows the colour lesson as the card goes down — the same words the
+   2026-08-19 second-tap explainer showed, now with the unselect Marc
+   asked for. Same-index SELECT stays an identity no-op (the sim's
+   policies lead every placement with a SELECT; toggling broke six
+   economy pins before the design was corrected).
+4. **Share links no longer infect** (both audits found it independently):
+   `share` built from `location.href`, so a link shared while testing
+   under `?ff=`/`?theme=`/`?hex=` wrote the sender's test rig into every
+   receiver's storage forever (`resolveFeatures` persists overrides by
+   design). Now built from the bare pathname plus exactly the seed or
+   the date.
+5. **Sound's easy way in**: the ♪ button in the board chrome (muted =
+   line-through, the shipped default), one tap mid-run, persisting the
+   same `ui.sound` flag SETTINGS' switch flips — one wire, both
+   surfaces, `soundLive` consulted per note so the flip lands on the
+   next pop, and the enabling tap is the user gesture Web Audio wants.
+   One confirmation bell on enable; the registry note updated.
+6. **`fame.timeline` deleted** (always on): the four append sites
+   unguarded, the fame panel always tabbed, `runKeeping` drops the
+   param, the registry pin test back to three ids.
+7. **The failure overlay stops lying**: a WebGL-less browser now gets
+   "Ashwake needs WebGL — try Safari or Chrome" and only RELOAD (no
+   CONTINUE into a game that cannot exist, no stack trace theater);
+   non-Error `unhandledrejection` reasons no longer raise the alarm at
+   all; COPY REPORT puts build + error on the clipboard.
+8. **First paint has a name**: logo src, name and tagline hardcoded in
+   `index.html` (JS overwrites idempotently), a `<noscript>` line, the
+   crawler-facing long `<title>`, and iOS's `apple-mobile-web-app-*`
+   trio so an installed Ashwake opens without Safari chrome.
+9. **The update note is tappable when it fires**: it rendered inside the
+   inert `#game-shell` — untappable exactly while the front door was up.
+   Fixed element on body, above every z-index.
+10. **Offline ships the torchlit look**: the SW precache walk was flat,
+    skipping `dist/assets/torchlit/` (all 216KB of Gate E) and
+    `assets/manifest.json`; and `cache.addAll` was all-or-nothing, so one
+    flaky art fetch voided offline silently. Now: recursive walk; the
+    shell (page + bundle) stays all-or-nothing, everything else caches
+    best-effort.
+11. **Storage-full triage stops eating the world first**: the diary and
+    the daily ladder (the stores that actually grow without bound, and
+    records ABOUT play) shed before the world (whose shrines and
+    territories never regrow), and a one-line note confesses it.
+12. **The install nudge**, once ever, end screen, platform-worded (iOS:
+    Share ▸ ADD TO HOME SCREEN — there is no prompt to wait for;
+    Android: menu ▸ install), absent when standalone/desktop/already
+    told. `tiles.installnudge.v1`.
+13. **Other shapes of screen**: desktop gets the phone column centred in
+    a 480px frame; a phone on its side gets a real landscape layout
+    (board left, stats/hint/controls-or-end in a right rail — one grid,
+    additive media query, portrait untouched).
+14. **Public-surface polish**: share card PNG names tiles.marcportal.com
+    (it gets screenshotted OUT of the chat that had the link); manifest
+    description un-says "cash"; gallery `noindex` + `robots.txt`;
+    privacy line in SETTINGS ("nothing leaves your phone" — true since
+    Session 0, previously readable only in the README); RESET ALL hidden
+    on a device with nothing to forget.
+
+**Verified:** 587 tests (+2: the empty-hand contract in `reduce.test.ts`,
+the virgin-device card in `game.test.ts`; two updated to the new
+second-tap contract; the registry pin back to three), typecheck/lint/
+format clean, production build green, both Playwright smoke tests pass
+against the built bundle (the first-contact card fires in them now — the
+first spread tap dismisses it, and placement still lands).
+
+**Waits on the phone:** the two §1 blockers are unchanged and unchanged
+in priority — Marc's RESET TEACHING pass (now including the new first
+card), then the stranger test.
