@@ -141,8 +141,12 @@ export const ASSET_SLOTS: readonly AssetSlot[] = [
     id: 'ui.runEnd',
     label: 'Run-end art',
     size: [876, 330],
-    note: 'Runs always end in failure, so this is seen more than any other image. The end screen exists; it does not consume this slot yet.',
-    wired: false,
+    note:
+      'WIRED 2026-08-19 (WORKPLAN Stage 2): the end screen wraps its headline, score and ' +
+      'arc in one hero block — a warm gradient panel by default, and a PNG here supersedes ' +
+      'it as the backdrop those numbers sit on. Runs always end, so this is seen more than ' +
+      'any other image in the game.',
+    wired: true,
     tiling: false,
   },
 ];

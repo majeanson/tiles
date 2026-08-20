@@ -59,6 +59,7 @@ import {
 } from '@meta/world';
 import { AssetBook } from '@render/assets';
 import { PixiRenderer } from '@render/PixiRenderer';
+import { renderShareCard } from '@render/shareCard';
 import { applyTheme } from '@theme/apply';
 import { assetPath, DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
 import type { Orientation, Theme } from '@theme/tokens';
@@ -412,6 +413,10 @@ function runKeeping(
   debugOn: boolean,
   dailyDate: string | null,
   keys: SlotKeys,
+  // The theme actually live (2026-08-19, WORKPLAN Stage 2): `share` below
+  // renders the share card against it, the same theme the screen the card
+  // is a picture OF was drawn in.
+  theme: Theme,
 ): GameHooks & { savedSeed: number | null; dropWorld: () => void } {
   // Asked once: the URL cannot change mid-session without a reload, and this
   // used to construct fresh URLSearchParams three times per action across
@@ -784,12 +789,19 @@ function runKeeping(
      * Share the run: the score, how it ended, and a link that opens the exact
      * same world and seed. No backend and no account — a seed IS the record,
      * which is the whole reason the engine has been deterministic since
-     * Session 0. Falls back to the clipboard where there is no share sheet.
-     * A daily shares its own line instead (`ideas/daily.md`): the number,
-     * the arc as blocks, the confessed retry, and a link that opens the same
-     * DATE — so it stays the same world on every phone that taps it.
+     * Session 0. A daily shares its own line instead (`ideas/daily.md`): the
+     * number, the arc as blocks, the confessed retry, and a link that opens
+     * the same DATE — so it stays the same world on every phone that taps it.
+     * Unchanged text+link logic; this is Stage 0's own fallback, kept, not
+     * replaced (WORKPLAN Stage 2, 2026-08-19).
+     *
+     * The share CARD rides beside it now: rendered client-side from `card` —
+     * the same facts `#renderEnd` just drew the screen from — and handed to
+     * the Web Share API as a `File` wherever `navigator.canShare({ files })`
+     * says yes. A picture is worth reaching for, but never at the cost of
+     * the text+link that shipped first: every path below still sends it.
      */
-    share: async (state) => {
+    share: async (state, card) => {
       const url = new URL(location.href);
       let text: string;
       if (dailyDate !== null) {
@@ -806,11 +818,37 @@ function runKeeping(
         text = `${NAME}: ${state.points} pts in ${state.placements} placements. Beat my run:`;
       }
 
+      // Best-effort, and never fatal: a browser missing a piece of the
+      // canvas API (or an image that fails to decode) simply hands back
+      // `null`, and everything below falls through to the text+link share
+      // exactly as it did before the card existed.
+      let file: File | null = null;
       try {
+        const blob = await renderShareCard(theme, card);
+        if (blob !== null) file = new File([blob], 'ashwake-run.png', { type: 'image/png' });
+      } catch {
+        file = null;
+      }
+
+      try {
+        if (
+          file !== null &&
+          typeof navigator.canShare === 'function' &&
+          navigator.canShare({ files: [file] })
+        ) {
+          await navigator.share({ title: NAME, text, url: url.toString(), files: [file] });
+          return 'shared';
+        }
         if (typeof navigator.share === 'function') {
           await navigator.share({ title: NAME, text, url: url.toString() });
           return 'shared';
         }
+        // Desktop: no share sheet exists to hand a picture to. The card
+        // still downloads — a real file beats nothing where there is one to
+        // give — and the text+link goes to the clipboard exactly as it did
+        // before the card existed, so a browser that cannot even download
+        // still gets the fallback that shipped first.
+        if (file !== null) downloadFile(file);
         await navigator.clipboard.writeText(`${text} ${url.toString()}`);
         return 'copied';
       } catch {
@@ -820,6 +858,25 @@ function runKeeping(
       }
     },
   };
+}
+
+/**
+ * The share card's desktop fallback (2026-08-19, WORKPLAN Stage 2): no share
+ * sheet exists to hand a `File` to, so the browser downloads it the plain
+ * way — an anchor with `download` set, clicked and discarded. Never reached
+ * on the phone this game is tested against; a desktop visitor is the only
+ * audience for it.
+ */
+function downloadFile(file: File): void {
+  const url = URL.createObjectURL(file);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    a.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function prefersReducedMotion(): boolean {
@@ -1285,7 +1342,20 @@ async function main(): Promise<void> {
   // null guard downstream (the simplify pass's find).
   const dailyDate = askedDaily();
   const sharedSeed = askedSeed();
-  const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'), dailyDate, keys);
+
+  // The theme, resolved here rather than where it used to sit (right before
+  // `applyTheme` below): `runKeeping`'s own `share` hook renders the share
+  // card (WORKPLAN Stage 2, 2026-08-19) and needs the theme that is actually
+  // live, not torchlit hand-picked the way the build-time og:image is —
+  // `applyTheme` and everything that reads `theme` after this point is
+  // unaffected by moving the three lines earlier.
+  const facing = resolveFacing();
+  const picked = resolveTheme(resolveThemeId());
+  // The facing override rides on top of the theme as data, so every consumer —
+  // renderer, baked draft cards, layout — sees one consistent orientation.
+  const theme: Theme = facing === null ? picked : { ...picked, orientation: facing };
+
+  const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'), dailyDate, keys, theme);
   const resuming = keeper.resume !== null && keeper.resume !== undefined;
   // Resumed run > the daily > shared seed link > THIS DEVICE'S WORLD. The
   // last is P4a: without a link or a run in progress you go back to your own
@@ -1308,12 +1378,6 @@ async function main(): Promise<void> {
         )[0]!
       : null;
   const wakeAt = camp !== null && askedCamp() ? camp : null;
-
-  const facing = resolveFacing();
-  const picked = resolveTheme(resolveThemeId());
-  // The facing override rides on top of the theme as data, so every consumer —
-  // renderer, baked draft cards, layout — sees one consistent orientation.
-  const theme: Theme = facing === null ? picked : { ...picked, orientation: facing };
 
   // Before anything is drawn: the chrome takes its colours from the same theme
   // the board will, so there is never a frame of placeholder around themed art.
@@ -1694,6 +1758,14 @@ async function main(): Promise<void> {
         frontDoorLogo.classList.add('lockup');
         frontDoorName.hidden = true;
         game.setLogo(url);
+      }
+
+      // `ui.runEnd` (2026-08-19, WORKPLAN Stage 2): same drop-target
+      // contract, one slot later — a PNG here supersedes the end screen
+      // hero's own CSS gradient as its backdrop, checked off this same
+      // manifest fetch.
+      if (assets.has('ui.runEnd')) {
+        game.setRunEndArt(assetPath(theme.id, 'ui.runEnd'));
       }
     })
     // A manifest that fails to fetch (flaky network, a hostile cache) must

@@ -9,6 +9,7 @@ import { destinationAt } from '@engine/world';
 import type { Cell, GameState } from '@engine/state';
 import { EMPTY_PROGRESS, TEACH_IDS, UPGRADES, type Progress } from '@meta/progress';
 import type { BoardView, Renderer } from '@render/Renderer';
+import type { ShareCardData } from '@render/shareCard';
 import { Game, type Elements, type GameHooks } from './game';
 
 /**
@@ -1164,6 +1165,81 @@ describe('a stranger arriving', () => {
     button.click();
     await Promise.resolve();
     expect(button.textContent).toBe('LINK COPIED');
+  });
+
+  // The share card (2026-08-19, WORKPLAN Stage 2): built from the exact
+  // `hud`/`recordLines`/`runNumber` fields the screen itself just drew from
+  // — "one source of truth" means these cannot be re-derived independently
+  // and drift, so this pins the actual values the button hands over.
+  it('hands the share card the same facts the screen just drew', () => {
+    const base = newRun(9, TUNING);
+    const ended: GameState = {
+      ...base,
+      phase: 'ended',
+      death: 'broke',
+      points: 430,
+      log: {
+        ...base.log,
+        harvests: [
+          { at: 20, count: 3, choice: 'tiles', tiles: 5, points: 40 },
+          { at: 90, count: 8, choice: 'tiles', tiles: 12, points: 300 },
+        ],
+      },
+    };
+    let sent: ShareCardData | null = null;
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      finish: () => ({ runs: 3, best: 430, isNewBest: true }),
+      share: (_state, card) => {
+        sent = card;
+        return Promise.resolve('copied' as const);
+      },
+    });
+    ctx.game.start();
+    (ctx.el.end.querySelector('#end-share') as HTMLButtonElement).click();
+
+    expect(sent).not.toBeNull();
+    expect(sent!.points).toBe(430);
+    expect(sent!.arc).toEqual([40, 300]);
+    expect(sent!.headline).toBe('NEW BEST');
+    expect(sent!.topLine).toBe('RUN 3');
+    expect(sent!.footerLine).toBe(`SEED ${ended.rootSeed}`);
+  });
+
+  it('gives the daily its own ladder line and no seed, on the share card', () => {
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
+    let sent: ShareCardData | null = null;
+    const ctx = build(1, TUNING, {
+      resume: ended,
+      daily: { label: () => 'DAILY #47 · best 520 · 4 tries', retry: () => {} },
+      share: (_state, card) => {
+        sent = card;
+        return Promise.resolve('copied' as const);
+      },
+    });
+    ctx.game.start();
+    (ctx.el.end.querySelector('#end-share') as HTMLButtonElement).click();
+
+    expect(sent).not.toBeNull();
+    expect(sent!.topLine).toBe('DAILY #47 · best 520 · 4 tries');
+    expect(sent!.footerLine).toBe('');
+  });
+
+  // `ui.runEnd` (2026-08-19, WORKPLAN Stage 2): the same drop-target
+  // contract `ui.logo` wired in Stage 1 — the hero's own CSS gradient by
+  // default, a PNG supersedes it as the backdrop the moment it is set.
+  it('wears the hero block plain until `ui.runEnd` art is set', () => {
+    const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke', points: 12 };
+    const ctx = build(1, TUNING, { resume: ended });
+    ctx.game.start();
+    const hero = ctx.el.end.querySelector('.end-hero');
+    expect(hero).not.toBeNull();
+    expect(hero!.classList.contains('art')).toBe(false);
+
+    ctx.game.setRunEndArt('/assets/torchlit/ui.runEnd.png');
+    const heroAfter = ctx.el.end.querySelector('.end-hero') as HTMLElement;
+    expect(heroAfter.classList.contains('art')).toBe(true);
+    expect(heroAfter.style.getPropertyValue('--run-end-art')).toContain('ui.runEnd.png');
   });
 
   it('names the run’s ending when the clock runs out', () => {

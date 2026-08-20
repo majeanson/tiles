@@ -4039,3 +4039,98 @@ read at a glance, does the front-door/end-screen lockup feel like a title
 rather than a debug label, and does the social card look right in an actual
 unfurl (iMessage/Discord/Slack all crop and compress differently than a
 raw PNG view does).
+
+### Session 28 — The end screen earns the screenshot
+
+**Question:** would a stranger post this screen in a chat unprompted — and
+does the share image say "beat my run" without a caption?
+
+`WORKPLAN.md`'s Stage 2 of the 2026-08-19 visual pipeline, built directly on
+Stage 1 (`f9845bd`). Scope: a hierarchy/type-scale pass on the end screen with
+the run's arc drawn as its own centerpiece; `ui.runEnd` (876×330) wired the
+same drop-target contract `ui.logo` was; and a canvas-rendered share card —
+score, arc, reach, run number, the mark, the seed — sent via the Web Share
+API's `files` where the browser allows it, the existing text+link share kept
+as the fallback, never deleted. The payout arithmetic and every number shown
+were not to move; this stage moves paint.
+
+**Done.**
+
+1. **The hero.** The headline, epitaph, score and arc used to be four loose
+   lines on the page; they are now one framed block (`.end-hero`), the run's
+   own centerpiece — NEW BEST still leads it when this run earned one, and
+   the arc (enlarged 280×44 → 300×72, the same data, just more room to say it
+   in) sits inside it rather than after it. The score and headline stepped up
+   a size (1.75rem → 2rem, 1rem → 1.125rem) now that they own a block instead
+   of sharing the page with everything else. NEW RUN is still the only
+   button-shaped control; nothing about the payout breakdown below the hero
+   moved.
+2. **`ui.runEnd` wired**, the exact contract `ui.logo` was wired under in
+   Stage 1: the hero's CSS gradient is the default paint (a warm radial wash,
+   the `color-mix` trick the shop's bought-row flash already uses), and a PNG
+   at the slot supersedes it as the backdrop the numbers sit ON — never in
+   place of them, since the score is this run's own and no bitmap can carry
+   it. `Game#setRunEndArt` mirrors `#setLogo`'s own re-render-if-already-
+   ended guard; `main.ts` checks `AssetBook.has('ui.runEnd')` off the same
+   manifest fetch `ui.logo` already pays for. `ASSET_SLOTS` flips `wired:
+   true`; `/gallery` needed no code change, same as Stage 1. A `prefers-
+   contrast: more` rule darkens the art's own overlay rather than touching
+   any text colour, since the ink tokens under it already pass.
+3. **The share card** (`src/render/shareCard.ts`, a `render/`-layer sibling
+   to `scripts/social.ts`'s og:image baker, but Canvas2D instead of an SVG
+   string, and rendered in the browser at share time instead of Node at
+   build time): the mark (`ICON_DATA_URI`, the exact favicon), the name, the
+   headline, the score, REACH, the arc as bars, and a footer line — `SEED
+   ⟨rootSeed⟩` for a normal run, the daily's own ladder line
+   (`hooks.daily.label()`) in its place with no seed at all, since a date
+   means nothing outside this device's book and the existing text share
+   already drops it the same way. Drawn against `theme.type.display`/`.body`
+   and the theme's own ink tokens — the LIVE theme, not torchlit hand-picked
+   the way the build-time og:image is, which is why `theme` moved three
+   lines earlier in `main()` so `runKeeping`'s `share` hook could close over
+   it.
+4. **One source of truth.** `ShareCardData` is built inside `#renderEnd`
+   from the SAME `hud`/`isNewBest`/`this.#runNumber`/`this.#state.log.
+   harvests` the screen was just drawn from, in the same function, before
+   the button's own click handler closes over it — there is no second read
+   of anything, so the card cannot say a number the screen did not already
+   say. `GameHooks.share` grew a second parameter to carry it; every
+   existing mock (`(state) => …`) still type-checks, since a callback may
+   always ignore trailing arguments.
+5. **Sending it.** `main.ts`'s `share` hook renders the card, wraps it as a
+   `File`, and tries `navigator.canShare({ files: [file] })` before
+   `navigator.share` with files; falling back to plain `navigator.share`
+   (text+link, unchanged) where files are not supported, and on a desktop
+   with no share sheet at all, downloading the card (`URL.createObjectURL` +
+   a clicked, discarded anchor) AND copying the text+link — the existing
+   'shared'/'copied'/'failed' outcomes are untouched, so the button's own
+   acknowledgement needed no new case. A card that fails to render (no 2D
+   canvas, a decode failure) is `null` and every path below falls through to
+   exactly the share Stage 0 shipped.
+
+**Verified:** 555 tests (550 + 5: two on `renderShareCard`'s null-canvas
+degrade path, mirroring `surfaces.test.ts`'s own precedent; three on
+`game.ts` — the share card's fields pinned against a real ended state, the
+daily's ladder-line-not-seed substitution, and `setRunEndArt`'s CSS-to-art
+toggle), typecheck/lint/format clean, both Playwright smoke specs green,
+`pnpm sim` byte-identical by stash-and-rerun (nothing here touches `engine/`
+or `content/` — the arc's enlarged pixels and the hero's CSS are the only
+numbers that moved, and neither is a balance number). `pnpm build` still
+produces the full asset set; the gallery reports `ui.runEnd` LOADED/EMPTY
+honestly off the same generic `wired` mechanism Stage 1 needed no code
+change for either.
+
+**Judgment calls, for the record:** the share card is 1200×630 (og:image's
+own aspect ratio) rather than a fresh size, so a chat unfurl and a manual
+save behave the same way; the daily's card drops the seed entirely instead
+of printing `dailySeed(date)`, since that number opens nothing without this
+device's own book; and the desktop fallback downloads AND copies rather than
+adding a fourth outcome string, so the button's existing three-state
+contract (and every test pinning it) stayed exactly as it was.
+
+**Left for Marc's eyes, on the phone**, per `WORKPLAN.md`'s own standing
+constraint: does the hero read as the screen's own centerpiece rather than a
+box drawn around what was already there, is the arc legible at its new size
+without crowding the score, and — the one thing no harness can check — does
+the share card actually look right coming out of the real iOS share sheet
+into an actual chat thread.

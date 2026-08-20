@@ -38,6 +38,7 @@ import {
   type TeachId,
 } from '@meta/progress';
 import type { Renderer } from '@render/Renderer';
+import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { COLOUR_MARK, type Theme } from '@theme/tokens';
 import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
@@ -200,8 +201,18 @@ export type GameHooks = {
    * exactly how it read until 2026-08-18. `'shared'` needs no words — the
    * share sheet was its own feedback; `'copied'` does; `'failed'` means
    * neither API worked (or the user cancelled), and the button says so.
+   *
+   * `card` (2026-08-19, WORKPLAN Stage 2) is the share IMAGE's own facts —
+   * built by `#renderEnd` from the exact `hud` fields it just drew the
+   * screen from, so a picture the shell renders from this can never say
+   * something the screen did not already say. The shell decides whether a
+   * picture goes out at all (Web Share `files`, a download, or neither);
+   * the game only ever hands over what is true.
    */
-  readonly share?: (state: GameState) => Promise<'shared' | 'copied' | 'failed'>;
+  readonly share?: (
+    state: GameState,
+    card: ShareCardData,
+  ) => Promise<'shared' | 'copied' | 'failed'>;
   /**
    * What the next shrine will unlock, by how many this run has already
    * claimed. The ledger belongs to the world, which lives outside the game —
@@ -533,6 +544,15 @@ export class Game {
    */
   #logoUrl: string | null = null;
 
+  /**
+   * The `ui.runEnd` slot's URL (2026-08-19, WORKPLAN Stage 2) — same
+   * contract as `#logoUrl` above, one slot later. `null` is the state the
+   * game ships in and the end screen's hero block's own CSS gradient
+   * covers it completely; set via `setRunEndArt` once art has loaded and
+   * confirmed the theme has one.
+   */
+  #runEndUrl: string | null = null;
+
   constructor(
     renderer: Renderer,
     elements: Elements,
@@ -583,6 +603,19 @@ export class Game {
    */
   setLogo(url: string): void {
     this.#logoUrl = url;
+    if (this.#state.phase === 'ended' && this.#endView === 'run') {
+      this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+    }
+  }
+
+  /**
+   * Wire the `ui.runEnd` slot (2026-08-19, WORKPLAN Stage 2) — same contract
+   * as `setLogo`, one slot later: `main.ts` calls this once art has loaded
+   * and confirmed the current theme has a file there. Supersedes the hero
+   * block's CSS gradient as its backdrop; never the numbers painted on it.
+   */
+  setRunEndArt(url: string): void {
+    this.#runEndUrl = url;
     if (this.#state.phase === 'ended' && this.#endView === 'run') {
       this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
     }
@@ -2548,9 +2581,13 @@ export class Game {
     const previousBest = this.#recordBest ?? 0;
     const scale = Math.max(biggest, previousBest);
 
+    // Enlarged 280×44 → 300×72 (2026-08-19, WORKPLAN Stage 2 screen pass):
+    // the arc is the run's own emotional centerpiece now, sitting inside
+    // the hero block rather than one line among several — the data it
+    // draws is unchanged, only the room it gets to say it in.
     const NS = 'http://www.w3.org/2000/svg';
-    const W = 280;
-    const H = 44;
+    const W = 300;
+    const H = 72;
     const BASE = H - 2;
     const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
@@ -2752,19 +2789,36 @@ export class Game {
     if (this.#hooks.daily !== undefined) {
       parts.push(line('end-run', this.#hooks.daily.label()));
     }
-    if (isNewBest) parts.push(line('end-headline', 'NEW BEST'));
-    parts.push(line('end-epitaph', hud.epitaph ?? ''));
-    parts.push(line('end-score', `${hud.points} pts`));
+
+    // The hero (2026-08-19, WORKPLAN Stage 2): the headline, the score and
+    // the arc, framed as one block instead of four lines loose on the
+    // page — this is the screen that gets screenshotted, and the arc is
+    // the picture worth composing around. `ui.runEnd` wired the same way
+    // `ui.logo` was: a warm CSS gradient panel by default, a PNG at the
+    // slot supersedes it as the backdrop those numbers sit ON, never in
+    // place of them — this stage moves paint, never numbers.
+    const hero = document.createElement('div');
+    hero.className = 'end-hero';
+    if (this.#runEndUrl !== null) {
+      hero.classList.add('art');
+      hero.style.setProperty('--run-end-art', `url("${this.#runEndUrl}")`);
+    }
+    if (isNewBest) hero.append(line('end-headline', 'NEW BEST'));
+    hero.append(line('end-epitaph', hud.epitaph ?? ''));
+    hero.append(line('end-score', `${hud.points} pts`));
 
     const arc = this.#arcChart();
-    if (arc !== null) parts.push(arc);
+    if (arc !== null) hero.append(arc);
     if (!isNewBest && this.#recordLines.length > 0) {
-      parts.push(line('end-best', this.#recordLines[0]!));
+      hero.append(line('end-best', this.#recordLines[0]!));
     }
+    parts.push(hero);
 
     // The story, drawn (`ideas/endless-world.md`): the board itself, exactly
-    // as the run left it. Tap opens nothing — it IS the screenshot bait, and
-    // the share flow stays text-only (see `share`, below) on purpose.
+    // as the run left it. Tap opens nothing — it IS the screenshot bait; the
+    // share CARD (2026-08-19, WORKPLAN Stage 2) draws its own picture of the
+    // run rather than this one, since a board portrait carries no numbers a
+    // chat thumbnail can read.
     if (this.#snapshot !== null) {
       const img = document.createElement('img');
       img.className = 'end-snapshot';
@@ -2782,8 +2836,30 @@ export class Game {
       share.className = 'end-link';
       share.textContent = 'SHARE THIS RUN';
       const send = this.#hooks.share;
+      // The share card's own facts (2026-08-19, WORKPLAN Stage 2): built
+      // from the SAME `hud`/`isNewBest`/`this.#runNumber` this very render
+      // just drew the screen from — one source, so the picture the shell
+      // sends can never contradict the screen it came off. The daily's own
+      // ladder line (`hooks.daily.label()`) supersedes RUN/TRY entirely —
+      // it already carries the number that line would have said — and its
+      // seed is a date nobody outside this device's book can use, so the
+      // footer stays empty rather than printing a number that means
+      // nothing (the existing text share drops it the same way).
+      const card: ShareCardData = {
+        points: hud.points,
+        reach: hud.depthValue,
+        arc: this.#state.log.harvests.map((h) => h.points),
+        headline: isNewBest ? 'NEW BEST' : null,
+        topLine:
+          this.#hooks.daily !== undefined
+            ? this.#hooks.daily.label()
+            : this.#runNumber !== null
+              ? `RUN ${this.#runNumber}`
+              : '',
+        footerLine: this.#hooks.daily !== undefined ? '' : `SEED ${this.#state.rootSeed}`,
+      };
       share.addEventListener('click', () => {
-        void send(this.#state).then((outcome) => {
+        void send(this.#state, card).then((outcome) => {
           // The share sheet is its own feedback; the clipboard is not. The
           // acknowledgement lives on the button because the button is what
           // the eye is already on.

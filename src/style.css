@@ -669,29 +669,62 @@ button.quiet {
   color: var(--ink-faint, #767d8d);
 }
 
+/* The hero (2026-08-19, WORKPLAN Stage 2 screen pass): the headline, the
+   score and the arc, framed as the screen's own centerpiece — this is what
+   gets screenshotted — rather than four lines loose on the page. `ui.runEnd`
+   is wired the same way `ui.logo` is: this gradient is the default paint,
+   and `--run-end-art` (set inline the moment a PNG lands at the slot)
+   supersedes it as the backdrop the numbers sit ON, never in place of them.
+   The `color-mix` wash is the same trick the shop's bought-row acknowledgement
+   already uses. */
+.end-hero {
+  max-width: 340px;
+  margin: 4px auto 6px;
+  padding: 14px 12px 10px;
+  border-radius: 10px;
+  background: radial-gradient(
+    ellipse at 50% 15%,
+    color-mix(in srgb, var(--accent, #d7b45a) 14%, transparent),
+    transparent 70%
+  );
+}
+
+.end-hero.art {
+  background-image: linear-gradient(rgba(10, 8, 6, 0.5), rgba(10, 8, 6, 0.74)), var(--run-end-art);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--panel-edge, #3a4150);
+}
+
 /* NEW BEST, as a headline — not a restatement beside the score, which read
-   as an answer to a question nobody had asked yet. */
+   as an answer to a question nobody had asked yet. Bumped a step
+   (2026-08-19, screen pass) now that it sits at the top of its own framed
+   block rather than loose among plain lines. */
 .end-headline {
   font-family: var(--font-display, inherit);
-  font-size: 1rem;
+  font-size: 1.125rem;
   letter-spacing: 0.12em;
   color: var(--accent, #d7b45a);
   text-transform: uppercase;
 }
 
+/* The loudest number on the screen — bumped a step (2026-08-19, screen pass)
+   for the same reason the arc grew: this is the picture people screenshot. */
 .end-score {
   font-family: var(--font-display, inherit);
-  font-size: 1.75rem;
+  font-size: 2rem;
   line-height: 1.1;
 }
 
-/* The run drawn as its harvests: one bar per pop, the biggest in accent.
-   A picture of Gate D's question — did the big number land near the end? */
+/* The run drawn as its harvests: one bar per pop, the biggest in accent. A
+   picture of Gate D's question — did the big number land near the end?
+   Enlarged 300×44 → 320×68 (2026-08-19, screen pass) to match the SVG's own
+   viewBox — the arc is the hero's centerpiece now, not one line among several. */
 .end-arc {
   display: block;
   width: 100%;
-  max-width: 300px;
-  height: 44px;
+  max-width: 320px;
+  height: 68px;
   margin: 2px auto 8px;
 }
 
@@ -1385,6 +1418,14 @@ button.help-tab[data-on='true'] {
   #stamp,
   .tile.hold:not([data-colour]) {
     color: var(--ink-dim, #8a91a0);
+  }
+
+  /* `ui.runEnd` art (2026-08-19, screen pass): the hero's own text is set
+     against the theme's ink tokens, which already pass — the photo behind
+     it is what a "more contrast" reader is asking to be sure of, so the
+     overlay darkens rather than the text changing colour. */
+  .end-hero.art {
+    background-image: linear-gradient(rgba(6, 5, 4, 0.78), rgba(6, 5, 4, 0.88)), var(--run-end-art);
   }
 }
 
