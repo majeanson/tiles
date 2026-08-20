@@ -55,6 +55,16 @@ export class AssetBook {
     return this.#textures.get(id) ?? null;
   }
 
+  /**
+   * Whether a slot has a file, for the DOM slots this class never turns into
+   * a Pixi texture request for (`ui.logo`, wired 2026-08-19 for the front
+   * door and end screen — plain `<img>`, not canvas). Reuses this class's
+   * own single manifest fetch rather than costing the caller a second one.
+   */
+  has(id: AssetId): boolean {
+    return this.#textures.has(id);
+  }
+
   get size(): number {
     return this.#textures.size;
   }

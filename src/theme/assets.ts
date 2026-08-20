@@ -13,7 +13,7 @@ import type { AssetId } from './tokens';
  * The Vite plugin in `vite.config.ts` scans that folder and writes the manifest,
  * so there is no list to keep in sync and no way to forget.
  *
- * `wired` is the honest column. Half of these slots describe mechanics the game
+ * `wired` is the honest column. A few of these slots describe mechanics the game
  * does not have — there is no fog, and a harvest pops every ripe tile at once
  * rather than chaining. They are recorded because the art direction assumes them
  * and losing that would cost more than an unused constant, but a slot that says
@@ -130,8 +130,11 @@ export const ASSET_SLOTS: readonly AssetSlot[] = [
     id: 'ui.logo',
     label: 'Title treatment',
     size: [876, 450],
-    note: 'Title treatment. The name renders as text in the help panel and footer; there is still no title screen for this to sit on.',
-    wired: false,
+    note:
+      'Title treatment. WIRED 2026-08-19 (WORKPLAN Stage 1): the front door and the end ' +
+      'screen both draw a mark + name lockup by default, and a PNG here supersedes it on ' +
+      'both surfaces at once — the same drop-target contract as every other slot.',
+    wired: true,
     tiling: false,
   },
   {

@@ -1,6 +1,4 @@
-import { COLD_SURVEY } from './themes/cold-survey';
 import { PLACEHOLDER } from './themes/placeholder';
-import { ROT_BLOOM } from './themes/rot-bloom';
 import { TORCHLIT } from './themes/torchlit';
 import type { Theme, ThemeId } from './tokens';
 
@@ -11,8 +9,17 @@ import type { Theme, ThemeId } from './tokens';
  * names a theme — the renderer takes one as an argument, the chrome reads its
  * tokens through CSS variables, and `main.ts` resolves the id at the edge exactly
  * the way it already resolves feature flags and the seed.
+ *
+ * **Two directions, not four (2026-08-19, `WORKPLAN.md` Stage 1).** `cold-survey`
+ * and `rot-bloom` were the two directions Gate E did not choose — carried since
+ * 2026-08-15 so the choice could be re-argued by looking rather than by memory,
+ * which it was, repeatedly, and the answer never moved. They are deleted, not
+ * archived: `git log` is the archive, and a losing direction sitting in the
+ * bundle forever is a maintenance tax on a decision that is not coming back.
+ * `PLACEHOLDER` stays — it is `resolveTheme`'s own fallback and the greyscale
+ * test's control, not a direction competing to be chosen.
  */
-export const THEMES: readonly Theme[] = [PLACEHOLDER, COLD_SURVEY, ROT_BLOOM, TORCHLIT];
+export const THEMES: readonly Theme[] = [PLACEHOLDER, TORCHLIT];
 
 /**
  * **Torchlit is the direction, chosen 2026-08-15 when Gate E opened.**

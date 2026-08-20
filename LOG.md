@@ -3943,3 +3943,99 @@ program ran in his chosen order, one commit per milestone:
 573 tests; `pnpm sim` byte-identical through the whole sweep (the reach
 unification proven pure, not assumed); lint, format, typecheck, build and
 both smoke specs green.
+
+---
+
+### Session 27 — Identity: the mark, the title, the goodbye
+
+**Question:** does ASHWAKE read as a game — not a variable name — on every
+surface that says its own name (tab, home screen, front door, end screen, a
+link unfurling in a chat)?
+
+`WORKPLAN.md`'s Stage 1 of the 2026-08-19 visual pipeline, green-lit the same
+day the last session closed. Scope: redraw the mark torch-flavoured and
+regenerate the icon set from one source; a drawn title treatment on the front
+door and end screen, with the `ui.logo` slot wired honestly; a real baked
+social-preview image replacing the icon as `og:image`; and the goodbye —
+`cold-survey` and `rot-bloom` leave the registry, which drops to two
+directions, `placeholder` and `torchlit`.
+
+**Done.**
+
+1. **The mark, redrawn.** The favicon read as a hex ring around a plain dot
+   since Session 16 — colour-correct for torchlit already, but saying
+   nothing "torch" beyond that. The centre is now a four-point ember spark,
+   which is not a new symbol: it is exactly `LANDMARK_GLYPH.find`'s `✦`,
+   the glyph the board already draws for "something worth finding," drawn
+   as a path instead of a character so it rasterises identically at every
+   size rather than depending on a font having the glyph. (First attempt
+   used quadratic curves pulled toward the centre for the pinch — every
+   renderer smoothed them into a plain rounded diamond, losing the point
+   entirely; rebuilt as a straight-edged eight-point path, which is
+   foolproof.) **Single source, closing a real drift risk**: the mark used
+   to be hand-kept in sync across `identity.ts`'s inline favicon and the two
+   files on disk — they happened to still agree, which is luck, not a
+   guarantee. `src/meta/mark.ts` is now the one place the shape is drawn;
+   `identity.ts` imports it for the inline data URI, and `scripts/icons.ts`
+   writes `public/icon.svg` and `public/icon-maskable.svg` from the same
+   module before rasterising the PNG set exactly as before. Manifest
+   `theme_color`/`background_color` were already `#0a0806` — torchlit's own
+   `board.background` — checked, not changed.
+2. **The title treatment, and `ui.logo` wired.** The front door already had
+   a mark-and-name pairing (Session 16); the end screen had only text. Both
+   now draw the same lockup — a small inline mark beside the tracked name —
+   and both check the SAME flag for whether a baked PNG supersedes it:
+   `AssetBook` (already fetching the manifest for the board's own textures)
+   grew a `has()` method so `main.ts` can ask about `ui.logo` without a
+   second network request, and `Game#setLogo` carries the answer to the end
+   screen. `ASSET_SLOTS`' `ui.logo` row flips to `wired: true` — the note
+   used to say "there is still no title screen for this to sit on," which
+   stopped being true the moment both surfaces started reading it — and
+   `/gallery` (which already renders every slot's state generically off
+   `wired`) needed no code change to start reporting it honestly.
+3. **A real social preview.** `scripts/social.ts`, a sibling to `icons.ts`:
+   one composed SVG at 1200×630 (og:image's own crop ratio, so an unfurl
+   does not clip it) — the mark, `ASHWAKE`, the tagline split on its own
+   sentence break, torchlit's actual `board.background`/`ink.ink`/
+   `ink.inkDim`/`ink.accent` tokens rather than a hand-copied palette — then
+   rasterised the same way `icons.ts` rasterises the mark. No CDN font: a
+   script that has to run offline cannot depend on one, so the title sits
+   in the system-serif fallback every theme's own stack already ends in.
+   `index.html`'s `og:image` now points at `og-image.png` instead of the
+   512px install icon stretched wide, gains `og:image:width`/`height`, and
+   `twitter:card` moved `summary` → `summary_large_image` with its own
+   `twitter:image` to match. `scripts/verify-deploy.ts` now HEADs
+   `/og-image.png` alongside the two icon SVGs — a missing share image
+   breaks nothing visible, which is exactly why it needs a check.
+4. **The goodbye.** `cold-survey.ts` and `rot-bloom.ts` are deleted, not
+   archived — `git log` is the archive, and two directions that lost the
+   choice repeatedly are not coming back to compete again. `THEMES` is
+   `[PLACEHOLDER, TORCHLIT]`. `resolveTheme('cold-survey')` and
+   `resolveTheme('rot-bloom')` were pinned to fall back to torchlit rather
+   than throw — a link naming either one is somebody's old bookmark now,
+   not a typo, and it has to still open a playable game. `apply.test.ts`
+   lost its fixture (`cold-survey` was the theme its webfont tests loaded
+   and swapped) and now uses `torchlit`, the registry's only webfont
+   direction — which cost one piece of coverage (swapping between two
+   _different_ font-bearing directions without stacking a link) that
+   simply has no second direction to exercise it against anymore; adding
+   and removing torchlit's own link is still fully covered. Two stale
+   documents corrected in place, not just here: `STATUS.md`'s "four themes
+   loaded, placeholder still the default" bullet (true through Session 14,
+   stale the day Gate E opened) and `FOLLOWUP.md`'s "`?theme=cold-survey` /
+   `?theme=rot-bloom` to compare on the phone" line, which named two doors
+   that no longer exist.
+
+**Verified:** 550 tests (was 573 — losing two directions' parametrized suites
+costs 24 tests exactly: 12 per-theme assertions × 2 themes, plus one new
+fallback test), typecheck/lint/format clean, both Playwright smoke specs
+green, `pnpm sim` byte-identical by stash-and-rerun (nothing here touches
+`engine/` or `content/`). `pnpm build` produces `dist/og-image.png` and the
+regenerated icon set alongside the usual bundle.
+
+**Left for Marc's eyes, on the phone**, per `WORKPLAN.md`'s own standing
+constraint — this is shipped-and-wired, not judged: does the ember spark
+read at a glance, does the front-door/end-screen lockup feel like a title
+rather than a debug label, and does the social card look right in an actual
+unfurl (iMessage/Discord/Slack all crop and compress differently than a
+raw PNG view does).

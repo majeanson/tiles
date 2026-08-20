@@ -40,7 +40,7 @@ import {
 import type { Renderer } from '@render/Renderer';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { COLOUR_MARK, type Theme } from '@theme/tokens';
-import { NAME, TAGLINE } from '@meta/identity';
+import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
 import { renderContext, toBoardView, toHudView, type HudView } from './view';
 
 /**
@@ -522,6 +522,17 @@ export class Game {
   #eventAction: HTMLButtonElement | null = null;
   #eventActionRun: (() => void) | null = null;
 
+  /**
+   * The `ui.logo` slot's URL, once art has loaded and confirmed the theme
+   * has one (2026-08-19, WORKPLAN Stage 1) — `null` is the state the game
+   * ships in and the end screen's default DRAWN treatment (mark + name)
+   * covers it completely. Set via `setLogo`, well after `start()`: art
+   * loads after the first playable frame (`main.ts`'s own rule), and a run
+   * ending before that fetch resolves is not a real sequence to design for,
+   * but `setLogo` re-renders anyway if it somehow happened.
+   */
+  #logoUrl: string | null = null;
+
   constructor(
     renderer: Renderer,
     elements: Elements,
@@ -561,6 +572,20 @@ export class Game {
 
   get state(): GameState {
     return this.#state;
+  }
+
+  /**
+   * Wire the `ui.logo` slot (2026-08-19, WORKPLAN Stage 1). `main.ts` calls
+   * this once art has loaded and confirmed the current theme has a file
+   * there — `null` never arrives, since the default is simply never calling
+   * this at all. Re-renders the end screen if a run is already sitting on
+   * it, on the off chance art resolved unusually late.
+   */
+  setLogo(url: string): void {
+    this.#logoUrl = url;
+    if (this.#state.phase === 'ended' && this.#endView === 'run') {
+      this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
+    }
   }
 
   start(): void {
@@ -2580,6 +2605,37 @@ export class Game {
    * screen that owes the player the arithmetic behind the number they only
    * just saw for the first time.
    */
+  /**
+   * The default title treatment (2026-08-19, WORKPLAN Stage 1): the mark
+   * beside the name, the same lockup the front door draws in markup — built
+   * here in JS because the end screen has no static markup of its own to
+   * hang an `<img>` on. Superseded whole by `#titleImage` the moment
+   * `ui.logo` is wired for the running theme.
+   */
+  #drawnTitle(cls: string): HTMLElement {
+    const wrap = document.createElement('p');
+    wrap.className = cls;
+    const mark = document.createElement('img');
+    mark.className = 'title-mark';
+    mark.src = ICON_DATA_URI;
+    mark.alt = '';
+    mark.width = 16;
+    mark.height = 16;
+    wrap.append(mark, document.createTextNode(NAME));
+    return wrap;
+  }
+
+  /** `ui.logo`, wired: the baked lockup replaces `#drawnTitle` entirely. */
+  #titleImage(url: string): HTMLImageElement {
+    const img = document.createElement('img');
+    img.className = 'end-title-img';
+    img.src = url;
+    img.alt = NAME;
+    img.width = 876;
+    img.height = 450;
+    return img;
+  }
+
   #renderEnd(hud: HudView): void {
     if (this.#recordLines === null) {
       this.#recordLines = [];
@@ -2676,7 +2732,12 @@ export class Game {
 
     // The game says its own name here, because this is the screen that gets
     // screenshotted and shared — a picture of a run should say whose run.
-    const parts: Element[] = [line('end-title', NAME)];
+    // `ui.logo` (2026-08-19) supersedes the text: a PNG at the slot replaces
+    // the drawn mark-and-name treatment with the baked lockup, same as every
+    // other asset slot's fill-vs-asset precedence.
+    const parts: Element[] = [
+      this.#logoUrl === null ? this.#drawnTitle('end-title') : this.#titleImage(this.#logoUrl),
+    ];
     if (this.#runNumber !== null) {
       parts.push(
         line(

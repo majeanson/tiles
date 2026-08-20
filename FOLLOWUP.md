@@ -64,8 +64,12 @@ shrines and finds are their own progression. Not a bug to fix.
 ## 4. Standing decisions that remain one line to reverse
 
 - **The name: ASHWAKE** (`src/meta/identity.ts`).
-- **The art direction: torchlit** (`DEFAULT_THEME_ID` in `src/theme/index.ts`;
-  `?theme=cold-survey` / `?theme=rot-bloom` to compare on the phone).
+- **The art direction: torchlit** (`DEFAULT_THEME_ID` in `src/theme/index.ts`).
+  Correction, 2026-08-19: this used to say `?theme=cold-survey` /
+  `?theme=rot-bloom` compared it on the phone — both directions are deleted
+  (WORKPLAN Stage 1's goodbye; the registry is `placeholder` + `torchlit`
+  now), so there is nothing left to compare against. The decision still
+  reverses in one line if it ever needs to.
 - **The points scale.** Good runs score tens of thousands; one constant
   divides it if you ever want human-sized numbers.
 

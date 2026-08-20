@@ -18,6 +18,8 @@
  * be overruled by the person whose game it is.
  */
 
+import { MARK_SVG } from './mark';
+
 export const NAME = 'Ashwake';
 
 /**
@@ -30,15 +32,12 @@ export const NAME = 'Ashwake';
 export const TAGLINE = 'An expedition into a dark plane. Place, ripen, pop, and push on.';
 
 /**
- * The mark: a hex with a spark in it, drawn as an inline SVG data URI so it
- * costs no request and cannot 404. Two colours only — the torch and the dark
- * — because a favicon is 16 pixels and anything else is mud at that size.
+ * The mark: a hex with an ember spark in it, drawn as an inline SVG data URI
+ * so it costs no request and cannot 404. The shape lives in `./mark.ts`,
+ * which is also what `scripts/icons.ts` writes to `public/icon.svg` and
+ * rasterises from — one source, so the favicon in this data URI and the
+ * install icons on disk cannot drift apart.
  */
-export const ICON_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
-  '<rect width="64" height="64" rx="10" fill="#0a0806"/>' +
-  '<path d="M32 10 54 22v20L32 54 10 42V22z" fill="none" stroke="#c79a4b" stroke-width="4"/>' +
-  '<circle cx="32" cy="32" r="7" fill="#f7e6be"/>' +
-  '</svg>';
+export const ICON_SVG = MARK_SVG;
 
 export const ICON_DATA_URI = `data:image/svg+xml,${encodeURIComponent(ICON_SVG)}`;

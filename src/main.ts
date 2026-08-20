@@ -60,7 +60,7 @@ import {
 import { AssetBook } from '@render/assets';
 import { PixiRenderer } from '@render/PixiRenderer';
 import { applyTheme } from '@theme/apply';
-import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
+import { assetPath, DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
 import type { Orientation, Theme } from '@theme/tokens';
 import type { GameState } from '@engine/state';
 import { Game, type Elements, type GameHooks } from '@ui/game';
@@ -1385,8 +1385,10 @@ async function main(): Promise<void> {
   // cannot tab into a board they cannot see yet; BEGIN lifts both at once.
   const frontDoor = required('front-door');
   const gameShell = required<HTMLElement>('game-shell');
-  required<HTMLImageElement>('front-door-logo').src = ICON_DATA_URI;
-  required('front-door-name').textContent = NAME;
+  const frontDoorLogo = required<HTMLImageElement>('front-door-logo');
+  frontDoorLogo.src = ICON_DATA_URI;
+  const frontDoorName = required('front-door-name');
+  frontDoorName.textContent = NAME;
   required('front-door-tagline').textContent = TAGLINE;
 
   // RESET ALL: the one true wipe — run, world, shop, records, settings, the
@@ -1680,6 +1682,19 @@ async function main(): Promise<void> {
   void AssetBook.load(theme.id)
     .then((assets) => {
       if (assets.size > 0) renderer.useAssets(assets);
+
+      // `ui.logo` (2026-08-19, WORKPLAN Stage 1): a PNG at the slot
+      // supersedes the drawn mark-and-name treatment on the front door AND
+      // the end screen — one file, both surfaces, checked once here rather
+      // than costing either surface its own manifest fetch.
+      if (assets.has('ui.logo')) {
+        const url = assetPath(theme.id, 'ui.logo');
+        frontDoorLogo.src = url;
+        frontDoorLogo.alt = NAME;
+        frontDoorLogo.classList.add('lockup');
+        frontDoorName.hidden = true;
+        game.setLogo(url);
+      }
     })
     // A manifest that fails to fetch (flaky network, a hostile cache) must
     // not become an unhandled rejection — before 2026-08-19 that was one of

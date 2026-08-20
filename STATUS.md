@@ -276,10 +276,16 @@ milestone: M1.**
 - **`src/theme/` holds the whole visual surface as data.** A new enforced layer:
   `content <- theme <- render`, with `engine/` and `content/` forbidden from
   importing it. A theme describes how ROLES are painted, never what they mean, so
-  repainting the game cannot change it. Four are loaded — `placeholder` plus the
-  three handed-down directions — switchable with `?theme=`, and **the placeholder
-  is still the default, asserted by a test**. Gate E is shut; this is the slot a
-  direction goes in, not a direction chosen.
+  repainting the game cannot change it. **This bullet used to say four themes
+  were loaded and "the placeholder is still the default, asserted by a
+  test"** — true through Session 14, stale the moment Gate E opened the next
+  day and stale twice over now: **two directions are loaded**
+  (`placeholder`, `torchlit`; `cold-survey` and `rot-bloom` were deleted
+  2026-08-19, WORKPLAN Stage 1's goodbye — the registry never had more than
+  two losing directions to begin with, and neither is coming back), and
+  **torchlit is the default**, asserted by the very test this bullet cited.
+  Switchable with `?theme=`. Gate E is opened, not shut; see the gates table
+  below.
 - **Art is optional everywhere.** Every bitmap is a slot. Drop a PNG at
   `public/assets/<themeId>/<slotId>.png`, and a build-time scan writes the
   manifest the client reads; missing files are the normal case and cost neither a

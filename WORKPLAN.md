@@ -1,180 +1,140 @@
-# WORKPLAN — the 2026-08-18 pipeline
+# WORKPLAN — the 2026-08-19 visual pipeline
 
-Live tracker for the three-stage work pipeline Marc green-lit on 2026-08-18.
+Live tracker for the four-stage visual/identity pipeline Marc green-lit on
+2026-08-19 (option sets, this session). The previous pipeline (2026-08-18:
+correctness · UI/UX · new systems) is DONE and fully recorded in `LOG.md`'s
+addenda; its tracker text was retired with it.
+
 Whoever picks this up (any session, any agent): execute stages in order, one
 at a time — same working tree, so no parallel stages. Every stage: gates
 (`pnpm exec vitest run` · `pnpm typecheck` · `pnpm lint` · `pnpm format:check`
-· `pnpm sim` 0 stalled/0 capped), commit to main in the repo's voice, push,
-CI green, then mark it here and start the next.
+· `pnpm sim` byte-identical — this pipeline is visual, so the balance table
+must not move at all), commit to main in the repo's voice, push, CI green,
+then mark it here and start the next. Every stage writes its question in
+`LOG.md` before building and its account after.
 
-## Decisions of record (Marc, 2026-08-18, on option sets)
+**Standing constraints, all stages:** engine purity untouched (no DOM, no
+`Math.random`, no `Date`, no async in `src/engine/`) · no balance number
+outside `src/content/` · the greyscale test (`theme.test.ts`, CIE L*) stays
+green — darken something rather than relax the threshold · the reduced-motion
+contract holds (reduced motion gets its own quieter pop, never nothing) ·
+walls stay lifted clear of the fog (pinned) · final visual verdicts are
+Marc's, on the deployed site, on a phone, by looking — a stage "done" here
+means shipped-and-wired, not judged.
 
-- Find re-farm: **CLOSED** — the world remembers claimed finds like
-  territories; once per world, ever.
-- World mood (per-run tilt): **PARKED** — post-playtest.
-- Ground-feeds-draft (native ground biases the draw): **offered, not
-  chosen** — do not build unless he asks.
-- Where-you-wake (start at held territories): **prototype, harness-first** —
-  prove the distance multiplier cannot be beelined from a far spawn before
-  any UI exists.
+## Decisions of record (Marc, 2026-08-19, on option sets)
 
-## Stage 1 — correctness (STATUS: DONE, commit `1e09a89`)
+- **All four visual tracks green-lit**: torchlit art pass · end-screen share
+  pass · torchlit motion pass · identity surfaces.
+- **Art method: BOTH procedural deepening AND baked PNGs** — and free
+  pixel-art/textures may be REUSED where they genuinely fit torchlit.
+  License gate: CC0/public-domain only (e.g. Kenney, OpenGameArt CC0),
+  source and license recorded in `public/assets/README.md` and `LOG.md`.
+- **Share: screen + share image.** The end screen becomes screenshot-worthy
+  AND a canvas-rendered share card goes out as an image via the Web Share
+  API (files), with the existing text+link share as the fallback.
+- **Losing themes: DELETED.** `cold-survey` and `rot-bloom` leave the
+  registry and the bundle with a written goodbye in `LOG.md`. `placeholder`
+  stays — it is the fallback in `theme/index.ts` and the greyscale control.
+- **Identity: full treatment.** Mark redrawn torchlit-flavoured, icon set
+  regenerated, title treatment on the front door and end screen (wire
+  `ui.logo`), and a real social preview replacing the icon-as-og:image.
 
-Seam/bug fixes from the 2026-08-18 triple audit: the find-grant eaten by
-`#claimNote`'s early return · stale find-toast copy ("end screen" → THE
-SHOP) · hint line calling a shrine "a territory to claim" · the false
-"odds just rose" pop line (print real luck gained) · OPEN HAND × treasure
-collision (no treasure offer when holdSlots ≤ 0) · retire the no-op
-'treasure' shrine unlock · memoize the KEEN NOSE shimmer scan into
-RenderContext · fix `<= 0` guards vs undefined in world.ts finds + save
-fill for the eight new tuning keys · THIS BUILD/atlas/debug coverage of
-finds/perks · close the find re-farm (WorldMemory.finds) · STATUS.md
-checkpoint rewrite · CLAUDE.md flag-rule amendment · doc/test comment
-sweep · call or delete `startingPerk`.
+## Stage 1 — Identity & the goodbye (STATUS: NOT STARTED)
 
-All eighteen items landed in `1e09a89` ("stage 1: the audit closes — every
-claim counted, every find spent once"): 458 tests (was 451), typecheck/
-lint/format clean, `pnpm sim` byte-identical to the last balance sweep (0
-stalled, 0 capped, 200 seeds × 15 policies). Full account in `LOG.md`'s
-2026-08-18 addendum. Pushed; CI green on `main`.
+**Question:** does ASHWAKE read as a game — not a variable name — on every
+surface that says its own name (tab, home screen, front door, end screen,
+a link unfurling in a chat)?
 
-## Stage 2 — UI/UX (STATUS: DONE — `8e25a63` `091749c` `b2edce4` `478c6cb` `b50b38d`)
+1. **The mark, redrawn torchlit.** The current inline SVG mark becomes an
+   ember/torch-flavoured mark that survives 16px (favicon) to 512px
+   (og/install). Keep it geometric enough to bake — `scripts/icons.ts`
+   already generates the PNG set; extend it rather than hand-exporting.
+   Regenerate: `icon.svg`, `icon-maskable.svg`, the 180/192/512 PNGs,
+   maskable variants. Manifest `theme_color`/`background_color` checked
+   against torchlit's tokens.
+2. **Title treatment.** Front door NAME and the end screen header get a
+   drawn treatment (type + mark), and the `ui.logo` slot (876×450) is
+   WIRED: if a PNG lands at `public/assets/torchlit/ui.logo.png` it
+   supersedes the drawn treatment, same contract as every other slot.
+   `assets.ts`'s `wired` column and `/gallery`'s NO MECHANIC label must
+   stay honest.
+3. **A real social preview.** A baked 1200×630 og:image (mark, name,
+   tagline, torchlit ground) as a static file; `index.html`'s
+   `og:image`/twitter meta updated. Generated by script, not hand-made,
+   so it can be regenerated when the mark moves.
+4. **The goodbye.** `cold-survey.ts` and `rot-bloom.ts` deleted, registry
+   down to `placeholder` + `torchlit`, `?theme=` fallback behaviour tested
+   (a shared link naming a deleted theme must load torchlit, not throw),
+   written goodbye in `LOG.md` in the repo's voice, gallery and picker
+   reflect the two-theme registry.
 
-The audit's big five, in four commits, plus every small win named in the
-brief. Full account in `LOG.md`'s 2026-08-18 addendum; the short version:
+## Stage 2 — The end screen earns the screenshot (STATUS: NOT STARTED)
 
-1. **Front door** (`8e25a63`): NAME + TAGLINE + BEGIN (RESUME — PLACEMENT N
-   when a run is saved) + quiet HOW TO PLAY over #app, painted as static
-   markup so it costs the first frame nothing. `Game#openHelp` made public
-   so the door opens the SAME manual the in-game ? does. `#help-panel`
-   moved to `position: fixed` and OUT of `#game-shell` (which starts
-   `inert`) — an inert ancestor makes every descendant unfocusable
-   regardless of z-index, so the manual had to sit outside it to still open
-   from the door.
-2. **End screen as payout** (`091749c`): score broken into POPS +
-   REACH×`endReachBonus` + CLAIMS×`endClaimBonus` → TOTAL, read off the
-   exact fields `endingBonus` computed with; CARRIED OUT strip (relics,
-   a perk found this run, territories held and world-known via a new
-   `worldStats` hook); facts as a fixed 2×3 grid, LUCK dropped; NEW BEST a
-   headline, else "N short of best"; RUN N printed; shop door demoted to a
-   payout row; SHARE moved beside the arc; NEW RUN the only button-shaped
-   control. The POP-button points leak fixed here too, picked honestly per
-   the brief: tiles + the pocket's DEPTH multiplier when `hidePoints` is on,
-   never the points figure the setting exists to hide.
-3. **Bottom-third reclaim + camera** (`b2edce4`): footer stamp behind
-   `?ff=debug.overlay` (THIS BUILD states the sha unconditionally instead —
-   the no-staleness contract); colour chips folded into a `contextmenu`
-   long-press on draft cards (the ONE native event a touch hold, a
-   right-click AND a keyboard's context-menu key all fire — free keyboard
-   parity, no hand-rolled timer); the STEER purchase stays in the purse,
-   decided and documented (a priced spend belongs where every other price
-   already lives); hint line cut to one clause, the signpost moved to a
-   toast-on-change, odds moved to the purse toggle. Camera: FIT ⇄ HERE
-   replaces four buttons with one toggle in the bottom-right thumb arc, a
-   new `centerOn` on `Renderer` backs both HERE and pan-to-pocket-before-
-   popping. The frontier fix: `PixiRenderer.draw()` held the fit still past
-   FIT (only a resize or returning to FIT recomputes it), which is what
-   stops the world sliding under a zoomed camera.
-4. **Feedback tiers + words** (`478c6cb`): a new event-card dialog (held,
-   centred, dismissed on tap/Escape/button) for find/shrine/territory —
-   `#claimNote` returns `{ text, eventWorthy }` now, ranked exactly as
-   before; cache/site stay the one-line toast. A one-beat ripen pulse
-   (quieter/shorter than the pop glow, reusing its texture) on any tile
-   that just became ripe. One voice: every player-facing "take"/"cash"/
-   "burn" became POP/SACRIFICE, including the game's own TAGLINE.
-5. **The last four small wins** (`b50b38d`, on Marc's "finish them now"):
-   REACH · best N on the LIVE stat row, threaded through `worldStats`
-   (which already carried `farthestReach`) — no prior best prints plain
-   REACH N. SETTINGS reordered: player things first (YOUR WORLD's atlas,
-   now a `.facts-grid` in the stat row's own language, plus ABANDON), the
-   two flags folded under a DEVELOPER `<details>` (the manual's own NUMBERS
-   pattern, restated). The theme picker relocated into that fold, inside
-   the `ui.themePicker` row's own area — `#themes` is declared once in
-   `index.html` and physically reparented into `#help-meta` the moment
-   SETTINGS first paints, before the first real frame. The gallery linked
-   beside it, and its own "Play in X" links stopped force-appending
-   `&ff=ui.themePicker` (that flag STICKS — a plain visit used to turn the
-   picker on for the device permanently); a second, explicit "with the
-   picker on" link carries it instead.
+**Question:** would a stranger post this screen in a chat unprompted — and
+does the share image say "beat my run" without a caption?
 
-**Adapted from the brief, decided and written down:**
+1. **Screen pass.** Hierarchy, type scale and the arc as a visual moment
+   (the sparkline is already the share line's language — give the screen
+   itself the arc drawn properly). Wire `ui.runEnd` (876×330) the same way
+   Stage 1 wires `ui.logo` — it is the most-seen image slot in the game
+   and reads NO MECHANIC today. Keep the payout arithmetic exactly as
+   built (POPS + REACH×bonus + CLAIMS×bonus) — this stage moves paint,
+   never numbers.
+2. **The share card.** A canvas-rendered image (score, arc sparkline,
+   reach, run number, the mark, the seed) shared via Web Share API
+   `files` where `navigator.canShare({ files })` says yes; the existing
+   text+seed-link share is the fallback path, not deleted. Desktop
+   fallback: download/copy. The DAILY's share keeps its own sparkline
+   text line and gains the same card with its date and ladder line.
+3. Reduced-data honesty: the card renders from the same `worldStats` and
+   end-screen fields the screen reads — one source, so the picture cannot
+   contradict the screen.
 
-- NEW BEST's "event card" treatment IS the end screen's own held, centred
-  headline (item 2) — a second transient card layered on top of the very
-  screen already announcing it would have been redundant chrome, not
-  better feedback.
+## Stage 3 — The torchlit art pass (STATUS: NOT STARTED)
 
-Tests: 458 → 474 (net +16). No palette/art changes; engine untouched;
-`pnpm sim` byte-identical to Stage 1's table at every commit.
+**Question:** at arm's length, on a phone, in daylight — do the four
+colours, walls, stone and the pop read at a glance as one torchlit world
+rather than four tinted hexes on black?
 
-## Stage 3 — new systems (STATUS: DONE — `60003a8` `9d97d91` `7f54538` `42c9ec8`)
+1. **Procedural deepening first** (it is the floor everything falls back
+   to): richer per-colour surfaces in the baker (`render/`), torchlit's
+   light-pool and fog dim tuned as tokens, EMBER/ASH/MOSS/TIDE texture
+   depth beyond the four line patterns, `terrain.stone` finally reading
+   as SPENT (the aftermath of a pop, not furniture) — it is the most
+   common cell in the back half of a run and has never had a look.
+2. **Baked PNGs into the eight wired slots** via a new `scripts/` baker
+   (Node, offline, deterministic — same spirit as `scripts/icons.ts`):
+   `terrain.green/yellow/red/blue/wall/stone/ghost` at 414×358 flat-top,
+   `fx.pop` at 256×256. Free CC0 textures may seed the baker's material
+   layers where they fit torchlit; provenance recorded per the decision
+   of record. A slot the baker can't make GOOD stays empty on purpose —
+   empty beats bad, the procedural floor is the game.
+3. **Guardrails:** greyscale L* separation test green under the final
+   surfaces · `/gallery` is the workbench and must show LOADED honestly ·
+   DPR cap 2 and the WebGL context-loss path untouched · old saves and
+   `pnpm sim` byte-identical (art is paint, not rules).
 
-Each with a written question in LOG and a harness sweep before shipping.
-Full account in `LOG.md`'s 2026-08-18 addendum; the short version:
+## Stage 4 — The torchlit motion pass (STATUS: NOT STARTED)
 
-1. **Moments pack** (`60003a8`, all XS, zero balance change): NEW GROUND
-   toast once per run when reach passes world.farthestReach · pocket bar
-   "POCKET 14/20" on the priced pocket · first-unique explainer fires
-   when a unique ENTERS THE HAND (draw or forge) · shrine receipt on
-   next run's first frame · territory why-line (`startingPerk`, joined
-   with the receipt when both fire) · end-screen what-still-glows ·
-   shop door names the next rung ("STEADY PACE in 12"). 485 tests (+11).
-2. **Deep water** (`9d97d91`): destination reward MIX tilts with block
-   distance — caches thin toward `cacheShareFar` past
-   `deepWaterRampBlocks`, site/territory/shrine thicken in their own
-   near-water ratio. Positions pinned unchanged; old saves pinned
-   unchanged (`deepWaterRampBlocks > 0` gates the whole cluster). Swept
-   at 40 seeds, bank20/spender/seeker/rush/farm: 0 stalled/0 capped,
-   medians unmoved, best-of-batch depths rose (farm 13618 → 19346). 489
-   tests (+4).
-3. **The survey and TITHE** (`7f54538`): five world-scale goals (reach
-   20 · 4 territories · 40% known · every shrine · every perk), each
-   paying relics once per world, ledger in SETTINGS' YOUR WORLD; and a
-   fourth luck price, TITHE, converting the whole purse to relics at 25%
-   (better than death's 10%), floored at `titheMin` so a token tithe
-   cannot be a trap. 509 tests (+20).
-4. **Where-you-wake prototype** (`42c9ec8`, harness only): **VERDICT —
-   FAIL.** A far spawn CAN exploit spawn geometry for a free score
-   advantage — not through `distanceMultiplierAt`/`harvestMultiplier`
-   (both fixed, both hold), but through `tallyWorth`'s BLUE TIDE bonus
-   (hardcoded true-origin distance, never threaded through the new
-   `homeOf(state)`) and, more softly, deep water's and the destination
-   density ramp's own block distance, both still keyed to true origin
-   rather than the wake hex. bank20's median points climbed 3338 (origin)
-   → 15564 (dist30) at 40 seeds; disabling blue tide alone collapsed the
-   gap to ordinary seed variance. Full table and the isolating sweeps in
-   LOG.md. The engine support (`newRun`'s `wakeAt`, `rules.ts`'s
-   `homeOf`) stays exactly as harness-only as it arrived — unreachable
-   from any UI, off by default — kept only so the negative result can be
-   re-run. 515 tests (+6).
+**Question:** does motion in torchlit's register (light responding, embers
+settling) make pop/claim/arrival feel MORE like one world — or does it read
+as noise on top of the feel pass's one motion language?
 
-**Pipeline complete.** Stage 1 (correctness) → Stage 2 (UI/UX) → Stage 3
-(new systems), one stage at a time on the same tree, as Marc green-lit on
-2026-08-18. 515 tests total (was 458 before Stage 1). Every gate green at
-every commit; `pnpm sim` checked and reported at each.
+1. The pop as torchlit wants it: the burst reads as flame/ember, the
+   light-pool answers it. The claim and the arrival (already on one
+   motion language from the feel pass) get the same register.
+2. Motion stays THEME DATA where it can (`popLift` already is — extend
+   that vocabulary), render-side where it must; nothing in `engine/`.
+3. Reduced-motion keeps its own quieter pop (the shipped contract), and
+   the feel pass's press-acknowledgement timing is not regressed.
+4. Marc has NOT yet judged the shipped feel pass with thumbs — this stage
+   builds on it, so if his verdict lands before the stage starts, fold it
+   in; if after, the stage's own question absorbs it.
 
 ## After the pipeline
 
-Phone playtest (FOLLOWUP.md §1) · stranger test · v1.0 tag. Sound and
-daily seed are designed in ideas/, unbuilt by choice. Where-you-wake stays
-parked as a failed prototype (see Stage 3 item 4) unless a future session
-wants to take on auditing every distance-based rule for an implicit
-ORIGIN — a bigger job than this one.
-
-## Fresh-eyes review (2026-08-18/19, STATUS: DONE)
-
-An uninvolved reviewer walked the whole pipeline for cross-stage seams —
-the class of bug that bit an earlier, parallel-agent session on this same
-repo. Five commits (`bc2927f` `d70eadd` `4b2404b` `e49b44d` `910c384`):
-two balance numbers relocated into `src/content` that the pipeline itself
-had left outside it, one backwards TITHE-rate copy claim fixed in two
-places, `STATUS.md`/`FOLLOWUP.md` caught up to what Stage 2 and 3
-actually shipped, a regression in the review's own first commit (an old
-save's deep-water near-mix falling through to "shrine" on decode) caught
-and fixed the same session, and one dead field (`firstVisit`, orphaned by
-Stage 2's front door) deleted. One pre-existing, low-severity SETTINGS
-staleness window recorded but left alone — not a pipeline regression, a
-deliberate older trade-off. Full account in `LOG.md`'s addendum. 518
-tests, every gate green, `pnpm sim` unmoved, CI green, `verify-deploy`
-confirmed on
-`main`.
+Marc's phone pass over all four stages (visual verdicts are his, by
+looking) · the RESET TEACHING first-minute pass · the stranger test ·
+v1.0. The daily/crossing/camps questions from `FOLLOWUP.md` §5 ride along
+on the same phone sessions.

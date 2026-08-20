@@ -27,8 +27,14 @@
       content="An expedition into a dark plane. Place, ripen, pop, and push on."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://tiles.marcportal.com/icon-512.png" />
-    <meta name="twitter:card" content="summary" />
+    <!-- A real baked share card (scripts/social.ts), not the install icon
+         stretched wide — 1200x630 is the aspect every unfurl (Discord,
+         Slack, Twitter) crops to, so this one does not get cropped. -->
+    <meta property="og:image" content="https://tiles.marcportal.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://tiles.marcportal.com/og-image.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <!-- PNG, not SVG: iOS ignores SVG here and falls back to a screenshot. -->

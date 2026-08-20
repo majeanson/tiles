@@ -1,20 +1,32 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import sharp from 'sharp';
+import { MARK_SVG, MARK_SVG_MASKABLE } from '../src/meta/mark';
 
 /**
- * Rasterise the icon SVGs into the PNGs the platforms actually honour.
+ * Write the icon SVGs from their one source, then rasterise the PNGs the
+ * platforms actually honour.
+ *
+ * The mark itself lives in `src/meta/mark.ts` — the same module the running
+ * game imports for the inline favicon and the front-door/end-screen
+ * treatment (`src/meta/identity.ts`) — so this script no longer hand-keeps a
+ * second copy of the shape in sync; it writes `public/icon.svg` and
+ * `public/icon-maskable.svg` from that module and rasterises from what it
+ * just wrote. Run after editing `mark.ts`, and commit what it writes:
+ *
+ *   pnpm exec tsx scripts/icons.ts
  *
  * iOS ignores SVG for `apple-touch-icon` entirely — a home-screen install of
  * the PWA got a page screenshot instead of the mark, on the one device class
  * this game targets (found 2026-08-18). Android's install banner likewise
- * wants raster 192/512. The SVGs stay the source of truth; run this after
- * editing either one, and commit what it writes:
- *
- *   pnpm exec tsx scripts/icons.ts
+ * wants raster 192/512.
  */
 
 const at = (p: string): string => fileURLToPath(new URL(`../public/${p}`, import.meta.url));
+
+writeFileSync(at('icon.svg'), `${MARK_SVG}\n`);
+writeFileSync(at('icon-maskable.svg'), `${MARK_SVG_MASKABLE}\n`);
+console.log('icon.svg + icon-maskable.svg written from src/meta/mark.ts');
 
 async function rasterise(source: string, size: number, out: string): Promise<void> {
   // The SVG viewBox is 64px; density scales the vector up so the PNG is

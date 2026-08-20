@@ -115,9 +115,18 @@ body {
 }
 
 #front-door-logo {
-  width: 56px;
-  height: 56px;
-  margin-bottom: 2px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+}
+
+/* `ui.logo`, wired (2026-08-19): the baked lockup supersedes the icon AND
+   the name text beside it (`#front-door-name` is hidden the same moment
+   this class lands), so it gets the width the wordmark used to need. */
+#front-door-logo.lockup {
+  width: min(78vw, 320px);
+  height: auto;
+  margin-bottom: 10px;
 }
 
 #front-door-name {
@@ -622,13 +631,35 @@ button.quiet {
   margin: 0 0 6px;
 }
 
-/* The game's name, saying itself on the screen people screenshot. */
+/* The game's name, saying itself on the screen people screenshot — mark
+   beside type, the drawn title treatment (2026-08-19, WORKPLAN Stage 1).
+   Superseded whole by `.end-title-img` the moment `ui.logo` is wired. */
 .end-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-family: var(--font-display, inherit);
   font-size: 0.75rem;
   letter-spacing: 0.32em;
   color: var(--accent, #d7b45a);
   text-transform: uppercase;
+}
+
+.title-mark {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+/* `ui.logo`, wired: the baked lockup, scaled to the same width the run's own
+   snapshot uses so the end screen keeps one column of images. */
+.end-title-img {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 0 auto 6px;
 }
 
 /* RUN N: `book.runs`, printed rather than carried and never shown. */

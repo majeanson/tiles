@@ -35,9 +35,8 @@ const value = (s: Surface): number =>
  *
  * 0.05 is five points of perceptual lightness between neighbouring terrains —
  * about the smallest step that survives a phone at half brightness, held at arm's
- * length, outdoors. It is a floor rather than a target: Cold Survey's tightest
- * pair sits at 0.072 and its widest at 0.273, which is what a healthy direction
- * looks like.
+ * length, outdoors. It is a floor rather than a target: a healthy direction's
+ * gaps run well past it, not up against it.
  *
  * This number found four real bugs the first time it ran, one of them in the
  * palette that had already shipped. Do not relax it to make a direction pass —
@@ -94,6 +93,15 @@ describe('the registry', () => {
     expect(resolveTheme('').id).toBe(DEFAULT_THEME_ID);
   });
 
+  // The goodbye (2026-08-19, WORKPLAN Stage 1): cold-survey and rot-bloom
+  // left the registry. A `?theme=` link naming either one is not a typo —
+  // it is someone's old bookmark or a link shared before today — and it
+  // must still open a playable game rather than a blank one.
+  it('falls back for a direction deleted since the link was shared', () => {
+    expect(resolveTheme('cold-survey').id).toBe(DEFAULT_THEME_ID);
+    expect(resolveTheme('rot-bloom').id).toBe(DEFAULT_THEME_ID);
+  });
+
   it('has no duplicate ids', () => {
     const ids = THEMES.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -101,7 +109,10 @@ describe('the registry', () => {
 
   it('reads a theme off the query string', () => {
     expect(parseThemeId('?theme=torchlit')).toBe('torchlit');
-    expect(parseThemeId('?seed=3&theme=rot-bloom&ff=x')).toBe('rot-bloom');
+    // parseThemeId is a dumb string extractor — it does not know or care
+    // whether the id it read still exists in the registry. That is
+    // `resolveTheme`'s job, checked above.
+    expect(parseThemeId('?seed=3&theme=some-old-link&ff=x')).toBe('some-old-link');
     expect(parseThemeId('?seed=3')).toBeNull();
     expect(parseThemeId('?theme=')).toBeNull();
     expect(parseThemeId('')).toBeNull();

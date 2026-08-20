@@ -10,7 +10,7 @@ import type { Voice } from '@theme/tokens';
  * the first user-gesture-driven call, which is what autoplay policy demands
  * anyway), one oscillator + gain envelope per note, everything voiced by the
  * THEME's own numbers — sound is art direction, and torchlit does not sound
- * like cold-survey. Nothing here throws past its own walls: a browser with
+ * like the placeholder. Nothing here throws past its own walls: a browser with
  * no Web Audio, or an iOS context that refuses to resume, degrades to the
  * silence the game shipped with.
  */
