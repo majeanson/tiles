@@ -40,7 +40,7 @@ means shipped-and-wired, not judged.
   regenerated, title treatment on the front door and end screen (wire
   `ui.logo`), and a real social preview replacing the icon-as-og:image.
 
-## Stage 1 — Identity & the goodbye (STATUS: NOT STARTED)
+## Stage 1 — Identity & the goodbye (STATUS: DONE, commit `f9845bd`)
 
 **Question:** does ASHWAKE read as a game — not a variable name — on every
 surface that says its own name (tab, home screen, front door, end screen,
