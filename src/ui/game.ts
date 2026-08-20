@@ -510,13 +510,18 @@ export class Game {
     hooks: GameHooks = {},
     claimed: readonly HexKey[] = [],
     claimedFinds: readonly HexKey[] = [],
+    // Camps (2026-08-19): where this run wakes. Null — every run before
+    // today, and every run not begun from the front door's camp button — is
+    // the world origin, exactly as always. A resumed run ignores it: the
+    // save carries its own.
+    wakeAt: HexKey | null = null,
   ) {
     this.#renderer = renderer;
     this.#el = elements;
     this.#theme = theme;
     this.#hooks = hooks;
     this.#helpOpener = elements.help;
-    this.#state = hooks.resume ?? newRun(seed, tuning, claimed, claimedFinds);
+    this.#state = hooks.resume ?? newRun(seed, tuning, claimed, claimedFinds, wakeAt);
     // The world's own best as of right now — before this run's own actions
     // can move it. A resumed run may already have passed it in an earlier
     // session, which is exactly why NEW GROUND must not fire twice for the
@@ -2038,6 +2043,9 @@ export class Game {
       } else if (
         !this.#newGroundShown &&
         this.#hooks.replay !== true &&
+        // A camp run measures reach from the camp; the world's farthest is
+        // measured from the origin. Comparing them is not a moment.
+        next.wakeAt === null &&
         this.#reachOf(next) > this.#startFarthestReach
       ) {
         this.#newGroundShown = true;
@@ -3008,8 +3016,11 @@ export class Game {
     // shows it changing live, not merely at the end of the story. No prior
     // best (a fresh world, or the hook absent) prints plain REACH N.
     const world = this.#hooks.worldStats?.();
+    // "· best N" is the world's origin-anchored farthest; a camp run's own
+    // reach is camp-anchored, so the rider comes off rather than comparing
+    // two different rulers on one line.
     const reachValue =
-      world !== undefined && world.farthestReach > 0
+      world !== undefined && world.farthestReach > 0 && this.#state.wakeAt === null
         ? `${hud.depthValue} · best ${world.farthestReach}`
         : String(hud.depthValue);
 

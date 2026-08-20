@@ -87,6 +87,7 @@ function build(
   tuning?: Tuning,
   hooks?: GameHooks,
   claimed: readonly HexKey[] = [],
+  wakeAt: HexKey | null = null,
 ): { game: Game; renderer: StubRenderer; el: Elements } {
   document.body.innerHTML = `
     <header id="stats"></header>
@@ -151,7 +152,11 @@ function build(
   };
 
   const renderer = new StubRenderer();
-  return { game: new Game(renderer, el, seed, undefined, tuning, hooks, claimed), renderer, el };
+  return {
+    game: new Game(renderer, el, seed, undefined, tuning, hooks, claimed, [], wakeAt),
+    renderer,
+    el,
+  };
 }
 
 /** A pointer event with a stable id, so gestures can be composed by hand. */
@@ -2503,5 +2508,46 @@ describe('fog memory, and the divining rod it must not be (2026-08-19)', () => {
     seen.renderer.nextHit = far;
     tap(seen.el.board);
     expect(seen.el.toast.textContent).toMatch(/CACHE|SITE|SHRINE|TERRITORY/);
+  });
+});
+
+describe('camps (waypoints, 2026-08-19)', () => {
+  const T: Tuning = {
+    ...TUNING,
+    destinationChance: 0,
+    magicChance: 0,
+    uniqueChance: 0,
+    worldWalls: 0,
+  };
+
+  it('wakes at the camp, measures reach from it, and retires the origin-anchored rider', () => {
+    const camp = key(20, 0);
+    const ctx = build(
+      1,
+      T,
+      {
+        worldStats: () => ({ territories: 1, knownPct: 0.1, farthestReach: 30 }),
+      },
+      [],
+      camp,
+    );
+    ctx.game.start();
+
+    // The run grew its seed tile at the camp, not at the origin.
+    expect(ctx.game.state.cells[camp]).toMatchObject({ kind: 'tile' });
+    expect(ctx.game.state.cells[key(0, 0)]).toBeUndefined();
+
+    // REACH reads plain — comparing a camp-anchored reach to the world's
+    // origin-anchored best would be two rulers on one line.
+    const reach = ctx.el.stats.querySelector('[data-stat="map"] .stat-value')?.textContent ?? '';
+    expect(reach).toBe('0');
+    expect(reach).not.toContain('best');
+
+    // One placement out from the camp: reach 1, and NEW GROUND stays quiet —
+    // a camp run cannot out-reach the world by standing where it woke.
+    ctx.renderer.nextHit = key(21, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.stats.querySelector('[data-stat="map"] .stat-value')?.textContent).toBe('1');
+    expect(ctx.el.toast.textContent ?? '').not.toMatch(/NEW GROUND/);
   });
 });

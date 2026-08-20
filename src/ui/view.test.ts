@@ -460,3 +460,19 @@ describe('the shimmer', () => {
   const distanceTo = (a: { q: number; r: number }, b: { q: number; r: number }): number =>
     Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.q + a.r - b.q - b.r));
 });
+
+describe('beacons around a camp (waypoints, 2026-08-19)', () => {
+  it('draws the beacon disc around HOME, wherever the run woke', () => {
+    // A camp far from the origin: every beacon must sit within the horizon
+    // of the CAMP — the old scan was a disc around the world origin, which
+    // left a deep camp beaconless and lit ground nobody was near.
+    const camp = key(30, 0);
+    const state = newRun(7, TUNING, [], [], camp);
+    const view = toBoardView(state, null);
+    const horizon = TUNING.beaconHorizon; // reach 0 at wake
+    const beacons = view.cells.filter((c) => c.beacon);
+    for (const b of beacons) {
+      expect(distance({ q: b.q, r: b.r }, { q: 30, r: 0 })).toBeLessThanOrEqual(horizon);
+    }
+  });
+});

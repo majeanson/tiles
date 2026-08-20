@@ -175,6 +175,13 @@ function localToday(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+/** `?camp=1`: begin the next fresh run at the world's farthest territory —
+ *  set by the front door's BEGIN AT CAMP button, honoured only when the
+ *  camp shrine is woken and a territory exists to wake at. */
+function askedCamp(): boolean {
+  return new URLSearchParams(location.search).get('camp') === '1';
+}
+
 /** `?daily=YYYY-MM-DD`, validated — garbage in the URL is not a daily,
  *  and neither is a date before #1 existed (a "#-3" would be a lie). */
 function askedDaily(): string | null {
@@ -772,6 +779,7 @@ function runKeeping(
       url.searchParams.delete('seed');
       url.searchParams.delete('ff');
       url.searchParams.delete('daily');
+      url.searchParams.delete('camp');
       location.href = url.toString();
     },
 
@@ -1289,6 +1297,27 @@ async function main(): Promise<void> {
     keeper.savedSeed ??
     (dailyDate !== null ? dailySeed(dailyDate) : askedSeed()) ??
     world.worldSeed;
+  // Camps (waypoints, built 2026-08-19 — `ideas/waypoints.md`, Marc's
+  // anchor: every camp restarts the climb): once the camp shrine is woken,
+  // a fresh home-world run may begin at the world's FARTHEST territory.
+  // The engine has carried `wakeAt` since the prototype; the front door is
+  // what finally reaches it. Detours never camp, and a resumed run carries
+  // its own wake hex in the save.
+  const campUnlocked = unlockedBy(world).includes('camp');
+  const farthestCamp =
+    world.territories.length === 0
+      ? null
+      : [...world.territories].sort(
+          (a, b) => distance(parse(b), { q: 0, r: 0 }) - distance(parse(a), { q: 0, r: 0 }),
+        )[0]!;
+  const campAvailable =
+    dailyDate === null &&
+    askedSeed() === null &&
+    campUnlocked &&
+    farthestCamp !== null &&
+    (keeper.resume === null || keeper.resume === undefined);
+  const wakeAt = campAvailable && askedCamp() ? farthestCamp : null;
+
   const facing = resolveFacing();
   const picked = resolveTheme(resolveThemeId());
   // The facing override rides on top of the theme as data, so every consumer —
@@ -1476,6 +1505,28 @@ async function main(): Promise<void> {
       location.href = url.toString();
     });
 
+    // BEGIN AT CAMP (waypoints, 2026-08-19): the remembered world's missing
+    // verb — deep ground you HOLD becomes ground you can start from. Only a
+    // fresh run may camp; a run in progress resumes where it was.
+    if (campAvailable && farthestCamp !== null) {
+      const ring = distance(parse(farthestCamp), { q: 0, r: 0 });
+      const frontDoorCamp = required<HTMLButtonElement>('front-door-camp');
+      if (askedCamp()) {
+        frontDoorBegin.textContent = `BEGIN AT CAMP — ring ${ring}`;
+        frontDoorMode.textContent =
+          `World ${slot} of 3 — waking at your farthest territory, ${ring} out. ` +
+          'The climb starts there; the score measures from where you wake.';
+      } else {
+        frontDoorCamp.hidden = false;
+        frontDoorCamp.textContent = `BEGIN AT CAMP — your farthest territory, ring ${ring}`;
+        frontDoorCamp.addEventListener('click', () => {
+          const url = new URL(location.pathname, location.href);
+          url.searchParams.set('camp', '1');
+          location.href = url.toString();
+        });
+      }
+    }
+
     // The other two worlds (Marc, 2026-08-19: "3 save game possibilities"):
     // a settled slot switches to it, an empty one begins there — either way
     // the switch is a reload, the same cheap honesty the theme picker keeps.
@@ -1574,7 +1625,7 @@ async function main(): Promise<void> {
   const hooks: GameHooks & { savedSeed: number | null } = isEnabled(features, 'ui.sound')
     ? { ...keeper, sound: new Sound(theme.voice) }
     : keeper;
-  const game = new Game(renderer, elements, seed, theme, tuning, hooks, held, heldFinds);
+  const game = new Game(renderer, elements, seed, theme, tuning, hooks, held, heldFinds, wakeAt);
   game.start();
 
   // The front door's own opener — same dialog the in-game ? opens, so

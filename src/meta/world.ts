@@ -94,6 +94,14 @@ export const UNLOCKS: readonly { readonly id: string; readonly label: string }[]
   { id: 'hold', label: 'A second stash slot' },
   { id: 'luck', label: 'Twice the rare-tile odds' },
   { id: 'reach', label: 'Destinations glow from twice as far' },
+  // Camps (waypoints, 2026-08-19 — `ideas/waypoints.md`, anchor decided by
+  // Marc: every camp restarts the climb). APPENDED, per this ledger's own
+  // rule above: the four woken rungs stay woken and nobody moves backward —
+  // a fully-awake world simply has one more shrine worth walking to, which
+  // also serves his "stretch the ledger a bit". The unlock is not a tuning
+  // dial: it gates the front door's BEGIN AT CAMP button (main.ts), and the
+  // engine's own `wakeAt` does the rest.
+  { id: 'camp', label: 'Camps — later runs may begin at your farthest territory' },
 ];
 
 /** The unlocks a world has earned, in ledger order. */

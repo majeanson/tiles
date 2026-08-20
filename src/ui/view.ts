@@ -500,14 +500,24 @@ function findsCached(
   return out;
 }
 
-/** Destinations within the beacon horizon that growth has not revealed yet. */
+/**
+ * Destinations within the beacon horizon that growth has not revealed yet.
+ * The horizon is a disc around HOME (camps, 2026-08-19): `destinationsWithin`
+ * scans a disc around the world origin — geography is world-anchored — so a
+ * camp run scans wide enough to contain its own disc and then filters by
+ * distance from where it actually woke. Home IS the origin in every run
+ * without a camp, where the wider scan collapses to exactly the old one.
+ */
 function beaconsFor(
   state: GameState,
   reach: number,
 ): { q: number; r: number; reward: LandmarkReward; colour: Colour | null }[] {
+  const home = homeOf(state);
   const horizon = reach + state.tuning.beaconHorizon;
-  return destinationsCached(state.rootSeed, horizon, state.tuning).filter(
-    (d) => state.cells[key(d.q, d.r)] === undefined,
+  const scan = horizon + distance(home, { q: 0, r: 0 });
+  return destinationsCached(state.rootSeed, scan, state.tuning).filter(
+    (d) =>
+      state.cells[key(d.q, d.r)] === undefined && distance({ q: d.q, r: d.r }, home) <= horizon,
   );
 }
 
