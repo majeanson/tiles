@@ -312,6 +312,37 @@ export const homeOf = (state: Pick<GameState, 'wakeAt'>): { q: number; r: number
   typeof state.wakeAt === 'string' ? parse(state.wakeAt) : ORIGIN;
 
 /**
+ * How far from home the run has built — the plane's depth, REACH on the HUD.
+ * ONE helper (the simplify pass, 2026-08-19): this loop existed as six
+ * private copies across view, game, main, reduce and both sim files, and the
+ * origin audit had to edit them in lockstep — the next home-anchored change
+ * would have missed one. Pure state derivation, no balance number, so it
+ * lives beside `homeOf`, which is the anchor it exists to respect.
+ */
+export function reachOf(state: Pick<GameState, 'wakeAt' | 'cells'>): number {
+  const home = homeOf(state);
+  let reach = 0;
+  for (const [k, cell] of Object.entries(state.cells)) {
+    if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
+    reach = Math.max(reach, distance(parse(k), home));
+  }
+  return reach;
+}
+
+/**
+ * Whether a hex sits inside the live beacon horizon: within
+ * `reach + beaconHorizon` of HOME — the one rule `beaconsFor` draws by and
+ * the tap-the-dark explanation answers by. The simplify pass found the two
+ * had already drifted (the tap still measured from the origin, so a camp
+ * run's tap answers disagreed with its own drawn beacons); one predicate
+ * ends the species.
+ */
+export const withinBeaconHorizon = (
+  state: Pick<GameState, 'wakeAt' | 'cells' | 'tuning'>,
+  k: HexKey,
+): boolean => distance(parse(k), homeOf(state)) <= reachOf(state) + state.tuning.beaconHorizon;
+
+/**
  * Rule 6's multiplier at a single hex: 1 + floor(distance from home /
  * distanceStep). What a bonus-points site pays through, so a farther site is
  * worth the longer walk by the same arithmetic as any harvest out there.

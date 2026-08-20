@@ -12,6 +12,7 @@ import {
   outOfTime,
   payPlacement,
   placementCostAt,
+  reachOf,
   ripeKeys,
 } from './rules';
 import type {
@@ -722,16 +723,13 @@ function endingBonus(state: GameState, death: DeathCause): GameState {
     return { ...state, phase: 'ended', death, relics: banked };
   }
 
-  let reach = 0;
-  let claims = 0;
-  // homeOf(state): true origin in every shipped run; the wake hex under the
-  // where-you-wake prototype, so REACH itself cannot be a free gift of
+  // reachOf measures from homeOf(state) — true origin in every shipped run,
+  // the wake hex under camps — so REACH itself cannot be a free gift of
   // spawning far away.
-  const home = homeOf(state);
-  for (const [k, cell] of Object.entries(state.cells)) {
+  const reach = reachOf(state);
+  let claims = 0;
+  for (const cell of Object.values(state.cells)) {
     if (cell.kind === 'landmark' && cell.claimed) claims++;
-    if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-    reach = Math.max(reach, distance(parse(k), home));
   }
 
   return {

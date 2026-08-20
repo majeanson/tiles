@@ -176,6 +176,29 @@ export function arcSparkline(
     .join('');
 }
 
+/**
+ * The standing on one date, as the one string every door prints — the front
+ * door's button and the end screen's badge used to build it separately, with
+ * the pluralisation copied. The streak rider is the front door's own.
+ */
+export function dailyBadge(book: DailyBook, date: string): string {
+  const record = book[date];
+  return (
+    `DAILY #${dailyNumber(date)}` +
+    (record === undefined
+      ? ''
+      : ` · best ${record.best} · ${record.tries} ${record.tries === 1 ? 'try' : 'tries'}`)
+  );
+}
+
+/**
+ * A date the daily will actually PLAY: well-formed, and not before #1
+ * existed — the epoch rule lives here beside the epoch it reads, so the
+ * test file can pin "a pre-epoch date is not a daily" where the number is.
+ */
+export const isPlayableDaily = (date: string): boolean =>
+  isDailyDate(date) && dailyNumber(date) >= 1;
+
 /** "1st", "2nd", "3rd", "4th"… for the share text's confessed retries. */
 export function ordinal(n: number): string {
   const tens = n % 100;

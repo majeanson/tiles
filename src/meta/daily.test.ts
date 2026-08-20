@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   DAILY_EPOCH,
   arcSparkline,
+  dailyBadge,
   dailyNumber,
   dailySeed,
   dailyStreak,
   decodeDailyBook,
   encodeDailyBook,
   isDailyDate,
+  isPlayableDaily,
   ordinal,
   previousDate,
   recordDaily,
@@ -126,5 +128,21 @@ describe('the share line', () => {
     expect(ordinal(12)).toBe('12th');
     expect(ordinal(13)).toBe('13th');
     expect(ordinal(22)).toBe('22nd');
+  });
+});
+
+describe('the badge and the playability rule (the simplify pass, 2026-08-19)', () => {
+  it('prints one badge for every door, pluralised honestly', () => {
+    expect(dailyBadge({}, '2026-08-20')).toBe('DAILY #2');
+    const once = recordDaily({}, '2026-08-20', 900).book;
+    expect(dailyBadge(once, '2026-08-20')).toBe('DAILY #2 · best 900 · 1 try');
+    const twice = recordDaily(once, '2026-08-20', 400).book;
+    expect(dailyBadge(twice, '2026-08-20')).toBe('DAILY #2 · best 900 · 2 tries');
+  });
+
+  it('refuses a date before #1 existed — a "#-3" would be a lie', () => {
+    expect(isPlayableDaily(DAILY_EPOCH)).toBe(true);
+    expect(isPlayableDaily('2026-08-18')).toBe(false);
+    expect(isPlayableDaily('not a date')).toBe(false);
   });
 });

@@ -10,6 +10,8 @@ import {
   homeOf,
   isRipe,
   placementCostAt,
+  reachOf,
+  withinBeaconHorizon,
   worthOf,
 } from '@engine/rules';
 import type {
@@ -245,10 +247,11 @@ export type GameHooks = {
    */
   readonly buildSha?: string;
   /**
-   * True for a `?seed=` replay: somebody else's world, not this device's.
-   * Every start-of-run moment that speaks about THIS world (NEW GROUND, the
-   * shrine receipt, the territory why-line) checks this and stays quiet —
-   * the same guard `findLabel` already keeps for the same reason.
+   * True for any DETOUR — a `?seed=` replay or the daily: a run that is not
+   * this device's world. Every moment that speaks about THIS world (NEW
+   * GROUND, the shrine receipt, banked relics, the crossing) checks it and
+   * stays quiet or speaks the detour's own honest line. The name predates
+   * the daily; `Game`'s #detour getter is where the widening is spelled.
    */
   readonly replay?: boolean;
   /**
@@ -359,6 +362,14 @@ const HAND_HEX_SIZE = 24;
  * the ended transition when the first ones only came home in the ending
  * bonus. One string, so the two doors cannot drift apart.
  */
+/**
+ * The last-gasp rule, one clause for its three doors (the toast, the manual,
+ * the COST tap note) — the same cannot-drift contract RELIC_LESSON below and
+ * `#colourLesson` keep for their own multi-door words.
+ */
+const LAST_GASP_RULE =
+  'You may place while ANY tiles remain — the difference is forgiven at zero, and it cannot chain: only a pop can lift you back above zero.';
+
 const RELIC_LESSON =
   '⬢  RELICS\nRelics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.';
 
@@ -905,10 +916,8 @@ export class Game {
   #pocketNote(at: HexKey): string {
     const t = this.#state.tuning;
     const value = harvestValue(this.#state, at);
-    const worth = value.keys.reduce(
-      (n, k) => n + worthOf(this.#state.cells, k, t, homeOf(this.#state)),
-      0,
-    );
+    const home = homeOf(this.#state);
+    const worth = value.keys.reduce((n, k) => n + worthOf(this.#state.cells, k, t, home), 0);
     const multiplier = harvestMultiplier(this.#state, value.keys);
 
     // Rare tiles inside the pocket, and what each kind does — a ripe rare
@@ -962,7 +971,8 @@ export class Game {
     value: ReturnType<typeof harvestValue>,
   ): string {
     const t = before.tuning;
-    const worth = value.keys.reduce((n, k) => n + worthOf(before.cells, k, t, homeOf(before)), 0);
+    const homeBefore = homeOf(before);
+    const worth = value.keys.reduce((n, k) => n + worthOf(before.cells, k, t, homeBefore), 0);
     const multiplier = harvestMultiplier(before, value.keys);
     const head = `POPPED ${value.count} — total worth ${worth}`;
 
@@ -1097,7 +1107,7 @@ export class Game {
           // for what this one holds, or stay and keep building it.
           // A detour has no ledger to narrate (fresh-eyes finding 5): say
           // what shrines ARE, never what the HOME world would have unlocked.
-          if (this.#hooks.replay === true) {
+          if (this.#detour) {
             notes.push({
               rank: RANK.shrine,
               text: '◈  SHRINE WOKEN\nOn your own world a shrine switches a system on, for good. A shared run keeps nothing — but it still counts the claim.',
@@ -1198,7 +1208,7 @@ export class Game {
       if (reward === 'shrine') {
         // A detour has no ledger to narrate (fresh-eyes finding 5): say what
         // shrines ARE, not what the home world would have unlocked.
-        if (this.#hooks.replay === true) {
+        if (this.#detour) {
           return claimed
             ? '◈ SHRINE — woken. On your own world, this switches a system on for good.'
             : '◈ SHRINE — touch it with a tile. On your own world, waking one switches a system on for good.';
@@ -1234,14 +1244,11 @@ export class Game {
       if (dest !== null) {
         // Named only where the world has actually SHOWN it (Marc,
         // 2026-08-19: memory shows what it saw): ground this world
-        // remembers, or a beacon inside the live horizon — the same rule
-        // `beaconsFor` draws by. Anything darker stays dark: the old
-        // unconditional answer let tap-scanning the void identify
-        // destinations no run had ever seen, the exact divining rod the
-        // finds were guarded against from day one.
-        const withinHorizon =
-          distance({ q, r }, { q: 0, r: 0 }) <= this.#reachOf(this.#state) + t.beaconHorizon;
-        if (remembered || withinHorizon) {
+        // remembers, or a beacon inside the live horizon — via the ONE
+        // predicate `beaconsFor` draws by, because the simplify pass caught
+        // this copy already drifted (it still measured from the origin, so
+        // a camp run's tap answers disagreed with its own drawn beacons).
+        if (remembered || withinBeaconHorizon(this.#state, hex)) {
           const claimed = this.#state.claimed.includes(hex);
           return claimed
             ? destination(dest.reward, dest.colour, true)
@@ -1435,10 +1442,9 @@ export class Game {
     // WHAT YOU CARRY reads the worn perk off the shelf, never off tuning —
     // and stays out of a `?seed=` replay, which plays the plain economy and
     // must not claim a perk is working when it is not.
-    const wornPerk =
-      this.#hooks.replay === true
-        ? undefined
-        : PERKS.find((p) => this.#hooks.shop?.read().equipped.includes(p.id) ?? false);
+    const wornPerk = this.#detour
+      ? undefined
+      : PERKS.find((p) => this.#hooks.shop?.read().equipped.includes(p.id) ?? false);
 
     // The quick start (Marc, 2026-08-18: "here is what you see, here is what
     // you do, here is how you make points — then the advanced sections", and
@@ -1516,7 +1522,7 @@ export class Game {
             t.costGrace > 0
               ? `A placement costs ${t.baseCost} tiles for the first ${t.costGrace}, then +1 for every ${t.costRisesEvery} after. It never comes back down — that is the clock that ends every run.`
               : `A placement costs ${t.baseCost} tiles, +1 for every ${t.costRisesEvery} you have ever placed this run. It never comes back down — that is the clock that ends every run.`,
-            'You may place while you hold ANY tiles, even fewer than the cost — the difference is forgiven at zero. It cannot chain: only a pop can lift you back above zero for the next.',
+            LAST_GASP_RULE,
           ],
         },
         {
@@ -1851,12 +1857,20 @@ export class Game {
    * rather than removed, which is what makes them a goal instead of a
    * surprise. The row hides entirely where luck has no prices.
    */
+  /**
+   * LUCK's one visibility gate (`ideas/teaching.md`): the stat and the purse
+   * fold appear together, at first luck earned or once taught — a promise
+   * that used to be kept by copy-paste in two methods.
+   */
+  #luckVisible(hud: HudView): boolean {
+    return hud.luck > 0 || this.#met('luck');
+  }
+
   #renderSpends(hud: HudView): void {
-    // The purse fold arrives WITH the purse (`ideas/teaching.md`): until this
-    // device has earned its first luck — or been taught what luck is — a row
-    // of prices for a currency that does not exist yet is chrome explaining
-    // itself to nobody. Same gate as the LUCK stat, so they appear together.
-    const luckVisible = hud.luck > 0 || this.#met('luck');
+    // The purse fold arrives WITH the purse: until this device has earned
+    // its first luck — or been taught what luck is — a row of prices for a
+    // currency that does not exist yet is chrome explaining itself to nobody.
+    const luckVisible = this.#luckVisible(hud);
     this.#el.purse.hidden = hud.spends.length === 0 || !luckVisible;
     if (hud.spends.length === 0 || !luckVisible) {
       this.#el.spends.replaceChildren();
@@ -2052,29 +2066,17 @@ export class Game {
         this.#showNote('UNIQUE — every match counts double, both ways.');
       } else if (
         !this.#newGroundShown &&
-        this.#hooks.replay !== true &&
+        !this.#detour &&
         // A camp run measures reach from the camp; the world's farthest is
         // measured from the origin. Comparing them is not a moment.
         next.wakeAt === null &&
-        this.#reachOf(next) > this.#startFarthestReach
+        reachOf(next) > this.#startFarthestReach
       ) {
         this.#newGroundShown = true;
         this.#showNote('NEW GROUND — farther than this world has ever reached.');
       }
     }
     this.render();
-  }
-
-  /** How far from home `state` has built. Mirrors `view.ts`'s own reachOf —
-   *  both measured from homeOf(state) since the origin audit (2026-08-19). */
-  #reachOf(state: GameState): number {
-    const home = homeOf(state);
-    let reach = 0;
-    for (const [k, cell] of Object.entries(state.cells)) {
-      if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-      reach = Math.max(reach, distance(parse(k), home));
-    }
-    return reach;
   }
 
   render(): void {
@@ -2175,6 +2177,16 @@ export class Game {
    * moment never evicts a pop receipt, a claim or a goal.
    */
 
+  /**
+   * Is this run a DETOUR — somebody else's seed, or the daily? The hook is
+   * still named `replay` (its original case), but the shell passes it for
+   * both; this getter is the one place the widening is spelled, so every
+   * guard asks the same question by the same name.
+   */
+  get #detour(): boolean {
+    return this.#hooks.replay === true;
+  }
+
   #metSet(): ReadonlySet<TeachId> | null {
     const store = this.#hooks.shop;
     return store === undefined ? null : new Set(store.read().met);
@@ -2189,7 +2201,12 @@ export class Game {
   #markMet(id: TeachId): void {
     const store = this.#hooks.shop;
     if (store === undefined) return;
-    store.write(meet(store.read(), id));
+    // `meet` returns the SAME object when already met — writing it anyway
+    // re-serialized the whole progress blob on every cache/territory/shrine
+    // claim for the life of a veteran install (the simplify pass's find).
+    const progress = store.read();
+    const taught = meet(progress, id);
+    if (taught !== progress) store.write(taught);
   }
 
   /**
@@ -2249,7 +2266,7 @@ export class Game {
     // Never on a detour: a daily's run-relics bank nothing, and the lesson's
     // own words ("they follow you out") must not be taught by a mode where
     // they do not. The moment stays armed for the home world.
-    if (!met.has('relic') && next.relics > 0 && this.#hooks.replay !== true) {
+    if (!met.has('relic') && next.relics > 0 && !this.#detour) {
       return { tier: 'card', id: 'relic', text: RELIC_LESSON };
     }
 
@@ -2267,7 +2284,7 @@ export class Game {
       return {
         tier: 'toast',
         id: 'lastGasp',
-        text: 'That cost more tiles than you had — allowed, by design: you may place while ANY tiles remain, and the difference is forgiven at zero. It cannot chain — only a pop can lift you back above zero — and at zero with nothing ripe, the run is over.',
+        text: `That cost more tiles than you had — allowed, by design. ${LAST_GASP_RULE} At zero with nothing ripe, the run is over.`,
       };
     }
 
@@ -2376,13 +2393,12 @@ export class Game {
     // ground they already knew was near. A claim or a pop's own toast, AND
     // an open event card, always win the same beat; the signpost only
     // speaks when nothing louder just did.
-    if (
+    const quietBeat =
       this.#lastSignpost !== undefined &&
       hud.hint !== null &&
-      !this.#met('glow') &&
       this.#el.toast.hidden &&
-      this.#el.eventCard.hidden
-    ) {
+      this.#el.eventCard.hidden;
+    if (quietBeat && !this.#met('glow')) {
       // The first light this device has ever had a signpost to
       // (`ideas/teaching.md`): the held card, where the recurring signpost
       // toast below is the receipt every later light gets. Same quiet-beat
@@ -2391,13 +2407,7 @@ export class Game {
       this.#showEventCard(
         '⬢  A LIGHT IN THE DARK\nThat glow is a real place, shining through ground you have not reached. Build your chain out and touch it with a tile to claim it — each kind explains itself when you first arrive.',
       );
-    } else if (
-      this.#lastSignpost !== undefined &&
-      hud.hint !== null &&
-      hud.hint !== this.#lastSignpost &&
-      this.#el.toast.hidden &&
-      this.#el.eventCard.hidden
-    ) {
+    } else if (quietBeat && hud.hint !== this.#lastSignpost) {
       this.#showNote(`${hud.hint}.`);
     }
     this.#lastSignpost = hud.hint;
@@ -2597,7 +2607,7 @@ export class Game {
       // unexplained (`ideas/teaching.md`). Never on a detour: a daily banks
       // nothing, and "they follow you out" must not be taught by a mode
       // where they do not.
-      if (!this.#met('relic') && this.#hooks.replay !== true) {
+      if (!this.#met('relic') && !this.#detour) {
         const banked = this.#hooks.shop?.read().relics ?? 0;
         if (banked > 0 || hud.relics > 0) {
           this.#markMet('relic');
@@ -2806,7 +2816,7 @@ export class Game {
     // On a detour (a replay, a daily) NOTHING is carried out — the run's own
     // relics were never banked, so saying "N relics banked" would be the end
     // screen lying about the one thing the mode promises not to do.
-    const carriedRelics = this.#hooks.replay === true ? 0 : hud.relics;
+    const carriedRelics = this.#detour ? 0 : hud.relics;
     const world = this.#hooks.worldStats?.();
     if (
       carriedRelics > 0 ||
@@ -2847,9 +2857,7 @@ export class Game {
     // kind of unexplained chrome the drip exists to remove.
     if (
       this.#hooks.shop !== undefined &&
-      (this.#met('relic') ||
-        this.#hooks.shop.read().relics > 0 ||
-        (this.#hooks.replay !== true && hud.relics > 0))
+      (this.#met('relic') || this.#hooks.shop.read().relics > 0 || carriedRelics > 0)
     ) {
       const progress = this.#hooks.shop.read();
       const door = row('end-payout-row end-link', 'RELICS', `${progress.relics} ▸`, {
@@ -3064,8 +3072,7 @@ export class Game {
     // LUCK holds its slot only once this device has luck to hold, or has
     // already been taught what luck is (`ideas/teaching.md`: the HUD appears
     // as it matters, paired with the card so the appearance IS the event).
-    // Real money is never hidden — `hud.luck > 0` shows the stat unmet.
-    const luckVisible = hud.luck > 0 || this.#met('luck');
+    const luckVisible = this.#luckVisible(hud);
 
     const stats: readonly Stat[] = [
       { id: 'tiles', label: 'TILES', value: String(hud.tiles) },
@@ -3157,7 +3164,7 @@ export class Game {
           t.costGrace > 0
             ? `It stays ${t.baseCost} for the first ${t.costGrace} placements, then rises +1 every ${t.costRisesEvery} placed`
             : `It rises +1 every ${t.costRisesEvery} placed`;
-        return `COST — the next placement's price: ${hud.cost}. ${curve}, and it never comes back down — the clock that ends every run. You may place while you hold ANY tiles, even fewer than the cost: the difference is forgiven at zero (a pop must refill you before the next).`;
+        return `COST — the next placement's price: ${hud.cost}. ${curve}, and it never comes back down — the clock that ends every run. ${LAST_GASP_RULE}`;
       }
       case 'left':
         return 'LEFT — placements remaining in the expedition. At zero it ends; anything already ripe can still be popped.';

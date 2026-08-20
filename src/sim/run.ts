@@ -1,8 +1,8 @@
 import { TUNING, type Tuning } from '@content/tuning';
-import { distance, parse, type HexKey } from '@engine/hex';
+import type { HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { stream, type RngStream } from '@engine/rng';
-import { homeOf } from '@engine/rules';
+import { reachOf } from '@engine/rules';
 import type { DeathCause, GameState } from '@engine/state';
 import type { Policy } from './policy';
 
@@ -98,17 +98,12 @@ function summarise(
     }
   }
 
-  let reach = 0;
+  // reachOf measures from homeOf(state): true origin for every ordinary run,
+  // the wake hex when `RunOptions.wakeAt` set one.
+  const reach = reachOf(state);
   let claims = 0;
-  // homeOf(state): true origin for every ordinary run; the where-you-wake
-  // prototype's own wake hex when `RunOptions.wakeAt` set one, so REACH
-  // reports the same "how far past where you started" every other
-  // distance-based number in the engine now measures.
-  const home = homeOf(state);
-  for (const [k, cell] of Object.entries(state.cells)) {
+  for (const cell of Object.values(state.cells)) {
     if (cell.kind === 'landmark' && cell.claimed) claims++;
-    if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-    reach = Math.max(reach, distance(parse(k), home));
   }
 
   return {

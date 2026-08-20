@@ -12,6 +12,7 @@ import {
   legalPlacements,
   placementsLeft,
   previewWorth,
+  reachOf,
   ripeClusters,
   ripeKeys,
   worthOf,
@@ -221,11 +222,12 @@ export function renderContext(state: GameState, asked: HexKey | null = null): Re
   // The tuning rides along so WALLBREAKER's wall placements light up and
   // preview like any legal hex — legality has one owner, and this is it.
   const legal = new Set(placeable ? legalPlacements(state.cells, state.tuning) : []);
+  const home = homeOf(state);
   const previews = placeable
     ? state.draft.map((tile) => {
         const map = new Map<HexKey, number>();
         for (const k of legal) {
-          map.set(k, previewWorth(state.cells, k, tile, state.tuning, homeOf(state)));
+          map.set(k, previewWorth(state.cells, k, tile, state.tuning, home));
         }
         return map;
       })
@@ -313,7 +315,7 @@ export function toBoardView(
       // The colour lens: with a chip active, every OTHER colour's tiles step
       // back so one colour's holdings read as a single shape on the board.
       dimmed: spotlight !== null && cell.kind === 'tile' && cell.colour !== spotlight,
-      worth: worthOf(state.cells, k, state.tuning, homeOf(state)),
+      worth: worthOf(state.cells, k, state.tuning, home),
       home: k === homeKey,
       light: lit(q, r),
       band: band(q, r),
@@ -1072,19 +1074,6 @@ function oddsFor(state: GameState): string | null {
     return `${p >= 10 ? Math.round(p) : Math.round(p * 10) / 10}%`;
   };
   return `magic ${pct(odds.magic)} · unique ${pct(odds.unique)}`;
-}
-
-/** Hexes from home the run has built — the plane's depth, drawn in the HUD.
- *  Measured from homeOf(state) (the origin audit, 2026-08-19): true origin
- *  in every shipped run, the wake hex under the prototype. */
-function reachOf(state: GameState): number {
-  const home = homeOf(state);
-  let reach = 0;
-  for (const [k, cell] of Object.entries(state.cells)) {
-    if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-    reach = Math.max(reach, distance(parse(k), home));
-  }
-  return reach;
 }
 
 /**

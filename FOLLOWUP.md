@@ -83,5 +83,10 @@ shrines and finds are their own progression. Not a bug to fix.
   awake, any further shrine offers a NEW WORLD with relics carried for the
   territories left behind — and SETTINGS' old ABANDON is now the unpaid
   NEW WORLD. Your all-shrines world is one shrine-walk from testing it.
-- **Waypoints** stay parked behind the origin audit (`ideas/waypoints.md`).
+- **Camps are LIVE** (waypoints, built 2026-08-19 on your anchor call): a
+  fifth shrine rung — your all-shrines world needs one more shrine to wake
+  it — then BEGIN AT CAMP on the front door starts a fresh run at your
+  farthest territory, climb measured from where you wake.
+- **The feel pass is LIVE**: press feedback, arrivals on one motion
+  language, TRY AGAIN on the daily's end screen. Judge it with thumbs.
 - The rest of the parking lot is at the bottom of `ROADMAP.md`.

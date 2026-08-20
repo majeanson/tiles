@@ -8,6 +8,7 @@ import {
   harvestValue,
   homeOf,
   isExhausted,
+  reachOf,
   legalPlacements,
   placementsLeft,
   previewWorth,
@@ -118,16 +119,6 @@ function smallestHarvest(state: GameState, choice: 'tiles' | 'points'): Move | n
  * where-you-wake prototype's own wake hex when the sim set one, so a
  * policy's own sense of "how deep am I" is not thrown off by where it woke.
  */
-function reachOf(state: GameState): number {
-  let reach = 0;
-  const home = homeOf(state);
-  for (const [k, cell] of Object.entries(state.cells)) {
-    if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-    reach = Math.max(reach, distance(parse(k), home));
-  }
-  return reach;
-}
-
 /**
  * The legal spot farthest from home, carrying whichever draft tile does the
  * most work there. How a policy walks outward on purpose.

@@ -1,17 +1,19 @@
 import { TUNING, type Tuning } from '@content/tuning';
 import { CROSSING, GOALS } from '@content/goals';
 import { distance, parse } from '@engine/hex';
-import { homeOf } from '@engine/rules';
+import { reachOf } from '@engine/rules';
 import {
   arcSparkline,
+  dailyBadge,
   dailyNumber,
   dailySeed,
   dailyStreak,
   decodeDailyBook,
   encodeDailyBook,
-  isDailyDate,
+  isPlayableDaily,
   ordinal,
   recordDaily,
+  type DailyBook,
 } from '@meta/daily';
 import { newlyMetGoals } from '@meta/goals';
 import {
@@ -182,14 +184,14 @@ function askedCamp(): boolean {
   return new URLSearchParams(location.search).get('camp') === '1';
 }
 
-/** `?daily=YYYY-MM-DD`, validated — garbage in the URL is not a daily,
- *  and neither is a date before #1 existed (a "#-3" would be a lie). */
+/** `?daily=YYYY-MM-DD`, validated — garbage in the URL is not a daily
+ *  (`isPlayableDaily` owns the shape AND the epoch rule). */
 function askedDaily(): string | null {
   const asked = new URLSearchParams(location.search).get('daily');
-  return asked !== null && isDailyDate(asked) && dailyNumber(asked) >= 1 ? asked : null;
+  return asked !== null && isPlayableDaily(asked) ? asked : null;
 }
 
-function readDailyBook(): ReturnType<typeof decodeDailyBook> {
+function readDailyBook(): DailyBook {
   try {
     return decodeDailyBook(localStorage.getItem(DAILY_STORAGE_KEY));
   } catch {
@@ -197,7 +199,7 @@ function readDailyBook(): ReturnType<typeof decodeDailyBook> {
   }
 }
 
-function writeDailyBook(book: ReturnType<typeof decodeDailyBook>): void {
+function writeDailyBook(book: DailyBook): void {
   try {
     localStorage.setItem(DAILY_STORAGE_KEY, encodeDailyBook(book));
   } catch {
@@ -518,14 +520,6 @@ function runKeeping(
     // named on this run's first frame is never named again on the next.
     shrineReceipt: detour ? [] : readShrineReceipt(keys),
 
-    // Which unlock the next shrine gives, so the game can NAME it at the
-    // moment it is woken. The ledger lives out here with the world; the game
-    // only knows how many shrines this run has claimed. NOT on a detour
-    // (fresh-eyes finding 5): a daily shrine was narrating the HOME world's
-    // next unlock — or "fully awake" — when nothing is recorded anywhere;
-    // absent, the game gives detour shrines their own honest line.
-    ...(detour ? {} : { unlockLabel: (nth) => UNLOCKS[world.shrines.length + nth]?.label ?? null }),
-
     // A hidden find, claimed: grant one unowned perk, write it down, hand
     // back the name for the toast. Deterministic in (world, hex) — no roll to
     // farm within a run — and guarded two ways: a `?seed=` replay is
@@ -574,43 +568,46 @@ function runKeeping(
       return `${met.map((g) => g.label).join('; ')} (+${reward} relics)`;
     },
 
-    // The end screen's CARRIED OUT strip, and the live REACH stat: world-scale
-    // facts beside the run's own. Read off `current` (kept live by `onChange`
-    // above), not the snapshot this page loaded with — a territory claimed a
-    // moment ago must not read as unclaimed, and `farthestReach` (2026-08-18)
-    // updates mid-run the instant THIS run passes the world's old best, the
-    // same merge that already keeps the atlas honest.
-    // On a detour the world's own facts stay off screen — a daily's REACH
-    // must not read "best 18" from a home world it is not being played on.
+    // Everything a DETOUR does not get, as one list (the simplify pass:
+    // three separate conditional spreads made "what does a detour disable?"
+    // a six-site hunt in two idioms — the guards inside findLabel/checkGoals/
+    // onChange are the sites that must also SAY something):
+    //
+    // - unlockLabel: a daily shrine must not narrate the HOME world's next
+    //   unlock (or "fully awake") when nothing records anywhere — absent,
+    //   the game gives detour shrines their own honest line.
+    // - worldStats: a daily's REACH must not read "best 18" from a home
+    //   world it is not being played on.
+    // - crossing: a detour has no world of this device's to leave.
     ...(detour
       ? {}
       : {
+          unlockLabel: (nth: number) => UNLOCKS[world.shrines.length + nth]?.label ?? null,
+
           worldStats: () => ({
             territories: current.territories.length,
             knownPct: knownFraction(current),
             farthestReach: current.farthestReach,
           }),
-        }),
 
-    // The crossing (Marc, 2026-08-19): a fully-awake world's shrines offer
-    // the way onward. Shell-owned whole, because leaving a world outlives
-    // any run: the dowry prices the CURRENT world live, and crossing banks
-    // it, drops the world and its run, and boots onto unbroken ground.
-    ...(detour
-      ? {}
-      : {
-          crossing: {
-            dowry: () =>
-              CROSSING.baseRelics + current.territories.length * CROSSING.relicsPerTerritory,
-            cross: () => {
-              const dowry =
-                CROSSING.baseRelics + current.territories.length * CROSSING.relicsPerTerritory;
-              const progress = readProgress();
-              writeProgress({ ...progress, relics: progress.relics + dowry });
-              dropWorld();
-              location.href = new URL(location.pathname, location.href).toString();
-            },
-          },
+          // The crossing (Marc, 2026-08-19): a fully-awake world's shrines
+          // offer the way onward. Shell-owned whole, because leaving a world
+          // outlives any run — and priced in ONE place, so the card's offer
+          // and the banked amount are the same number by construction.
+          crossing: (() => {
+            const dowryOf = (): number =>
+              CROSSING.baseRelics + current.territories.length * CROSSING.relicsPerTerritory;
+            return {
+              dowry: dowryOf,
+              cross: () => {
+                const dowry = dowryOf();
+                const progress = readProgress();
+                writeProgress({ ...progress, relics: progress.relics + dowry });
+                dropWorld();
+                location.href = new URL(location.pathname, location.href).toString();
+              },
+            };
+          })(),
         }),
 
     onChange: (state) => {
@@ -798,12 +795,7 @@ function runKeeping(
       if (dailyDate !== null) {
         url.searchParams.delete('seed');
         url.searchParams.set('daily', dailyDate);
-        const home = homeOf(state);
-        let reach = 0;
-        for (const [k, cell] of Object.entries(state.cells)) {
-          if (cell.kind !== 'tile' && cell.kind !== 'stone') continue;
-          reach = Math.max(reach, distance(parse(k), home));
-        }
+        const reach = reachOf(state);
         const tries = readDailyBook()[dailyDate]?.tries ?? 1;
         const arc = arcSparkline(state.log.harvests);
         text =
@@ -1287,36 +1279,35 @@ async function main(): Promise<void> {
   }
 
   // The daily (`ideas/daily.md`, built 2026-08-19): `?daily=YYYY-MM-DD`
-  // opens that date's shared world, strictly plain, on its own ladder.
+  // opens that date's shared world, strictly plain, on its own ladder. The
+  // shared seed is asked ONCE, like runKeeping's own copy — the URL cannot
+  // change mid-session, and re-parsing it five times cost a provably-dead
+  // null guard downstream (the simplify pass's find).
   const dailyDate = askedDaily();
+  const sharedSeed = askedSeed();
   const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'), dailyDate, keys);
+  const resuming = keeper.resume !== null && keeper.resume !== undefined;
   // Resumed run > the daily > shared seed link > THIS DEVICE'S WORLD. The
   // last is P4a: without a link or a run in progress you go back to your own
   // plane, which is what makes the fog memory and territories mean anything.
   const seed =
-    keeper.savedSeed ??
-    (dailyDate !== null ? dailySeed(dailyDate) : askedSeed()) ??
-    world.worldSeed;
+    keeper.savedSeed ?? (dailyDate !== null ? dailySeed(dailyDate) : sharedSeed) ?? world.worldSeed;
   // Camps (waypoints, built 2026-08-19 — `ideas/waypoints.md`, Marc's
-  // anchor: every camp restarts the climb): once the camp shrine is woken,
-  // a fresh home-world run may begin at the world's FARTHEST territory.
-  // The engine has carried `wakeAt` since the prototype; the front door is
-  // what finally reaches it. Detours never camp, and a resumed run carries
-  // its own wake hex in the save.
-  const campUnlocked = unlockedBy(world).includes('camp');
-  const farthestCamp =
-    world.territories.length === 0
-      ? null
-      : [...world.territories].sort(
-          (a, b) => distance(parse(b), { q: 0, r: 0 }) - distance(parse(a), { q: 0, r: 0 }),
-        )[0]!;
-  const campAvailable =
+  // anchor: every camp restarts the climb): once the camp shrine is woken, a
+  // fresh home-world run may begin at the world's FARTHEST territory — one
+  // nullable value, non-null exactly when the front door may offer it.
+  // Detours never camp, and a resumed run carries its own wake hex.
+  const camp =
     dailyDate === null &&
-    askedSeed() === null &&
-    campUnlocked &&
-    farthestCamp !== null &&
-    (keeper.resume === null || keeper.resume === undefined);
-  const wakeAt = campAvailable && askedCamp() ? farthestCamp : null;
+    sharedSeed === null &&
+    !resuming &&
+    unlockedBy(world).includes('camp') &&
+    world.territories.length > 0
+      ? [...world.territories].sort(
+          (a, b) => distance(parse(b), { q: 0, r: 0 }) - distance(parse(a), { q: 0, r: 0 }),
+        )[0]!
+      : null;
+  const wakeAt = camp !== null && askedCamp() ? camp : null;
 
   const facing = resolveFacing();
   const picked = resolveTheme(resolveThemeId());
@@ -1437,6 +1428,12 @@ async function main(): Promise<void> {
   const goHome = (): void => {
     location.href = new URL(location.pathname, location.href).toString();
   };
+  /** Navigate home with one param set — the daily and camp doors' shape. */
+  const goWith = (param: string, value: string): void => {
+    const url = new URL(location.pathname, location.href);
+    url.searchParams.set(param, value);
+    location.href = url.toString();
+  };
   frontDoorHome.addEventListener('click', goHome);
   if (dailyDate !== null) {
     frontDoorBegin.textContent = `BEGIN DAILY #${dailyNumber(dailyDate)}`;
@@ -1445,7 +1442,7 @@ async function main(): Promise<void> {
       'The daily: one shared world for this date, played plain — no upgrades, no perk. ' +
       'Tries are counted and confessed; your own world is untouched.';
     frontDoorHome.hidden = false;
-  } else if (askedSeed() !== null) {
+  } else if (sharedSeed !== null) {
     frontDoorBegin.textContent = 'BEGIN — SHARED RUN';
     frontDoorMode.hidden = false;
     frontDoorMode.textContent =
@@ -1459,22 +1456,27 @@ async function main(): Promise<void> {
     // on. Only the seed travels; the sender's run stays theirs.
     // A virgin active slot (auto-created at boot, never actually played)
     // counts as the empty one — otherwise a brand-new device arriving via a
-    // shared link burned slot 1 on a random world nobody chose (finding 10).
-    const active = peekSlot(slot);
+    // shared link burned slot 1 on a random world nobody chose. The active
+    // slot's world is already decoded in scope, and the other slots only
+    // need a null check, not a decode of their largest blob (the simplify
+    // pass counted five redundant decodes on this boot path).
+    const slotEmpty = (s: Slot): boolean => {
+      try {
+        return localStorage.getItem(slotKeys(s).world) === null;
+      } catch {
+        return false;
+      }
+    };
     const emptySlot =
-      active !== null && active.runs === 0 && active.revealed.length === 0
-        ? slot
-        : SLOTS.find((s) => peekSlot(s) === null);
+      world.runs === 0 && world.revealed.length === 0 ? slot : SLOTS.find(slotEmpty);
     if (emptySlot !== undefined) {
-      const seedToKeep = askedSeed();
       frontDoorSettle.hidden = false;
       frontDoorSettle.textContent = `SETTLE THIS WORLD — keep the seed as WORLD ${emptySlot}`;
       frontDoorSettle.addEventListener('click', () => {
-        if (seedToKeep === null) return;
-        // The seed settles EXACTLY as played (fresh-eyes finding 10) — the
-        // old 31-bit mask would have settled a different world than the one
-        // just previewed whenever a hand-typed seed was negative.
-        saveWorld(slotKeys(emptySlot), newWorld(seedToKeep));
+        // The seed settles EXACTLY as played — the old 31-bit mask would
+        // have settled a different world than the one just previewed
+        // whenever a hand-typed seed was negative.
+        saveWorld(slotKeys(emptySlot), newWorld(sharedSeed));
         setActiveSlot(emptySlot);
         goHome();
       });
@@ -1490,26 +1492,19 @@ async function main(): Promise<void> {
     frontDoorMode.hidden = false;
     frontDoorMode.textContent = `World ${slot} of 3 — remembered ground, your shop, whatever you carry.`;
     const dailyBook = readDailyBook();
-    const todayRecord = dailyBook[today];
     const streak = dailyStreak(dailyBook, today);
     frontDoorDaily.hidden = false;
     frontDoorDaily.textContent =
-      `DAILY #${dailyNumber(today)}` +
-      (todayRecord === undefined
-        ? ''
-        : ` · best ${todayRecord.best} · ${todayRecord.tries} ${todayRecord.tries === 1 ? 'try' : 'tries'}`) +
-      (streak > 1 ? ` · streak ${streak}` : '');
+      dailyBadge(dailyBook, today) + (streak > 1 ? ` · streak ${streak}` : '');
     frontDoorDaily.addEventListener('click', () => {
-      const url = new URL(location.pathname, location.href);
-      url.searchParams.set('daily', today);
-      location.href = url.toString();
+      goWith('daily', today);
     });
 
     // BEGIN AT CAMP (waypoints, 2026-08-19): the remembered world's missing
     // verb — deep ground you HOLD becomes ground you can start from. Only a
     // fresh run may camp; a run in progress resumes where it was.
-    if (campAvailable && farthestCamp !== null) {
-      const ring = distance(parse(farthestCamp), { q: 0, r: 0 });
+    if (camp !== null) {
+      const ring = distance(parse(camp), { q: 0, r: 0 });
       const frontDoorCamp = required<HTMLButtonElement>('front-door-camp');
       if (askedCamp()) {
         frontDoorBegin.textContent = `BEGIN AT CAMP — ring ${ring}`;
@@ -1520,9 +1515,7 @@ async function main(): Promise<void> {
         frontDoorCamp.hidden = false;
         frontDoorCamp.textContent = `BEGIN AT CAMP — your farthest territory, ring ${ring}`;
         frontDoorCamp.addEventListener('click', () => {
-          const url = new URL(location.pathname, location.href);
-          url.searchParams.set('camp', '1');
-          location.href = url.toString();
+          goWith('camp', '1');
         });
       }
     }
@@ -1583,7 +1576,7 @@ async function main(): Promise<void> {
           // pagehide flush was re-saving up to nine actions of the world
           // this button had just left behind.
           keeper.dropWorld();
-          location.href = new URL(location.pathname, location.href).toString();
+          goHome();
         },
       },
       keeper.newRun ?? (() => location.reload()),
@@ -1612,7 +1605,7 @@ async function main(): Promise<void> {
   // economy, because a replay scored under this device's upgrades would not
   // be a replay of anything.
   const tuning =
-    askedSeed() === null && dailyDate === null ? applyProgress(unlocked, readProgress()) : unlocked;
+    sharedSeed === null && dailyDate === null ? applyProgress(unlocked, readProgress()) : unlocked;
   // Territories (and, since 2026-08-18, finds) the world already holds
   // arrive as plain data — the engine still knows nothing about storage, and
   // a replay is reproducible from seed + tuning + these two lists.
@@ -1634,15 +1627,7 @@ async function main(): Promise<void> {
       ? {}
       : {
           daily: {
-            label: (): string => {
-              const rec = readDailyBook()[dailyDate];
-              return (
-                `DAILY #${dailyNumber(dailyDate)}` +
-                (rec === undefined
-                  ? ''
-                  : ` · best ${rec.best} · ${rec.tries} ${rec.tries === 1 ? 'try' : 'tries'}`)
-              );
-            },
+            label: (): string => dailyBadge(readDailyBook(), dailyDate),
             retry: (): void => {
               location.reload();
             },

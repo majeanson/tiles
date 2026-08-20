@@ -3887,3 +3887,59 @@ opted into restoration. The f525cca build (DPR cap + contextrestored)
 plus this fix are the treatment; killing the Safari tab outright clears
 the GPU pressure meanwhile. 568 tests green; render layer only, sim
 unreachable by layering.
+
+**Addendum, same day, late — the autonomous program: camps, the daily's
+end screen, the feel pass, the simplify sweep, and CI that renders.**
+
+Marc set the goal ("be autonomous, work on what we discussed") and the
+program ran in his chosen order, one commit per milestone:
+
+- **Camps are BUILT** (waypoints, his anchor: every camp restarts the
+  climb). A fifth rung joined the shrine ledger — appended, so nobody's
+  four woken rungs move — and once woken, the front door offers BEGIN AT
+  CAMP: a fresh run waking at the world's farthest territory through the
+  engine's own `wakeAt`. The beacon disc now centres on HOME (a deep camp
+  was beaconless under the origin-anchored scan), and the two displays
+  that compare against the world's origin-anchored best (NEW GROUND,
+  REACH's "· best" rider) step aside on camp runs.
+- **The daily's end screen** wears its badge (number · best · tries),
+  counts TRY N instead of RUN N, offers TRY AGAIN where the itch lives,
+  and renames NEW RUN to BACK TO YOUR WORLD, because that is what it does
+  there.
+- **The feel pass** (his out-of-prototype call): every press acknowledges
+  in colour unconditionally and a 97% scale under no-preference; hover
+  invitations on desktop; the selected card sits up; the manual, end
+  screen, purse fold and front door all arrive on the toast's own 6px
+  rise — one motion language for "something appeared". RESET ALL stepped
+  back from the door's friendly buttons.
+- **The simplify sweep** — four reviewers (reuse, simplification,
+  efficiency, altitude) over the day's ~3,500 lines, every finding
+  verified, ~20 applied: ONE `reachOf` in the engine retired six private
+  copies (the origin audit had edited them in lockstep — the proof of the
+  cost); `withinBeaconHorizon` unified the beacon rule with the
+  tap-the-dark answer AND fixed the one real drift the reviews caught
+  (the tap still measured from the origin, so a camp run's tap answers
+  disagreed with its own drawn beacons); the dowry is priced in one
+  place; the daily badge and the pre-epoch rule moved home to
+  `meta/daily.ts` with pins; the last-gasp rule became one clause behind
+  its three doors (the RELIC_LESSON contract); the detour hooks read as
+  ONE omitted-on-detour list; `#detour`, `#luckVisible` and the quiet-beat
+  gate each got one name; `#markMet` stopped rewriting an unchanged blob
+  on every veteran claim; the settle path stopped decoding the largest
+  blob in storage five times at boot; `homeOf` hoisted out of the two
+  per-hex loops that missed the pattern. Skipped, with reasons: the
+  generic storage-wrapper (a framework over this repo's stated taste for
+  shallow explicit wiring) and the `civilString` share (two lines across
+  a module seam). The altitude reviewer cleared the teaching tier
+  routing, the slot facade, the crossing seam and the dry-sound margins
+  as already at the right depth.
+- **CI renders a frame at last**: two Playwright specs boot the BUILT
+  bundle in headless Chromium — the stranger's first minute including
+  camera churn through the exact eviction window the captured alphaMode
+  crash lived in, and the daily door — failing the build on any uncaught
+  page error. The crash class the phone kept finding alone now has a
+  tripwire in front of it.
+
+573 tests; `pnpm sim` byte-identical through the whole sweep (the reach
+unification proven pure, not assumed); lint, format, typecheck, build and
+both smoke specs green.
