@@ -89,7 +89,14 @@ export default tseslint.config(
 
   // Node-side files: the build config, the deploy scripts, the headless harness.
   {
-    files: ['vite.config.ts', 'eslint.config.js', 'scripts/**/*.ts', 'src/sim/**/*.ts'],
+    files: [
+      'vite.config.ts',
+      'eslint.config.js',
+      'scripts/**/*.ts',
+      'src/sim/**/*.ts',
+      'playwright.config.ts',
+      'e2e/**/*.ts',
+    ],
     languageOptions: { globals: globals.node },
   },
 

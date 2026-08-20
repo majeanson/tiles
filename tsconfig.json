@@ -33,5 +33,5 @@
       "@sim/*": ["./src/sim/*"]
     }
   },
-  "include": ["src", "scripts", "vite.config.ts"]
+  "include": ["src", "scripts", "vite.config.ts", "playwright.config.ts", "e2e"]
 }

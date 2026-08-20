@@ -22,6 +22,11 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # The real-browser smoke (2026-08-19): headless Chromium over the BUILT
+      # bundle, WebGL rendering for real — the canary for the renderer-crash
+      # class the unit suite cannot see (happy-dom has no canvas).
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
 
   # No PR gate: land on main, and CI gates the prod deploy. There is no staging
   # environment because testing happens against the deployed site — which is

@@ -8,3 +8,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Playwright smoke artifacts
+test-results/
+playwright-report/
