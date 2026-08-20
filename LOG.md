@@ -4468,3 +4468,34 @@ draft cards the code contradicts, a deploy check that could not fail, a
 CSS comment asserting a match the numbers refuse — the same genre the
 2026-08-18 review caught, one layer up: last time the numbers escaped,
 this time the claims did.
+
+**Addendum, 2026-08-20 — the first pop on a phone finds what the review
+could not** (`783b05c`). Marc's verdict arrived within minutes of playing:
+"the popping animations are worse, all I see is gigantic tiles in my
+face." A real regression, and a latent one: the flash and ember animators
+size their sprites with Pixi's `setSize` — which works by WRITING
+`scale` — and then their tickers animated swell as `scale.set(1 + …)`, an
+absolute reset that threw the board fit away and drew every animated
+sprite at its texture's native pixels. For the game's whole life that was
+invisible, because every procedural texture was baked at board size:
+scale 1 WAS the fit, so the bug had no pixels to show itself with. The
+moment Stage 3 filled the slots, the leaping tile drew the raw 414×358
+terrain PNG, the flash drew the 256×256 `fx.pop` flare, and the embers
+drew their 32×32 dot at native size — a full-screen tile on every pop, at
+any zoom, on exactly the surfaces the motion pass had just polished. The
+fix: every `Flash` and `Ember` record now carries its post-`setSize`
+scale (`baseScaleX/Y`, `baseScale`) and the tickers multiply that base
+instead of resetting from 1 — sizes are the motion pass's intended ones
+again and ride the camera like everything else on the board. Render layer
+only; 558 tests, typecheck/lint/format clean, sim unreachable by
+layering; CI and `verify-deploy` green on the live site.
+
+For the ledger, the species: this is the picture-half of `STATUS.md`'s
+own warning — "everything visual is verified as wiring, unverified as a
+picture." The review verified the art LOADS (it does) and that the
+animators' numbers matched their claims (they did); only a phone could
+see the two compose wrong mid-animation, because the composition happens
+per-frame in a canvas no test here renders. The one cheap guard that
+would have caught it in code — treating any `scale.set(constant)` on a
+`setSize`-fitted sprite as a smell — is now written into the `Flash`
+type's own docstring, where the next animator will read it.
