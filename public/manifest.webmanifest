@@ -1,7 +1,11 @@
 {
+  "id": "/",
   "name": "Ashwake",
   "short_name": "Ashwake",
   "description": "An expedition into a dark plane. Place, ripen, pop, and push on.",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["games"],
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -5,7 +5,7 @@ import { reachOf } from '@engine/rules';
 import {
   arcSparkline,
   dailyBadge,
-  dailyNumber,
+  dailyName,
   dailySeed,
   dailyStreak,
   decodeDailyBook,
@@ -54,6 +54,7 @@ import {
   prehistory,
   runHighlights,
   streamOf,
+  type DailyEntry,
   type Highlight,
   type RunDetail,
   type RunEntry,
@@ -157,6 +158,28 @@ const INSTALL_NUDGE_KEY = 'tiles.installnudge.v1';
 
 type Slot = 1 | 2 | 3;
 const SLOTS: readonly Slot[] = [1, 2, 3];
+
+/**
+ * Chrome's one-tap install offer, caught before it is lost (launch audit,
+ * 2026-08-20: the end screen was printing menu directions while the
+ * browser held a NATIVE install dialog we were throwing away). Captured at
+ * module scope because the event fires before `main` finishes booting.
+ */
+type InstallPromptEvent = Event & { prompt: () => Promise<unknown> };
+let installPrompt: InstallPromptEvent | null = null;
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installPrompt = event as InstallPromptEvent;
+});
+
+/**
+ * An in-app browser (Instagram, TikTok, Facebook, Discord…) — the most
+ * likely first click on launch day, and the most hostile ground: storage
+ * is partitioned or wiped when the host app closes, and iOS's share sheet
+ * there has no ADD TO HOME SCREEN, so the install instructions would lie.
+ */
+const inAppBrowser = (): boolean =>
+  /FBAN|FBAV|Instagram|Line\/|TikTok|Twitter|Snapchat|; wv\)/i.test(navigator.userAgent);
 
 /** Every stored thing that belongs to ONE world, keyed by its slot. */
 type SlotKeys = { readonly world: string; readonly run: string; readonly receipt: string };
@@ -809,6 +832,7 @@ function runKeeping(
           arc: arcSparkline(state.log.harvests),
           try: result.record.tries,
           best: result.isNewBest,
+          detail: runDetailOf(state),
         });
         return {
           runs: result.record.tries,
@@ -980,7 +1004,7 @@ function runKeeping(
         const tries = readDailyBook()[dailyDate]?.tries ?? 1;
         const arc = arcSparkline(state.log.harvests);
         text =
-          `${NAME} #${dailyNumber(dailyDate)} · ${state.points} pts · reach ${reach}` +
+          `${NAME} ${dailyName(dailyDate)} · ${state.points} pts · reach ${reach}` +
           `${arc === '' ? '' : ` · ${arc}`} · ${ordinal(tries)} try · beat it:`;
       } else {
         url.searchParams.set('seed', String(state.rootSeed));
@@ -992,9 +1016,12 @@ function runKeeping(
       // `null`, and everything below falls through to the text+link share
       // exactly as it did before the card existed.
       let file: File | null = null;
+      let cardBlob: Blob | null = null;
       try {
-        const blob = await renderShareCard(theme, card);
-        if (blob !== null) file = new File([blob], 'ashwake-run.png', { type: 'image/png' });
+        cardBlob = await renderShareCard(theme, card);
+        if (cardBlob !== null) {
+          file = new File([cardBlob], 'ashwake-run.png', { type: 'image/png' });
+        }
       } catch {
         file = null;
       }
@@ -1012,11 +1039,29 @@ function runKeeping(
           await navigator.share({ title: NAME, text, url: url.toString() });
           return 'shared';
         }
-        // Desktop: no share sheet exists to hand a picture to. The card
-        // still downloads — a real file beats nothing where there is one to
-        // give — and the text+link goes to the clipboard exactly as it did
-        // before the card existed, so a browser that cannot even download
-        // still gets the fallback that shipped first.
+        // Desktop: no share sheet exists to hand a picture to — but
+        // desktop IS Discord and Twitter, so the card goes to the
+        // CLIPBOARD (launch audit, 2026-08-20): one Ctrl+V posts the
+        // actual run card where a downloaded file would rot in a folder.
+        // The download + text-link path stays as the fallback ladder.
+        if (
+          cardBlob !== null &&
+          typeof ClipboardItem !== 'undefined' &&
+          navigator.clipboard?.write !== undefined
+        ) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                'image/png': cardBlob,
+                'text/plain': new Blob([`${text} ${url.toString()}`], { type: 'text/plain' }),
+              }),
+            ]);
+            return 'copied';
+          } catch {
+            // Clipboard images refused (permissions, or a picky browser):
+            // fall through to the ladder below.
+          }
+        }
         if (file !== null) downloadFile(file);
         await navigator.clipboard.writeText(`${text} ${url.toString()}`);
         return 'copied';
@@ -1580,6 +1625,10 @@ async function main(): Promise<void> {
   // the board will, so there is never a frame of placeholder around themed art.
   applyTheme(theme, document.documentElement);
 
+  // The most likely launch-day first click is a link inside somebody's
+  // feed — an in-app WebView that quietly keeps nothing. Say so, once.
+  if (inAppBrowser()) showInAppNote();
+
   // The name and the mark, written from one constant so renaming the game is
   // one edit. The icon is an inline SVG data URI: no request, cannot 404.
   document.title = NAME;
@@ -1711,8 +1760,19 @@ async function main(): Promise<void> {
     location.href = url.toString();
   };
   frontDoorHome.addEventListener('click', goHome);
+
+  // A daily game left open across midnight — the installed PWA's NORMAL
+  // state — used to go on offering YESTERDAY (launch audit, 2026-08-20):
+  // the door's date was baked at boot. Coming back to a still-open MENU on
+  // a new day reloads into today; a run in progress is never touched — it
+  // banks under the date it started, which is the Wordle rule.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !frontDoor.hidden && localToday() !== today) {
+      goHome();
+    }
+  });
   if (dailyDate !== null) {
-    frontDoorBegin.textContent = `BEGIN DAILY #${dailyNumber(dailyDate)}`;
+    frontDoorBegin.textContent = `BEGIN DAILY ${dailyName(dailyDate)}`;
     frontDoorMode.hidden = false;
     frontDoorMode.textContent =
       'The daily: one shared world for this date, played plain — no upgrades, no perk. ' +
@@ -1776,7 +1836,13 @@ async function main(): Promise<void> {
         ? 'BEGIN'
         : `RESUME — PLACEMENT ${keeper.resume.placements}`;
     frontDoorMode.hidden = false;
-    frontDoorMode.textContent = `World ${slot} of 3 — remembered ground, your shop, whatever you carry.`;
+    // A virgin device has no remembered ground, no shop and nothing
+    // carried — the veteran's mode line was a paragraph of things a
+    // stranger does not have yet (the audit's words).
+    frontDoorMode.textContent =
+      world.runs === 0 && world.revealed.length === 0
+        ? 'A fresh world, fogged and waiting — your first expedition starts here.'
+        : `World ${slot} of 3 — remembered ground, your shop, whatever you carry.`;
     const dailyBook = readDailyBook();
     const streak = dailyStreak(dailyBook, today);
     frontDoorDaily.hidden = false;
@@ -1858,7 +1924,16 @@ async function main(): Promise<void> {
     famePanel.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') closeFame();
     });
-    fameOpen.hidden = false;
+    // A hall of fame with nothing in it stays off the virgin door (the
+    // same reasoning that hides RESET ALL, applied the day the audit
+    // pointed out it had not been): a stranger's first screen should not
+    // offer a museum of nothing.
+    fameOpen.hidden =
+      readTimeline().length === 0 &&
+      world.runs === 0 &&
+      SLOTS.every((s) => s === slot || peekSlot(s) === null) &&
+      Object.keys(readDailyBook()).length === 0 &&
+      readProgress().found.length === 0;
 
     /** The original flat ledger — the TOTALS tab. */
     const fameTotalsRows = (): HTMLElement[] => {
@@ -1955,65 +2030,94 @@ async function main(): Promise<void> {
       }
     };
 
-    /** A run's tick: every row is a button now (Marc, 2026-08-20: "a way
-     *  to see the end screen we had for the hall of fame when clicking on
-     *  it") — the fold is that run's end screen in miniature, from what
-     *  the diary keeps: the score at end-screen weight, reach and date
-     *  under it, the arc grown back to a picture, the ✦ moments last.
-     *  (It began as Marc's earlier call — expandable only where ✦ details
-     *  existed — until every run had a screen worth reopening.) */
-    const fameRunRow = (e: RunEntry): HTMLElement[] => {
-      const text =
-        `${fameDate(e.at)} · W${e.slot} · ${e.score} pts · reach ${e.reach}` +
-        (e.arc === '' ? '' : ` · ${e.arc}`);
-
+    /** One openable diary row: the line, a chevron that says it opens (the
+     *  audit: a borderless button reads as prose until someone guesses),
+     *  and the fold wired with aria-controls. Shared by both tabs so the
+     *  panel has ONE grammar for "tap a row, get the night back". */
+    let foldSeq = 0;
+    const fameFoldRow = (text: string, children: readonly HTMLElement[]): HTMLElement[] => {
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'fame-row fame-run';
-      row.textContent = e.highlights.length === 0 ? text : `${text} · ✦ ${e.highlights.length}`;
-      row.setAttribute('aria-expanded', 'false');
       const detail = document.createElement('div');
       detail.className = 'fame-detail';
+      detail.id = `fame-fold-${foldSeq++}`;
       detail.hidden = true;
-      // The full detail rides on entries written since 2026-08-20
-      // (`RunDetail` — Marc: "a 'full detail' of the run"); older ticks
-      // open with the facts the diary kept from birth.
+      detail.replaceChildren(...children);
+      row.setAttribute('aria-controls', detail.id);
+      const paint = (open: boolean): void => {
+        row.textContent = `${text} ${open ? '▾' : '▸'}`;
+        row.setAttribute('aria-expanded', String(open));
+      };
+      paint(false);
+      row.addEventListener('click', () => {
+        const open = detail.hidden;
+        detail.hidden = !open;
+        paint(open);
+      });
+      return [row, detail];
+    };
+
+    /** The end-screen facts a `RunDetail` holds, as fold rows. The relics
+     *  clause is the caller's call: a daily banks nothing, and "N relics
+     *  carried out" there would be the fold lying (the same rule the real
+     *  end screen keeps with `carriedRelics`). */
+    const foldFacts = (d: RunDetail, withRelics: boolean): HTMLElement[] => [
+      fameRow(
+        'fame-row',
+        `${d.placements} placements · ${d.popped} tiles popped in ${d.harvests} ${d.harvests === 1 ? 'pop' : 'pops'}`,
+      ),
+      ...(d.bigPop > 0
+        ? [fameRow('fame-row', `biggest pop ${d.bigPop} at ${Math.round(d.bigPopAt * 100)}%`)]
+        : []),
+      fameRow(
+        'fame-row',
+        `${d.claims} destination${d.claims === 1 ? '' : 's'}` +
+          (d.quests > 0 ? ` · ${d.quests} bount${d.quests === 1 ? 'y' : 'ies'}` : '') +
+          (withRelics && d.relics > 0 ? ` · ${d.relics} relics carried out` : ''),
+      ),
+    ];
+
+    /** A run's tick (Marc, 2026-08-20: "a way to see the end screen we had
+     *  ... a 'full detail' of the run"): the fold is that run's end screen
+     *  in miniature. Older ticks open with the facts the diary kept from
+     *  birth; `RunDetail` rides on everything written since. */
+    const fameRunRow = (e: RunEntry): HTMLElement[] => {
+      const text =
+        `${fameDate(e.at)} · W${e.slot} · ${e.score} pts · reach ${e.reach}` +
+        (e.arc === '' ? '' : ` · ${e.arc}`) +
+        (e.highlights.length === 0 ? '' : ` · ✦ ${e.highlights.length}`);
       const d = e.detail;
-      detail.replaceChildren(
+      return fameFoldRow(text, [
         fameRow('fame-score', `${e.score} pts`),
         ...(d === undefined ? [] : [fameRow('fame-epitaph', d.epitaph)]),
         fameRow('fame-row', `REACH ${e.reach} · WORLD ${e.slot} · ${fameDate(e.at)}`),
         ...(e.arc === '' ? [] : [fameRow('fame-arc', e.arc)]),
-        ...(d === undefined
-          ? []
-          : [
-              fameRow(
-                'fame-row',
-                `${d.placements} placements · ${d.popped} tiles popped in ${d.harvests} ${d.harvests === 1 ? 'pop' : 'pops'}`,
-              ),
-              ...(d.bigPop > 0
-                ? [
-                    fameRow(
-                      'fame-row',
-                      `biggest pop ${d.bigPop} at ${Math.round(d.bigPopAt * 100)}%`,
-                    ),
-                  ]
-                : []),
-              fameRow(
-                'fame-row',
-                `${d.claims} destination${d.claims === 1 ? '' : 's'}` +
-                  (d.quests > 0 ? ` · ${d.quests} bount${d.quests === 1 ? 'y' : 'ies'}` : '') +
-                  (d.relics > 0 ? ` · ${d.relics} relics carried out` : ''),
-              ),
-            ]),
+        ...(d === undefined ? [] : foldFacts(d, true)),
         ...e.highlights.map((h) => fameRow('fame-row', `✦ ${highlightWords(h, e)}`)),
-      );
-      row.addEventListener('click', () => {
-        const open = detail.hidden;
-        detail.hidden = !open;
-        row.setAttribute('aria-expanded', String(open));
-      });
-      return [row, detail];
+      ]);
+    };
+
+    /** A daily tick, the same grammar (fresh-eyes: the DAILY tab's rows
+     *  were the one place a tap did nothing). No relics clause — a daily
+     *  banks none, by design. */
+    const fameDailyRow = (e: DailyEntry): HTMLElement[] => {
+      const text =
+        `${fameDate(e.at)} · ${dailyName(e.date)} · ${e.score} pts · reach ${e.reach}` +
+        (e.arc === '' ? '' : ` · ${e.arc}`) +
+        ` · ${ordinal(e.try)} try` +
+        (e.best ? ' · NEW BEST' : '');
+      const d = e.detail;
+      return fameFoldRow(text, [
+        fameRow('fame-score', `${e.score} pts`),
+        ...(d === undefined ? [] : [fameRow('fame-epitaph', d.epitaph)]),
+        fameRow(
+          'fame-row',
+          `DAILY ${dailyName(e.date)} · ${ordinal(e.try)} try${e.best ? ' · NEW BEST' : ''} · ${fameDate(e.at)}`,
+        ),
+        ...(e.arc === '' ? [] : [fameRow('fame-arc', e.arc)]),
+        ...(d === undefined ? [] : foldFacts(d, false)),
+      ]);
     };
 
     /** A world-scale entry: leaving, or arriving. One line, no fold. */
@@ -2109,17 +2213,7 @@ async function main(): Promise<void> {
       if (entries.length === 0) {
         els.push(fameRow('fame-row dim', 'No tries since the record began.'));
       } else {
-        for (const e of entries) {
-          els.push(
-            fameRow(
-              'fame-row',
-              `${fameDate(e.at)} · #${dailyNumber(e.date)} · ${e.score} pts · reach ${e.reach}` +
-                (e.arc === '' ? '' : ` · ${e.arc}`) +
-                ` · ${ordinal(e.try)} try` +
-                (e.best ? ' · NEW BEST' : ''),
-            ),
-          );
-        }
+        els.push(...entries.flatMap((e) => fameDailyRow(e)));
       }
       return els;
     };
@@ -2301,13 +2395,22 @@ async function main(): Promise<void> {
   // install prompt at all — the Share sheet is the only door, and nothing
   // on the page ever says so; Android's own banner appears or it doesn't.
   // Absent for anyone already installed, on desktop, or told before.
-  const installNudge = ((): { readonly note: string; readonly shown: () => void } | null => {
+  const installNudge = ((): {
+    readonly note: string;
+    readonly shown: () => void;
+    readonly promptNow?: () => boolean;
+  } | null => {
     try {
       if (localStorage.getItem(INSTALL_NUDGE_KEY) !== null) return null;
     } catch {
       // A storage that keeps nothing would re-nudge every run. Stay quiet.
       return null;
     }
+    // An in-app WebView has no install path at all — the iOS share sheet
+    // there lacks ADD TO HOME SCREEN, and Android's prompt never fires —
+    // so the nudge would be a lie (launch audit). The in-app NOTE below
+    // says the useful thing instead.
+    if (inAppBrowser()) return null;
     try {
       const standalone =
         window.matchMedia('(display-mode: standalone)').matches ||
@@ -2331,6 +2434,18 @@ async function main(): Promise<void> {
           // It will offer again next run. Harmless.
         }
       },
+      // Android's captured one-tap prompt, offered as a REAL button where
+      // it exists — strictly better than the menu directions it replaces.
+      ...(ios
+        ? {}
+        : {
+            promptNow: (): boolean => {
+              if (installPrompt === null) return false;
+              void installPrompt.prompt();
+              installPrompt = null;
+              return true;
+            },
+          }),
     };
   })();
 
@@ -2411,10 +2526,25 @@ async function main(): Promise<void> {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (hadController) showUpdateNote();
     });
-    void navigator.serviceWorker.register('/sw.js').catch(() => {
-      // No offline play. Every other thing still works, so this is not worth
-      // a word on screen.
-    });
+    void navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        // A backgrounded phone only looks for a new worker when it
+        // NAVIGATES (launch audit, 2026-08-20) — which on launch day is
+        // exactly when a hotfix most needs to reach it. Re-check on an
+        // interval and whenever the app returns to the foreground; the
+        // update note above already knows what to do when one lands.
+        setInterval(() => void registration.update().catch(() => undefined), 15 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            void registration.update().catch(() => undefined);
+          }
+        });
+      })
+      .catch(() => {
+        // No offline play. Every other thing still works, so this is not
+        // worth a word on screen.
+      });
   }
 
   // Art loads AFTER the first playable frame, never before it. Every slot is
@@ -2499,6 +2629,35 @@ function showUpdateNote(): void {
     note.remove();
   });
   note.append(reload, later);
+  document.body.appendChild(note);
+}
+
+/**
+ * The in-app browser warning (launch audit, 2026-08-20): a link opened
+ * inside Instagram/TikTok/Facebook/Discord runs in a WebView whose storage
+ * is partitioned or wiped when the host app closes — the world, the
+ * records and the hall of fame can silently evaporate. Once ever, the
+ * storage note's shelf and voice, gone on tap: the useful sentence is
+ * "open this in your real browser".
+ */
+function showInAppNote(): void {
+  try {
+    if (localStorage.getItem('tiles.inappnote.v1') !== null) return;
+    localStorage.setItem('tiles.inappnote.v1', '1');
+  } catch {
+    // A storage that keeps nothing proves the note's own point; still show
+    // it this once.
+  }
+  if (document.getElementById('inapp-note') !== null) return;
+  const note = document.createElement('button');
+  note.type = 'button';
+  note.id = 'inapp-note';
+  note.setAttribute('role', 'status');
+  note.textContent =
+    'You’re in an in-app browser — your world may not be kept here. Open this page in Safari or Chrome to keep it.';
+  note.addEventListener('click', () => {
+    note.remove();
+  });
   document.body.appendChild(note);
 }
 

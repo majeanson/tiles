@@ -84,7 +84,10 @@ export type RunEntry = {
   readonly detail?: RunDetail;
 };
 
-/** A finished daily try. Same store, its own tab. */
+/** A finished daily try. Same store, its own tab — and since 2026-08-20
+ *  it carries the same optional end-screen block a run tick does, so both
+ *  tabs' rows open the same way (the fresh-eyes audit: "one tab's rows
+ *  respond to taps and the other's don't, with nothing saying which"). */
 export type DailyEntry = {
   readonly at: number;
   readonly kind: 'daily';
@@ -97,6 +100,7 @@ export type DailyEntry = {
   readonly try: number;
   /** A new personal best for that date. */
   readonly best: boolean;
+  readonly detail?: RunDetail;
 };
 
 /** A world-scale event that is not a run: leaving, or arriving. */
@@ -190,7 +194,18 @@ const decodeEntry = (v: unknown): TimelineEntry | null => {
     const best = v['best'];
     if (typeof date !== 'string' || !isCount(score) || !isCount(reach)) return null;
     if (typeof arc !== 'string' || !isCount(tryN) || typeof best !== 'boolean') return null;
-    return { at, kind: 'daily', date, score, reach, arc, try: tryN, best };
+    const detail = decodeDetail(v['detail']);
+    return {
+      at,
+      kind: 'daily',
+      date,
+      score,
+      reach,
+      arc,
+      try: tryN,
+      best,
+      ...(detail === undefined ? {} : { detail }),
+    };
   }
 
   if (v['kind'] === 'world') {

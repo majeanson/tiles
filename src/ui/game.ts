@@ -326,6 +326,10 @@ export type GameHooks = {
   readonly install?: {
     readonly note: string;
     readonly shown: () => void;
+    /** Android's captured one-tap install prompt, where the browser gave
+     *  us one — fires it and reports whether it existed; the note is the
+     *  fallback for every other door. */
+    readonly promptNow?: () => boolean;
   };
 };
 
@@ -1933,7 +1937,7 @@ export class Game {
                   'PERKS are not for sale. They are FOUND — hidden somewhere out in the world — and you may wear one at a time.',
                 ],
                 detail: [
-                  `A sacrifice pays ${t.burnRelics} relics per tile in the pocket, and reaching somewhere new pays ${t.claimRelics} for nothing — the half of the meta that costs no sacrifice.`,
+                  `A sacrifice pays ${t.burnRelics} relics per tile in the pocket, and reaching somewhere NEW pays ${t.claimRelics} for nothing — the half of the meta that costs no sacrifice. Reborn ground (a spent shrine or find come back as a cache or site) pays its tiles or points, never relics again.`,
                   `When a run ends, ${Math.round(t.luckToRelics * 100)}% of the luck still in your purse comes home, so hoarding luck is a real alternative to spending it.`,
                 ],
               },
@@ -3229,10 +3233,30 @@ export class Game {
     // The install nudge, once ever: quietest voice on the screen, after the
     // actions — an invitation, not a gate. `shown()` was marked at this end
     // screen's exactly-once transition above, so a reload never re-offers.
+    // Where the browser handed us a NATIVE prompt (Android), a real button
+    // beats a paragraph of menu directions (launch audit, 2026-08-20);
+    // everywhere else the note stays the honest door.
     if (this.#hooks.install !== undefined) {
-      const nudge = line('end-install', this.#hooks.install.note);
+      const install = this.#hooks.install;
+      const nudge = line('end-install', install.note);
       nudge.id = 'end-install';
-      parts.push(nudge);
+      const native = install.promptNow;
+      if (native !== undefined) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.id = 'end-install-button';
+        button.className = 'quiet';
+        button.textContent = `INSTALL ${NAME.toUpperCase()}`;
+        button.addEventListener('click', () => {
+          // No prompt captured after all (already dismissed once, or the
+          // browser never offered): fall back to the words.
+          if (native()) button.remove();
+          else button.replaceWith(nudge);
+        });
+        parts.push(button);
+      } else {
+        parts.push(nudge);
+      }
     }
 
     this.#el.end.replaceChildren(...parts);

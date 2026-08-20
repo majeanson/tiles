@@ -57,21 +57,18 @@ describe('applyTheme', () => {
     );
   });
 
-  it('loads one webfont, and removes it for a direction that asks for none', () => {
+  it('injects NO third-party webfont link — every face is self-hosted', () => {
+    // 2026-08-20, the launch audit: the torchlit webfont link sent every
+    // player's IP to Google at boot, contradicting SETTINGS' own "nothing
+    // leaves your phone", and the service worker never cached it. The
+    // faces live in public/fonts/ via style.css @font-face now, so no
+    // theme asks the network for type — pinned here so a future direction
+    // cannot quietly reintroduce the leak.
     applyTheme(torchlit, document.documentElement);
-    const links = () => document.querySelectorAll('link#theme-webfont');
-    expect(links()).toHaveLength(1);
-    expect(links()[0]?.getAttribute('href')).toContain('Cinzel');
-
-    // The placeholder asks for none, so a cold start never waits on a
-    // third-party host — and switching to it must not leave the old
-    // stylesheet stacked behind.
     applyTheme(placeholder, document.documentElement);
-    expect(links()).toHaveLength(0);
-
-    // Switching back must not stack a second link either.
     applyTheme(torchlit, document.documentElement);
-    expect(links()).toHaveLength(1);
+    expect(document.querySelectorAll('link#theme-webfont')).toHaveLength(0);
+    for (const theme of THEMES) expect(theme.type.webfontHref).toBeNull();
   });
 
   it('is idempotent', () => {
@@ -79,7 +76,6 @@ describe('applyTheme', () => {
     const first = document.documentElement.getAttribute('style');
     applyTheme(torchlit, document.documentElement);
     expect(document.documentElement.getAttribute('style')).toBe(first);
-    expect(document.querySelectorAll('link#theme-webfont')).toHaveLength(1);
   });
 
   it('survives a document with no theme-color meta', () => {

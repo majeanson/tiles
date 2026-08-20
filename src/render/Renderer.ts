@@ -69,6 +69,13 @@ export type CellView = {
    */
   readonly dimmed: boolean;
   /**
+   * The lens's POSITIVE half (Marc, 2026-08-20): a live tile OF the spotlit
+   * colour. Drawn with an edge in its colour's own hue — green, tide-blue,
+   * ember-white, ash-red — distinct from the gold that means "selected to
+   * place". False everywhere while no lens is held.
+   */
+  readonly lensed: boolean;
+  /**
    * Part of the pocket the harvest buttons are currently pricing. Endless world
    * only — the bounded harvest is the whole board, so nothing is singled out.
    */

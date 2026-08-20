@@ -41,10 +41,12 @@ test('the home door is the menu: mode line, daily, three worlds, no wipe for a v
   const errors = watchErrors(page);
   await page.goto('/');
 
-  // The door names the game BEGIN opens, before anything is tapped.
+  // The door names the game BEGIN opens, before anything is tapped — and a
+  // virgin device gets the fresh-world sentence, not a paragraph about
+  // remembered ground it does not have (Day-1 batch, 2026-08-20).
   await expect(page.locator('#front-door-begin')).toBeVisible();
   await expect(page.locator('#front-door-name')).toHaveText(/ashwake/i);
-  await expect(page.locator('#front-door-mode')).toContainText('World 1 of 3');
+  await expect(page.locator('#front-door-mode')).toContainText('A fresh world');
 
   // The daily door carries its badge; all three world rows are offered.
   await expect(page.locator('#front-door-daily')).toBeVisible();
@@ -53,9 +55,11 @@ test('the home door is the menu: mode line, daily, three worlds, no wipe for a v
   await expect(worlds.nth(0)).toContainText('WORLD 1 · NOW');
   await expect(worlds.nth(1)).toContainText('WORLD 2');
 
-  // A device with nothing to forget gets no wipe (Session 32): RESET ALL
-  // must not be the trap on the first screen a stranger ever sees.
+  // A device with nothing to forget gets no wipe (Session 32) and no
+  // museum of nothing (Day-1 batch): RESET ALL and HALL OF FAME both wait
+  // until there is anything behind them.
   await expect(page.locator('#front-door-reset')).toBeHidden();
+  await expect(page.locator('#front-door-fame')).toBeHidden();
 
   expect(errors).toEqual([]);
 });
@@ -133,8 +137,40 @@ test('RESET ALL arms, wipes, and leaves a device it no longer offers itself to',
   expect(errors).toEqual([]);
 });
 
-test('the hall of fame opens tabbed, states the clean start, and closes', async ({ page }) => {
+test('the hall of fame opens tabbed, and a run row unfolds its night', async ({ page }) => {
   const errors = watchErrors(page);
+
+  // A device WITH a history — the empty hall hides from virgin doors now
+  // (Day-1 batch), so the diary is seeded before boot: one finished run,
+  // written in the timeline's own stored shape.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'tiles.timeline.v1',
+      JSON.stringify([
+        {
+          at: 1755600000000,
+          kind: 'run',
+          slot: 1,
+          worldSeed: 42,
+          score: 312,
+          reach: 14,
+          arc: '▁▅█',
+          highlights: [{ kind: 'best-score' }],
+          detail: {
+            placements: 121,
+            harvests: 28,
+            popped: 96,
+            bigPop: 412,
+            bigPopAt: 0.78,
+            claims: 3,
+            quests: 1,
+            relics: 5,
+            epitaph: 'Out of tiles on the plane, after 121 placements.',
+          },
+        },
+      ]),
+    );
+  });
   await page.goto('/');
 
   await page.locator('#front-door-fame').click();
@@ -147,11 +183,20 @@ test('the hall of fame opens tabbed, states the clean start, and closes', async 
   await expect(tabs.nth(0)).toHaveText('TIMELINE');
   await expect(tabs.nth(1)).toHaveText('DAILY');
   await expect(tabs.nth(2)).toHaveText('TOTALS');
-
-  // A virgin device's TIMELINE says the record begins now, over the
-  // world-filter chips.
   await expect(panel.locator('.fame-chip')).toHaveCount(4);
-  await expect(panel).toContainText('The record begins now');
+
+  // The seeded run is a row wearing its chevron; tapping it unfolds the
+  // end screen it kept — score at end-screen weight, the epitaph, the
+  // facts (Marc: "a 'full detail' of the run").
+  const row = panel.locator('button.fame-run').first();
+  await expect(row).toContainText('312 pts');
+  await expect(row).toContainText('▸');
+  await row.click();
+  await expect(row).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel.locator('.fame-score').first()).toHaveText('312 pts');
+  await expect(panel).toContainText('Out of tiles on the plane');
+  await expect(panel).toContainText('121 placements');
+  await expect(panel).toContainText('✦ NEW BEST');
 
   // TOTALS is the original flat ledger: three worlds, the daily, perks.
   await tabs.nth(2).click();

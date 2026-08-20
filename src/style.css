@@ -13,6 +13,36 @@
  * runs at all you get a plain, readable, ugly game rather than black on black.
  */
 
+/* Torchlit's faces, SELF-HOSTED (2026-08-20, the launch audit): the theme
+   used to link fonts.googleapis.com at boot, which sent every player's IP
+   to Google — making SETTINGS' "nothing leaves your phone" false — and
+   was the one asset the service worker never cached, so offline rendered
+   in fallback serif. Three variable woff2 files, ~96KB, precached with
+   everything else. `font-display: swap` keeps first paint honest. */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/fonts/cinzel.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'EB Garamond';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/ebgaramond.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'EB Garamond';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ebgaramond-italic.woff2') format('woff2');
+}
+
 *,
 *::before,
 *::after {
@@ -404,7 +434,7 @@ button.fame-run[aria-expanded='true'] {
    ruling — so the off state reads plainly as "there is sound here, and it
    is off" rather than as broken chrome. */
 #sound-toggle.muted {
-  opacity: 0.45;
+  opacity: 0.6;
   text-decoration: line-through;
 }
 
@@ -710,11 +740,30 @@ button.quiet {
 }
 
 /* Spotlit: long-pressed (or right-clicked) to study this colour on the
-   board — the accent, not the selection ring, because a card can be both
-   selected AND spotlit at once and the two states have to read as
-   different questions. */
+   board — in the COLOUR'S OWN hue since 2026-08-20 (Marc: "highlighted
+   with their respective color... distinct from the selected tiles were
+   about to play"): lifted toward white so a dark fill still rings
+   visibly, and never the gold that means "about to place". A card can be
+   both selected AND spotlit at once; the two states keep different
+   properties (border+halo vs this shadow) so they never fight. */
 .tile.spotlit {
-  box-shadow: 0 0 0 2px var(--accent, #d7b45a);
+  box-shadow: 0 0 0 2px var(--ink, #e8ecf4);
+}
+
+.tile.spotlit[data-colour='green'] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tile-green, #6f9f5f) 55%, white);
+}
+
+.tile.spotlit[data-colour='yellow'] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tile-yellow, #cbb04a) 55%, white);
+}
+
+.tile.spotlit[data-colour='red'] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tile-red, #b4564a) 55%, white);
+}
+
+.tile.spotlit[data-colour='blue'] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tile-blue, #4a7fb4) 55%, white);
 }
 
 /*
@@ -1164,17 +1213,28 @@ button.quiet {
   flex: 0 0 44px;
 }
 
-/* The storage-full confession (`showStorageNote`): same shelf, quieter
-   voice — information, not an action — and one step UP from the update
-   bar so the two can never occupy the same rectangle. */
-#storage-note {
+/* The storage-full confession (`showStorageNote`) and the in-app-browser
+   warning (`showInAppNote`): same shelf, quieter voice — information, not
+   an action — and one step UP from the update bar so none of the three
+   can occupy the same rectangle. */
+#storage-note,
+#inapp-note {
   bottom: calc(64px + env(safe-area-inset-bottom));
   min-height: 44px;
   font-size: 0.625rem;
   letter-spacing: 0.08em;
+  line-height: 1.5;
+  padding: 8px 12px;
   border-color: var(--panel-edge, #3a4150);
   color: var(--ink-dim, #8a91a0);
   background: var(--panel, #1e222b);
+}
+
+#inapp-note {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  z-index: 5;
 }
 
 /* The install nudge (2026-08-20): the end screen's quietest line, once

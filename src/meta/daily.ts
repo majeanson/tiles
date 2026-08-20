@@ -11,10 +11,24 @@
  * so the shell hands strings in and everything here is testable to the day.
  */
 
-/** Daily #1's date — the day the daily SHIPPED (fresh-eyes finding 6: the
- *  original epoch sat one day in the future, so launch day read "DAILY #0").
- *  Changing it renumbers every share; do not. */
-export const DAILY_EPOCH = '2026-08-19';
+/**
+ * Daily #1's date — LAUNCH DAY (Marc's ruling, 2026-08-20: the first daily
+ * strangers ever see and share is #1; "#6 for a game announced that
+ * morning" reads wrong, and the renumbering window closes forever the
+ * moment one stranger posts a line). Set to the planned tag date — if the
+ * launch moves, move this WITH the tag commit, and never after.
+ * Changing it after launch renumbers every share; do not.
+ */
+export const DAILY_EPOCH = '2026-08-25';
+
+/**
+ * The first date the daily can PLAY — the day it shipped. Split from the
+ * numbering epoch above (2026-08-20) so launch week's own rehearsals still
+ * have a daily to open: dates between here and the epoch are playable but
+ * pre-calendar — `dailyName` prints their DATE instead of a #N that would
+ * read as zero or negative.
+ */
+export const DAILY_FIRST = '2026-08-19';
 
 /** The exact shape a daily date must have. Garbage in a URL is not a daily. */
 export function isDailyDate(s: string): boolean {
@@ -62,9 +76,19 @@ function civilFromDays(z0: number): string {
 /** The day before, for the streak walk. */
 export const previousDate = (date: string): string => civilFromDays(daysFromCivil(date) - 1);
 
-/** "Ashwake #47": 1 on the epoch date, counting local calendar days. */
+/** "Ashwake #47": 1 on the epoch date, counting local calendar days.
+ *  Zero or negative for the pre-launch rehearsal dates — display goes
+ *  through `dailyName`, which prints those as their date instead. */
 export const dailyNumber = (date: string): number =>
   daysFromCivil(date) - daysFromCivil(DAILY_EPOCH) + 1;
+
+/** The daily's display name: "#12" once the calendar has begun, the bare
+ *  date for the rehearsal days before it. One function for the badge, the
+ *  share line and the hall of fame, so no surface invents "#0". */
+export const dailyName = (date: string): string => {
+  const n = dailyNumber(date);
+  return n >= 1 ? `#${n}` : date;
+};
 
 /**
  * The world every phone opens on one date: a hash of the date string into
@@ -184,7 +208,7 @@ export function arcSparkline(
 export function dailyBadge(book: DailyBook, date: string): string {
   const record = book[date];
   return (
-    `DAILY #${dailyNumber(date)}` +
+    `DAILY ${dailyName(date)}` +
     (record === undefined
       ? ''
       : ` · best ${record.best} · ${record.tries} ${record.tries === 1 ? 'try' : 'tries'}`)
@@ -192,12 +216,14 @@ export function dailyBadge(book: DailyBook, date: string): string {
 }
 
 /**
- * A date the daily will actually PLAY: well-formed, and not before #1
- * existed — the epoch rule lives here beside the epoch it reads, so the
- * test file can pin "a pre-epoch date is not a daily" where the number is.
+ * A date the daily will actually PLAY: well-formed, and not before the
+ * daily EXISTED (`DAILY_FIRST`) — the floor lives here beside the constant
+ * it reads, so the test file can pin "a pre-first date is not a daily"
+ * where the number is. Deliberately the FIRST date and not the numbering
+ * epoch: launch week's rehearsal dailies play, they just print their date.
  */
 export const isPlayableDaily = (date: string): boolean =>
-  isDailyDate(date) && dailyNumber(date) >= 1;
+  isDailyDate(date) && daysFromCivil(date) >= daysFromCivil(DAILY_FIRST);
 
 /** "1st", "2nd", "3rd", "4th"… for the share text's confessed retries. */
 export function ordinal(n: number): string {

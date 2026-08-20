@@ -1091,6 +1091,20 @@ export class PixiRenderer implements Renderer {
     // harvest decision — so it gets the loudest outline on the board.
     if (cell.ripe)
       return { width: Math.max(1.5, size * board.ripeEdgeWidth), colour: board.ripeEdge };
+    // The lens's positive half (Marc, 2026-08-20: "the selected tiles are
+    // highlighted with their respective color... distinct from the selected
+    // tiles were about to play"): a spotlit tile wears an edge in its own
+    // hue, lifted toward the ink so a dark fill still draws a visible line —
+    // never the gold that means "about to place".
+    if (cell.lensed) {
+      const own = cell.colour ?? cell.native;
+      if (own !== null) {
+        return {
+          width: Math.max(1.5, size * board.edgeWidth * 1.5),
+          colour: mix(this.#theme.terrain[own].fill, this.#theme.ink.ink, 0.45),
+        };
+      }
+    }
     // An unclaimed destination is the other thing worth walking toward, so it
     // carries the accent even at beacon distance. Claimed, it drops to chrome.
     if (cell.kind === 'landmark' && !cell.claimed)

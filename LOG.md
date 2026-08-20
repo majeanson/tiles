@@ -5045,3 +5045,64 @@ reroll / crossing exception, save round-trip and poked-record leniency),
 typecheck/lint/format clean, build green, 7 e2e green, `pnpm sim`
 byte-identical (the rearm map is empty in every harness run — policies
 play fresh worlds).
+
+### Session 34 — Day one of launch week: three rulings and the strangers'-first-click batch
+
+Marc answered the three prompted questions — **launch day is Daily #1**
+(the epoch moves to 2026-08-25; rehearsal-week dailies stay playable and
+print their DATE instead of a #0, via the new `DAILY_FIRST`/`dailyName`
+split), **the stranger test alone gates the v1.0 tag** (pop-timing
+becomes a standing v1.1 question; the docs reconcile in the paper pass),
+and **reborn ground pays no relics** (a spent shrine re-rolled into a
+cache pays its tiles, never the claim relic — relics stay about ground
+never reached, and yesterday's tightening stays intact). Then the code
+half of Day 1, the launch audits' list:
+
+1. **The webfonts are self-hosted** — the fonts.googleapis.com link sent
+   every player's IP to Google at boot, making SETTINGS' "nothing leaves
+   your phone" FALSE, and was the one asset the worker never cached.
+   Three variable woff2 files (~96KB) in public/fonts/, @font-face in
+   style.css, `webfontHref: null`, precached; a test now pins that no
+   theme may reintroduce the link.
+2. **The browser floor guard** — on iOS ≤16.3 the entry module fails to
+   PARSE, taking the error listener down with it: a front door whose
+   BEGIN did nothing, forever, silently. A classic inline script probes
+   the syntax and swaps in one honest sentence.
+3. **The door stays today's** — `today` was baked at boot, so a PWA left
+   open across midnight offered yesterday's daily; a visible MENU on a
+   new day reloads into today (a run in progress banks under its start
+   date, the Wordle rule). And the worker re-checks for updates every 15
+   minutes and on foreground, so a launch-day hotfix reaches a
+   backgrounded phone.
+4. **Android installs with one tap** — `beforeinstallprompt` is captured
+   and the end screen renders a real INSTALL button where it exists; the
+   menu-directions note stays the fallback and iOS keeps its Share-sheet
+   words. In-app browsers (Instagram/TikTok/FB/Discord WebViews) get
+   NEITHER — their share sheet has no install and their storage
+   evaporates — they get the honest once-ever warning instead: open this
+   in your real browser.
+5. **The share card goes to the CLIPBOARD on desktop** — desktop IS
+   Discord and Twitter; one Ctrl+V posts the actual card where the old
+   download rotted in a folder. Download + text-link stay as the ladder.
+6. **The diary's two tabs speak one grammar** — `DailyEntry` carries the
+   same `RunDetail` a run tick does, both tabs' rows share one fold
+   builder with a chevron affordance and aria-controls, and the daily
+   fold never prints a relics clause (a daily banks none).
+7. **The virgin door slims** — the empty HALL OF FAME hides (the RESET
+   ALL reasoning, applied), and the mode line says "a fresh world,
+   fogged and waiting" instead of promising remembered ground a stranger
+   does not have.
+8. **The lens marks its own colour** — spotlit tiles wear an edge in
+   their colour's hue (board) and the spotlit card's ring is its colour
+   too (Marc: "distinct from the selected tiles were about to play").
+9. Launch-surface leftovers: canonical + og:url/site_name/image:alt (a
+   crawler can no longer index a random ?seed= as the homepage),
+   manifest id/lang/categories, `_headers` making the fingerprinted
+   bundle immutable, torchlit's inkFaint lifted to AA contrast, the ♪
+   muted state lifted to legible, share-sheet dismissal reads as a
+   change of mind.
+
+**Verified:** 607 tests, 7 e2e (the fame spec now seeds a diary and
+opens a fold; the daily spec passes on both sides of launch day),
+typecheck/lint/format clean, build green, fonts and icons in the
+precache.

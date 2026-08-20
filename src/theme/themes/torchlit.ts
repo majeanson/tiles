@@ -1,8 +1,13 @@
 import { surface, type Theme } from '../tokens';
 
-const WEBFONT =
-  'https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700' +
-  '&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap';
+// SELF-HOSTED since 2026-08-20 (the launch audit): this used to be a
+// fonts.googleapis.com link injected at boot — a runtime request to Google
+// carrying every player's IP, which made the game's own "nothing leaves
+// your phone" claim false, was uncacheable by the service worker
+// (cross-origin early-return), and cost first paint a third-party round
+// trip. The same two families now live in `public/fonts/` as variable
+// woff2, declared in style.css, precached with everything else.
+const WEBFONT = null;
 
 /**
  * 2c — Torchlit Map. "The Diablo 2 one."
@@ -57,7 +62,7 @@ export const TORCHLIT: Theme = {
     bg: 0x0a0806,
     ink: 0xe8d6ae,
     inkDim: 0xb9a480,
-    inkFaint: 0x8a7452,
+    inkFaint: 0x9a8358,
     accent: 0xc79a4b,
     // The rarities' own voices (2026-08-20, Marc): the selected ring below
     // is the SAME gold as the accent, so a rare card and a selected card

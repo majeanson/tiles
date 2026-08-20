@@ -100,7 +100,12 @@ test('the daily door opens its own world, plainly, with no errors', async ({ pag
   const daily = page.locator('#front-door-daily');
   await expect(daily).toBeVisible();
   await daily.click();
-  await expect(page.locator('#front-door-begin')).toContainText('BEGIN DAILY #');
+  // "#N" once the launch calendar has begun; the bare date during the
+  // rehearsal week before it (Marc's epoch ruling, 2026-08-20) — this
+  // spec must pass on both sides of launch day.
+  await expect(page.locator('#front-door-begin')).toContainText(
+    /BEGIN DAILY (#\d+|\d{4}-\d{2}-\d{2})/,
+  );
   await page.locator('#front-door-begin').click();
   await expect(page.locator('#front-door')).toBeHidden();
   await expect(page.locator('#board canvas')).toBeVisible();

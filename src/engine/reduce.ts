@@ -499,10 +499,13 @@ function place(state: GameState, hex: HexKey): GameState {
       if (c?.kind !== 'landmark' || c.claimed) continue;
       cells[n] = { ...c, claimed: true };
 
-      // Reaching anywhere new pays the meta a little, whatever it was: the
+      // Reaching anywhere NEW pays the meta a little, whatever it was: the
       // exploring half of Marc's three relic sources, and the only one that
-      // asks you to give up nothing.
-      relics += t.claimRelics;
+      // asks you to give up nothing. Reborn ground is not new (Marc's
+      // ruling, 2026-08-20): a spent shrine re-rolled into a cache pays its
+      // tiles, a reborn site its points — the RUN economy is the reward,
+      // and relics stay about ground never reached before.
+      if (state.rearmed[n] === undefined) relics += t.claimRelics;
 
       // Graded by distance since 2026-08-18: the walk that found a cache is
       // priced into what it holds. `cachePaysAt` so the UI says the same.

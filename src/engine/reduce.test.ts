@@ -109,6 +109,24 @@ describe('placing', () => {
     expect(state.rearmed[ring]).toBe('cache');
   });
 
+  it('pays no relics for claiming reborn ground — the run economy is the reward', () => {
+    // Marc's ruling, 2026-08-20: reborn caches pay tiles and reborn sites
+    // pay points, but the relic-per-claim is for ground never reached
+    // before — otherwise a well-explored world becomes the farming route
+    // the same day's relic tightening closed.
+    const T2 = { ...TUNING, claimRelics: 5, worldWalls: 0 };
+    const ring = key(1, 0);
+    const state = newRun(2, T2, [], [], null, { [ring]: 'cache' });
+    // Claim it by placing adjacent: some ring hex bordering both the seed
+    // tile and the reborn cache. (1,-1) and (0,1) both touch (1,0).
+    const spot = legalPlacements(state.cells).find((k) => k === key(1, -1) || k === key(0, 1));
+    if (spot === undefined) throw new Error('no adjacent legal spot this seed — pick another');
+    const placed = reduce(state, { type: 'PLACE', hex: spot });
+    const cell = placed.cells[ring];
+    expect(cell?.kind === 'landmark' && cell.claimed).toBe(true);
+    expect(placed.relics).toBe(state.relics);
+  });
+
   it('puts the card down on SELECT -1, and nothing places while the hand is empty', () => {
     // The empty hand (2026-08-20): the UI sends -1 when the selected card is
     // tapped again. Placement waits for a card to be picked back up.

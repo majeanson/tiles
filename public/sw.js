@@ -43,6 +43,11 @@ const PRECACHE = [
   '/icon-192.png',
   '/icon-512.png',
   '/icon-maskable-192.png',
+  // The self-hosted faces (2026-08-20): public/fonts/ sits outside the
+  // assets walk, and offline typography was the point of self-hosting.
+  '/fonts/cinzel.woff2',
+  '/fonts/ebgaramond.woff2',
+  '/fonts/ebgaramond-italic.woff2',
   '/icon-maskable-512.png',
   ...JSON.parse('__PRECACHE_ASSETS__'),
 ];

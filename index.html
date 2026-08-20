@@ -26,12 +26,22 @@
       name="description"
       content="An expedition into a dark plane. Place, ripen, pop, and push on."
     />
+    <!-- Every path 200s with this page (SPA fallback), so every shared
+         ?seed=/?daily= link is a crawlable duplicate — the canonical keeps
+         search engines pointed at the one front door. -->
+    <link rel="canonical" href="https://tiles.marcportal.com/" />
     <meta property="og:title" content="Ashwake" />
     <meta
       property="og:description"
       content="An expedition into a dark plane. Place, ripen, pop, and push on."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tiles.marcportal.com/" />
+    <meta property="og:site_name" content="Ashwake" />
+    <meta
+      property="og:image:alt"
+      content="A dark hex board lit by one torch — the Ashwake share card."
+    />
     <!-- A real baked share card (scripts/social.ts), not the install icon
          stretched wide — 1200x630 is the aspect every unfurl (Discord,
          Slack, Twitter) crops to, so this one does not get cropped. -->
@@ -47,6 +57,28 @@
     <!-- The long form for crawlers and history lists; main.ts trims the tab
          back to the bare name the moment it boots. -->
     <title>Ashwake — an expedition into a dark plane</title>
+    <!-- The browser floor guard (2026-08-20, launch audit): the bundle
+         needs Safari/iOS 16.4-era syntax, and on anything older the entry
+         MODULE fails to parse — including the error listener inside it —
+         leaving a front door whose BEGIN does nothing, forever, silently.
+         A CLASSIC script parses everywhere back to ES5; if the probe
+         throws, the visitor gets one honest sentence instead. -->
+    <script>
+      try {
+        // Private class methods + static blocks: the newest syntax the
+        // shipped bundle actually uses. Parse failure lands in catch.
+        new Function('class P { #m() { return 1 ?? 2; } static { } }');
+      } catch (e) {
+        document.addEventListener('DOMContentLoaded', function () {
+          document.body.innerHTML =
+            '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+            'background:#0a0806;color:#e8d6ae;font-family:Georgia,serif;padding:24px;text-align:center;">' +
+            '<p style="max-width:26em;line-height:1.6">ASHWAKE needs a newer browser — ' +
+            'iOS 16.4 or later, or an up-to-date Chrome or Firefox. ' +
+            'Nothing is wrong with your device; this game just leans on the newest engine features.</p></div>';
+        });
+      }
+    </script>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>

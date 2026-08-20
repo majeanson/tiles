@@ -315,6 +315,7 @@ export function toBoardView(
       // The colour lens: with a chip active, every OTHER colour's tiles step
       // back so one colour's holdings read as a single shape on the board.
       dimmed: spotlight !== null && cell.kind === 'tile' && cell.colour !== spotlight,
+      lensed: spotlight !== null && cell.kind === 'tile' && cell.colour === spotlight,
       worth: worthOf(state.cells, k, state.tuning, home),
       home: k === homeKey,
       light: lit(q, r),
@@ -395,6 +396,7 @@ export function toBoardView(
       // colour steps back, so the known extent of one colour's ground
       // reads as a single shape through the fog.
       dimmed: spotlight !== null && (dest?.colour ?? nativeHere) !== spotlight,
+      lensed: false,
       worth: 0,
       home: false,
       legal: false,
@@ -429,6 +431,7 @@ export function toBoardView(
       ripe: false,
       targeted: false,
       dimmed: false,
+      lensed: false,
       worth: 0,
       home: false,
       legal: false,
@@ -470,6 +473,7 @@ export function toBoardView(
         ripe: false,
         targeted: false,
         dimmed: false,
+        lensed: false,
         worth: 0,
         home: false,
         legal: false,

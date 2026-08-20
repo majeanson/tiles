@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   DAILY_EPOCH,
+  DAILY_FIRST,
+  dailyName,
   arcSparkline,
   dailyBadge,
   dailyNumber,
@@ -34,13 +36,23 @@ describe('the date, the number, the seed', () => {
   });
 
   it('numbers the epoch date #1 and counts real calendar days', () => {
+    // The epoch is LAUNCH DAY (Marc's ruling, 2026-08-20): 2026-08-25 is
+    // #1, and the rehearsal week before it counts down through zero.
+    expect(DAILY_EPOCH).toBe('2026-08-25');
     expect(dailyNumber(DAILY_EPOCH)).toBe(1);
-    expect(dailyNumber('2026-08-20')).toBe(2);
-    expect(dailyNumber('2026-09-19')).toBe(32);
+    expect(dailyNumber('2026-08-26')).toBe(2);
+    expect(dailyNumber('2026-09-25')).toBe(32);
     // Across a year boundary and a leap February, still exact: 365 days to
-    // 2027-08-19 (#366), then 366 more through 2028's February 29th (#732).
-    expect(dailyNumber('2027-08-19')).toBe(366);
-    expect(dailyNumber('2028-08-19')).toBe(732);
+    // 2027-08-25 (#366), then 366 more through 2028's February 29th (#732).
+    expect(dailyNumber('2027-08-25')).toBe(366);
+    expect(dailyNumber('2028-08-25')).toBe(732);
+  });
+
+  it('names launch-week rehearsal dates by their DATE, never #0 or worse', () => {
+    expect(dailyName(DAILY_EPOCH)).toBe('#1');
+    expect(dailyName('2026-08-26')).toBe('#2');
+    expect(dailyName('2026-08-20')).toBe('2026-08-20');
+    expect(dailyName(DAILY_FIRST)).toBe(DAILY_FIRST);
   });
 
   it('walks one day back correctly across month and year seams', () => {
@@ -133,15 +145,19 @@ describe('the share line', () => {
 
 describe('the badge and the playability rule (the simplify pass, 2026-08-19)', () => {
   it('prints one badge for every door, pluralised honestly', () => {
-    expect(dailyBadge({}, '2026-08-20')).toBe('DAILY #2');
-    const once = recordDaily({}, '2026-08-20', 900).book;
-    expect(dailyBadge(once, '2026-08-20')).toBe('DAILY #2 · best 900 · 1 try');
-    const twice = recordDaily(once, '2026-08-20', 400).book;
-    expect(dailyBadge(twice, '2026-08-20')).toBe('DAILY #2 · best 900 · 2 tries');
+    expect(dailyBadge({}, '2026-08-26')).toBe('DAILY #2');
+    const once = recordDaily({}, '2026-08-26', 900).book;
+    expect(dailyBadge(once, '2026-08-26')).toBe('DAILY #2 · best 900 · 1 try');
+    const twice = recordDaily(once, '2026-08-26', 400).book;
+    expect(dailyBadge(twice, '2026-08-26')).toBe('DAILY #2 · best 900 · 2 tries');
+    // A rehearsal-week badge names the date, not a #0 (Marc's ruling).
+    expect(dailyBadge({}, '2026-08-20')).toBe('DAILY 2026-08-20');
   });
 
-  it('refuses a date before #1 existed — a "#-3" would be a lie', () => {
+  it('refuses a date before the daily EXISTED, plays the rehearsal week', () => {
     expect(isPlayableDaily(DAILY_EPOCH)).toBe(true);
+    expect(isPlayableDaily(DAILY_FIRST)).toBe(true);
+    expect(isPlayableDaily('2026-08-20')).toBe(true);
     expect(isPlayableDaily('2026-08-18')).toBe(false);
     expect(isPlayableDaily('not a date')).toBe(false);
   });
