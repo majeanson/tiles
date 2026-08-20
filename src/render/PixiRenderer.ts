@@ -135,9 +135,15 @@ const EDGE_SHADE: Readonly<Record<Orientation, readonly number[]>> = {
  * at once. Both run on the same stagger so a big harvest reads as a cascade.
  * `hold` is the reduced-motion pop: the same glow at a fixed alpha, no
  * movement at all, removed after a beat — feedback without animation.
+ * `cover` (2026-08-20, Marc: "tiles are not grey from the start — they go
+ * from coloured to grey after the animation") is the tile's own surface
+ * held still over the already-painted stone until this cell's beat of the
+ * cascade arrives and the jump takes over — same texture, same spot, so
+ * the hand-off is invisible and the grey is only ever seen once its tile
+ * has actually leapt away.
  */
 type Flash = {
-  readonly kind: 'glow' | 'jump' | 'hold';
+  readonly kind: 'glow' | 'jump' | 'hold' | 'cover';
   readonly sprite: Sprite;
   /** Milliseconds until it starts. A harvest staggers so it reads as a cascade. */
   delayMs: number;
@@ -1283,11 +1289,40 @@ export class PixiRenderer implements Renderer {
           this.#assets.get(surface.asset) ??
           this.#surfaces.get(surface, layout.size, layout.orientation);
         if (tileTexture !== null) {
+          const wide = layout.orientation === 'pointy' ? Math.sqrt(3) : 2;
+          const tall = layout.orientation === 'pointy' ? 2 : Math.sqrt(3);
+
+          // The cover: this cell's beat is `delayMs` away, and the board
+          // has ALREADY repainted it as stone — deep in a long cascade
+          // that was half a second of grey before anything moved (Marc,
+          // 2026-08-20). The tile's own surface holds the colour, still
+          // and opaque, until the jump takes over; at the bottom of the
+          // fx layer so every glow and ember still lights over it.
+          if (delayMs > 0) {
+            const cover = new Sprite(tileTexture);
+            cover.anchor.set(0.5);
+            cover.position.set(x, y);
+            cover.setSize(layout.size * wide, layout.size * tall);
+            this.#fx.addChildAt(cover, 0);
+            this.#flashes.push({
+              kind: 'cover',
+              sprite: cover,
+              delayMs: 0,
+              elapsedMs: 0,
+              // One frame past the jump's own start, so the hand-off can
+              // never show a gap of stone between the two sprites.
+              lifeMs: delayMs + 17,
+              peak: 1,
+              baseY: y,
+              liftPx: 0,
+              baseScaleX: cover.scale.x,
+              baseScaleY: cover.scale.y,
+            });
+          }
+
           const jumper = new Sprite(tileTexture);
           jumper.anchor.set(0.5);
           jumper.position.set(x, y);
-          const wide = layout.orientation === 'pointy' ? Math.sqrt(3) : 2;
-          const tall = layout.orientation === 'pointy' ? 2 : Math.sqrt(3);
           jumper.setSize(layout.size * wide, layout.size * tall);
           jumper.alpha = 0;
           this.#fx.addChild(jumper);
@@ -1607,9 +1642,10 @@ export class PixiRenderer implements Renderer {
         continue;
       }
 
-      if (flash.kind === 'hold') {
-        // The reduced-motion pop: nothing moves, nothing fades. It spawned at
-        // its alpha and sits there until the life check above removes it.
+      if (flash.kind === 'hold' || flash.kind === 'cover') {
+        // Nothing moves, nothing fades — the reduced-motion glow sits at its
+        // alpha, and the pop cover sits as the tile it still looks like,
+        // both until the life check above removes them.
       } else if (flash.kind === 'glow') {
         // Fast up, slow down. A symmetric fade reads as a pulsing light; the
         // asymmetry is what makes it read as something having happened.

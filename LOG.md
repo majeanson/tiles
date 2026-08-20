@@ -4925,3 +4925,19 @@ landmarks stay faint) and wears the accent veiled by the same fog its
 ground is — a waypoint on a map, distinct from any live cell. Caches
 and sites stay quiet stops; finds stay as reticent in memory as
 everywhere else. 597 tests; sim 0 stalled/capped.
+
+**Session 33 addendum 5 — the cascade keeps its colour (Marc: "the tiles
+on the map are not grey from the start, they go from coloured to grey
+after the animation is done").** The board repaints every popped cell as
+stone on the very frame a pocket cashes, and the jump that carries the
+colour away runs on the cascade's stagger — so cells deep in a long
+harvest sat grey for up to half a second before their own beat arrived.
+A new `cover` flash kind holds the tile's own surface, still and opaque,
+over the already-painted stone until that cell's jump takes over — same
+texture, same spot, one frame of overlap so the hand-off can never show
+a gap — and sits at the bottom of the fx layer so every glow and ember
+still lights over it. The grey is now only ever seen once its tile has
+actually leapt away, which is the sentence Marc wrote. Covers ride the
+same `#flashes` lifecycle as everything else, so the iOS eviction guard
+covers them for free. Reduced motion is untouched: nothing moves there
+by contract, so colour-to-grey stays instant.
