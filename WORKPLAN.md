@@ -115,7 +115,7 @@ rather than four tinted hexes on black?
    DPR cap 2 and the WebGL context-loss path untouched · old saves and
    `pnpm sim` byte-identical (art is paint, not rules).
 
-## Stage 4 — The torchlit motion pass (STATUS: DONE, commit PENDING)
+## Stage 4 — The torchlit motion pass (STATUS: DONE, commit `ca3d61b`)
 
 **Question:** does motion in torchlit's register (light responding, embers
 settling) make pop/claim/arrival feel MORE like one world — or does it read
@@ -131,6 +131,12 @@ as noise on top of the feel pass's one motion language?
 4. Marc has NOT yet judged the shipped feel pass with thumbs — this stage
    builds on it, so if his verdict lands before the stage starts, fold it
    in; if after, the stage's own question absorbs it.
+
+**All four stages are now built.** The pipeline's build work ends here — a
+fresh-eyes review of all four stages together (the same species as the
+2026-08-18 pipeline's own closing review) is the next step, and per that
+review's own precedent it runs as its own separate pass, not tacked onto
+the stage that just shipped.
 
 ## After the pipeline
 
