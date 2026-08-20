@@ -59,6 +59,18 @@ export const FEATURES = [
     wired: true,
   },
   {
+    id: 'fame.timeline',
+    label: 'Hall of fame timeline',
+    note:
+      'The hall of fame keeps a diary (designed 2026-08-20 through Marc’s own prompts): ' +
+      'every finished run leaves a dated tick, milestone runs carry their ✦ moments, and ' +
+      'the panel grows TIMELINE · DAILY · TOTALS tabs. Gates the recording AND the tabs — ' +
+      'the clean start means flipping this on is the day the record begins, and nothing ' +
+      'is lost by the wait: what came before is stated live from the aggregate stores.',
+    defaultOn: false,
+    wired: true,
+  },
+  {
     id: 'ui.sound',
     label: 'Sound',
     note:

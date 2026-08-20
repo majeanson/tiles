@@ -4590,3 +4590,79 @@ ghost alpha reads as a whisper or is still too quiet or too loud against a
 real territory in a real endless world; and whether the field's new second
 layer — the overlay, in the no-art procedural branch — reads as depth or
 as clutter next to the whisper `fieldPattern` was always meant to stay.
+
+### Session 31 — The hall of fame grows its timeline
+
+**Question:** now that every run leaves a tick and the ✦ moments hide
+behind a tap — is the spine of ordinary rows what makes the history worth
+opening, or do I only ever tap the ✦ rows, and the ticks between are noise?
+
+Designed 2026-08-20 through Marc's own prompts (three option-set rounds),
+the session the door's own comments promised. The decisions, closed: every
+finished run appends one tick row and milestone runs carry highlights on
+the same entry; a clean start (nothing retro-seeded — nothing in storage
+can be unrolled; a prehistory line states what came before); one
+device-wide stream, newest first, filter chips ALL · W1 · W2 · W3; local
+append-only storage kept forever, entries shaped as dated self-describing
+events a future backend could ingest unchanged (no Cloudflare DB now —
+that is the leaderboard's own later session, where verified replays are
+the real anti-cheat); all four milestone kinds (new bests, firsts &
+unlocks, territory claims, world events); run rows read date · world ·
+score · reach · arc sparkline; dailies recorded in the same store but
+rendered in their own tab; the panel grows tabs TIMELINE · DAILY · TOTALS
+with the shipped flat ledger becoming TOTALS unchanged; highlights
+collapse to "✦ N moments" on the row and expand on tap.
+
+**Done.**
+
+1. **`src/meta/timeline.ts`** — the pure half, `daily.ts`'s style (no
+   `Date`, no storage; the shell hands in `Date.now()`): the three entry
+   types (`run` with its ✦ highlights list, `daily`, `world` for
+   crossed/settled), `decodeTimeline` refusing a corrupt entry WHOLE while
+   its neighbours survive, `appendEntry`, `runHighlights` (the whole ✦
+   detection as one pre/post `WorldMemory` diff — no event calls sprinkled
+   anywhere; perk counts arrive as numbers because `Progress` is
+   device-wide), `streamOf`/`runsOf`/`worldEventsOf`/`dailiesOf`, and
+   `prehistory` computing the clean start's one sentence live from the
+   record book's device-wide run count (it survives crossings; summing
+   `WorldMemory.runs` would not) and the DailyBook's summed tries. Key
+   `tiles.timeline.v1`; RESET ALL's prefix wipe already covers it.
+2. **`fame.timeline` in the registry**, defaultOn false, gating BOTH the
+   recording and the tabs — the clean start makes the flag flip the day
+   the record begins, and nothing is lost by the wait because prehistory
+   is computed, never stored. The registry pin test grew its fourth id
+   with the same justification the sound flag carries: record-keeping,
+   not game.
+3. **Four append sites in `main.ts`**, each inside an existing choke
+   point: the home run inside `finish`'s one synchronous block (after the
+   record write, before `removeItem(keys.run)` — so it inherits the
+   exactly-once shape the 2026-08-18 double-bank fix bought), the daily in
+   `finish`'s daily branch, the crossing as `cross()`'s first act before
+   `dropWorld()`, the settling in the front door's SETTLE handler before
+   its navigation. `runKeeping` gained `slot` and `timelineOn` params and
+   a `perksAtBoot` capture; BEGIN AT CAMP is not a site — `state.wakeAt`
+   becomes a `camp` highlight on the run's own row. A `?seed=` replay
+   appends nothing (no slot, and it would break the prehistory
+   arithmetic); abandon appends nothing (the spine is FINISHED runs).
+4. **The panel, tabbed** behind the flag: TIMELINE (prehistory line,
+   ALL · W1 · W2 · W3 chips, the stream newest-first by REVERSED STORED
+   ORDER — never sorted by `at`, so a phone clock change cannot reorder
+   the diary; runs with ✦ moments are real buttons with `aria-expanded`
+   folding their detail lines, per Marc's "expandable when you click when
+   the details are there, otherwise just a line with summary"; crossings
+   and settlings are their own single lines), DAILY (the ladder's
+   aggregate line, then the diary's daily ticks with `#N`, ordinal try and
+   NEW BEST), TOTALS (the original flat ledger moved verbatim). The tab
+   bar reuses the manual's own `.help-tabs`/`.help-tab`; only the chips,
+   the run-row button and its fold are new CSS, all token-driven. Flag
+   off, the panel renders the shipped flat ledger exactly.
+
+**Verified:** 585 tests (+17 in `timeline.test.ts`: decode refusal per
+entry, round-trips, every highlight kind and its counts, the filters'
+slot contract, prehistory's clamp; the registry pin updated), typecheck/
+lint/format clean, production build green, `pnpm sim` byte-identical by
+stash-and-rerun — nothing in `engine/` or `content/` moved, and the
+timeline holds no balance number to escape anywhere.
+
+**Waits on the phone:** `?ff=fame.timeline` once, then finish a run — the
+written question above is Marc's to answer after a week of real ticks.

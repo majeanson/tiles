@@ -93,4 +93,13 @@ shrines and finds are their own progression. Not a bug to fix.
   farthest territory, climb measured from where you wake.
 - **The feel pass is LIVE**: press feedback, arrivals on one motion
   language, TRY AGAIN on the daily's end screen. Judge it with thumbs.
+- **The hall of fame timeline is BUILT** (designed 2026-08-20 through your
+  own prompts, LOG.md Session 31), behind `fame.timeline` — visit
+  **`?ff=fame.timeline`** once and your phone records from then on: every
+  finished run a dated tick, ✦ moments folded under their run, crossings
+  and settlings their own lines, dailies on their own tab, the old ledger
+  under TOTALS. The clean start means the flip IS the day the record
+  begins. The written question waits on a week of real ticks: is the spine
+  of ordinary rows what makes the history worth opening, or do you only
+  ever tap the ✦ rows?
 - The rest of the parking lot is at the bottom of `ROADMAP.md`.

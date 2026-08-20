@@ -47,6 +47,19 @@ import {
 } from '@meta/progress';
 import { decodeRun, encodeRun } from '@meta/save';
 import {
+  appendEntry,
+  dailiesOf,
+  decodeTimeline,
+  encodeTimeline,
+  prehistory,
+  runHighlights,
+  streamOf,
+  type Highlight,
+  type RunEntry,
+  type TimelineEntry,
+  type WorldEventEntry,
+} from '@meta/timeline';
+import {
   decodeWorld,
   encodeWorld,
   knownFraction,
@@ -115,6 +128,16 @@ const SHRINE_RECEIPT_KEY = 'tiles.shrinereceipt.v1';
 const ERROR_STORAGE_KEY = 'tiles.lasterror.v1';
 /** The daily ladder: best and tries per date, plus the streak they imply. */
 const DAILY_STORAGE_KEY = 'tiles.daily.v1';
+/**
+ * The hall of fame's diary (designed 2026-08-20 through Marc's own prompts):
+ * every finished run a dated tick, milestone runs carrying their ✦ moments,
+ * dailies and crossings alongside. Append-only, kept forever, device-wide —
+ * and the first thing the hall of fame keeps for itself, breaking the
+ * door's "nothing new is kept" birth rule on purpose. Recording and the
+ * tabs both live behind `fame.timeline`, and the clean start makes the
+ * flag flip the day the record begins.
+ */
+const TIMELINE_STORAGE_KEY = 'tiles.timeline.v1';
 /**
  * Which of the three world slots is active (Marc, 2026-08-19: "maybe have 3
  * save game possibilities?"). A device keeps up to three worlds — each with
@@ -205,6 +228,24 @@ function writeDailyBook(book: DailyBook): void {
     localStorage.setItem(DAILY_STORAGE_KEY, encodeDailyBook(book));
   } catch {
     // Private mode: the daily still plays, the ladder just is not kept.
+  }
+}
+
+function readTimeline(): readonly TimelineEntry[] {
+  try {
+    return decodeTimeline(localStorage.getItem(TIMELINE_STORAGE_KEY));
+  } catch {
+    return [];
+  }
+}
+
+/** One entry onto the diary's end. A diary that cannot be written is still
+ *  a run that happened — never fatal, never blocks the end screen. */
+function appendTimeline(entry: TimelineEntry): void {
+  try {
+    localStorage.setItem(TIMELINE_STORAGE_KEY, encodeTimeline(appendEntry(readTimeline(), entry)));
+  } catch {
+    // Storage full or forbidden: this tick goes unkept, the run does not.
   }
 }
 
@@ -417,11 +458,19 @@ function runKeeping(
   // renders the share card against it, the same theme the screen the card
   // is a picture OF was drawn in.
   theme: Theme,
+  // The timeline (Session 31): which slot this run's tick belongs to, and
+  // whether the diary is recording at all — `fame.timeline` gates the
+  // appends here the same way it gates the tabs that read them.
+  slot: Slot,
+  timelineOn: boolean,
 ): GameHooks & { savedSeed: number | null; dropWorld: () => void } {
   // Asked once: the URL cannot change mid-session without a reload, and this
   // used to construct fresh URLSearchParams three times per action across
   // the hooks below.
   const replaySeed = askedSeed();
+  // The perk shelf as this page booted, for the timeline's ✦ diff at finish
+  // — perks are device-wide (`Progress`), so the world diff cannot see them.
+  const perksAtBoot = readProgress().found.length;
   // A detour: somebody else's seed, or the daily. Neither is this device's
   // world — nothing banks, nothing merges, nothing overwrites the home run.
   const detour = replaySeed !== null || dailyDate !== null;
@@ -613,6 +662,20 @@ function runKeeping(
               dowry: dowryOf,
               cross: () => {
                 const dowry = dowryOf();
+                // The diary's entry FIRST, synchronously, before the world
+                // it names is dropped and the page navigates — a crossing
+                // that outran its own record would leave no trace of the
+                // world it closed.
+                if (timelineOn) {
+                  appendTimeline({
+                    at: Date.now(),
+                    kind: 'world',
+                    event: 'crossed',
+                    slot,
+                    worldSeed: world.worldSeed,
+                    n: dowry,
+                  });
+                }
                 const progress = readProgress();
                 writeProgress({ ...progress, relics: progress.relics + dowry });
                 dropWorld();
@@ -678,6 +741,21 @@ function runKeeping(
       if (dailyDate !== null) {
         const result = recordDaily(readDailyBook(), dailyDate, state.points);
         writeDailyBook(result.book);
+        // The diary's daily tick — same store as the home runs, its own tab
+        // when read. Rides the same once-per-ended-transition guarantee the
+        // ladder write above does.
+        if (timelineOn) {
+          appendTimeline({
+            at: Date.now(),
+            kind: 'daily',
+            date: dailyDate,
+            score: state.points,
+            reach: reachOf(state),
+            arc: arcSparkline(state.log.harvests),
+            try: result.record.tries,
+            best: result.isNewBest,
+          });
+        }
         return {
           runs: result.record.tries,
           best: result.record.best,
@@ -748,6 +826,32 @@ function runKeeping(
         localStorage.setItem(BEST_STORAGE_KEY, encodeRecords(after));
       } catch {
         // A record that cannot be written is still a run that happened.
+      }
+
+      // The diary's tick (Session 31), in the same synchronous block as the
+      // record write above and the run removal below — so it inherits the
+      // exactly-once shape the 2026-08-18 double-bank fix bought: `finish`
+      // fires once per ended transition, and a reload on the end screen
+      // finds no run to resume and re-finish. The ✦ diff reads the world
+      // this PAGE booted with against the world the run ended with (a run
+      // resumed across a reload will not badge its pre-reload moments; the
+      // facts themselves are safe in WorldMemory).
+      if (timelineOn) {
+        appendTimeline({
+          at: Date.now(),
+          kind: 'run',
+          slot,
+          worldSeed: world.worldSeed,
+          score: state.points,
+          reach: reachOf(state),
+          arc: arcSparkline(state.log.harvests),
+          highlights: runHighlights(world, current, {
+            points: state.points,
+            perksBefore: perksAtBoot,
+            perksAfter: readProgress().found.length,
+            campStart: state.wakeAt !== null,
+          }),
+        });
       }
 
       // The finished run leaves storage HERE, not on NEW RUN: an ended run
@@ -1362,7 +1466,16 @@ async function main(): Promise<void> {
   // renderer, baked draft cards, layout — sees one consistent orientation.
   const theme: Theme = facing === null ? picked : { ...picked, orientation: facing };
 
-  const keeper = runKeeping(world, isEnabled(features, 'debug.overlay'), dailyDate, keys, theme);
+  const timelineOn = isEnabled(features, 'fame.timeline');
+  const keeper = runKeeping(
+    world,
+    isEnabled(features, 'debug.overlay'),
+    dailyDate,
+    keys,
+    theme,
+    slot,
+    timelineOn,
+  );
   const resuming = keeper.resume !== null && keeper.resume !== undefined;
   // Resumed run > the daily > shared seed link > THIS DEVICE'S WORLD. The
   // last is P4a: without a link or a run in progress you go back to your own
@@ -1550,6 +1663,18 @@ async function main(): Promise<void> {
         // have settled a different world than the one just previewed
         // whenever a hand-typed seed was negative.
         saveWorld(slotKeys(emptySlot), newWorld(sharedSeed));
+        // The diary's arrival entry, before the navigation that follows —
+        // settling is a world-scale moment, not a run, and it happens on a
+        // door no run-end hook ever sees.
+        if (timelineOn) {
+          appendTimeline({
+            at: Date.now(),
+            kind: 'world',
+            event: 'settled',
+            slot: emptySlot,
+            worldSeed: sharedSeed,
+          });
+        }
         setActiveSlot(emptySlot);
         goHome();
       });
@@ -1622,10 +1747,14 @@ async function main(): Promise<void> {
       }),
     );
 
-    // The hall of fame (Marc, 2026-08-20: "make the button now" — the
-    // timeline it grows into is planned through its own prompts later).
-    // This first screen states only what storage already knows: the three
-    // worlds, the daily ladder, the perks found. It keeps nothing new.
+    // The hall of fame (Marc, 2026-08-20: "make the button now"; the
+    // timeline it grew into was designed the same day through his own
+    // prompts — LOG.md Session 31). Behind `fame.timeline` this panel is
+    // three tabs: TIMELINE (the diary of runs and crossings, ✦ moments
+    // folded under their run), DAILY (the diary's daily ticks under the
+    // ladder's own line), TOTALS (the original flat ledger, unmoved).
+    // Flag off, it is that first screen exactly: only what storage already
+    // knows, nothing new kept.
     const fameOpen = required<HTMLButtonElement>('front-door-fame');
     const famePanel = required<HTMLElement>('fame-panel');
     const fameBody = required('fame-body');
@@ -1644,7 +1773,10 @@ async function main(): Promise<void> {
       if (event.key === 'Escape') closeFame();
     });
     fameOpen.hidden = false;
-    fameOpen.addEventListener('click', () => {
+
+    /** The original flat ledger — the TOTALS tab now, and the whole panel
+     *  while `fame.timeline` is off. */
+    const fameTotalsRows = (): HTMLElement[] => {
       const rows: HTMLElement[] = [fameRow('fame-h', 'WORLDS')];
       for (const s of SLOTS) {
         const w = s === slot ? world : peekSlot(s);
@@ -1690,8 +1822,251 @@ async function main(): Promise<void> {
           );
         }
       }
+      return rows;
+    };
 
-      fameBody.replaceChildren(...rows);
+    // The diary's date, human-sized: the entry's own epoch ms, shown as the
+    // day it happened, with the year only when it is not this one. Display
+    // only — the stream's ORDER is the stored array, never the clock.
+    const FAME_MONTHS = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC',
+    ] as const;
+    const fameDate = (at: number): string => {
+      const d = new Date(at);
+      const label = `${FAME_MONTHS[d.getMonth()]} ${d.getDate()}`;
+      return d.getFullYear() === new Date().getFullYear() ? label : `${label} ${d.getFullYear()}`;
+    };
+
+    /** One ✦ moment in plain words. The run row carries score and reach
+     *  already, so the two records name their number outright. */
+    const highlightWords = (h: Highlight, e: RunEntry): string => {
+      const n = h.n ?? 1;
+      switch (h.kind) {
+        case 'best-score':
+          return `NEW BEST — ${e.score} pts`;
+        case 'best-reach':
+          return `FARTHEST YET — reach ${e.reach}`;
+        case 'shrine':
+          return n === 1 ? 'Shrine woken' : `${n} shrines woken`;
+        case 'perk':
+          return n === 1 ? 'Perk found' : `${n} perks found`;
+        case 'goal':
+          return n === 1 ? 'Survey goal met' : `${n} survey goals met`;
+        case 'territory':
+          return n === 1 ? 'Territory claimed' : `${n} territories claimed`;
+        case 'camp':
+          return 'Began at camp';
+      }
+    };
+
+    /** A run's tick: a plain row when nothing ✦ happened; a real button
+     *  with its moments folded under it when something did (Marc's call:
+     *  "expandable when you click when the details are there, otherwise
+     *  just a line with summary"). */
+    const fameRunRow = (e: RunEntry): HTMLElement[] => {
+      const text =
+        `${fameDate(e.at)} · W${e.slot} · ${e.score} pts · reach ${e.reach}` +
+        (e.arc === '' ? '' : ` · ${e.arc}`);
+      if (e.highlights.length === 0) return [fameRow('fame-row', text)];
+
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'fame-row fame-run';
+      row.textContent = `${text} · ✦ ${e.highlights.length}`;
+      row.setAttribute('aria-expanded', 'false');
+      const detail = document.createElement('div');
+      detail.className = 'fame-detail';
+      detail.hidden = true;
+      detail.replaceChildren(
+        ...e.highlights.map((h) => fameRow('fame-row', `✦ ${highlightWords(h, e)}`)),
+      );
+      row.addEventListener('click', () => {
+        const open = detail.hidden;
+        detail.hidden = !open;
+        row.setAttribute('aria-expanded', String(open));
+      });
+      return [row, detail];
+    };
+
+    /** A world-scale entry: leaving, or arriving. One line, no fold. */
+    const fameWorldRow = (e: WorldEventEntry): HTMLElement =>
+      fameRow(
+        'fame-row',
+        e.event === 'crossed'
+          ? `${fameDate(e.at)} · W${e.slot} · Crossed on — ${e.n ?? 0} relics carried out`
+          : `${fameDate(e.at)} · W${e.slot} · Settled a shared world`,
+      );
+
+    /** The TIMELINE tab: prehistory's one sentence, the world filter
+     *  chips, and the stream — newest first, in stored order reversed. */
+    const fameTimelineTab = (t: readonly TimelineEntry[], pastRuns: number): HTMLElement[] => {
+      const els: HTMLElement[] = [];
+      if (pastRuns > 0) {
+        els.push(
+          fameRow(
+            'flag-note',
+            `${pastRuns} ${pastRuns === 1 ? 'run' : 'runs'} before the record began.`,
+          ),
+        );
+      }
+
+      const list = document.createElement('div');
+      const paintStream = (slotFilter: number | null): void => {
+        const entries = [...streamOf(t, slotFilter)].reverse();
+        list.replaceChildren(
+          ...(entries.length === 0
+            ? [fameRow('fame-row dim', 'The record begins now — finish a run.')]
+            : entries.flatMap((e) => (e.kind === 'run' ? fameRunRow(e) : [fameWorldRow(e)]))),
+        );
+      };
+
+      const chips = document.createElement('div');
+      chips.className = 'fame-chips';
+      const chipDefs: readonly { readonly label: string; readonly slot: number | null }[] = [
+        { label: 'ALL', slot: null },
+        ...SLOTS.map((s) => ({ label: `W${s}`, slot: s })),
+      ];
+      const chipButtons = chipDefs.map((def, index) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'fame-chip';
+        chip.textContent = def.label;
+        if (index === 0) chip.dataset['on'] = 'true';
+        chip.addEventListener('click', () => {
+          for (const [i, other] of chipButtons.entries()) {
+            if (i === index) other.dataset['on'] = 'true';
+            else delete other.dataset['on'];
+          }
+          paintStream(def.slot);
+        });
+        return chip;
+      });
+      chips.replaceChildren(...chipButtons);
+      paintStream(null);
+
+      els.push(chips, list);
+      return els;
+    };
+
+    /** The DAILY tab: the ladder's own aggregate line on top (the same
+     *  facts TOTALS states), then the diary's daily ticks, newest first. */
+    const fameDailyTab = (t: readonly TimelineEntry[], pastTries: number): HTMLElement[] => {
+      const els: HTMLElement[] = [];
+      const book = readDailyBook();
+      const dates = Object.keys(book);
+      if (dates.length === 0) {
+        els.push(fameRow('fame-row dim', 'Never played.'));
+      } else {
+        const best = Math.max(...dates.map((d) => book[d]!.best));
+        const tries = dates.reduce((n, d) => n + book[d]!.tries, 0);
+        const streak = dailyStreak(book, today);
+        els.push(
+          fameRow(
+            'fame-row',
+            `${dates.length} ${dates.length === 1 ? 'day' : 'days'} played · best ${best} · ${tries} tries` +
+              (streak > 1 ? ` · streak ${streak}` : ''),
+          ),
+        );
+      }
+      if (pastTries > 0) {
+        els.push(
+          fameRow(
+            'flag-note',
+            `${pastTries} ${pastTries === 1 ? 'try' : 'tries'} before the record began.`,
+          ),
+        );
+      }
+
+      const entries = [...dailiesOf(t)].reverse();
+      if (entries.length === 0) {
+        els.push(fameRow('fame-row dim', 'No tries since the record began.'));
+      } else {
+        for (const e of entries) {
+          els.push(
+            fameRow(
+              'fame-row',
+              `${fameDate(e.at)} · #${dailyNumber(e.date)} · ${e.score} pts · reach ${e.reach}` +
+                (e.arc === '' ? '' : ` · ${e.arc}`) +
+                ` · ${ordinal(e.try)} try` +
+                (e.best ? ' · NEW BEST' : ''),
+            ),
+          );
+        }
+      }
+      return els;
+    };
+
+    fameOpen.addEventListener('click', () => {
+      if (!timelineOn) {
+        fameBody.replaceChildren(...fameTotalsRows());
+        famePanel.hidden = false;
+        famePanel.focus();
+        return;
+      }
+
+      // The diary and the prehistory it has not lived: the record book's
+      // device-wide run count and the daily ladder's summed tries, minus
+      // what the timeline already holds — computed live, never stored,
+      // which is what the clean start means.
+      const t = readTimeline();
+      let deviceRuns = 0;
+      try {
+        deviceRuns = (decodeRecords(localStorage.getItem(BEST_STORAGE_KEY))[ONLY_WORLD] ??
+          EMPTY_RECORDS)['runs'];
+      } catch {
+        // Unreadable records claim no prehistory, which errs quiet.
+      }
+      const book = readDailyBook();
+      const past = prehistory(
+        t,
+        deviceRuns,
+        Object.values(book).reduce((n, r) => n + r.tries, 0),
+      );
+
+      // The manual's own tab pattern (`#buildManual`, game.ts) and its own
+      // CSS — one vocabulary for "a panel with tabs" in the whole game.
+      const tabs = [
+        { label: 'TIMELINE', build: (): HTMLElement[] => fameTimelineTab(t, past.runs) },
+        { label: 'DAILY', build: (): HTMLElement[] => fameDailyTab(t, past.dailies) },
+        { label: 'TOTALS', build: fameTotalsRows },
+      ];
+      const bar = document.createElement('div');
+      bar.className = 'help-tabs';
+      const panels = tabs.map((tab, index) => {
+        const panel = document.createElement('div');
+        panel.hidden = index !== 0;
+        panel.replaceChildren(...tab.build());
+        return panel;
+      });
+      const buttons = tabs.map((tab, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'help-tab';
+        button.textContent = tab.label;
+        if (index === 0) button.dataset['on'] = 'true';
+        button.addEventListener('click', () => {
+          for (const [i, panel] of panels.entries()) panel.hidden = i !== index;
+          for (const [i, other] of buttons.entries()) {
+            if (i === index) other.dataset['on'] = 'true';
+            else delete other.dataset['on'];
+          }
+        });
+        return button;
+      });
+      bar.replaceChildren(...buttons);
+
+      fameBody.replaceChildren(bar, ...panels);
       famePanel.hidden = false;
       famePanel.focus();
     });

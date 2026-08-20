@@ -32,10 +32,13 @@ describe('the registry', () => {
   it('holds no flag that changes what game is being played', () => {
     // ui.sound joined 2026-08-19: presentation, the theme picker's own
     // class — three synthesised moments, voiced by the theme, changing
-    // nothing a shared seed would replay differently. A flag that changes
-    // the GAME still does not belong here.
+    // nothing a shared seed would replay differently. fame.timeline joined
+    // 2026-08-20 (Session 31): record-keeping — the hall of fame's diary
+    // and its tabs, reading and writing storage the engine never sees; the
+    // run it records is identical with the flag in either position. A flag
+    // that changes the GAME still does not belong here.
     const ids = FEATURES.map((f) => f.id);
-    expect(ids).toEqual(['debug.overlay', 'ui.themePicker', 'ui.sound']);
+    expect(ids).toEqual(['debug.overlay', 'ui.themePicker', 'fame.timeline', 'ui.sound']);
   });
 
   it('describes every flag, so the registry never becomes a list of mystery ids', () => {
