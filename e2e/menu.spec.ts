@@ -342,3 +342,70 @@ test('a backup survives a wipe and puts the same world back', async ({ page }) =
 
   expect(errors).toEqual([]);
 });
+
+/**
+ * A panel that covers the game actually covers it (2026-08-21).
+ *
+ * "Modal" was a paint job: `inert` appeared once in the whole codebase and
+ * only to clear it, so the hall of fame sat over the front door with BEGIN
+ * and RESET ALL still clickable behind it. This is a hit-testing bug, which
+ * is exactly the class the unit suite cannot see — happy-dom has no layout.
+ */
+test('a panel over the front door makes it unreachable, not just invisible', async ({ page }) => {
+  const errors = watchErrors(page);
+
+  // Seeded BEFORE boot, in the shape `decodeEntry` actually accepts — a run
+  // entry needs `arc` and `highlights` as well as the counts, and an entry
+  // it refuses leaves the hall of fame hidden and this test green for the
+  // wrong reason.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'tiles.timeline.v1',
+      JSON.stringify([
+        {
+          at: 1755600000000,
+          kind: 'run',
+          slot: 1,
+          worldSeed: 42,
+          score: 312,
+          reach: 14,
+          arc: '▁▅█',
+          highlights: [],
+        },
+      ]),
+    );
+  });
+  await page.goto('/');
+
+  const begin = page.locator('#front-door-begin');
+  await expect(begin).toBeVisible();
+  await page.locator('#front-door-fame').click();
+  await expect(page.locator('#fame-panel')).toBeVisible();
+
+  // The door must be INERT, not merely painted over. A full-screen panel
+  // already swallows a mouse click by layout — I checked, by disabling the
+  // inert pass and watching a click-based assertion pass anyway — so the
+  // thing that was actually broken is the KEYBOARD: BEGIN and RESET ALL
+  // stayed tabbable and focusable behind the panel.
+  await expect(page.locator('#front-door')).toBeVisible();
+  expect(await begin.evaluate((el) => el.closest('[inert]') !== null)).toBe(true);
+
+  // Focus refuses to land there while it is inert — the property that makes
+  // the panel modal rather than opaque.
+  await begin.evaluate((el: HTMLElement) => {
+    el.focus();
+  });
+  expect(await page.evaluate(() => document.activeElement?.id ?? '')).not.toBe('front-door-begin');
+
+  // Escape from ANYWHERE, not only with focus inside the panel — which is
+  // all the old panel-scoped handler could manage, and tabbing out of it
+  // used to strand you on a door you could not use.
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#fame-panel')).toBeHidden();
+
+  // And with it gone, the door works again.
+  await begin.click();
+  await expect(page.locator('#front-door')).toBeHidden();
+
+  expect(errors).toEqual([]);
+});
