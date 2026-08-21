@@ -351,6 +351,27 @@ export const withinBeaconHorizon = (
  * hand (the UI, mostly) — the where-you-wake prototype is the only caller
  * that ever passes anything else, via `homeOf`.
  */
+/**
+ * What a pocket's worth becomes as SCORE — the one place that arithmetic
+ * lives (2026-08-21).
+ *
+ * It was written twice: once in `harvest` and once in the pop receipt's own
+ * `Math.floor(value.points * t.pointsPerPop)`. That is the same shape as the
+ * `collected`/`scores` drift and the shop's two economy sentences — a rule
+ * spelled in two places, agreeing right up until one of them is changed. It
+ * was changed the same day, when a scoring pop gained a floor of one point,
+ * and the receipt would have gone on printing the zero the engine no longer
+ * banks.
+ *
+ * The floor: a pop that scores at all scores at least 1. Only ever reached
+ * by a pocket whose whole worth lands under a single point.
+ */
+export function scoreOf(points: number, t: Tuning): number {
+  if (!t.singlePayout) return points;
+  const scaled = Math.floor(points * t.pointsPerPop);
+  return points > 0 ? Math.max(1, scaled) : scaled;
+}
+
 export const distanceMultiplierAt = (
   k: HexKey,
   t: Tuning,

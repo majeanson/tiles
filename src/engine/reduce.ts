@@ -14,6 +14,7 @@ import {
   placementCostAt,
   reachOf,
   ripeKeys,
+  scoreOf,
 } from './rules';
 import type {
   Action,
@@ -312,7 +313,7 @@ export function newRun(
     cells: opened.cells,
     draft: opened.draft,
     selected: 0,
-    held: null,
+    held: [],
     quest: null,
     bias: null,
     lastPlaced: null,
@@ -333,7 +334,7 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'HARVEST':
       return harvest(state, action.choice, action.at);
     case 'HOLD':
-      return hold(state);
+      return hold(state, action.slot);
     case 'SPEND':
       return spendLuck(state, action.on, action.colour);
   }
@@ -413,24 +414,43 @@ function spendLuck(state: GameState, on: Spend, colour?: Colour): GameState {
 }
 
 /**
- * Swap the selected card with the stash. An empty stash takes the card and
- * the draft shrinks until its next reroll; a full one trades in place. The
- * held tile survives rerolls — that is what holding is FOR — and the stash
+ * Swap the selected card with the stash. An empty slot takes the card and
+ * the draft shrinks until its next reroll; a full stash trades in place. The
+ * held tiles survive rerolls — that is what holding is FOR — and the stash
  * is a place rather than a mode: one action, both directions.
+ *
+ * With more than one slot (2026-08-21) the only new question is WHICH tile a
+ * full stash gives back. `slot` answers it directly when the UI taps a
+ * particular stash card; without one, the rule is the OLDEST (Marc's call
+ * from the option set): the thing you saved most recently is the thing you
+ * were most deliberately saving, so it is the one that stays.
  */
-function hold(state: GameState): GameState {
+function hold(state: GameState, slot?: number): GameState {
   if (state.phase !== 'placing') return state;
-  if (state.tuning.holdSlots <= 0) return state;
+  const slots = state.tuning.holdSlots;
+  if (slots <= 0) return state;
 
   const tile = state.draft[state.selected];
   if (tile === undefined) return state;
 
-  if (state.held === null) {
+  // A named slot that holds nothing is a tap on an empty card, which means
+  // the same thing as the default: put this tile away.
+  const named = slot !== undefined && slot >= 0 && slot < state.held.length ? slot : undefined;
+
+  if (named === undefined && state.held.length < slots) {
     const draft = state.draft.filter((_, i) => i !== state.selected);
-    return { ...state, held: tile, draft, selected: 0 };
+    return { ...state, held: [...state.held, tile], draft, selected: 0 };
   }
-  const draft = state.draft.map((d, i) => (i === state.selected ? state.held! : d));
-  return { ...state, held: tile, draft };
+
+  // Trade: the chosen tile (or the oldest) goes back into the hand where the
+  // selected card was, and the selected card takes its place in the stash —
+  // appended, so it becomes the newest and the ordering stays honest.
+  const index = named ?? 0;
+  const returning = state.held[index];
+  if (returning === undefined) return state;
+  const draft = state.draft.map((d, i) => (i === state.selected ? returning : d));
+  const held = [...state.held.filter((_, i) => i !== index), tile];
+  return { ...state, held, draft };
 }
 
 function selectDraft(state: GameState, index: number): GameState {
@@ -580,21 +600,26 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   for (const k of keys) cells[k] = { kind: 'stone' };
 
   // Treasure goes to the stash, which is where a tile you are saving for the
-  // right moment belongs. It displaces whatever was held — taking a second
-  // treasure while holding one is a choice about which rare tile you want.
-  // With the hand put down (`selected: -1`, 2026-08-20) there is no colour
-  // to forge the treasure FROM — the old `?? 'green'` fallback was
-  // unreachable defensive code that the empty hand turned into a silent
-  // wrong answer, so an empty-handed treasure pop simply keeps the stash.
+  // right moment belongs. With the hand put down (`selected: -1`,
+  // 2026-08-20) there is no colour to forge the treasure FROM — the old
+  // `?? 'green'` fallback was unreachable defensive code that the empty hand
+  // turned into a silent wrong answer, so an empty-handed treasure pop
+  // simply keeps the stash.
+  //
+  // With two slots (2026-08-21) it fills a free one; only a FULL stash still
+  // displaces, and it displaces the oldest — the same rule HOLD follows, so
+  // there is one answer to "which tile leaves" rather than two.
   const treasureSource = state.draft[state.selected];
-  const stashed: Tile | null =
+  const won: Tile | null =
     choice === 'treasure' && treasure !== null && treasureSource !== undefined
-      ? {
-          id: `x${state.placements}`,
-          colour: treasureSource.colour,
-          rarity: treasure,
-        }
-      : state.held;
+      ? { id: `x${state.placements}`, colour: treasureSource.colour, rarity: treasure }
+      : null;
+  const stashed: readonly Tile[] =
+    won === null
+      ? state.held
+      : state.held.length < t.holdSlots
+        ? [...state.held, won]
+        : [...state.held.slice(1), won];
 
   // Under the single payout there is no fork left to take: a pop pays TILES
   // and scores automatically, and only BURN and TREASURE trade that away.
@@ -603,7 +628,9 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   // means what it meant.
   const pops = t.singlePayout ? choice !== 'treasure' && choice !== 'burn' : choice === 'tiles';
   const scores = t.singlePayout ? pops : choice === 'points';
-  const scored = t.singlePayout ? Math.floor(points * t.pointsPerPop) : points;
+  // One source for this arithmetic since 2026-08-21 — see , which
+  // also carries the floor that stops a scoring pop banking zero.
+  const scored = scoreOf(points, t);
 
   // The bounty is collected by the pop that SCORES the pocket — its multiplier
   // is already inside `points`, so a pop that banks no points must not consume

@@ -646,8 +646,11 @@ export type HudView = {
 
   /** Whether the stash exists at all (`tuning.holdSlots > 0`). */
   readonly canHold: boolean;
-  /** The stashed tile, or null while the stash sits empty. */
-  readonly held: { readonly colour: Colour; readonly rarity: Rarity } | null;
+  /** How many slots the stash has — 1, or 2 once that shrine is woken. */
+  readonly holdSlots: number;
+  /** The stashed tiles, oldest first. Shorter than `holdSlots` when there is
+   *  room left; empty while the stash sits unused. */
+  readonly held: readonly { readonly colour: Colour; readonly rarity: Rarity }[];
 
   /**
    * The colour lens: each colour's standing holdings on the board, in the
@@ -780,7 +783,8 @@ export function toHudView(
     })),
 
     canHold: state.tuning.holdSlots > 0,
-    held: state.held === null ? null : { colour: state.held.colour, rarity: state.held.rarity },
+    holdSlots: Math.max(0, state.tuning.holdSlots),
+    held: state.held.map((t) => ({ colour: t.colour, rarity: t.rarity })),
 
     colours,
     spotlight: colours.find((c) => c.colour === spotlight) ?? null,

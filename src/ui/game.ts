@@ -12,6 +12,7 @@ import {
   isRipe,
   placementCostAt,
   reachOf,
+  scoreOf,
   withinBeaconHorizon,
   worthOf,
 } from '@engine/rules';
@@ -89,6 +90,9 @@ export type Elements = {
   readonly stats: HTMLElement;
   readonly hint: HTMLElement;
   readonly draft: HTMLElement;
+  /** The stash row, under the hand. Empty (and collapsed) where there is no
+   *  stash — a tiles-only game, or OPEN HAND worn. */
+  readonly stash: HTMLElement;
   readonly harvestTiles: HTMLButtonElement;
   readonly harvestPoints: HTMLButtonElement;
   /** The third payout. Present only while a pocket is big enough for it. */
@@ -1356,10 +1360,12 @@ export class Game {
       // Under the single payout the pop SCORES too — say the number here
       // rather than leaving it to the stat row (the bounty line below
       // needs a points figure to be about).
+      // Through `scoreOf`, not a second copy of the arithmetic (2026-08-21):
+      // this line used to spell `floor(points * pointsPerPop)` itself, and
+      // would have gone on printing the zero the engine stopped banking the
+      // day a scoring pop gained its floor of one.
       const scored =
-        t.singlePayout && t.pointsPerPop > 0
-          ? `\n+${Math.floor(value.points * t.pointsPerPop)} pts.`
-          : '';
+        t.singlePayout && t.pointsPerPop > 0 ? `\n+${scoreOf(value.points, t)} pts.` : '';
       return `${head}\n+${value.tiles} tiles: ${t.tilesPerPop} per tile, +1 more per ${t.worthPerExtraTile} worth${depth}.${scored}${luck}${bounty}`;
     }
     if (choice === 'treasure') {
@@ -2097,7 +2103,13 @@ export class Game {
                   'The card says which it is, and a placed rare tile wears a star on the board — four points for magic, five for unique — so its power stays findable on a full map. A unique’s ground match counts double too.',
                   ...(t.holdSlots > 0
                     ? [
-                        'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap again to trade it back.',
+                        // Reads the world's OWN slot count (2026-08-21), so
+                        // the sentence follows the shrine that grants the
+                        // second one instead of describing a stash nobody
+                        // has any more.
+                        t.holdSlots > 1
+                          ? `The dashed HOLD cards under your hand keep ${t.holdSlots} tiles for later. Tap one to stash the selected card; tap a held card to trade that tile back.`
+                          : 'The dashed HOLD card under your hand keeps one tile for later. Tap to stash the selected card; tap again to trade it back.',
                         'Held tiles survive rerolls — save a rare tile, or the right colour, for the moment it is worth something.',
                       ]
                     : []),
@@ -2710,7 +2722,7 @@ export class Game {
     // holding both fires UNIQUE now and keeps MAGIC armed for the next
     // quiet action; either alone fires at its own first appearance.
     {
-      const inHand = next.held === null ? next.draft : [...next.draft, next.held];
+      const inHand = [...next.draft, ...next.held];
       if (!met.has('rareUnique') && inHand.some((tile) => tile.rarity === 'unique')) {
         // The once-a-run unique toast covers repeat runs; the device-wide
         // card covers the first ever. Both firing for one tile would say
@@ -3989,8 +4001,12 @@ export class Game {
         });
         return button;
       }),
-      ...this.#renderHold(hud),
     );
+
+    // The stash draws into its OWN row (2026-08-21) — see index.html for
+    // why. Rendered here rather than in its own pass so the hand and the
+    // shelf can never disagree about which frame they belong to.
+    this.#el.stash.replaceChildren(...this.#renderHold(hud));
   }
 
   /**
@@ -4074,12 +4090,25 @@ export class Game {
   }
 
   /**
-   * The stash, drawn as one more card at the end of the row. Tapping it swaps
-   * with the selected card — take when empty, trade when full — so saving a
-   * tile for later costs one tap and no reading.
+   * The stash, drawn as one card PER SLOT on its own row under the hand.
+   *
+   * Two slots since 2026-08-21, which is what the second shrine of every
+   * world has always promised. Each card is independently tappable and
+   * sends its own index, so a specific tile comes back on one tap rather
+   * than being cycled to — and the empty card still reads HOLD, so the
+   * gesture that puts a tile away is the same one it always was.
    */
   #renderHold(hud: HudView): HTMLButtonElement[] {
     if (!hud.canHold) return [];
+
+    // One card per slot: the tiles held, then an empty HOLD for each slot
+    // still free. A stash of two full slots draws two tiles and no HOLD.
+    const slots = Math.max(1, hud.holdSlots);
+    return Array.from({ length: slots }, (_, index) => this.#holdCard(hud, index));
+  }
+
+  #holdCard(hud: HudView, index: number): HTMLButtonElement {
+    const held = hud.held[index] ?? null;
 
     const button = document.createElement('button');
     button.className = 'tile hold';
@@ -4087,32 +4116,37 @@ export class Game {
       // The empty hand answers here too (fresh-eyes, 2026-08-20): with no
       // card selected and nothing stashed, HOLD has nothing to swap and
       // used to say nothing about it.
-      if (this.#state.held === null && this.#state.draft[this.#state.selected] === undefined) {
+      if (held === null && this.#state.draft[this.#state.selected] === undefined) {
         this.#showNote('Nothing in hand to stash — tap a card first.', true);
         return;
       }
-      this.#dispatch({ type: 'HOLD' });
+      if (held !== null && this.#state.draft[this.#state.selected] === undefined) {
+        this.#showNote('Tap a card in your hand first — the stash trades, it does not deal.', true);
+        return;
+      }
+      // The index travels: tapping THIS card trades with THIS slot.
+      this.#dispatch({ type: 'HOLD', slot: index });
     });
 
-    if (hud.held === null) {
+    if (held === null) {
       button.setAttribute('aria-label', 'Hold the selected tile for later');
       const label = document.createElement('span');
       label.className = 'tile-name';
       label.textContent = 'HOLD';
       button.append(label);
-      return [button];
+      return button;
     }
 
-    button.dataset['colour'] = hud.held.colour;
+    button.dataset['colour'] = held.colour;
     // The held card wears its rarity like the hand does (Marc, 2026-08-20:
     // "apply the magic and unique colors in the held tiles too") — the
     // data-rarity attribute is what the border and badge colours key on,
     // and the stash was the one card not setting it.
-    button.dataset['rarity'] = hud.held.rarity;
-    const name = this.#theme.terrainNames[hud.held.colour];
+    button.dataset['rarity'] = held.rarity;
+    const name = this.#theme.terrainNames[held.colour];
     button.setAttribute('aria-label', `Swap the held ${name} tile back into the hand`);
 
-    const art = this.#art[hud.held.colour];
+    const art = this.#art[held.colour];
     if (art !== undefined) {
       const img = document.createElement('img');
       img.className = 'tile-art';
@@ -4128,10 +4162,10 @@ export class Game {
     label.textContent = name;
     button.append(label);
 
-    if (hud.held.rarity !== 'common') {
+    if (held.rarity !== 'common') {
       const badge = document.createElement('span');
       badge.className = 'tile-rarity';
-      badge.textContent = hud.held.rarity.toUpperCase();
+      badge.textContent = held.rarity.toUpperCase();
       button.append(badge);
     }
 
@@ -4139,6 +4173,6 @@ export class Game {
     badge.className = 'tile-held';
     badge.textContent = 'HELD';
     button.append(badge);
-    return [button];
+    return button;
   }
 }

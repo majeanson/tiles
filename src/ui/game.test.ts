@@ -126,7 +126,8 @@ function build(
       </div>
     </div>
     <p id="hint" hidden></p>
-    <div id="controls"><div id="draft"></div></div>
+    <div id="controls"><div id="draft"></div>
+      <div id="stash"></div></div>
     <button id="harvest-tiles"></button>
     <button id="harvest-points"></button>
     <button id="harvest-treasure" hidden></button>
@@ -146,6 +147,7 @@ function build(
     stats: pick('stats'),
     hint: pick('hint'),
     draft: pick('draft'),
+    stash: pick('stash'),
     spends: pick('spends'),
     purse: pick('purse'),
     purseToggle: pick<HTMLButtonElement>('purse-toggle'),

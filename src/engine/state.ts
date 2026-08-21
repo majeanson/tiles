@@ -224,11 +224,17 @@ export type GameState = {
    */
   readonly selected: number;
   /**
-   * The stash: a drafted tile kept for later, swapped with the selected card
-   * by HOLD. Null when empty, and always null while `tuning.holdSlots` is 0.
-   * Held tiles survive rerolls — that is the entire point of holding one.
+   * The stash: drafted tiles kept for later, swapped with the selected card
+   * by HOLD. Empty when nothing is stashed, and always empty while
+   * `tuning.holdSlots` is 0. Held tiles survive rerolls — that is the entire
+   * point of holding one.
+   *
+   * A LIST since 2026-08-21, oldest first. It was a single `Tile | null`,
+   * which made the second shrine of every world — "A second stash slot" —
+   * a rung that granted nothing: `applyUnlocks` raised `holdSlots` to 2 and
+   * every reader tested it as a boolean. Never longer than `holdSlots`.
    */
-  readonly held: Tile | null;
+  readonly held: readonly Tile[];
 
   /** The bounty in play, or null. Opened by claiming a site; one at a time. */
   readonly quest: Quest | null;
@@ -315,7 +321,14 @@ export type Action =
    * (the draft shrinks until its next reroll); a full one trades. One action
    * for both directions, so the stash is a place, not a mode.
    */
-  | { readonly type: 'HOLD' }
+  /**
+   * Swap the selected card with the stash. `slot` names WHICH stashed tile
+   * to trade with — the UI sends it when a specific stash card is tapped, so
+   * two slots can each be reached directly rather than cycled through.
+   * Absent means the default: fill an empty slot, or trade with the OLDEST
+   * (Marc, 2026-08-21) when every slot is full.
+   */
+  | { readonly type: 'HOLD'; readonly slot?: number }
   /**
    * Spend luck. `reroll` buys a fresh hand, `steer` names a colour and buys a
    * hand drawn under it, `forge` turns the selected card unique, `tithe`

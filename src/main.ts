@@ -2108,6 +2108,7 @@ async function main(): Promise<void> {
     stats: required('stats'),
     hint: required('hint'),
     draft: required('draft'),
+    stash: required('stash'),
     harvestTiles: required<HTMLButtonElement>('harvest-tiles'),
     harvestPoints: required<HTMLButtonElement>('harvest-points'),
     harvestTreasure: required<HTMLButtonElement>('harvest-treasure'),

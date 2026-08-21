@@ -634,10 +634,23 @@ button.fame-run[aria-expanded='true'] {
 }
 
 #draft,
+#stash,
 #actions {
   display: flex;
   gap: 8px;
   justify-content: center;
+}
+
+/* The stash reads as a shelf, not a second hand: narrower cards, held in
+   the middle so the thumb never travels to reach them however many slots
+   are open (2026-08-21). Empty of children it collapses to nothing, so a
+   game with no stash spends no vertical space on one. */
+#stash:empty {
+  display: none;
+}
+
+#stash .tile.hold {
+  flex: 0 1 96px;
 }
 
 /* 44px is the smallest target a thumb hits reliably; everything here is sized

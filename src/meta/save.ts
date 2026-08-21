@@ -1,4 +1,4 @@
-import type { GameState } from '@engine/state';
+import type { GameState, Tile } from '@engine/state';
 
 /**
  * A run, kept.
@@ -24,7 +24,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 const isStream = (v: unknown): boolean =>
   isRecord(v) && typeof v['seed'] === 'number' && typeof v['cursor'] === 'number';
 
-const isTile = (v: unknown): boolean =>
+const isTile = (v: unknown): v is Tile =>
   isRecord(v) &&
   typeof v['id'] === 'string' &&
   typeof v['colour'] === 'string' &&
@@ -155,7 +155,15 @@ export function decodeRun(raw: string | null): GameState | null {
         ? bias
         : null,
     quest: isRecord(quest) ? quest : null,
-    held: isTile(held) ? held : null,
+    // The stash became a LIST on 2026-08-21, and a run saved before that
+    // holds a single tile — or null. All three shapes decode, because the
+    // alternative is a player losing the tile they were saving to a build
+    // that shipped while their run was in progress.
+    held: Array.isArray(held)
+      ? held.filter((t): t is Tile => isTile(t))
+      : isTile(held)
+        ? [held]
+        : [],
     luck: typeof parsed['luck'] === 'number' ? parsed['luck'] : 0,
     relics: typeof parsed['relics'] === 'number' ? parsed['relics'] : 0,
     usedSecondWind: parsed['usedSecondWind'] === true,

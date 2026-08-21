@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BARE_TUNING, TUNING, type Tuning } from '@content/tuning';
 import { disc, key, neighbourKeys } from './hex';
 import { newRun, reduce, startingPerk } from './reduce';
-import { previewWorth, treasureFor, worthOf } from './rules';
+import { previewWorth, scoreOf, treasureFor, worthOf } from './rules';
 import { biomeAt, terrainAt } from './world';
 import type { HexKey } from './hex';
 import type { Cell, GameState } from './state';
@@ -164,30 +164,30 @@ describe('the hold slot', () => {
     const first = state.draft[0]!;
 
     const held = reduce(state, { type: 'HOLD' });
-    expect(held.held?.id).toBe(first.id);
+    expect(held.held.at(-1)?.id).toBe(first.id);
     expect(held.draft).toHaveLength(state.draft.length - 1);
     expect(held.selected).toBe(0);
   });
 
   it('trades with a full stash in place', () => {
     const state = reduce(newRun(4, TUNING), { type: 'HOLD' });
-    const stashed = state.held!;
+    const stashed = state.held.at(-1)!;
     const facing = state.draft[0]!;
 
     const swapped = reduce(state, { type: 'HOLD' });
-    expect(swapped.held?.id).toBe(facing.id);
+    expect(swapped.held.at(-1)?.id).toBe(facing.id);
     expect(swapped.draft[0]?.id).toBe(stashed.id);
     expect(swapped.draft).toHaveLength(state.draft.length);
   });
 
   it('keeps the stash through a placement and its reroll', () => {
     const state = reduce(newRun(4, TUNING), { type: 'HOLD' });
-    const stashed = state.held!;
+    const stashed = state.held.at(-1)!;
 
     const placed = reduce(state, { type: 'PLACE', hex: key(1, 0) });
     expect(placed.placements).toBe(1);
     expect(placed.draft).toHaveLength(state.tuning.draftWidth);
-    expect(placed.held?.id).toBe(stashed.id);
+    expect(placed.held.at(-1)?.id).toBe(stashed.id);
   });
 
   it('does not exist in the bounded game', () => {
@@ -249,7 +249,7 @@ describe('the treasure payout', () => {
     const before = { tiles: state.tiles, points: state.points };
 
     const after = reduce(state, { type: 'HARVEST', choice: 'treasure', at: key(0, 0) });
-    expect(after.held?.rarity).toBe('magic');
+    expect(after.held.at(-1)?.rarity).toBe('magic');
     expect(after.tiles).toBe(before.tiles);
     expect(after.points).toBe(before.points);
     // And the pocket is spent, exactly like any other harvest.
@@ -269,5 +269,80 @@ describe('the treasure payout', () => {
     expect(treasureFor(50, noHold)).toBeNull();
     const state = pocket(newRun(5, noHold), T.treasureNeed);
     expect(reduce(state, { type: 'HARVEST', choice: 'treasure', at: key(0, 0) })).toBe(state);
+  });
+});
+
+describe('the second stash slot (2026-08-21)', () => {
+  // The world's SECOND shrine has always promised "A second stash slot", and
+  // until today granted nothing: `applyUnlocks` raised `holdSlots` to 2 while
+  // `held` was a single tile and every reader tested it as a boolean. It is
+  // the second of five rungs, so nearly every returning player walked to it
+  // and received a reward that did not exist.
+  const TWO: Tuning = { ...TUNING, holdSlots: 2 };
+
+  it('fills the free slot before it trades anything', () => {
+    const state = newRun(4, TWO);
+    const first = state.draft[0]!;
+
+    const one = reduce(state, { type: 'HOLD' });
+    expect(one.held.map((t) => t.id)).toEqual([first.id]);
+    // The draft shrinks until its next reroll — nothing came back.
+    expect(one.draft).toHaveLength(state.draft.length - 1);
+
+    const second = one.draft[0]!;
+    const two = reduce(one, { type: 'HOLD' });
+    expect(two.held.map((t) => t.id)).toEqual([first.id, second.id]);
+    expect(two.draft).toHaveLength(one.draft.length - 1);
+  });
+
+  it('trades the OLDEST when both slots are full', () => {
+    // Marc's call from the option set: the tile you saved most recently is
+    // the one you were most deliberately saving, so it is the one that stays.
+    let state = reduce(reduce(newRun(4, TWO), { type: 'HOLD' }), { type: 'HOLD' });
+    const [oldest, newest] = [state.held[0]!, state.held[1]!];
+    const facing = state.draft[state.selected]!;
+
+    state = reduce(state, { type: 'HOLD' });
+    // The oldest came back into the hand, where the played card was.
+    expect(state.draft[0]?.id).toBe(oldest.id);
+    // And the stash holds the survivor plus the newcomer, oldest first.
+    expect(state.held.map((t) => t.id)).toEqual([newest.id, facing.id]);
+  });
+
+  it('reaches a NAMED slot directly, so two cards are two buttons', () => {
+    const state = reduce(reduce(newRun(4, TWO), { type: 'HOLD' }), { type: 'HOLD' });
+    const [oldest, newest] = [state.held[0]!, state.held[1]!];
+    const facing = state.draft[state.selected]!;
+
+    // Slot 1 is the NEWER tile — tapping its card must return that one, not
+    // the one the default rule would have picked.
+    const after = reduce(state, { type: 'HOLD', slot: 1 });
+    expect(after.draft[0]?.id).toBe(newest.id);
+    expect(after.held.map((t) => t.id)).toEqual([oldest.id, facing.id]);
+  });
+
+  it('never grows past the slots the world has woken', () => {
+    let state = newRun(4, TUNING); // one slot
+    state = reduce(state, { type: 'HOLD' });
+    state = reduce(state, { type: 'HOLD' });
+    state = reduce(state, { type: 'HOLD' });
+    expect(state.held).toHaveLength(1);
+    expect(TUNING.holdSlots).toBe(1);
+  });
+});
+
+describe('a scoring pop never scores zero (2026-08-21)', () => {
+  it('floors at one point, and leaves every larger pocket alone', () => {
+    // `floor(worth × pointsPerPop)` lands on zero for a small pocket, so a
+    // stranger's FIRST pop could spend six tiles and be congratulated with
+    // "+0 pts" at the moment the loop is being taught.
+    expect(scoreOf(1, TUNING)).toBe(1);
+    expect(scoreOf(2, TUNING)).toBe(1);
+    // Untouched wherever the arithmetic already answered a point or more.
+    expect(scoreOf(100, TUNING)).toBe(Math.floor(100 * TUNING.pointsPerPop));
+    expect(scoreOf(1000, TUNING)).toBe(Math.floor(1000 * TUNING.pointsPerPop));
+    // A pocket genuinely worth nothing still scores nothing — the floor is
+    // for rounding, not a gift.
+    expect(scoreOf(0, TUNING)).toBe(0);
   });
 });
