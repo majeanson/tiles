@@ -97,6 +97,15 @@ export function recordRun(book: RecordBook, state: GameState): RecordBook {
   let biggest = 0;
   let biggestAt = 0;
   for (const h of state.log.harvests) {
+    // The two SACRIFICES are neither (2026-08-21). This read `else points++`,
+    // which under the shipped single payout — where an ordinary pop is
+    // `'tiles'` — quietly filed every BURN and every TREASURE as a points
+    // harvest, inflating the tally on any device that has ever burned a
+    // pocket. It is the third spelling of the `collected`/`scores` mistake
+    // this codebase has made: a two-way test standing in for a four-way
+    // choice. Named explicitly now, so a fifth choice cannot join a branch
+    // by default.
+    if (h.choice === 'burn' || h.choice === 'treasure') continue;
     if (h.choice === 'tiles') tiles++;
     else points++;
     if (h.points > biggest) {

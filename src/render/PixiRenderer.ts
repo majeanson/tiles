@@ -246,9 +246,7 @@ export class PixiRenderer implements Renderer {
   #frontierFor: { readonly w: number; readonly h: number } | null = null;
   #panX = 0;
   #panY = 0;
-  /** True while a camera-driven redraw waits on the next animation frame. */
-  #drawQueued = false;
-  /** Pending post-gesture surface-cache eviction. */
+  /** Pending settle: lay the board out at the size the gesture left it. */
   #zoomSettle: ReturnType<typeof setTimeout> | null = null;
 
   readonly #theme: Theme;
@@ -523,7 +521,10 @@ export class PixiRenderer implements Renderer {
       this.#refitElapsed = 0;
     }
     this.#fitSize = fit.size;
-    const layout = zoomLayout(fit, this.#zoom * this.#refitEase, w / 2, h / 2);
+    // The board is laid out at the zoom it is being shown at, so the
+    // container transform is identity again until the next camera flight.
+    this.#drawnZoom = this.#zoom * this.#refitEase;
+    const layout = zoomLayout(fit, this.#drawnZoom, w / 2, h / 2);
     this.#layout = layout;
     if (layout.size <= 0) return;
 
@@ -558,25 +559,34 @@ export class PixiRenderer implements Renderer {
     this.#panX *= applied;
     this.#panY *= applied;
 
-    // Flashes were positioned in the old layout; a third of a second of glow
-    // is not worth drawing in the wrong place. Same reasoning as resize.
-    this.#clearFlashes();
+    // TRANSFORMED, not rebuilt (2026-08-21). A pinch delivers a `zoomBy` per
+    // pointer event — 60 to 120 a second — and this used to coalesce them to
+    // one full board teardown per FRAME, which was still a teardown per
+    // frame: at reach 20 that is thousands of display objects rebuilt while
+    // a finger is moving, plus a fresh texture bake at every integer pixel
+    // size the pinch crosses. Scaling the containers follows the finger for
+    // free and keeps the flashes, which scale with the board they are on.
+    //
+    // The board re-lays out when the gesture SETTLES, below — which is also
+    // the moment the labels go sharp again, and the only moment that needs
+    // to be exact.
+    this.#applyPan();
 
-    // Coalesced, not immediate: a pinch delivers a zoomBy per pointer event —
-    // 60 to 120 a second — and a full board teardown at that rate is the
-    // phone jank (found 2026-08-18, reach 12+ boards). One draw per frame is
-    // all a screen can show anyway.
-    this.#queueDraw();
-
-    // The surface cache keys on rounded pixel size, so a slow pinch bakes a
-    // texture set at every integer size it passes through. Evict once the
-    // gesture settles — phones never fire the resize path that used to be
-    // the only cleaner.
+    // The settle: lay the board out at the size the finger left it, then drop
+    // the textures no size is drawing any more. Short enough to feel like the
+    // picture sharpening as the gesture ends rather than a second beat, and
+    // long enough that a pinch made of many small steps only pays once.
+    //
+    // The surface and label caches key on rounded pixel size, so before the
+    // transform pinch above this was the ONLY cleaner for a gesture that
+    // could bake a texture set at every integer size it crossed. Now the
+    // gesture bakes exactly one — this one.
     if (this.#zoomSettle !== null) clearTimeout(this.#zoomSettle);
     this.#zoomSettle = setTimeout(() => {
       this.#zoomSettle = null;
+      this.draw(this.#view);
       this.#safeEvict();
-    }, 250);
+    }, 140);
   }
 
   /**
@@ -616,19 +626,14 @@ export class PixiRenderer implements Renderer {
     this.#labels.evictExcept(`${labelPx(size)}:`);
   }
 
-  /** One draw per animation frame, however many camera moves asked for it. */
-  #queueDraw(): void {
-    if (this.#drawQueued) return;
-    if (typeof requestAnimationFrame !== 'function') {
-      this.draw(this.#view);
-      return;
-    }
-    this.#drawQueued = true;
-    requestAnimationFrame(() => {
-      this.#drawQueued = false;
-      this.draw(this.#view);
-    });
-  }
+  /*
+   * `#queueDraw` lived here until 2026-08-21: one coalesced full redraw per
+   * animation frame, for every camera move that asked. It was the right
+   * answer to the wrong question — no camera move needs a redraw at all now
+   * that pinch and flight both scale the containers instead, and coalescing
+   * a teardown per frame is still a teardown per frame. Deleted rather than
+   * left for a caller that no longer exists.
+   */
 
   panBy(dx: number, dy: number): void {
     // A drag is the one camera move that must never be smoothed, and it also
@@ -654,8 +659,10 @@ export class PixiRenderer implements Renderer {
    * frames, which is why they can sit unconditionally on the ticker.
    */
   #advanceCamera(deltaMS: number): void {
-    let panned = false;
-    let zoomed = false;
+    let moving = false;
+    // True on the frame a flight or a refit REACHES its destination, which is
+    // the only frame that lays the board out again.
+    let landed = false;
 
     const move = this.#camera;
     if (move !== null) {
@@ -664,17 +671,13 @@ export class PixiRenderer implements Renderer {
       const e = PixiRenderer.#ease(t);
       // Zoom travels geometrically — a camera going 1× → 4× should spend as
       // long on 1→2 as on 2→4, or the second half arrives in a rush.
-      const zoom = move.fromZoom * (move.toZoom / move.fromZoom) ** e;
-      zoomed ||= zoom !== this.#zoom;
-      this.#zoom = zoom;
+      this.#zoom = move.fromZoom * (move.toZoom / move.fromZoom) ** e;
       this.#panX = move.fromPanX + (move.toPanX - move.fromPanX) * e;
       this.#panY = move.fromPanY + (move.toPanY - move.fromPanY) * e;
-      panned = true;
+      moving = true;
       if (t >= 1) {
         this.#camera = null;
-        // The textures baked at every size the tween passed through are
-        // nobody's now — the same debt a pinch leaves, paid the same way.
-        if (zoomed) this.#safeEvict();
+        landed = true;
       }
     }
 
@@ -683,20 +686,25 @@ export class PixiRenderer implements Renderer {
       const t = Math.min(1, this.#refitElapsed / REFIT_MS);
       const e = PixiRenderer.#ease(t);
       this.#refitEase = this.#refitFrom * (1 / this.#refitFrom) ** e;
-      if (t >= 1) this.#refitEase = 1;
-      zoomed = true;
+      moving = true;
+      if (t >= 1) {
+        this.#refitEase = 1;
+        landed = true;
+      }
     }
 
-    // A pure PAN keeps its flashes: `#applyPan` translates the effects layer
-    // with the board, so a pop that fires while the camera is gliding toward
-    // its own pocket burns in the right place the whole way. Only a change of
-    // SIZE invalidates them — they were baked into a layout that no longer
-    // exists — and only a change of size needs the cells rebuilt at all.
-    if (zoomed) {
-      this.#clearFlashes();
-      this.#queueDraw();
-    } else if (panned) {
-      this.#applyPan();
+    // NOTHING is rebuilt in flight (2026-08-21). A camera move does not
+    // change what the board is, only how big it looks, so both containers
+    // are scaled and the layout is left alone — flashes and embers included,
+    // which scale with the board they belong to. `draw()` runs exactly once,
+    // on landing, where the caches bake one size instead of every integer
+    // size the flight passed through.
+    if (moving) this.#applyPan();
+    if (landed) {
+      this.draw(this.#view);
+      // Only now: the caches hold the sizes this flight passed through, and
+      // one landing pays for the whole journey instead of every frame of it.
+      this.#safeEvict();
     }
   }
 
@@ -791,6 +799,28 @@ export class PixiRenderer implements Renderer {
    * both world containers. A translation changes nothing about any cell, so
    * this is the whole cost of a drag — no rebuild, no re-measure.
    */
+  /**
+   * The visual scale the drawn layout is being shown at: 1 whenever the board
+   * was laid out at the zoom it is currently displaying, and something else
+   * only while a camera move is in flight.
+   *
+   * This is what makes a flown camera affordable (2026-08-21). The tween
+   * shipped on 2026-08-20 called `draw()` on every frame it changed zoom, and
+   * `draw()` destroys and rebuilds every cell: at reach 20 that is ~3000
+   * display objects and well over a thousand `Graphics` per frame, so a
+   * 320ms flight rendered about three of its nineteen frames and read as a
+   * jump cut with the input frozen. Worse, the surface and label caches key
+   * on ROUNDED PIXEL SIZE, so a flight from fit to the ceiling baked a fresh
+   * texture set at every integer size it passed through — hundreds of canvas
+   * bakes and render-to-texture round-trips inside a third of a second, on
+   * exactly the phones least able to afford them.
+   *
+   * A camera move does not change what the board IS, only how big it looks,
+   * and that is a container transform. So the flight scales the two board
+   * containers and lays out exactly once, on landing.
+   */
+  #drawnZoom = 1;
+
   #applyPan(): void {
     const app = this.#app;
     if (app === null) return;
@@ -800,8 +830,20 @@ export class PixiRenderer implements Renderer {
     this.#panX = Math.min(maxX, Math.max(-maxX, this.#panX));
     this.#panY = Math.min(maxY, Math.max(-maxY, this.#panY));
 
-    this.#cells.position.set(this.#panX, this.#panY);
-    this.#fx.position.set(this.#panX, this.#panY);
+    // `zoomLayout` centres the board on the screen's middle, so the drawn
+    // layout's own centre is at (w/2, h/2) in container space — which makes
+    // that the point the scale has to pivot around for the hex under the
+    // middle of the screen to stay under it.
+    const scale = (this.#zoom * this.#refitEase) / this.#drawnZoom;
+    const cx = app.screen.width / 2;
+    const cy = app.screen.height / 2;
+    const x = this.#panX + cx * (1 - scale);
+    const y = this.#panY + cy * (1 - scale);
+
+    this.#cells.scale.set(scale);
+    this.#fx.scale.set(scale);
+    this.#cells.position.set(x, y);
+    this.#fx.position.set(x, y);
   }
 
   /**
@@ -813,9 +855,17 @@ export class PixiRenderer implements Renderer {
     const layout = this.#layout;
     if (layout === null) return null;
 
-    // The pan is a container translation the layout knows nothing about, so
-    // the tap is translated back before the layout answers.
-    const h = hexAt(x - this.#panX, y - this.#panY, layout);
+    // The pan is a container translation the layout knows nothing about, and
+    // since 2026-08-21 a camera in flight adds a SCALE on top of it — so the
+    // tap is put back into the drawn layout's own space by undoing both,
+    // read off the container rather than recomputed, so there is one source
+    // of truth for where the board actually is.
+    const scale = this.#cells.scale.x || 1;
+    const h = hexAt(
+      (x - this.#cells.position.x) / scale,
+      (y - this.#cells.position.y) / scale,
+      layout,
+    );
     const k = key(h.q, h.r);
     return this.#drawnKeys.has(k) ? k : null;
   }
@@ -1418,6 +1468,11 @@ export class PixiRenderer implements Renderer {
    */
   #spawnFlashes(previous: BoardView, next: BoardView, layout: Layout): void {
     if (previous.cells.length === 0) return;
+    // A redraw of the SAME view has nothing to compare (2026-08-21). The
+    // camera's landing draw is exactly that, and without this it walked
+    // every cell three times, built a Set, a Map and an array, and found
+    // nothing — the most expensive way to do nothing available.
+    if (previous === next) return;
 
     const motion = this.#theme.motion;
     const texture = this.#flashTextureFor();

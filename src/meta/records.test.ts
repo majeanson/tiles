@@ -71,3 +71,32 @@ describe('the record book', () => {
     expect(decodeRecords('{"endless":{"runs":1},"junk":5}')).toEqual({});
   });
 });
+
+describe('the harvest tally counts payouts, not sacrifices (2026-08-21)', () => {
+  it('files a burn and a treasure as neither tiles nor points', () => {
+    // `else points++` under the shipped single payout — where an ordinary
+    // pop is `'tiles'` — filed every BURN and every TREASURE as a POINTS
+    // harvest, inflating the tally on any device that had ever burned a
+    // pocket. This is the third spelling of the same two-way-test-for-a
+    // -four-way-choice mistake; it is pinned now.
+    const base = newRun(3, TUNING);
+    const state: GameState = {
+      ...base,
+      placements: 10,
+      log: {
+        ...base.log,
+        harvests: [
+          { at: 1, count: 3, choice: 'tiles', tiles: 4, points: 10 },
+          { at: 2, count: 3, choice: 'points', tiles: 0, points: 20 },
+          { at: 3, count: 3, choice: 'burn', tiles: 0, points: 0 },
+          { at: 4, count: 3, choice: 'treasure', tiles: 0, points: 0 },
+        ],
+      },
+    };
+
+    const book = recordRun({}, state);
+    const held = book[Object.keys(book)[0]!]!;
+    expect(held.tilesHarvests).toBe(1);
+    expect(held.pointsHarvests).toBe(1);
+  });
+});

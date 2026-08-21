@@ -50,6 +50,14 @@ import {
   type Progress,
   type UpgradeId,
 } from '@meta/progress';
+import {
+  buildBackup,
+  decodeBackup,
+  describeBackup,
+  encodeBackup,
+  isOwnKey,
+  restorePlan,
+} from '@meta/backup';
 import { decodeRun, encodeRun } from '@meta/save';
 import {
   appendEntry,
@@ -656,6 +664,58 @@ function createWorld(keys: SlotKeys, worldSeed: number): WorldMemory {
  * `rootSeed` no longer matches its world is the merge corruption the seed
  * guard in `onChange` now refuses outright. Two doors, one behaviour.
  */
+/**
+ * Get a backup off the phone, by whatever door this platform has.
+ *
+ * The same ladder the run share climbs, for the same reason: on iOS the
+ * share sheet is the only route to Files or a message to yourself, on
+ * desktop the clipboard is what people actually use, and a download is the
+ * floor everywhere else. A JSON file rather than a link because a backup is
+ * far past any URL length that survives a chat app.
+ */
+async function saveBackupFile(
+  name: string,
+  text: string,
+): Promise<'shared' | 'copied' | 'downloaded' | 'failed'> {
+  try {
+    const file = new File([text], name, { type: 'application/json' });
+    if (navigator.canShare?.({ files: [file] }) === true) {
+      await navigator.share({ files: [file], title: name });
+      return 'shared';
+    }
+  } catch (error) {
+    // A dismissed share sheet is a change of mind, not a failure — and it
+    // must not fall through to also downloading the file behind their back.
+    if (error instanceof Error && error.name === 'AbortError') return 'shared';
+  }
+
+  try {
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.click();
+    // Revoked on a later turn: revoking synchronously can beat the download
+    // starting on some browsers, which loses the file silently.
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 10000);
+    return 'downloaded';
+  } catch {
+    // Downloads blocked (an in-app WebView, most likely — which is exactly
+    // the storage that evaporates, so the clipboard below matters most
+    // precisely where the file route is least available).
+  }
+
+  try {
+    if (navigator.clipboard === undefined) throw new Error('no clipboard');
+    await navigator.clipboard.writeText(text);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
+}
+
 let persistenceAsked = false;
 
 /** Ask the browser to keep this origin's storage. Best-effort, once a boot. */
@@ -2117,6 +2177,90 @@ async function main(): Promise<void> {
     }
     location.href = '/';
   });
+
+  // BACK UP MY WORLDS / RESTORE A BACKUP (2026-08-21). See `meta/backup.ts`
+  // for why this exists at all; the shell's half is storage and the share
+  // sheet, which is all this module is allowed to know about.
+  //
+  // The backup rides the SAME ladder the run share already uses — share
+  // sheet, then clipboard, then download — because that ladder is already
+  // the answer to "get this off a phone" on every platform this runs on.
+  const frontDoorBackup = required<HTMLButtonElement>('front-door-backup');
+  const frontDoorRestore = required<HTMLButtonElement>('front-door-restore');
+  // Offered on the same condition as the wipe: a device with nothing to
+  // forget has nothing to keep either, and a stranger's first screen should
+  // not carry three data-management buttons.
+  frontDoorBackup.hidden = frontDoorReset.hidden;
+  frontDoorRestore.hidden = frontDoorReset.hidden;
+
+  frontDoorBackup.addEventListener('click', () => {
+    let entries: Record<string, string> = {};
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (!isOwnKey(key)) continue;
+        const value = localStorage.getItem(key);
+        if (value !== null) entries[key] = value;
+      }
+    } catch {
+      entries = {};
+    }
+    if (Object.keys(entries).length === 0) {
+      frontDoorBackup.textContent = 'NOTHING TO BACK UP';
+      return;
+    }
+    const text = encodeBackup(
+      buildBackup(entries, { sha: __BUILD_SHA__.slice(0, 7), at: new Date().toISOString() }),
+    );
+    const file = `ashwake-backup-${localToday()}.json`;
+    void saveBackupFile(file, text).then((how) => {
+      frontDoorBackup.textContent =
+        how === 'shared'
+          ? 'BACKUP SENT'
+          : how === 'copied'
+            ? 'BACKUP COPIED — paste it somewhere safe'
+            : how === 'downloaded'
+              ? 'BACKUP SAVED'
+              : 'COULD NOT SAVE — try RESTORE’s box to copy it';
+    });
+  });
+
+  // Restoring REPLACES, so it confirms — and it shows what it is about to
+  // put back BEFORE it does, because "3 worlds · 412 relics · 2026-08-19" is
+  // how a player tells their own backup from a stale one.
+  let pending: ReturnType<typeof decodeBackup> = null;
+  frontDoorRestore.addEventListener('click', () => {
+    if (pending !== null) {
+      try {
+        for (const key of Object.keys(localStorage)) {
+          if (isOwnKey(key)) localStorage.removeItem(key);
+        }
+        for (const [key, value] of Object.entries(restorePlan(pending).write)) {
+          localStorage.setItem(key, value);
+        }
+      } catch {
+        frontDoorRestore.textContent = 'RESTORE FAILED — storage refused';
+        return;
+      }
+      location.href = '/';
+      return;
+    }
+    const pasted = window.prompt(
+      'Paste your backup here. This REPLACES everything on this device — worlds, relics, perks and records.',
+    );
+    if (pasted === null || pasted.trim() === '') return;
+    const read = decodeBackup(pasted.trim());
+    if (read === null) {
+      frontDoorRestore.textContent = 'THAT IS NOT A BACKUP';
+      setTimeout(() => {
+        frontDoorRestore.textContent = 'RESTORE A BACKUP';
+      }, 2500);
+      return;
+    }
+    pending = read;
+    frontDoorRestore.classList.add('armed');
+    frontDoorRestore.textContent = `TAP AGAIN — replace this device with ${describeBackup(read)}`;
+  });
+
   const frontDoorBegin = required<HTMLButtonElement>('front-door-begin');
   const frontDoorHelp = required<HTMLButtonElement>('front-door-help');
   const frontDoorMode = required('front-door-mode');

@@ -138,6 +138,15 @@
         <button id="front-door-help" type="button" class="quiet">HOW TO PLAY</button>
         <!-- The one true wipe: run, world, shop, records, settings — the
              stranger-handing-back-the-phone control. Two taps, like NEW WORLD. -->
+        <!-- The way OUT of this device (2026-08-21). The game has no backend
+             and no account, so localStorage is the only copy of everything a
+             player has — and Safari evicts a non-persisted origin after about
+             a week away, in-app browsers discard it wholesale, and phones get
+             replaced. Every other guard makes loss less likely; this is the
+             one that makes it survivable. Beside RESET ALL because this is
+             where somebody looks when they are thinking about their data. -->
+        <button id="front-door-backup" type="button" class="quiet" hidden>BACK UP MY WORLDS</button>
+        <button id="front-door-restore" type="button" class="quiet" hidden>RESTORE A BACKUP</button>
         <!-- `hidden` in the MARKUP (2026-08-20): main() decides whether this
              device has anything worth wiping and unhides it, but until then
              the pre-JS first paint was showing a stranger a RESET ALL button

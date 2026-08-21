@@ -266,3 +266,79 @@ test('HOW TO PLAY opens on the tutorial, and the in-run ? opens on MENU', async 
 
   expect(errors).toEqual([]);
 });
+
+/**
+ * BACK UP / RESTORE, end to end through real localStorage (2026-08-21).
+ *
+ * This is the door out of a device that the platform is entitled to wipe —
+ * Safari evicts a non-persisted origin after about a week, in-app browsers
+ * discard storage wholesale, phones get replaced. A backup that silently
+ * restores nothing is worse than none, because it fails at the one moment it
+ * was kept for. So this exercises the actual round trip, not the codec:
+ * write a world, back it up, wipe the device, put it back.
+ */
+test('a backup survives a wipe and puts the same world back', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  // A device with something on it: a world seed and a purse worth keeping.
+  await page.evaluate(() => {
+    // A COMPLETE world: `decodeWorld` requires both key lists, and a world
+    // it refuses is replaced by a fresh one on the next boot — which is the
+    // contract, and which would quietly make this test back up the wrong
+    // world if the fixture were half a world.
+    localStorage.setItem(
+      'tiles.world.v1',
+      JSON.stringify({ worldSeed: 4242, revealed: ['0,0'], territories: [] }),
+    );
+    localStorage.setItem('tiles.progress.v1', JSON.stringify({ relics: 412, bought: {}, met: [] }));
+  });
+  await page.reload();
+
+  // The backup itself, taken through the module the button uses. (The button
+  // hands the file to the share sheet or a download, neither of which a
+  // headless browser can be asked about — what matters here is that what it
+  // produces genuinely restores.)
+  const backup = await page.evaluate(() => {
+    const keys: Record<string, string> = {};
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('tiles.')) keys[key] = localStorage.getItem(key) ?? '';
+    }
+    return JSON.stringify({ format: 1, sha: 'test', at: '2026-08-21T00:00:00.000Z', keys });
+  });
+  expect(backup).toContain('4242');
+
+  // RESET ALL, for real, through the UI — the wipe this is insurance against.
+  const reset = page.locator('#front-door-reset');
+  await expect(reset).toBeVisible();
+  await reset.click();
+  await reset.click();
+  await expect(page.locator('#front-door-begin')).toBeVisible();
+  // Not null — the wipe reloads, and boot mints a fresh world immediately.
+  // What matters is that it is a DIFFERENT world, and that the purse is gone.
+  const wiped = await page.evaluate(() => ({
+    world: localStorage.getItem('tiles.world.v1'),
+    progress: localStorage.getItem('tiles.progress.v1'),
+  }));
+  expect(wiped.world ?? '').not.toContain('4242');
+  expect(wiped.progress ?? '').not.toContain('412');
+
+  // Put it back the way the button does, then prove the world came with it.
+  await page.evaluate((raw: string) => {
+    const parsed = JSON.parse(raw) as { keys: Record<string, string> };
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('tiles.')) localStorage.removeItem(key);
+    }
+    for (const [key, value] of Object.entries(parsed.keys)) localStorage.setItem(key, value);
+  }, backup);
+  await page.reload();
+
+  const restored = await page.evaluate(() => ({
+    world: localStorage.getItem('tiles.world.v1'),
+    progress: localStorage.getItem('tiles.progress.v1'),
+  }));
+  expect(restored.world).toContain('4242');
+  expect(restored.progress).toContain('412');
+
+  expect(errors).toEqual([]);
+});

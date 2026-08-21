@@ -889,6 +889,10 @@ function summariseRun(state: GameState): NonNullable<HudView['summary']> {
   let tilesTaken = 0;
   let pointsTaken = 0;
   for (const h of state.log.harvests) {
+    // Same fix as `recordRun` (2026-08-21): a burn and a treasure are
+    // sacrifices, not a payout taken one way rather than the other, and
+    // `else` was filing both as points.
+    if (h.choice === 'burn' || h.choice === 'treasure') continue;
     if (h.choice === 'tiles') tilesTaken++;
     else pointsTaken++;
     if (h.points > biggestHarvest) {
