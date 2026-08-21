@@ -176,8 +176,20 @@ export const TORCHLIT: Theme = {
     // should be doing. The overlay is a second horizontal rule, darker and
     // wider-spaced than the first: two ripples instead of one ruling, so the
     // water reads as moving rather than lined.
-    blue: surface(0x243b45, {
-      fillTo: 0x111f28,
+    // LIGHTER since 2026-08-21 (Marc, on the phone: "change the tide color
+    // to a lighter blue so it has a better contrast vs moss"). It was
+    // 0x243b45/0x111f28 — value 0.172 against moss's 0.233, so the tide sat
+    // a hair DARKER than the moss and the two read as one dark mass.
+    //
+    // The choice of how much lighter is not free: ember is 0.374, and the
+    // greyscale rule wants 0.05 between neighbours, so the band from 0.324
+    // to 0.424 is closed — a tide in there collides with ash instead. That
+    // leaves just above moss (~0.30, a small gain) or above ember, and this
+    // takes the second: value 0.451, which puts 0.218 of pure value between
+    // tide and moss where there were 0.061, and still leaves 0.077 to ember
+    // below it and 0.197 to sand above.
+    blue: surface(0x578ea3, {
+      fillTo: 0x2c5568,
       pattern: { kind: 'hatch', angleDeg: 0, ink: 0xffecc8, alpha: 0.14, bar: 1, gap: 5 },
       overlay: { kind: 'hatch', angleDeg: 0, ink: 0x0a161c, alpha: 0.12, bar: 1, gap: 9 },
       asset: 'terrain.blue',

@@ -1,3 +1,4 @@
+import { PERK_DIALS, UPGRADE_STEPS } from '@content/goals';
 import type { Tuning } from '@content/tuning';
 import { rngNext, stream } from '@engine/rng';
 
@@ -55,7 +56,7 @@ export const UPGRADES: readonly Upgrade[] = [
   {
     id: 'tiles',
     name: 'DEEPER PURSE',
-    note: '+5 tiles to start every run.',
+    note: `+${UPGRADE_STEPS.tiles} tiles to start every run.`,
     cost: 20,
     levels: 8,
   },
@@ -83,7 +84,7 @@ export const UPGRADES: readonly Upgrade[] = [
   {
     id: 'sense',
     name: 'KEEN NOSE',
-    note: 'Hidden finds shimmer when your ground grows near — farther each level.',
+    note: `Hidden finds shimmer when your ground grows near — +${UPGRADE_STEPS.sense} hexes farther each level.`,
     cost: 40,
     levels: 3,
   },
@@ -114,22 +115,22 @@ export const PERKS: readonly Perk[] = [
   {
     id: 'secondwind',
     name: 'SECOND WIND',
-    note: 'The first time a run would end broke, a coin is flipped. Half the time you carry on with 20 tiles. Half the time you do not.',
+    note: `The first time a run would end broke, a coin is flipped: ${Math.round(PERK_DIALS.secondWindChance * 100)}% of the time you carry on with ${PERK_DIALS.secondWindTiles} tiles, and the rest of the time you do not.`,
   },
   {
     id: 'stonewalker',
     name: 'STONEWALKER',
-    note: 'Placements beside stone cost 1 less.',
+    note: `Placements beside stone cost ${PERK_DIALS.stoneDiscount} less.`,
   },
   {
     id: 'wallbreaker',
     name: 'WALLBREAKER',
-    note: 'Walls can be built on, at double cost.',
+    note: `Walls can be built on, at ${PERK_DIALS.wallBuildCostMult}× cost.`,
   },
   {
     id: 'openhand',
     name: 'OPEN HAND',
-    note: 'Draft five tiles. No stash.',
+    note: `Draft ${PERK_DIALS.openHandDraft} tiles. No stash.`,
   },
 ];
 
@@ -329,30 +330,35 @@ export function applyProgress(tuning: Tuning, progress: Progress): Tuning {
 
   return {
     ...tuning,
-    startingTiles: tuning.startingTiles + level('tiles') * 5,
-    magicChance: tuning.magicChance + level('odds') * 0.02,
-    uniqueChance: tuning.uniqueChance + level('odds') * 0.005,
+    startingTiles: tuning.startingTiles + level('tiles') * UPGRADE_STEPS.tiles,
+    magicChance: tuning.magicChance + level('odds') * UPGRADE_STEPS.magic,
+    uniqueChance: tuning.uniqueChance + level('odds') * UPGRADE_STEPS.unique,
     // RICHER WORLDS buys back what the rebalances took: more destinations out
     // there, and caches worth more when you reach them. Since 2026-08-18 cache
     // value is graded by distance, so the restoration reads differently but
     // stays literal: a maxed base of 18 plus two rings' bonus is 26 — the
     // number caches paid before the floor first came down.
-    destinationChance: Math.min(1, tuning.destinationChance + level('world') * 0.08),
-    cachePays: tuning.cachePays + level('world') * 3,
+    destinationChance: Math.min(
+      1,
+      tuning.destinationChance + level('world') * UPGRADE_STEPS.destination,
+    ),
+    cachePays: tuning.cachePays + level('world') * UPGRADE_STEPS.cache,
     // STEADY PACE buys back the curve the 2026-08-18 rebalance steepened:
     // 22 at run one, +2 a level, 30 — the old curve exactly — at max. The
     // whole point of a steeper start is that this ladder exists.
-    costRisesEvery: tuning.costRisesEvery + level('pace') * 2,
+    costRisesEvery: tuning.costRisesEvery + level('pace') * UPGRADE_STEPS.pace,
     // KEEN NOSE: 2 hexes of shimmer a level, 6 maxed — deliberately under
     // `beaconHorizon` (8), so a shimmer can never become a beacon.
-    findSense: tuning.findSense + level('sense') * 2,
+    findSense: tuning.findSense + level('sense') * UPGRADE_STEPS.sense,
     // The worn perk, as dials. Exactly one of these blocks can fire.
     rootboundOnly: worn.has('rootbound'),
-    secondWindTiles: worn.has('secondwind') ? 20 : 0,
-    secondWindChance: worn.has('secondwind') ? 0.5 : 0,
-    stoneDiscount: worn.has('stonewalker') ? 1 : tuning.stoneDiscount,
-    wallBuildCostMult: worn.has('wallbreaker') ? 2 : tuning.wallBuildCostMult,
-    draftWidth: worn.has('openhand') ? 5 : tuning.draftWidth,
+    secondWindTiles: worn.has('secondwind') ? PERK_DIALS.secondWindTiles : 0,
+    secondWindChance: worn.has('secondwind') ? PERK_DIALS.secondWindChance : 0,
+    stoneDiscount: worn.has('stonewalker') ? PERK_DIALS.stoneDiscount : tuning.stoneDiscount,
+    wallBuildCostMult: worn.has('wallbreaker')
+      ? PERK_DIALS.wallBuildCostMult
+      : tuning.wallBuildCostMult,
+    draftWidth: worn.has('openhand') ? PERK_DIALS.openHandDraft : tuning.draftWidth,
     holdSlots: worn.has('openhand') ? 0 : tuning.holdSlots,
   };
 }

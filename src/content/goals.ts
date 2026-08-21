@@ -76,3 +76,45 @@ export const REARM = {
   chance: 1,
   cacheShare: 0.5,
 };
+
+/**
+ * What one level of each shop upgrade is worth, and what each found perk
+ * sets its dial to (2026-08-21).
+ *
+ * They live HERE for the reason everything in this folder does — they are
+ * balance numbers — but the reason they were MOVED is drift. Every one of
+ * them was written twice in `meta/progress.ts`: once in the shop's prose
+ * ("+5 tiles to start every run", "cost 1 less", "at double cost", "Draft
+ * five tiles") and again, two hundred-odd lines away, in `applyProgress`,
+ * where the dial is actually set. Nothing tied the two together and no test
+ * read the prose, so tuning any of them made the shop lie to the player
+ * about what they were buying. The notes interpolate these now, so the
+ * sentence cannot survive the number changing under it.
+ */
+export const UPGRADE_STEPS = {
+  /** DEEPER PURSE: starting tiles per level. */
+  tiles: 5,
+  /** KEENER EYE: added chance per level, per rarity. */
+  magic: 0.02,
+  unique: 0.005,
+  /** RICHER WORLDS: destination chance, and tiles per cache, per level. */
+  destination: 0.08,
+  cache: 3,
+  /** STEADY PACE: placements added to the cost step, per level. */
+  pace: 2,
+  /** KEEN NOSE: hexes of shimmer, per level. */
+  sense: 2,
+};
+
+/** What a worn perk sets, for the shelf's prose and `applyProgress` alike. */
+export const PERK_DIALS = {
+  /** SECOND WIND: the refill, and the odds of getting it. */
+  secondWindTiles: 20,
+  secondWindChance: 0.5,
+  /** STONEWALKER: tiles knocked off a placement beside stone. */
+  stoneDiscount: 1,
+  /** WALLBREAKER: what building on a wall multiplies the cost by. */
+  wallBuildCostMult: 2,
+  /** OPEN HAND: the wider draft it trades the stash for. */
+  openHandDraft: 5,
+};
