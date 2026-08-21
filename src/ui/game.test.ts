@@ -644,10 +644,13 @@ describe('the camera, and staying oriented', () => {
     ctx.el.help.click();
     const t = ctx.game.state.tuning;
     const text = ctx.el.helpPanel.textContent ?? '';
+    // Shortened 2026-08-21 (it ran ~44 words and said its middle clause
+    // twice); what the test pins is unchanged — the LIVE rate and the LIVE
+    // floor, so the sentence cannot drift from the dials it describes.
     expect(text).toContain(
-      `TITHE — convert your whole purse to relics on the spot, at ${Math.round(t.titheRate * 100)}%`,
+      `TITHE — turn your whole purse into relics now, at ${Math.round(t.titheRate * 100)}%`,
     );
-    expect(text).toContain(`disabled below ${t.titheMin} luck`);
+    expect(text).toContain(`Needs ${t.titheMin} luck`);
   });
 
   it('says nothing about TITHE when its dial is zeroed, same as the other spends', () => {
@@ -1607,8 +1610,11 @@ describe('special tiles and what a pop did', () => {
     tap(ctx.el.board);
     const text = ctx.el.toast.textContent ?? '';
     expect(text).toMatch(/POCKET OF 9/);
-    expect(text).toMatch(/POP for tiles: \+\d+/);
-    expect(text).toMatch(/worth \d+ × pocket 9 × distance \d+/);
+    // One price, not a fork (2026-08-21): the note used to read "POP for
+    // tiles" and "POP for pts" as if they were buttons to choose between,
+    // and the points button has been hidden since the payout became single.
+    expect(text).toMatch(/POP pays \+\d+ tiles and \d+ pts/);
+    expect(text).toMatch(/The score: worth \d+ × pocket 9 × distance \d+/);
     expect(text).toMatch(/1 rare tile/);
     // The pocket bar (2026-08-18): the count against the size bonus's cap,
     // once the pocket is big enough for the bar to be worth reading (2+).
@@ -2910,5 +2916,67 @@ describe('the teaching order a stranger meets (2026-08-21)', () => {
     // The concept is untaught, so neither the card nor its recurring toast
     // has spoken about a light this run.
     expect(ctx.el.eventCardText.textContent ?? '').not.toMatch(/A LIGHT IN THE DARK/);
+  });
+});
+
+/**
+ * The manual covers what the game IS (2026-08-21).
+ *
+ * An audit found nine shipped concepts explained nowhere a player could look
+ * them up — POCKET (the manual's most-used noun) undefined, the bounty's rule
+ * living only in a five-second toast, the daily and the survey and camps
+ * absent entirely — plus four lines that were flatly untrue after a dial
+ * moved under them. Prose has no type checker, so this is the closest thing:
+ * a list of words the manual must contain once the concept is met.
+ *
+ * It reads the manual with a FULL teaching ledger, which is what a veteran
+ * sees. Sections that grow with the ledger are covered by the drip tests
+ * above; this one is about whether the words exist at all.
+ */
+describe('every shipped concept is written down somewhere', () => {
+  const openFullManual = (): string => {
+    const ctx = build(5, TUNING, {
+      shop: {
+        read: () => ({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] }),
+        write: () => undefined,
+      },
+      crossing: { dowry: () => 25, cross: () => undefined },
+    });
+    ctx.game.start();
+    ctx.el.help.click();
+    return ctx.el.helpPanel.textContent ?? '';
+  };
+
+  it('names each of them, in the words the screen uses', () => {
+    const text = openFullManual();
+    for (const term of [
+      'POCKET', // the most-used noun, undefined until today
+      'SIZE BONUS', // used as a term, its rule never stated
+      'BOUNTY', // the rule lived only in a transient toast
+      'TREASURE', // a third thing to spend a pocket on, buried in a fold
+      'SACRIFICE',
+      'THE DAILY', // a front-door button the manual never mentioned
+      'THE SURVEY', // five goals that pay relics, described nowhere
+      'CAMP', // a shipped unlock named only in the shrine ledger
+      'NATIVE FIELD',
+      'BIOMES',
+      'REACH',
+      'COST',
+      'TILES',
+      'crossing',
+    ]) {
+      expect(text, `the manual never says ${term}`).toContain(term);
+    }
+  });
+
+  it('does not contradict the economy it is describing', () => {
+    const text = openFullManual();
+    // Each of these was in the manual on 2026-08-20 and each was false.
+    expect(text).not.toContain('one per device'); // three worlds since 08-19
+    expect(text).not.toContain('hoarding luck is a real alternative'); // 5% is not
+    expect(text).not.toContain('Textured ground'); // the board draws dots
+    expect(text).not.toMatch(/\b1 relics\b/); // burnRelics is 1
+    // The points button has been hidden since the payout became single.
+    expect(text).not.toContain('POP for pts');
   });
 });

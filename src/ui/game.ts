@@ -1279,10 +1279,18 @@ export class Game {
       return cell?.kind === 'tile' && cell.rarity !== undefined;
     }).length;
 
+    // Written for the SINGLE payout (2026-08-21). These lines predate it:
+    // they read "POP for tiles" and "POP for pts" as if the two were a fork
+    // to choose between, and the points button has been hidden since the
+    // payout became one thing. A pop pays both, so the note prices both.
+    const pocketBonus = Math.min(
+      value.count,
+      t.harvestSizeCap > 0 ? t.harvestSizeCap : value.count,
+    );
     const lines = [
       `POCKET OF ${value.count} — total worth ${worth}.`,
-      `POP for tiles: +${value.tiles}.`,
-      `POP for pts: ${value.points} = worth ${worth} × pocket ${Math.min(value.count, t.harvestSizeCap > 0 ? t.harvestSizeCap : value.count)} × distance ${multiplier}${value.questPays ? ` × bounty ${t.questBonus}` : ''}.`,
+      `POP pays +${value.tiles} tiles and ${scoreOf(value.points, t)} pts.`,
+      `The score: worth ${worth} × pocket ${pocketBonus} × distance ${multiplier}${value.questPays ? ` × bounty ${t.questBonus}` : ''}.`,
     ];
     // The pocket bar (2026-08-18): the priced pocket's count against the size
     // bonus's cap — "POCKET 14/20" — once it is within reach of mattering.
@@ -1294,7 +1302,9 @@ export class Game {
     if (value.treasure !== null)
       lines.push(`POP for treasure: a ${value.treasure.toUpperCase()} tile.`);
     if (value.questPays)
-      lines.push('★ This pocket collects the bounty — but only if you POP for PTS.');
+      // Every pop scores under the single payout, so the bounty rides on any
+      // of them — this rider named a button that no longer exists.
+      lines.push(`★ This pocket collects the bounty: ×${t.questBonus} on its score.`);
     if (rares > 0) {
       lines.push(
         `${rares} rare tile${rares === 1 ? '' : 's'} in here will be spent by popping it.`,
@@ -1914,8 +1924,16 @@ export class Game {
         {
           title: 'YOUR WORLD VS A SHARED RUN',
           lines: [
-            'The plain link opens YOUR world: one per device, remembered between runs, played with everything you have bought and found.',
+            // THREE worlds, not one (2026-08-21): slots shipped 2026-08-19 and
+            // this sentence never followed. The front door says "WORLD 1 OF
+            // 3" three lines from where a stranger reads this.
+            'The plain link opens YOUR world — one of three this device keeps, remembered between runs and played with everything you have bought and found.',
             'A link with a seed in it is somebody else’s run — the same world, but no shop upgrades and no perk, and nothing you do there is kept.',
+            // The third mode was missing entirely (2026-08-21). The daily is
+            // a button on the front door and a whole tab in the hall of
+            // fame, and the only place the manual described it was the MENU
+            // tab — visible only while you were already inside one.
+            'THE DAILY is one world everybody gets, the same for that date on every phone. Played plain like a shared run; your tries are counted and your own world is untouched.',
             'SHARE on the end screen makes such a link from your own run, so “beat my run” is always a fair fight.',
           ],
         },
@@ -1959,6 +1977,11 @@ export class Game {
         {
           title: 'POP',
           lines: [
+            // POCKET is the manual's most-used noun and was never defined
+            // (2026-08-21) — used from here on as if already known, and only
+            // ever printed by the tapped-pocket note, which you have to have
+            // already found. One clause, at first use.
+            'A POCKET is a ripe tile and every ripe tile touching it — they pop together, as one.',
             'Tap any ripe tile to price its pocket — the board outlines it and the buttons show what it pays. The biggest pocket is priced by default.',
             'Popped tiles turn to STONE: still surrounds, never matches. Every pop makes that ground poorer, which is the pressure to keep moving.',
             // The timing decision, stated as its two sides (Marc, 2026-08-20:
@@ -1979,19 +2002,38 @@ export class Game {
             // receipt every pop leaves — the fold keeps only the numbers a
             // player steers a run by, not the arithmetic the game already
             // shows at the moment it happens.
-            `It scores the pocket’s summed worth × its size bonus × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`,
+            // Names the SIZE BONUS before using it (2026-08-21) — the term was
+            // used here and two lines down as if defined somewhere, and it
+            // never was.
+            `It scores the pocket’s summed worth × its SIZE BONUS — one per tile in the pocket — × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`,
             ...(t.harvestSizeCap > 0
               ? [
                   `The size bonus stops growing past ${t.harvestSizeCap} tiles — a bigger pocket pays more worth but no more multiplier.`,
                 ]
               : []),
-            ...(t.treasureNeed > 0
-              ? [
-                  `A pocket of ${t.treasureNeed}+ can be POPPED as TREASURE instead: a magic tile into your stash, or a unique one from ${t.treasureUnique}+. You give up the tiles and the score to choose a power instead of waiting for one.`,
-                ]
-              : []),
           ],
         },
+        // TREASURE, out of the fold (2026-08-21). It is a THIRD thing a
+        // pocket can be spent on — a decision, not an arithmetic footnote —
+        // and it had no card, no toast, and a button that never says the
+        // word (it reads "TAKE 1 UNIQUE"). A fold is where numbers go, not
+        // where a choice is introduced.
+        ...(t.treasureNeed > 0
+          ? [
+              {
+                title: 'TREASURE, AND SACRIFICE',
+                lines: [
+                  `A pocket of ${t.treasureNeed}+ can be taken as TREASURE instead: a MAGIC tile straight into your stash, or a UNIQUE one from ${t.treasureUnique}+.`,
+                  'You give up the tiles and the score for it — that is the price of choosing a rare tile instead of waiting for one to be dealt.',
+                  ...(t.burnRelics > 0 && show('relic')
+                    ? [
+                        'SACRIFICE spends a pocket the other way: no tiles, no score, relics for the shop. Both buttons destroy the pocket, so read them before you tap.',
+                      ]
+                    : []),
+                ],
+              },
+            ]
+          : []),
         ...(colourPowers
           ? [
               {
@@ -2027,7 +2069,10 @@ export class Game {
             'The plane only exists where you have grown it — every placement reveals the ground around itself.',
             ...(show('field')
               ? [
-                  'Textured ground is a NATIVE FIELD — a tile of that colour placed there gains a match. Whole regions of one colour are BIOMES: chasing a colour means walking to where it grows.',
+                  // "Dotted", the word the toast uses and the word the board draws
+                  // (2026-08-21) — the manual said "Textured" and nothing on
+                  // screen ever says that.
+                  'Dotted ground is a NATIVE FIELD — a tile of that colour placed there gains one extra match. Whole regions of one colour are BIOMES: chasing a colour means walking to where it grows.',
                 ]
               : []),
             ...(show('wall')
@@ -2050,7 +2095,15 @@ export class Game {
                     : `+ CACHE — ${t.cachePays} tiles on the spot. Caches and sites re-arm every run, so ground you know stays worth walking.`,
                 ]
               : []),
-            ...(show('site') ? ['★ SITE — points, and it opens a bounty.'] : []),
+            // The bounty's RULE, not just its name (2026-08-21). It lived
+            // only in the claim toast — five seconds, once, on the run you
+            // happened to claim your first site — and in the miss-note. A
+            // player who looked away never learned what a bounty asks for.
+            ...(show('site')
+              ? [
+                  `★ SITE — points on the spot, and it opens a BOUNTY: pop a pocket of ${t.questNeed}+ tiles within ${t.questRadius} hexes of that star and the pop scores ×${t.questBonus}. One at a time; a new site replaces it.`,
+                ]
+              : []),
             ...(show('territory')
               ? ['◆ TERRITORY — the ground around it becomes your field, for good.']
               : []),
@@ -2066,7 +2119,7 @@ export class Game {
           ...(t.findSense > 0
             ? {
                 detail: [
-                  `Your nose is keen: hidden things shimmer faintly when your ground grows within ${t.findSense} hexes of them.`,
+                  `Hidden things shimmer faintly when your ground grows within ${t.findSense} hexes of them.`,
                 ],
               }
             : {}),
@@ -2078,15 +2131,26 @@ export class Game {
           // moved up; the hint-line anatomy described chrome that already
           // explains itself. The stat line names LUCK only once luck exists.
           lines: [
-            t.hidePoints
-              ? [
-                  'TILES keeps you alive',
-                  ...(show('luck') ? ['LUCK is what pops pay and the shop spends'] : []),
-                  'REACH is how far you have built',
-                  'COST is the next placement.',
-                ].join(' · ')
-              : 'TILES keeps you alive · POINTS is your score · REACH is how far you have built · COST is the next placement.',
+            // Every stat on the row, including the two it used to skip
+            // (2026-08-21): LEFT was omitted entirely, and REACH was called
+            // "how far you have built" without saying that it also SCORES at
+            // the end — a payout row on the end screen nothing prepares you
+            // for. Built from the same conditions the row itself uses, so a
+            // stat that is not on screen is not described.
+            [
+              'TILES keeps you alive',
+              ...(t.hidePoints ? [] : ['POINTS is your score so far']),
+              ...(show('luck') ? ['LUCK is what pops pay and the shop spends'] : []),
+              t.endReachBonus > 0
+                ? 'REACH is how far you have built — and it pays at the end'
+                : 'REACH is how far you have built',
+              'COST is the next placement',
+              ...(t.runLength > 0 ? ['LEFT is the placements remaining'] : []),
+            ].join(' · ') + '.',
             'Zoom with + and −, pinch, or drag to pan. FIT shows everything. Tapping any symbol on the map — or any stat up top — explains it where it sits.',
+            // The lens was taught by one toast, once ever, and appeared
+            // nowhere a player could look it up (2026-08-21).
+            'Tap remembered ground in the fog and every known patch of that colour lights at once — the cheapest way to see where a colour grows.',
             ...(t.hidePoints
               ? [
                   'Your SCORE is deliberately off screen while you play. It is what the run is worth when it ends, not a number to play against.',
@@ -2114,7 +2178,9 @@ export class Game {
                 lines: [
                   'MAGIC is wild: it matches every neighbour whatever the colour, and they match it back.',
                   'UNIQUE is wild and heavy: every match it makes counts DOUBLE, for both sides.',
-                  'The card says which it is, and a placed rare tile wears a star on the board — four points for magic, five for unique — so its power stays findable on a full map. A unique’s ground match counts double too.',
+                  // "points" here meant the star's geometry, not the SCORE stat that
+                  // sits at the top of the screen (2026-08-21). Said as what it is.
+                  'The card says which it is, and a placed rare tile wears a star on the board so its power stays findable on a full map. A unique’s ground match counts double too.',
                   ...(t.holdSlots > 0
                     ? [
                         // Reads the world's OWN slot count (2026-08-21), so
@@ -2146,7 +2212,9 @@ export class Game {
                   `FORGE (${t.luckForgeCost}) — turn the selected card UNIQUE. The only way to have a rare exactly when you want one.`,
                   ...(t.titheRate > 0 && t.titheMin > 0
                     ? [
-                        `TITHE — convert your whole purse to relics on the spot, at ${Math.round(t.titheRate * 100)}%. Better than what unspent luck still banks when the run ends, spent now instead of banked at the end; disabled below ${t.titheMin} luck so a token tithe cannot be a trap.`,
+                        // Cut from ~44 words to two clauses (2026-08-21): the middle one
+                        // said the same thing twice, and "a trap" was doing no work.
+                        `TITHE — turn your whole purse into relics now, at ${Math.round(t.titheRate * 100)}%. Three times what unspent luck banks if you die on it. Needs ${t.titheMin} luck.`,
                       ]
                     : []),
                 ],
@@ -2192,8 +2260,21 @@ export class Game {
                   'PERKS are not for sale. They are FOUND — hidden somewhere out in the world — and you may wear one at a time.',
                 ],
                 detail: [
-                  `A sacrifice pays ${t.burnRelics} relics per tile in the pocket, and reaching somewhere NEW pays ${t.claimRelics} for nothing — the half of the meta that costs no sacrifice. Reborn ground (a spent shrine or find come back as a cache or site) pays its tiles or points, never relics again.`,
-                  `When a run ends, ${Math.round(t.luckToRelics * 100)}% of the luck still in your purse comes home, so hoarding luck is a real alternative to spending it.`,
+                  // Split, de-jargoned and pluralised (2026-08-21). It was one ~50
+                  // word sentence carrying three ideas, called the roguelite
+                  // layer "the meta", used "Reborn" as a proper noun nothing
+                  // defines — and printed "1 relics per tile", because
+                  // burnRelics is 1.
+                  `A sacrifice pays ${t.burnRelics} relic${t.burnRelics === 1 ? '' : 's'} for every tile in the pocket.`,
+                  `Reaching somewhere NEW pays ${t.claimRelics} on its own — the half that costs you nothing.`,
+                  'Ground that has come back (a shrine you woke, or a find you took, returning later as a cache or a site) pays its tiles or its points, but never relics twice.',
+                  // Says what the number MEANS, not the opposite of it
+                  // (2026-08-21). This read "so hoarding luck is a real
+                  // alternative to spending it" — at 5% it is not, and the
+                  // purse card three sections away already said the true
+                  // thing ("a full purse you die on is mostly gone. Spend
+                  // it."). Two sentences, one number, opposite advice.
+                  `When a run ends, only ${Math.round(t.luckToRelics * 100)}% of the luck still in your purse comes home — so luck is for spending, not for saving.`,
                 ],
               },
             ]
@@ -2213,9 +2294,22 @@ export class Game {
             // used to restate it from memory are gone; the pointer is not a
             // restatement, and it is what makes the tab findable.
             'Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
+            // THE SURVEY had no manual presence at all (2026-08-21): five
+            // goals render in the MENU tab with nothing saying what they are
+            // or that they pay. Gated on the same ledger the shrine line
+            // uses, so a stranger who has met nothing is not shown a list of
+            // locked things.
+            ...(show('shrine') || show('territory')
+              ? [
+                  'THE SURVEY is five standing goals for the world itself — reach, ground known, territories held. Each pays relics once, and the MENU tab lists which are met.',
+                ]
+              : []),
             ...(this.#hooks.crossing !== undefined && show('shrine')
               ? [
                   'Once every shrine unlock is woken, any further shrine is a crossing: step through to a NEW WORLD, carrying relics for what you leave behind.',
+                  // Camps were a shipped system named nowhere but the shrine
+                  // ledger and a front-door button (2026-08-21).
+                  'A woken CAMP shrine adds a way to begin: later runs can start at your farthest territory instead of at the beginning. The climb restarts from there — reach is measured from wherever you wake.',
                 ]
               : []),
             'The MENU tab, at the top of this panel, holds your world’s own numbers and every way out of a run.',
@@ -2726,7 +2820,10 @@ export class Game {
         // The pop's timing FORK lives here, at discovery (Marc, Day 2:
         // "the early vs pop explanation should come before our first pop
         // success") — in plain words, since luck has not been met yet.
-        text: '⬢  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to price its pocket, then choose: POP now (pays sooner, and the plane sends more of what you pop) or keep growing it (a bigger pocket pays more than its pieces).',
+        // The colour-bias rule said plainly, not in metaphor (2026-08-21):
+        // "the plane sends more of what you pop" is a nice sentence that
+        // does not tell a first-time player what actually happens.
+        text: '⬢  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to price its pocket, then choose: POP now (pays sooner, and your next draws lean toward the colour you popped) or keep growing it (a bigger pocket pays more than its pieces).',
       };
     }
 
