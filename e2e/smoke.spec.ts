@@ -130,6 +130,13 @@ test('the daily door opens its own world, plainly, with no errors', async ({ pag
 test('a daily put down mid-board is offered back, and resumes the same try', async ({ page }) => {
   const errors = watchErrors(page);
 
+  // A REAL phone in portrait, which is the only device this game targets and
+  // the only shape its layout is designed for. Pinned here rather than left
+  // to the runner's default because this test hunts for a legal hex by
+  // tapping pixels: a desktop-shaped viewport puts the ring somewhere else
+  // entirely, which is exactly how this went green locally and red on CI.
+  await page.setViewportSize({ width: 390, height: 844 });
+
   await page.goto('/');
   await page.locator('#front-door-daily').click();
   await page.locator('#front-door-begin').click();
@@ -147,23 +154,29 @@ test('a daily put down mid-board is offered back, and resumes the same try', asy
   await expect(page.locator('#event-card')).toBeHidden();
 
   const tilesBefore = Number(await page.locator('[data-stat="tiles"] .stat-value').textContent());
-  // Tap the seed tile's ring until the purse moves — the hand arrives with a
-  // card already taken, so a board tap IS the placement. The legal ring is the
-  // six neighbours of one tile, and how many CSS pixels out that sits depends
-  // on the camera this world opened at, so the sweep walks several radii
-  // rather than assuming one. A placement is what makes this a board worth
-  // resuming rather than an untouched world.
-  const placed = async (): Promise<boolean> =>
-    Number(await page.locator('[data-stat="tiles"] .stat-value').textContent()) < tilesBefore;
-  for (const radius of [30, 45, 60, 80, 110]) {
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i;
+  // Hunt for one legal hex, and be thorough about it. The hand arrives with a
+  // card already taken, so a board tap IS the placement — but WHICH taps are
+  // legal depends on the day: this is the daily, its seed changes every
+  // midnight, and the ring around the arrival clearing can hold walls. A
+  // sparse sweep passed for weeks of seeds and then failed on CI's, which is
+  // the worst way to learn that a test is a coin toss.
+  //
+  // So: rings of radius, twelve directions each, stopping the instant the
+  // purse moves. The radii are ordered by where the ring ACTUALLY sits at
+  // this viewport (measured across five daily seeds: 2 to 18 taps of the 108
+  // available), most likely first — headroom is the whole point, since the
+  // seed this runs against is whatever date the runner thinks it is.
+  const tilesNow = async (): Promise<number> =>
+    Number(await page.locator('[data-stat="tiles"] .stat-value').textContent());
+  let tilesAfter = tilesBefore;
+  outer: for (const radius of [74, 90, 60, 105, 120, 48, 140, 165, 190]) {
+    for (let i = 0; i < 12; i++) {
+      const angle = (Math.PI / 6) * i;
       await page.mouse.click(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
-      if (await placed()) break;
+      tilesAfter = await tilesNow();
+      if (tilesAfter < tilesBefore) break outer;
     }
-    if (await placed()) break;
   }
-  const tilesAfter = Number(await page.locator('[data-stat="tiles"] .stat-value').textContent());
   expect(tilesAfter).toBeLessThan(tilesBefore);
 
   // The app comes back at its start URL — no `?daily=`, exactly as a
