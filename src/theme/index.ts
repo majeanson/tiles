@@ -50,7 +50,7 @@ export const DEFAULT_THEME_ID: ThemeId = 'torchlit';
 
 const BY_ID = new Map(THEMES.map((t) => [t.id, t]));
 
-export const themeIds = (): readonly ThemeId[] => THEMES.map((t) => t.id);
+/*  removed 2026-08-21 — unused; callers map THEMES themselves. */
 
 /**
  * Unknown ids fall back rather than throw: a stale bookmark, a typo on a phone

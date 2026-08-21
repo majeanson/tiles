@@ -47,8 +47,9 @@ export function themeCssVars(theme: Theme): CssVars {
   return out;
 }
 
-/** The same thing as a declaration block body, for a `<style>` tag or a gallery card. */
-export const themeCssText = (theme: Theme): string =>
-  Object.entries(themeCssVars(theme))
-    .map(([k, v]) => `${k}: ${v};`)
-    .join('\n');
+/*
+ * `themeCssText` — the same vars as a declaration-block body, for a <style>
+ * tag or a gallery card — was removed 2026-08-21. Nothing had ever called
+ * it: the gallery builds its cards from `themeCssVars` directly, and
+ * `applyTheme` sets the properties on an element rather than writing CSS.
+ */

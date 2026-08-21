@@ -7,7 +7,6 @@ import {
   costOf,
   harvestValue,
   homeOf,
-  isExhausted,
   reachOf,
   legalPlacements,
   placementsLeft,
@@ -114,14 +113,12 @@ function smallestHarvest(state: GameState, choice: 'tiles' | 'points'): Move | n
 }
 
 /**
- * How far from home the run has built, in hexes. The endless world's depth.
- * `homeOf(state)`: true origin for every ordinary policy run; the
- * where-you-wake prototype's own wake hex when the sim set one, so a
- * policy's own sense of "how deep am I" is not thrown off by where it woke.
- */
-/**
  * The legal spot farthest from home, carrying whichever draft tile does the
  * most work there. How a policy walks outward on purpose.
+ *
+ * "From home" is `homeOf(state)`: true origin for every ordinary policy run,
+ * and the where-you-wake prototype's own wake hex when the sim set one — so a
+ * policy's sense of how deep it is does not depend on where it woke.
  */
 function farthestPlacement(state: GameState): Move | null {
   let best: { index: number; hex: string; dist: number; worth: number } | null = null;
@@ -632,6 +629,11 @@ export const POLICIES: readonly Policy[] = [
 export const policyByName = (name: string): Policy | undefined =>
   POLICIES.find((p) => p.name === name);
 
-/** Exported for the runner's stall check; `isExhausted` is the interesting half. */
-export const stuckOnMap = (state: GameState): boolean =>
-  isExhausted(state.cells, state.tuning) && ripeKeys(state.cells).length === 0;
+/*
+ * `stuckOnMap` was removed 2026-08-21. Its comment said "exported for the
+ * runner's stall check", and the runner had stopped asking: `run.ts` detects
+ * a stall from the POLICY instead — an empty move list, or a step that moved
+ * nothing — which catches a policy that has run out of ideas as well as a
+ * board that has run out of moves. A helper whose stated caller no longer
+ * calls it is a claim about the code that is not true.
+ */

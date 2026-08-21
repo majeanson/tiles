@@ -134,7 +134,8 @@ export const PERKS: readonly Perk[] = [
   },
 ];
 
-export const perkById = (id: PerkId): Perk | undefined => PERKS.find((p) => p.id === id);
+/*  removed 2026-08-21 — unused. The shelf and the find-grant both
+ * work from the PERKS list itself. */
 
 /**
  * Teaching, drop by drop (`ideas/teaching.md`, 2026-08-19): the concepts this

@@ -13,7 +13,6 @@ import {
   placementsLeft,
   previewWorth,
   reachOf,
-  ripeClusters,
   ripeKeys,
   worthOf,
 } from '@engine/rules';
@@ -98,23 +97,19 @@ function structureDistanceAt(dist: ReadonlyMap<HexKey, number>, q: number, r: nu
  * right thing", and answering it needs no canvas and no phone.
  */
 
-/**
- * The pocket the harvest buttons are pricing, on the endless world.
+/*
+ * `resolveHarvestTarget` lived here until 2026-08-21 — the rule for which
+ * pocket the harvest buttons price: a tapped ripe tile targets its own
+ * cluster, and with no tap (or a stale one, since popped) the biggest pocket
+ * is the default, so the buttons are never dead while anything is ripe.
  *
- * A tapped ripe tile targets its own cluster; with no tap (or a stale one that
- * has since been popped) the biggest pocket is the default, so the buttons are
- * never dead while anything is ripe. `null` on bounded maps, where a harvest
- * is the whole board and there is nothing to single out.
+ * It was exported and called by nobody. `renderContext` owns that rule now,
+ * and owns it BECAUSE it has already walked the ripe set once for the render:
+ * a standalone helper would re-walk the whole board to answer the same
+ * question, which is the exact cost the context exists to stop paying. So it
+ * is superseded rather than merely unused, and the rule belongs where the
+ * data already is.
  */
-export function resolveHarvestTarget(state: GameState, asked: HexKey | null): HexKey | null {
-  if (asked !== null && isRipe(state.cells, asked)) return asked;
-
-  let best: HexKey[] | null = null;
-  for (const pocket of ripeClusters(state.cells)) {
-    if (best === null || pocket.length > best.length) best = pocket;
-  }
-  return best?.[0] ?? null;
-}
 
 /**
  * Everything both selectors need that costs a pass over the board, computed
