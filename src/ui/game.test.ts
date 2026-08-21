@@ -2867,3 +2867,46 @@ describe('SETTLE on the end screen (2026-08-20)', () => {
     expect(ctx.el.end.querySelector('#end-settle')).toBeNull();
   });
 });
+
+describe('the teaching order a stranger meets (2026-08-21)', () => {
+  /**
+   * The GLOW card only ever needed a quiet beat, so it landed within the
+   * first few placements — while RIPE needs six tiles around one. The game
+   * was therefore telling a stranger to "build your chain out and touch the
+   * light" BEFORE it had said what ripening is: the beeline the harness
+   * names as the run-one killer (an arm encloses nothing, so nothing ever
+   * ripens, and the run dies at placement 22 having done as it was told).
+   *
+   * The launch gate is whether a stranger finishes a run and starts another,
+   * so the order these two arrive in is worth a test.
+   */
+  it('says nothing about distant lights until ripening has been taught', () => {
+    // A ledger that has met NOTHING — a genuinely virgin device, which is
+    // the only state this ordering is about.
+    let progress: Progress = { ...EMPTY_PROGRESS, met: [] };
+    const ctx = build(5, TUNING, {
+      shop: {
+        read: () => progress,
+        write: (p) => {
+          progress = p;
+        },
+      },
+    });
+    ctx.game.start();
+    if (!ctx.el.eventCard.hidden) ctx.el.eventCardDismiss.click();
+
+    // Play a handful of placements — enough beats for the old card to have
+    // fired several times over — without ever completing a pocket.
+    for (const hex of [key(1, 0), key(2, 0), key(3, 0), key(4, 0), key(5, 0)]) {
+      ctx.renderer.nextHit = hex;
+      tap(ctx.el.board);
+      if (!ctx.el.eventCard.hidden) ctx.el.eventCardDismiss.click();
+    }
+
+    const seen = ctx.game.state;
+    expect(seen.placements).toBeGreaterThan(0);
+    // The concept is untaught, so neither the card nor its recurring toast
+    // has spoken about a light this run.
+    expect(ctx.el.eventCardText.textContent ?? '').not.toMatch(/A LIGHT IN THE DARK/);
+  });
+});

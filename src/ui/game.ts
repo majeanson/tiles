@@ -2908,16 +2908,31 @@ export class Game {
       hud.hint !== null &&
       this.#el.toast.hidden &&
       this.#el.eventCard.hidden;
-    if (quietBeat && !this.#met('glow')) {
+    // AFTER the loop, never before it (2026-08-21). This card only needed a
+    // quiet beat, so it almost always landed within the first few
+    // placements — while RIPE needs six tiles around one — and the game was
+    // therefore telling a stranger to "build your chain out and touch the
+    // light" before it had said what ripening was. That is the beeline the
+    // harness names as the run-one killer in as many words: an arm encloses
+    // nothing, so nothing ever ripens, and the run dies at placement 22 with
+    // the player having done exactly what they were told.
+    //
+    // Gated on `ripe` now — the recurring signpost toast below with it, so
+    // the whole "there are places out there" idea waits until the loop that
+    // gets you to them has been taught. Both are silent on a device with no
+    // ledger (the gallery, a bare test), which `#met` already answers true
+    // for, so nothing regresses where there is nothing to teach.
+    const mayPoint = this.#met('ripe');
+    if (quietBeat && mayPoint && !this.#met('glow')) {
       // The first light this device has ever had a signpost to
       // (`ideas/teaching.md`): the held card, where the recurring signpost
       // toast below is the receipt every later light gets. Same quiet-beat
       // guard, same priming rule — boot never greets anyone with it.
       this.#markMet('glow');
       this.#showEventCard(
-        '⬢  A LIGHT IN THE DARK\nThat glow is a real place, shining through ground you have not reached. Build your chain out and touch it with a tile to claim it — each kind explains itself when you first arrive.',
+        '⬢  A LIGHT IN THE DARK\nThat glow is a real place, shining through ground you have not reached. Build your chain out and touch it with a tile to claim it — but a thin arm ripens nothing, so build wide as you go. Each kind explains itself when you first arrive.',
       );
-    } else if (quietBeat && hud.hint !== this.#lastSignpost) {
+    } else if (quietBeat && mayPoint && hud.hint !== this.#lastSignpost) {
       this.#showNote(`${hud.hint}.`);
     }
     this.#lastSignpost = hud.hint;
@@ -2964,7 +2979,17 @@ export class Game {
     this.#renderSpends(hud);
 
     // The sacrifice, where it exists: give up the pocket for luck instead.
-    const burn = hud.canHarvest ? hud.harvestBurn : 0;
+    //
+    // And not before the currency it pays in has a name (2026-08-21). With
+    // `burnRelics` at 1 this button is live at a stranger's FIRST ripe
+    // pocket, sitting under POP, offering to destroy the tiles keeping them
+    // alive in exchange for a word they have never seen — the RELIC card
+    // only fires once relics exist, so the explanation strictly cannot have
+    // happened yet. It waits for that card now, or for a purse that already
+    // holds some, and then it is there for good. A device with no ledger
+    // sees it as before.
+    const burnKnown = !hud.burnPaysRelics || this.#met('relic') || hud.relics > 0;
+    const burn = hud.canHarvest && burnKnown ? hud.harvestBurn : 0;
     this.#el.harvestBurn.hidden = burn <= 0;
     this.#el.harvestBurn.disabled = burn <= 0;
     if (burn > 0) {
@@ -3271,6 +3296,26 @@ export class Game {
     }
     parts.push(hero);
 
+    // NEW RUN, DIRECTLY UNDER THE SCORE (2026-08-21). It used to sit at the
+    // bottom, after the snapshot, SHARE, four payout rows, a six-cell facts
+    // grid, what-still-glows, CARRIED OUT and the shop door — roughly two
+    // screens below the fold on a phone, with no scroll reset anywhere. The
+    // one thing the v1.0 gate measures is whether a stranger STARTS ANOTHER
+    // RUN, and the button for it was the hardest thing on the screen to
+    // find. Score, arc, then the door back in; everything else on this
+    // screen is optional reading and can stay below.
+    if (this.#hooks.newRun !== undefined) {
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.id = 'end-new-run';
+      again.textContent = this.#hooks.daily === undefined ? 'NEW RUN' : 'BACK TO YOUR WORLD';
+      const start = this.#hooks.newRun;
+      again.addEventListener('click', () => {
+        start();
+      });
+      parts.push(again);
+    }
+
     // The story, drawn (`ideas/endless-world.md`): the board itself, exactly
     // as the run left it. Tap opens nothing — it IS the screenshot bait; the
     // share CARD (2026-08-19, WORKPLAN Stage 2) draws its own picture of the
@@ -3549,19 +3594,6 @@ export class Game {
       slots.append(note);
 
       parts.push(open, slots);
-    }
-
-    // NEW RUN is the exit — and on a daily it says where the exit goes.
-    if (this.#hooks.newRun !== undefined) {
-      const again = document.createElement('button');
-      again.type = 'button';
-      again.id = 'end-new-run';
-      again.textContent = this.#hooks.daily === undefined ? 'NEW RUN' : 'BACK TO YOUR WORLD';
-      const start = this.#hooks.newRun;
-      again.addEventListener('click', () => {
-        start();
-      });
-      parts.push(again);
     }
 
     // The install nudge, once ever: quietest voice on the screen, after the
