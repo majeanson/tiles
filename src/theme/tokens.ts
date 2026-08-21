@@ -745,6 +745,29 @@ export type FieldGround =
     }
   | { readonly kind: 'procedural'; readonly surface: Surface };
 
+/**
+ * How much louder a GHOSTED PNG has to be than a dot pattern to read the
+ * same (Marc, 2026-08-21, on the phone: "when we're playing and putting tiles
+ * on ground that has moss (newly found) they are hard to see, I'd like more
+ * opacity for these cases" — remembered ground, he said, was fine).
+ *
+ * `fieldGround` reused `fieldDots`' alpha directly, and the reasoning for
+ * that is still right: the alpha must be EQUALISED per colour, because a
+ * flat number reads differently against four different ground lightnesses.
+ * What it got wrong is the magnitude. A dot pattern spends its alpha on a
+ * few high-contrast marks against bare ground; a ghosted terrain PNG spends
+ * the same alpha across a whole mid-tone photograph, so the same number
+ * lands far quieter. Same question, same per-colour answer, scaled for the
+ * medium — and capped, because past this the ground starts reading as a
+ * placed tile, which is the same wall `fieldDots` stops at.
+ *
+ * ONE number to tune if it overshoots on glass. Remembered ground rides the
+ * same baked texture, so it brightens with this; `Theme.fog`'s `veil` and
+ * `alpha` are the dials that hold memory where it is if it does.
+ */
+const FIELD_GHOST_GAIN = 1.5;
+const FIELD_GHOST_MAX = 0.62;
+
 export function fieldGround(theme: Theme, colour: Colour, hasArt: boolean): FieldGround {
   const asset = theme.terrain[colour].asset;
   if (hasArt && asset !== null) {
@@ -756,7 +779,12 @@ export function fieldGround(theme: Theme, colour: Colour, hasArt: boolean): Fiel
     // ghost asks the identical question — "how strongly must this colour's
     // mark show against ITS OWN ground to read the same as the other
     // three" — so it gets the identical answer.
-    return { kind: 'art', base: theme.empty, asset, ghostAlpha: fieldDots(theme, colour).alpha };
+    return {
+      kind: 'art',
+      base: theme.empty,
+      asset,
+      ghostAlpha: Math.min(FIELD_GHOST_MAX, fieldDots(theme, colour).alpha * FIELD_GHOST_GAIN),
+    };
   }
   return {
     kind: 'procedural',

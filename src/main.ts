@@ -1910,12 +1910,18 @@ function mountSettings(
 
   // A fresh run under whatever the switches now say — the same path as the
   // end screen's button, so it also clears the saved run and drops ?seed and
-  // ?ff, leaving the STORED settings to decide what comes next. Last on the
-  // panel: it is the action that makes anything above it count.
+  // ?ff, leaving the STORED settings to decide what comes next.
+  //
+  // RESTART, not "NEW RUN with these settings" (Marc, 2026-08-21). Two
+  // reasons the shorter word is the better one: it says what the button does
+  // to the run you are IN — abandons it and starts over — where "new run"
+  // reads like a thing you get when the current one is finished, and it
+  // stops colliding with the end screen's own NEW RUN, which is the same
+  // action at a moment when it means something different.
   const restart = document.createElement('button');
   restart.type = 'button';
   restart.id = 'new-run';
-  restart.textContent = 'NEW RUN with these settings';
+  restart.textContent = 'RESTART — a fresh run on this world';
   restart.addEventListener('click', startNewRun);
 
   // Back to the front door. Not destructive and not arming: the run is saved

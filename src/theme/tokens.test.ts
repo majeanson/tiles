@@ -141,11 +141,23 @@ describe(
           if (ground.kind !== 'art') continue;
           expect(ground.asset).toBe(asset);
           expect(ground.base).toEqual(theme.empty);
-          // The ghost alpha equalises the same way `fieldDots` does — reused,
-          // not reinvented, so a future retune of one retunes the other too.
-          expect(ground.ghostAlpha).toBe(fieldDots(theme, c).alpha);
+          // The ghost alpha still EQUALISES the way `fieldDots` does —
+          // reused, not reinvented, so a future retune of one retunes the
+          // other too. What it no longer does is match it exactly
+          // (2026-08-21): a dot pattern spends its alpha on a few
+          // high-contrast marks, a ghosted PNG spends the same alpha across
+          // a whole mid-tone photograph, so the same number lands far
+          // quieter and the ground was hard to read while playing on it.
+          //
+          // So: strictly louder than the dots, and derived from them rather
+          // than invented beside them — which is the property this
+          // assertion was actually protecting.
+          const dots = fieldDots(theme, c).alpha;
+          expect(ground.ghostAlpha).toBeGreaterThanOrEqual(dots);
           expect(ground.ghostAlpha).toBeGreaterThan(0);
-          expect(ground.ghostAlpha).toBeLessThanOrEqual(1);
+          // Capped short of opaque: past this the ground reads as a placed
+          // tile, which is the same wall `fieldDots` stops at.
+          expect(ground.ghostAlpha).toBeLessThanOrEqual(0.62);
         }
       }
     });
