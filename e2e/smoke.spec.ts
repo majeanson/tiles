@@ -200,3 +200,51 @@ test('a daily put down mid-board is offered back, and resumes the same try', asy
 
   expect(errors).toEqual([]);
 });
+
+/**
+ * The board actually DREW something (2026-08-21).
+ *
+ * `STATUS.md` has carried "nothing visual is tested by this repository" since
+ * the fields were built — happy-dom has no canvas, so every visual claim in
+ * this project is verified as wiring and unverified as a picture. This is the
+ * cheap floor under that, and deliberately NOT pixel diffing: baseline images
+ * would differ between this machine and CI's Linux renderer, buying flakiness
+ * rather than confidence.
+ *
+ * It asserts the one thing a blank board cannot fake — that the screenshot
+ * carries the ENTROPY of a picture. A WebGL context that never came up, a
+ * layout collapsed to nothing, a draw that threw halfway: each ends in a flat
+ * rectangle, each compresses to almost nothing, and each currently reaches
+ * production unchallenged. Measured on a real board: ~60KB and ~15,000
+ * distinct chunks, against a threshold two orders of magnitude below that.
+ */
+test('the board renders a picture, not a flat rectangle', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?seed=7');
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+
+  const canvas = page.locator('#board canvas');
+  await expect(canvas).toBeVisible();
+  const box = (await canvas.boundingBox())!;
+  expect(box.width).toBeGreaterThan(100);
+  expect(box.height).toBeGreaterThan(100);
+
+  // A screenshot rather than `toDataURL`: reading a WebGL canvas back needs
+  // `preserveDrawingBuffer`, which the renderer does not ask for and should
+  // not have to. A screenshot sees what the player sees.
+  const shot = await canvas.screenshot();
+
+  // The PNG is already compressed, so counting distinct byte-chunks measures
+  // how much VARIETY survived compression — which is precisely the axis a
+  // flat fill collapses on, whatever colour it happens to be.
+  const seen = new Set<string>();
+  for (let i = 0; i + 4 <= shot.byteLength; i += 4) {
+    seen.add(shot.subarray(i, i + 4).toString('hex'));
+  }
+  expect(shot.byteLength, 'the board screenshot is suspiciously small').toBeGreaterThan(8000);
+  expect(seen.size, 'the board looks like a single flat colour').toBeGreaterThan(1000);
+
+  expect(errors).toEqual([]);
+});
