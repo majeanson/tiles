@@ -7,7 +7,18 @@ The tag plan: rehearsal Day 2, verdict run Day 3, **stranger test Day 4**,
 tag Day 5 (2026-08-25 — the daily epoch is set to it; if the launch day
 moves, move `DAILY_EPOCH` with it, never after).
 
-## 1. THE REHEARSAL — your next phone session, scripted (Day 2)
+## 1. THE REHEARSAL — ✅ PLAYED 2026-08-20, and worth one more pass
+
+Marc played this and reported as he went; every verdict was built the same
+night. The script stays because the first minute it rehearsed no longer
+exists — the Day-2 batch changed it twice — so it is the thing to re-run
+before the stranger test, not a thing to tick off.
+
+Since that rehearsal: HOW TO PLAY opens the tutorial rather than an atlas of
+zeroes, the GLOW card waits until RIPE has been taught (it was teaching the
+beeline the harness names as the run-one killer), SACRIFICE waits until the
+RELIC card has named the currency, NEW RUN moved directly under the score,
+and a scoring pop can no longer bank zero.
 
 **https://tiles.marcportal.com** — reload twice first so the newest build
 is certain (or tap the NEW VERSION bar if it offers).
@@ -33,7 +44,20 @@ own phone, unaided — do they finish a run and start another? Gate B's
 successor question (pop-vs-burn-vs-wait timing) is a **standing v1.1
 question**, answered over weeks, not a tag blocker.
 
-## 2. ELEVEN LOOK-AT-ITS — one pass, same session (all shipped 2026-08-20, none judged)
+## 2. ELEVEN LOOK-AT-ITS — one pass, same session
+
+**Partly judged.** Marc's live reactions on 2026-08-20 settled and REBUILT
+several of these — the fog lens (3), ember's dots (5) and the pop cascade
+(7) were all rebuilt off what he said while playing, and the list below has
+said "none judged" ever since. What is genuinely unseen is the rest, plus
+five things that shipped after this list was written:
+
+- the camera easing — HERE, FIT, the pop's pan, and the board settling to a
+  new fit size as it grows,
+- the six-stat header in portrait, on the narrowest phone to hand,
+- the MENU tab's layout, and SETTLE's slot list on the end screen,
+- the two stash slots on their own row (thumb reach, at 3 and 4 draft cards),
+- **the lighter TIDE against MOSS**, and the louder biome fields.
 
 Every one is a by-looking verdict the repo cannot test:
 

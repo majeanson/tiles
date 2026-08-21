@@ -17,7 +17,7 @@ player, remembered between runs. Every decision below is Marc's, given
 | What persists between runs? | **Revealed ground + claimed territories.** Tiles and stone reset each run; the map you know stays known; territories stay yours. |
 | Caches (+) and sites (★) on later runs? | **Re-arm every run.** Known ground stays worth revisiting; a good route through your world is a strategy you refine. Territories are the once-ever part. |
 | What does exploring unlock? | **All three, phased:** places-as-features, an atlas, and starting perks from held territories. |
-| World lifecycle | **One world per device, plus "Abandon world"** (confirmation required) in SETTINGS. Shareable/multiple worlds deliberately deferred. |
+| World lifecycle | **One world per device, plus "Abandon world"** (confirmation required) in SETTINGS. Shareable/multiple worlds deliberately deferred. **Both shipped 2026-08-19** (D14): three world slots, and SETTLE — keep a shared or daily seed as one of them. This row records what was decided when P4 was written; the deferral is over. |
 | Why (the fun problem it serves) | Marc's Gate B debrief: points felt worthless early and risking them felt like dying with nothing — "we should add roguelite elements maybe." Territory perks soften the start; a remembered world makes every run's exploration COUNT beyond its own score. |
 
 ## What a run becomes

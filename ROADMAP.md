@@ -136,7 +136,7 @@ soft numbers in this file; the checkboxes are not.
 
 ---
 
-## Where this stands, 2026-08-15
+## Where this stands, 2026-08-21
 
 M1–M6 are built, verified and deployed. What the checklist actually says now:
 

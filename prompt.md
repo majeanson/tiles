@@ -1,5 +1,11 @@
 # prompt.md — the session we go through together
 
+> **CLOSED — history, not a live list (marked 2026-08-21).** Every question
+> here was answered on 2026-08-04, and the answers are recorded below and in
+> `LOG.md`. It stays at root because `STATUS.md` and `LOG.md` both cite it as
+> the record of what was decided that day. The live equivalents are
+> `FOLLOWUP.md` (what needs Marc) and `POLISH.md` (what needs building).
+
 Written at the end of Session 2, for a session where you are available to answer.
 Everything below is either **a decision only you can make** or **a thing I did
 that you should look at and confirm or reverse**.

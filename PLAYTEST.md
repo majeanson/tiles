@@ -10,7 +10,17 @@ actively misleading with a launch five days out. This is the live script;
 portrait.** Reload twice first (or tap NEW VERSION) so the build is
 today's.
 
-## Session A — the stranger rehearsal (~20 min, Day 2)
+## Session A — the stranger rehearsal — ✅ PLAYED 2026-08-20
+
+Marc played it and reported as he went; everything he named was built the
+same night (LOG.md Sessions 35–38, and the audit batches after them). Kept
+below as the script, because it is the one to re-run after a build that
+changes the first minute — which the Day-2 batch did, twice.
+
+**Re-run it before Session C.** The first minute is not the one this
+rehearsal saw: HOW TO PLAY opens the tutorial again, the GLOW card waits for
+RIPE, SACRIFICE waits until relics have a name, NEW RUN sits under the score
+instead of two screens below it, and the first pop can no longer score zero.
 
 1. SETTINGS ▸ DEVELOPER ▸ **RESET TEACHING** (it forgets only the
    lessons; your game survives).

@@ -151,6 +151,14 @@ expression we want, and the reason the harness exists.
 The harness has one job: move the `100` and the `/2` until competent play reaches
 **map 6–8 in 15–25 minutes** and careless play dies on map 2.
 
+> **Reading note (2026-08-21).** The paragraph above, and the maps it counts,
+> belong to the BOUNDED game — deleted 2026-08-16 when the endless plane
+> became the only economy. Kept as history, like the rest of this file's
+> bounded body. The endless run's own shape, measured: **run one is about
+> 120–165 placements, roughly eight minutes**, and a maxed shop climbs to
+> ~230–250 and fifteen to twenty. `src/content/tuning.ts` carries the swept
+> ladder those come from.
+
 Cost climbs linearly forever; income is capped by geometry at one pop per
 placement. **The curves must cross** — death is guaranteed by structure, not by
 tuning.

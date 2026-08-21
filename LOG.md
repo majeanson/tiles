@@ -5362,3 +5362,89 @@ for a link you can already tell you want, and it costs nothing to keep.
 held slot arms first, and the whole control is absent in your own world —
 which is already settled by definition), 8 e2e green, typecheck / lint /
 format clean, build green.
+
+### Session 39 — the audit pass, and what eight sweeps found
+
+Marc asked what to work on with a week to launch, and for a document holding
+two weeks of polish. The document is `POLISH.md`; the first thing it had to
+say was that the premise was off. **Launch is 2026-08-25 — five days out, not
+two weeks** — so it is five days of hardening, a tag, and nine days of
+reacting to strangers, and week two is provisional because the strangers get
+to rewrite it.
+
+Eight parallel audits across two rounds: launch docs, cut corners,
+accessibility, performance, data loss, the first sixty seconds, the
+progression economy, and the front door's share loop. Three died on a session
+limit in round one and were re-run. What they found, and what was done:
+
+**The regression I had shipped that morning.** The MENU tab took the tab
+bar's first seat, so the front door's HOW TO PLAY — the only tutorial door a
+stranger ever taps — opened onto an atlas of zeroes with the lesson one tap
+to the right, four days before the stranger test. `openHelp` names the tab it
+wants now; an e2e pins both halves.
+
+**The crossing ate the run that reached it.** `cross()` never went through
+`finish`, so `bankRelics` never ran: a player who walked to the shrine rich
+arrived poor, and nothing said so. It banks what the run carried, names the
+true total on the button, says that what you BOUGHT stays with the world, and
+arms — every other control that forgets a world already did.
+
+**The camera I had shipped that afternoon was not affordable.** It called
+`draw()` on every frame it changed zoom, and `draw()` rebuilds every cell:
+~3000 display objects at reach 20, so a 320ms flight rendered about three of
+its nineteen frames — and the caches key on rounded pixel size, so it baked a
+texture set at every integer size it crossed. A camera move does not change
+what the board IS, only how big it looks: it is a container transform now,
+laying out once on landing, and pinch got the same treatment.
+
+**The data-loss cluster.** Six ways to lose a world, all closed — the worst
+being a quota rung that shed the world and left its run, so the next boot
+minted a fresh world and merged a foreign geography into it. Both merges are
+seed-guarded now. And BACK UP MY WORLDS, which is the only one of the six
+that makes loss survivable rather than less likely.
+
+**The camp cluster.** Five places measured from world ORIGIN while `reachOf`
+measured from home. The docblock calling the where-you-wake prototype
+"unreachable from UI" had been stale since camps shipped as the fifth shrine,
+so all five were live for the players furthest in — including a cache banner
+overstating its payment four-fold, a KEEN NOSE that drew nothing at all, and
+a reach goal that paid 25 relics for standing still.
+
+**Three counting bugs of one shape.** `collected` vs `scores`; the harvest
+tally's `else points++` filing burns and treasures as points harvests; and
+the shop's two economy sentences. Each was a rule spelled twice, agreeing
+until one copy moved. `scoreOf` and the explicit four-way branch are the
+answers; the pattern is worth naming because it has now cost four bugs.
+
+**The manual.** Nine shipped concepts explained nowhere — POCKET, the
+manual's own most-used noun, was never defined — and four sentences that had
+become false as dials moved under them. A test now opens the manual with a
+full ledger and asserts every concept is named and none of the four has come
+back; it fails on a missing term, which I checked.
+
+**"Modal" was a paint job.** `inert` appeared once in the codebase and only
+to CLEAR it, so the hall of fame sat over a front door whose BEGIN and RESET
+ALL were still tabbable and focusable. `ui/dialog.ts` is a stack: opening a
+panel makes its siblings inert and remembers what it changed, closing
+restores exactly that, and Escape reaches the top panel only. The first e2e I
+wrote for it passed with the fix disabled — a full-screen panel already eats
+a mouse click by layout — so it tests the keyboard instead, and fails without
+the fix.
+
+**Two launch-gate holes.** `verify-deploy` treated any 403 from the custom
+domain as a bot challenge and verified the workers.dev fallback instead, so a
+broken domain would have printed `ok deploy verified`. And `public/sw.js` —
+the one file that can brick a returning player — was excluded from ESLint and
+tsconfig with no test touching it.
+
+**Marc's two rulings, and two phone verdicts.** The second stash slot is real
+(`held` is a list; the second shrine has promised it since the ledger was
+written and granted nothing, because every reader tested `holdSlots` as a
+boolean). A scoring pop can never score zero. Biomes read ~25% louder. And
+TIDE is a lighter blue: it sat 0.061 below MOSS in value — the DARKER of the
+two — and now sits 0.218 above it, which meant threading between ember at
+0.374 and the 0.05 greyscale rule.
+
+**Verified:** 648 tests, 11 e2e, typecheck / lint / format clean, build
+green, `pnpm sim` unmoved but for the one-point score floor. Every batch
+deployed and confirmed live against `version.json`.

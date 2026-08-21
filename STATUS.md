@@ -4,7 +4,67 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-20, evening — launch week Day 1 closed.** The
+Last checkpoint: **2026-08-21, small hours — launch week Day 2 closed, and
+its audits with it.** Eighteen commits since the Day-1 entry below, every one
+shipped and verified live. Four strands.
+
+**Marc's phone verdicts, built.** Daily shrines reborn as caches and sites (a
+world with no unlock ledger has no use for a door); the fog lens made legible
+and easy to let go of; pops bursting in their own colour; EMBER as polka
+rounds; the pop-timing fork retimed to the RIPE card; UNIQUE taught its own
+card; the bounty and site numbers said out loud. Then, from the same sessions:
+a daily can be PUT DOWN and picked up (its own key, guarded by its date,
+offered back from the home door because a relaunched PWA carries no
+`?daily=`); the economy SPLIT on his option-set answer — relics travel to
+every world, what you buy with them stays where you bought it; a MENU tab
+first in the `?` panel holding the exits and the atlas, showing YOUR WORLD or
+THE DAILY and never both; a header of live numbers only; the camera flown
+rather than cut; SETTLE moved to the end screen, offered on dailies, able to
+trade a full slot; the SECOND STASH SLOT made real; a scoring pop that can
+never score zero; biomes ~25% more opaque; and a lighter TIDE — value 0.451
+against moss's 0.233, where the two used to sit 0.061 apart with the tide the
+DARKER of them.
+
+**Six bugs that cost players something.** The crossing never went through
+`finish`, so a run that walked to the shrine rich arrived poor and nothing
+said so. The harvest tally filed every burn and treasure as a POINTS harvest —
+the third time a two-way test stood in for a four-way choice. The map could
+stick in pinch forever on one missed pointer lift. Under `singlePayout`,
+TREASURE cleared a bounty and paid nothing for it. The quota ladder could
+merge a foreign geography into a fresh world. And five places measured from
+world ORIGIN while `reachOf` measured from home — all live for anyone who had
+woken the camp shrine, including a goal that paid 25 relics for standing
+still.
+
+**The data-loss cluster, closed, plus the door out.** The shed ladder never
+touches the world being played and each rung says what it took; both merges
+are seed-guarded; `decodeWorld` and `decodeProgress` salvage rather than
+returning null (which the shell answered by minting a fresh world OVER the old
+blob on the same tick); both SETTLE paths share one footprint-clearing helper;
+`persist()` is asked at boot. And BACK UP MY WORLDS / RESTORE A BACKUP — the
+only one of these that makes loss SURVIVABLE rather than merely less likely,
+with no backend and Safari evicting a non-persisted origin after a week.
+
+**The audit pass.** Eight parallel sweeps across two rounds. Every P0 fixed
+the evening it was written. The manual gained nine concepts it had never
+explained (POCKET — its own most-used noun — the bounty's rule, THE DAILY, THE
+SURVEY, CAMPS, the fog lens, LEFT, and that REACH scores at the end) and lost
+four sentences that had become false; a test now asserts every shipped concept
+is named and that none of the four has come back. One contract for every panel
+that covers the game — before it, `inert` appeared once in the whole codebase
+and only to CLEAR it, so the hall of fame sat over a still-tabbable front door.
+`public/sw.js` is linted (it had been reaching production with no lint, no
+types and no test). `verify-deploy` no longer passes when the custom domain is
+broken. And the shop's prose reads its magnitudes from `src/content/`, so it
+cannot describe something the player is not buying.
+
+**648 tests; 11 e2e; sim 18 policies, 0 stalled — unmoved but for the
+one-point score floor.** `POLISH.md` is the schedule and the open-defect list;
+`FOLLOWUP.md` the human questions; `PLAYTEST.md` the phone sessions. **The one
+gate is still the stranger test.** Two things remain Marc's alone: where a
+stranger's crash report should be SENT, and the Session B and C runs.
+
+Previous checkpoint: **2026-08-20, evening — launch week Day 1 closed.** The
 afternoon's prompts and audits, all shipped and deployed (Sessions 33
 addenda 4–8 and Session 34, LOG.md): the relic economy HALVED (burn 1,
 claims 2, ending conversion 5%, TITHE 15% — the 3× ratio kept; survey
