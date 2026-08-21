@@ -223,10 +223,17 @@ export function findAt(seed: number, q: number, r: number, t: Tuning): Find | nu
 }
 
 /**
- * Every hidden find within `radius` of home. NOT a beacon feed: the one
- * consumer is the shimmer (`findSense` > 0), and nothing else may draw an
+ * Every hidden find within `radius` of world ORIGIN. NOT a beacon feed: the
+ * one consumer is the shimmer (`findSense` > 0), and nothing else may draw an
  * unrevealed find — a find that shows through the dark is a destination with
  * extra steps, and the whole design is that you stumble on it.
+ *
+ * Of ORIGIN, not of home — the docblock said "home" until 2026-08-21 and the
+ * code never did, which is how a camp run's KEEN NOSE came to shimmer
+ * nothing at all: the caller passed a home-anchored reach as an origin-
+ * anchored radius, so the scan disc did not contain the player. Callers whose
+ * home is elsewhere widen the radius by that offset themselves, the way
+ * `beaconsFor` does; the block walk here has no state to know it from.
  */
 export function findsWithin(seed: number, radius: number, t: Tuning): Find[] {
   if (!(t.findEvery > 0) || !(t.findChance > 0)) return [];

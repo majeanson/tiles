@@ -360,3 +360,39 @@ describe('a world survives one bad entry (2026-08-20)', () => {
     expect(decodeWorld(null)).toBeNull();
   });
 });
+
+/**
+ * The camp cluster (2026-08-21). `homeOf` has existed since the where-you-wake
+ * prototype, and `reachOf` has always used it — but five other places went on
+ * measuring from world ORIGIN, and the docblock calling the prototype
+ * "unreachable from UI" had been stale since camps shipped as the fifth
+ * shrine. A camp run is a last-tier world's ROUTINE mode, so every one of
+ * those was live for the players furthest in. This pins the world's half.
+ */
+describe('the world remembers the longest expedition, not the map’s extent', () => {
+  const CAMP = key(20, 0);
+
+  it('does not pay a reach goal for standing still at a far camp', () => {
+    // The exploit: waking at a ring-20 territory and placing one tile banked
+    // farthestReach 20, minting "Reach 20 hexes from home" (25 relics) for
+    // no walking at all.
+    const camped = newRun(5, TUNING, [], [], CAMP);
+    expect(mergeRun(newWorld(5), camped).farthestReach).toBeLessThan(5);
+  });
+
+  it('still counts a real walk, wherever the camp happens to sit', () => {
+    const camped = newRun(5, TUNING, [], [], CAMP);
+    const walked: GameState = {
+      ...camped,
+      cells: { ...camped.cells, [key(25, 0)]: { kind: 'tile', colour: 'green' } },
+    };
+    expect(mergeRun(newWorld(5), walked).farthestReach).toBe(5);
+  });
+
+  it('never moves an existing world’s record backward', () => {
+    // Worlds already hold an origin-anchored number; `Math.max` against the
+    // stored value means the change cannot take anybody's record away.
+    const held = { ...newWorld(5), farthestReach: 31 };
+    expect(mergeRun(held, newRun(5, TUNING, [], [], CAMP)).farthestReach).toBe(31);
+  });
+});

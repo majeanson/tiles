@@ -454,7 +454,13 @@ export function toBoardView(
   // reach grows past a couple dozen.
   if (state.tuning.findSense > 0) {
     const sense = state.tuning.findSense;
-    for (const f of findsCached(state.rootSeed, ctx.reach + sense + 1, state.tuning)) {
+    // Widened by the home offset (2026-08-21): `findsWithin` scans a disc
+    // around world ORIGIN, and `ctx.reach` is measured from HOME, so a camp
+    // run asked for a disc that did not contain its own ground and the
+    // purchased perk shimmered nothing. The ground filter below is what
+    // actually decides what draws, so a wider scan costs blocks, not truth.
+    const scan = ctx.reach + sense + 1 + distance(homeOf(state), ORIGIN_HEX);
+    for (const f of findsCached(state.rootSeed, scan, state.tuning)) {
       const k = key(f.q, f.r);
       if (onBoard.has(k)) continue;
       if (!ctx.ground.some((h) => distance(h, f) <= sense)) continue;
@@ -1065,9 +1071,16 @@ function nearestUnclaimed(
   state: GameState,
   reach: number,
 ): { reward: LandmarkReward; dist: number; at: HexKey } | null {
+  // Everything here measures from HOME (2026-08-21). It used to measure the
+  // candidates from world ORIGIN while the horizon below was built from a
+  // home-anchored `reach` — two rulers in one function. On a camp run that
+  // reported an adjacent cache as "glows 16 out", and scanned a disc around
+  // origin that did not contain the player at all, so the beacons actually
+  // drawn were never candidates and the candidates were never drawn.
+  const home = homeOf(state);
   let best: { reward: LandmarkReward; dist: number; at: HexKey } | null = null;
   const consider = (q: number, r: number, reward: LandmarkReward): void => {
-    const dist = distance({ q, r }, { q: 0, r: 0 });
+    const dist = distance({ q, r }, home);
     if (best === null || dist < best.dist) best = { reward, dist, at: key(q, r) };
   };
 
@@ -1080,16 +1093,27 @@ function nearestUnclaimed(
     }
   }
   const horizon = reach + state.tuning.beaconHorizon;
-  for (const d of destinationsCached(state.rootSeed, horizon, state.tuning)) {
+  // The scan is a disc around origin, so a home away from origin needs it
+  // widened by that offset before the home-anchored horizon can filter it —
+  // exactly what `beaconsFor` already does, and what this did not.
+  const scan = horizon + distance(home, ORIGIN_HEX);
+  for (const d of destinationsCached(state.rootSeed, scan, state.tuning)) {
+    if (distance({ q: d.q, r: d.r }, home) > horizon) continue;
     if (state.cells[key(d.q, d.r)] === undefined) consider(d.q, d.r, d.reward);
   }
   return best;
 }
 
 /** What `nearestUnclaimed` found, in words — "a cache of 40 tiles", and so on. */
-function nameDestination(reward: LandmarkReward, at: HexKey, t: Tuning): string {
+function nameDestination(
+  reward: LandmarkReward,
+  at: HexKey,
+  t: Tuning,
+  home: { q: number; r: number },
+): string {
   return reward === 'cache'
-    ? `a cache of ${cachePaysAt(at, t)} tiles`
+    ? // Priced from HOME, like the payment and the two banners (2026-08-21).
+      `a cache of ${cachePaysAt(at, t, home)} tiles`
     : reward === 'site'
       ? 'a scoring site'
       : reward === 'shrine'
@@ -1107,7 +1131,7 @@ function hintFor(state: GameState, reach: number): string | null {
   const best = nearestUnclaimed(state, reach);
   if (best === null) return null;
   const { reward, dist, at } = best;
-  return `${capitalize(nameDestination(reward, at, state.tuning))} glows ${dist} out`;
+  return `${capitalize(nameDestination(reward, at, state.tuning, homeOf(state)))} glows ${dist} out`;
 }
 
 /**
@@ -1122,7 +1146,7 @@ export function whatGlows(state: GameState, reach: number): string | null {
   if (best === null) return null;
   const { reward, dist, at } = best;
   const beyond = Math.max(0, dist - reach);
-  return `${capitalize(nameDestination(reward, at, state.tuning))} still glows ${beyond} past your edge.`;
+  return `${capitalize(nameDestination(reward, at, state.tuning, homeOf(state)))} still glows ${beyond} past your edge.`;
 }
 
 /** "magic 6% · unique 1.2%", or null while the rarity system is off. */

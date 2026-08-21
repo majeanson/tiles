@@ -1,9 +1,12 @@
 import { distance, parse, type HexKey } from '@engine/hex';
 import { rngNext, stream } from '@engine/rng';
+import { homeOf } from '@engine/rules';
 import type { GameState } from '@engine/state';
 import { REARM, type GoalId } from '@content/goals';
 
-const ORIGIN = { q: 0, r: 0 };
+// (The module's own ORIGIN constant went with `mergeRun`'s origin-anchored
+// reach on 2026-08-21 — `homeOf(state)` is the anchor now, and nothing else
+// here measures distance.)
 
 /**
  * The world you keep (P4a of `ideas/persistent-world.md`).
@@ -200,6 +203,7 @@ export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
   const territories = new Set(world.territories);
   const shrines = new Set(world.shrines);
   const finds = new Set(world.finds);
+  const home = homeOf(state);
   let reach = 0;
 
   for (const [k, cell] of Object.entries(state.cells)) {
@@ -214,7 +218,19 @@ export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
       if (cell.reward === 'find') finds.add(k);
     }
     if (cell.kind === 'tile' || cell.kind === 'stone') {
-      reach = Math.max(reach, distance(parse(k), ORIGIN));
+      // From where the run STARTED, not from world origin (2026-08-21).
+      // `reachOf` has always measured from `homeOf(state)`, and this copy
+      // did not — so a camp run, which begins at the world's farthest
+      // territory, banked a "farthest" equal to how far that territory is
+      // from origin no matter how little it walked. The goal that reads
+      // this ("Reach 20 hexes from home", 25 relics) could therefore be
+      // minted by waking at ring 20 and placing one tile.
+      //
+      // FARTHEST is a record of the longest expedition, then, not of the
+      // map's extent — which is what both its label and the goal already
+      // claimed. `Math.max` against the stored value means no world's
+      // existing record moves backward.
+      reach = Math.max(reach, distance(parse(k), home));
     }
   }
 

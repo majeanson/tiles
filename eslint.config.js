@@ -65,13 +65,27 @@ const pure = {
 };
 
 export default tseslint.config(
-  // `public/**` is shipped verbatim, not compiled: the service worker is
-  // hand-written browser JS that runs outside the app's module graph and is
-  // deliberately not in the TypeScript project, so the type-aware rules have
-  // nothing to check it against. Linting it means teaching the config about a
-  // second environment for one file; its correctness is proved by the deploy
-  // verifier fetching it and by the build asserting its stamp.
-  { ignores: ['dist/**', 'node_modules/**', 'ideas/**', 'coverage/**', 'public/**'] },
+  // `public/**` is shipped verbatim rather than compiled, so nothing in it is
+  // in the TypeScript project and the type-aware rules have nothing to check
+  // it against. That was the whole argument for ignoring it — and it left
+  // `public/sw.js` as the ONE file that can brick a returning player checked
+  // by nothing at all: no lint, no types, no test, straight to production
+  // (2026-08-21). It gets the plain JS rules and a service-worker environment
+  // below; the rest of `public/` is images and fonts.
+  {
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'ideas/**',
+      'coverage/**',
+      // `public/**` used to be here wholesale. It is gone rather than
+      // negated: a negated pattern does not un-ignore a file inside a
+      // directory ESLint has already been told to skip, so `!public/sw.js`
+      // read as covered and silently was not. ESLint lints `.js`/`.ts` only,
+      // and `sw.js` is the sole script in `public/` — the images, fonts and
+      // manifests there are not files it would ever open.
+    ],
+  },
 
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
@@ -174,6 +188,29 @@ export default tseslint.config(
       [...layer('ui'), ...layer('render')],
       'Nothing headless may import ui/ or render/.',
     ),
+  },
+
+  /**
+   * The service worker (2026-08-21).
+   *
+   * LAST in the list on purpose: flat configs merge in order, so this has to
+   * come after the type-aware block above to switch the project service back
+   * off for one file. `public/sw.js` is hand-written browser JS outside the
+   * TypeScript project — there is nothing to type-check it against — but it
+   * is also the single file that can brick a returning player, and it was
+   * reaching production with no lint, no types and no test touching it.
+   * Plain JS rules plus a service-worker environment is a small net, and a
+   * small net over that file beats no net at all.
+   */
+  {
+    files: ['public/sw.js'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      parserOptions: { projectService: false, project: false },
+      globals: { ...globals.serviceworker, __BUILD_SHA__: 'readonly' },
+    },
   },
 
   prettier,

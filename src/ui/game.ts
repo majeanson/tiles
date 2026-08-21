@@ -1443,7 +1443,13 @@ export class Game {
           this.#markMet('cache');
           notes.push({
             rank: RANK.cache,
-            text: `+  CACHE CLAIMED\n+${cachePaysAt(k, t)} tiles, on the spot.`,
+            // From HOME, like the payment (2026-08-21). The engine pays
+            // `cachePaysAt(n, t, homeOf(state))`; the UI sites dropped that
+            // argument and priced from world origin, so a camp run announced
+            // a number several times what it actually banked. The SITE
+            // banner just below always passed it — this one was missed,
+            // which is the exact disagreement the helper exists to prevent.
+            text: `+  CACHE CLAIMED\n+${cachePaysAt(k, t, homeOf(after))} tiles, on the spot.`,
           });
           break;
         case 'site':
@@ -1591,7 +1597,7 @@ export class Game {
       if (reward === 'cache') {
         return claimed
           ? '+ CACHE — already claimed. It gave its tiles.'
-          : `+ CACHE — build a tile touching it to claim ${cachePaysAt(hex, t)} tiles on the spot.`;
+          : `+ CACHE — build a tile touching it to claim ${cachePaysAt(hex, t, homeOf(this.#state))} tiles on the spot.`;
       }
       if (reward === 'site') {
         return claimed
@@ -1659,7 +1665,15 @@ export class Game {
       // Only a hex the shimmer is actually drawing gets this answer — with
       // no sense, or out of range, a hidden find stays exactly that, and
       // tap-scanning remembered ground must not become a divining rod.
-      if (t.findSense > 0 && findAt(this.#state.rootSeed, q, r, t) !== null) {
+      if (
+        t.findSense > 0 &&
+        findAt(this.#state.rootSeed, q, r, t) !== null &&
+        // Not one the board is already drawing (2026-08-21): the render
+        // skips a find that has been revealed, so saying "something
+        // shimmers here" over a hex whose landmark is on screen — possibly
+        // a find already claimed — describes a light nobody can see.
+        this.#state.cells[hex] === undefined
+      ) {
         const near = Object.keys(this.#state.cells).some(
           (k) => distance(parse(k), { q, r }) <= t.findSense,
         );

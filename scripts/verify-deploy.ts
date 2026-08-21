@@ -26,10 +26,21 @@ const BASE = (process.env.DEPLOY_URL ?? 'https://tiles.marcportal.com').replace(
 const FALLBACK = process.env.DEPLOY_FALLBACK_URL?.replace(/\/$/, '') ?? null;
 const EXPECTED = process.env.GITHUB_SHA ?? '';
 
-const ATTEMPTS = Number(process.env.VERIFY_ATTEMPTS ?? 12);
-const DELAY_MS = Number(process.env.VERIFY_DELAY_MS ?? 10_000);
-const ASSET_ATTEMPTS = Number(process.env.VERIFY_ASSET_ATTEMPTS ?? 5);
-const ASSET_DELAY_MS = Number(process.env.VERIFY_ASSET_DELAY_MS ?? 3_000);
+/**
+ * A malformed override reads as the default, not as NaN (2026-08-21). A bare
+ * `Number(env ?? 12)` turns `VERIFY_ATTEMPTS=twelve` into NaN, and
+ * `attempt <= NaN` is false — so the retry loop never runs a single attempt
+ * and the check fails instantly with a message about nothing.
+ */
+const positive = (raw: string | undefined, fallback: number): number => {
+  const n = Number(raw);
+  return raw !== undefined && Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+const ATTEMPTS = positive(process.env.VERIFY_ATTEMPTS, 12);
+const DELAY_MS = positive(process.env.VERIFY_DELAY_MS, 10_000);
+const ASSET_ATTEMPTS = positive(process.env.VERIFY_ASSET_ATTEMPTS, 5);
+const ASSET_DELAY_MS = positive(process.env.VERIFY_ASSET_DELAY_MS, 3_000);
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -41,7 +52,20 @@ async function get(base: string, path: string): Promise<{ status: number; body: 
     cache: 'no-store',
     headers: { 'cache-control': 'no-cache' },
   });
-  if (res.status === 403 && (res.headers.has('cf-mitigated') || base === BASE)) {
+  // A CHALLENGE, not any 403 (2026-08-21). This read
+  // `res.headers.has('cf-mitigated') || base === BASE`, and that second
+  // clause turned every 403 from the custom domain into "the edge is
+  // challenging us" — so a genuinely broken domain (a route unbound, an
+  // Access policy switched on, the worker gone) fell through to the
+  // workers.dev fallback, verified THAT, and printed `ok deploy verified`.
+  // The one script whose whole job is proving tiles.marcportal.com works
+  // could pass while it did not.
+  //
+  // Cloudflare's own `cf-mitigated` marker is the only thing trusted now.
+  // Any other 403 is reported as what it is — the site refusing to serve —
+  // and fails the deploy. That errs toward a loud false alarm over a quiet
+  // false pass, which is the only sane direction for a launch gate.
+  if (res.status === 403 && res.headers.has('cf-mitigated')) {
     throw new EdgeBlockedError(`GET ${path} -> 403 (edge bot challenge, not the app)`);
   }
   return { status: res.status, body: await res.text() };
