@@ -142,6 +142,8 @@ export interface Renderer {
    * fit that shows everything. The renderer owns the clamps and the maths; the
    * UI owns which gesture or button asks for what.
    */
+  /** Follow the OS reduced-motion setting when it changes mid-session. */
+  setReducedMotion(on: boolean): void;
   zoomBy(factor: number): void;
   panBy(dx: number, dy: number): void;
   resetCamera(): void;

@@ -88,6 +88,7 @@ import {
 } from '@meta/world';
 import { AssetBook } from '@render/assets';
 import { PixiRenderer } from '@render/PixiRenderer';
+import type { Renderer } from '@render/Renderer';
 import { renderShareCard } from '@render/shareCard';
 import { applyTheme } from '@theme/apply';
 import { assetPath, DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
@@ -1441,6 +1442,25 @@ function prefersReducedMotion(): boolean {
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Follow the setting while the game is open (2026-08-21), not only at boot.
+ * Someone reaching for reduced motion mid-run is very likely reaching for it
+ * BECAUSE of what is on screen, and until now it took a reload to land. The
+ * CSS half has always been live — every animation sits inside a media query
+ * — so this closes the gap for the half that lives in the renderer.
+ */
+function followReducedMotion(renderer: Renderer): void {
+  try {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    query.addEventListener('change', (event) => {
+      renderer.setReducedMotion(event.matches);
+    });
+  } catch {
+    // A browser without matchMedia change events keeps the boot answer,
+    // which is exactly what it did before.
   }
 }
 
@@ -2954,6 +2974,7 @@ async function main(): Promise<void> {
   const renderer = new PixiRenderer(theme, AssetBook.empty(), prefersReducedMotion());
   await renderer.mount(elements.board);
   rendererAlive = true;
+  followReducedMotion(renderer);
 
   // A resumed run plays under the tuning it was saved with, by design —
   // rebalances never re-score a run in progress.
@@ -3288,8 +3309,11 @@ function showUpdateNote(): void {
   later.addEventListener('click', () => {
     note.remove();
   });
-  note.append(reload, later);
+  // In the document BEFORE it is filled (2026-08-21). A live region that
+  // arrives pre-populated is one assistive tech commonly never announces —
+  // there is no change for it to notice. Insert empty, then write.
   document.body.appendChild(note);
+  note.append(reload, later);
 }
 
 /**
@@ -3313,12 +3337,13 @@ function showInAppNote(): void {
   note.type = 'button';
   note.id = 'inapp-note';
   note.setAttribute('role', 'status');
-  note.textContent =
-    'You’re in an in-app browser — your world may not be kept here. Open this page in Safari or Chrome to keep it.';
   note.addEventListener('click', () => {
     note.remove();
   });
+  // Inserted before it is written, for the reason the update note is.
   document.body.appendChild(note);
+  note.textContent =
+    'You’re in an in-app browser — your world may not be kept here. Open this page in Safari or Chrome to keep it.';
 }
 
 /**

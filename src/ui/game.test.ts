@@ -44,6 +44,9 @@ class StubRenderer implements Renderer {
   hitTest(): HexKey | null {
     return this.nextHit;
   }
+  setReducedMotion(): void {
+    // The stub draws nothing, so there is nothing to calm down.
+  }
   zoomBy(factor: number): void {
     this.zoom = Math.min(4, Math.max(1, this.zoom * factor));
   }

@@ -561,10 +561,15 @@ button.fame-run[aria-expanded='true'] {
   cursor: pointer;
 }
 
+/* The tap area, grown to a thumb without moving a pixel of layout — but no
+   further than HALF the row's gap (2026-08-21). At -8px against a 12px gap
+   the neighbours overlapped by 4px, so a tap in the gutter landed on
+   whichever stat came later in the DOM rather than the one it was nearer.
+   -6px makes the two areas meet exactly and never cross. */
 .stat::after {
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: -6px;
 }
 
 /* Map and cost read right-aligned, so the four numbers sit against the screen

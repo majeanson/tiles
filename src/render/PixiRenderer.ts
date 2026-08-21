@@ -339,7 +339,7 @@ export class PixiRenderer implements Renderer {
    * who has asked their phone for less movement is not asking for a board that
    * decides per animation — and the pop flash is the one place this game moves.
    */
-  readonly #reducedMotion: boolean;
+  #reducedMotion: boolean;
 
   constructor(theme: Theme, assets: AssetBook = AssetBook.empty(), reducedMotion = false) {
     this.#theme = theme;
@@ -546,6 +546,23 @@ export class PixiRenderer implements Renderer {
    */
   #zoomMax(): number {
     return zoomCeiling(this.#fitSize, ZOOM_MAX, HEX_PX_MAX);
+  }
+
+  /**
+   * The OS setting can change WHILE the game is open (2026-08-21). It was
+   * read once at construction and never again, so a player who turned
+   * reduced motion ON mid-run kept every animation until they reloaded —
+   * and someone reaching for that setting mid-run is very likely reaching
+   * for it BECAUSE of what is on screen.
+   */
+  setReducedMotion(on: boolean): void {
+    if (this.#reducedMotion === on) return;
+    this.#reducedMotion = on;
+    // Whatever is in flight belongs to the old answer: land the camera, drop
+    // the refit, and clear anything still burning.
+    this.#camera = null;
+    this.#refitEase = 1;
+    this.#clearFlashes();
   }
 
   zoomBy(factor: number): void {

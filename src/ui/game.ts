@@ -1754,9 +1754,14 @@ export class Game {
   #syncCamera(): void {
     const atFit = this.#renderer.zoomLevel() <= 1.001;
     this.#el.cameraToggle.textContent = atFit ? 'HERE' : 'FIT';
+    // The accessible name STARTS with the visible word (2026-08-21). It read
+    // "Zoom in on your last placement" over a button whose face says HERE,
+    // which is a WCAG 2.5.3 failure with a practical edge: voice control
+    // takes the accessible name, so "tap HERE" — the only name a speaking
+    // user can possibly know — matched nothing at all.
     this.#el.cameraToggle.setAttribute(
       'aria-label',
-      atFit ? 'Zoom in on your last placement' : 'Show everything',
+      atFit ? 'HERE — zoom in on your last placement' : 'FIT — show everything',
     );
   }
 
