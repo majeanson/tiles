@@ -1977,7 +1977,12 @@ export class Game {
           title: 'PLACE AND RIPEN',
           lines: [
             'Tap a card, then tap a hex with a glowing edge. A tile must touch something already built, and the faint number is exactly what it will be worth there — a promise, not an estimate.',
-            'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround; none of them match.',
+            // "None of them match" is false under the shipped `redAshMatches`
+            // (2026-08-21) — the same sentence in THE COLOURS gets it right,
+            // and this one is the copy a stranger reads first.
+            t.redAshMatches
+              ? 'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround, and only ASH counts stone as a match.'
+              : 'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround; none of them match.',
             t.singlePayout
               ? 'Tiles are the only thing keeping you alive, and every placement spends them — so what you decide is WHERE and WHEN, never which button.'
               : 'Tiles keep you going; points are the score. You POP for one or the other, never both.',
@@ -2033,7 +2038,11 @@ export class Game {
         // and it had no card, no toast, and a button that never says the
         // word (it reads "TAKE 1 UNIQUE"). A fold is where numbers go, not
         // where a choice is introduced.
-        ...(t.treasureNeed > 0
+        // Gated on the STASH too (2026-08-21), because `treasureFor` is:
+        // OPEN HAND sets `holdSlots` to 0, and a treasure with nowhere to
+        // land is refused outright. The manual was promising a button that
+        // the perk had already taken away.
+        ...(t.treasureNeed > 0 && t.holdSlots > 0
           ? [
               {
                 title: 'TREASURE, AND SACRIFICE',
@@ -2940,7 +2949,13 @@ export class Game {
       return {
         tier: 'toast',
         id: 'wall',
-        text: 'That dark ridge is a WALL — it cannot be built on. It surrounds (so it helps things ripen) but never matches. A frontier that is all wall can end a run; build around.',
+        // Branches on WALLBREAKER (2026-08-21) — the two other places that
+        // describe a wall already did, and this one told a player wearing
+        // the perk that the thing they can do is impossible.
+        text:
+          t.wallBuildCostMult > 0
+            ? `That dark ridge is a WALL. Your perk lets you build ON it, at ${t.wallBuildCostMult}× the cost. It surrounds (so it helps things ripen) but never matches.`
+            : 'That dark ridge is a WALL — it cannot be built on. It surrounds (so it helps things ripen) but never matches. A frontier that is all wall can end a run; build around.',
       };
     }
 

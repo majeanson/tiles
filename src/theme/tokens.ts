@@ -471,8 +471,18 @@ export type Fog = {
  * their legibility was whatever that colour's contrast happened to be —
  * torchlit's yellow landed at 0.147 and read fine, its blue at 0.039 and was
  * invisible. A field you cannot see is a rule you cannot use.
+ *
+ * Raised 0.2 → 0.25 on 2026-08-21 (Marc, on the phone: "make sure biomes
+ * when placing tiles are more visible, bump opacity"). The equalising is
+ * what this number does — every colour is pushed to the SAME readable lift,
+ * whatever its own contrast happens to be — so raising the target raises all
+ * four together and cannot re-open the gap between them that it was written
+ * to close. The floor and ceiling in `fieldDots` moved with it: the floor
+ * because a high-contrast colour clamps there and would otherwise not have
+ * moved at all, the ceiling so the low-contrast ones still have somewhere to
+ * go.
  */
-export const MIN_FIELD_LIFT = 0.2;
+export const MIN_FIELD_LIFT = 0.25;
 
 /**
  * The same colour at full strength: every channel scaled up until the
@@ -569,7 +579,17 @@ export function fieldDots(theme: Theme, colour: Colour): { ink: Rgb; alpha: numb
   }
 
   const gap = Math.max(0.001, luma(ink) - ground);
-  return { ink, alpha: Math.min(0.65, Math.max(0.18, MIN_FIELD_LIFT / gap)) };
+  // Floor 0.18 → 0.24 with the lift above (2026-08-21): a colour whose own
+  // contrast already clears the target sits ON the floor, so leaving it
+  // would have made the quietest fields the only ones that did not move.
+  //
+  // The ceiling is 0.5 rather than the old 0.65, and that is a TIGHTENING:
+  // 0.5 is the point past which ground starts reading as a placed tile,
+  // which the theme tests have asserted since fields were built while the
+  // code allowed 0.65. The invariant belongs in the code that has to hold
+  // it — raising the lift is exactly the change that would have found the
+  // gap the hard way.
+  return { ink, alpha: Math.min(0.5, Math.max(0.24, MIN_FIELD_LIFT / gap)) };
 }
 
 /**

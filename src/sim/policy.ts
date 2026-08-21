@@ -143,7 +143,13 @@ function farthestPlacement(state: GameState): Move | null {
  * something different on map one and map eight.
  */
 function cashChoice(state: GameState, runway: number): 'tiles' | 'points' {
-  const cost = state.tuning.baseCost + Math.floor(state.placements / state.tuning.costRisesEvery);
+  // Through `costOf`, not a second spelling of it (2026-08-21). This copy
+  // dropped `costGrace` entirely. Harmless today — the shipped TUNING sets
+  // it to 0, so both answers agree — but `PLANE` sets it to 120, so the
+  // moment anyone re-enables the knee the balance harness would have been
+  // silently measuring a different game than the one that ships. The whole
+  // value of the harness is that it plays the same rules.
+  const cost = costOf(state.placements, state.tuning);
   return state.tiles < cost * runway ? 'tiles' : 'points';
 }
 

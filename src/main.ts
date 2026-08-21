@@ -18,7 +18,7 @@ import {
   recordDaily,
   type DailyBook,
 } from '@meta/daily';
-import { newlyMetGoals } from '@meta/goals';
+import { metGoalIds, newlyMetGoals } from '@meta/goals';
 import {
   decodeFeatures,
   encodeFeatures,
@@ -1663,7 +1663,15 @@ function mountSettings(
   const surveyHeading = document.createElement('p');
   surveyHeading.className = 'help-title';
   surveyHeading.textContent = 'THE SURVEY';
-  const metGoals = new Set(w.goalsMet);
+  // What is TRUE, not what has been PAID (2026-08-21). This read
+  // `w.goalsMet`, the per-world ledger of goals already reimbursed — which
+  // `goals.ts` says `metGoalIds` exists precisely so the panel and the tests
+  // ask one question. The gap shows on a second world: `perksAll` is
+  // device-wide, so a shelf finished on world 1 sat unticked on world 2
+  // forever, because world 2 had never been paid for a fact that was true
+  // the day it was settled. A survey reports the world; the ledger is an
+  // accounting detail underneath it.
+  const metGoals = new Set(metGoalIds(w, readProgress()));
   const survey = document.createElement('div');
   survey.id = 'survey';
   survey.append(
