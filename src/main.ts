@@ -646,6 +646,44 @@ function createWorld(keys: SlotKeys, worldSeed: number): WorldMemory {
   return world;
 }
 
+/**
+ * Settle a seed into a slot, taking everything the slot held with it.
+ *
+ * One helper for both SETTLE doors (2026-08-20). The end screen's path wiped
+ * the footprint and the front door's did not, which mattered exactly where
+ * nobody looked: when the "empty" slot is the virgin ACTIVE one, its saved
+ * run and shrine receipt outlive the world they belonged to, and a run whose
+ * `rootSeed` no longer matches its world is the merge corruption the seed
+ * guard in `onChange` now refuses outright. Two doors, one behaviour.
+ */
+let persistenceAsked = false;
+
+/** Ask the browser to keep this origin's storage. Best-effort, once a boot. */
+function askPersistence(): void {
+  if (persistenceAsked) return;
+  persistenceAsked = true;
+  try {
+    if (typeof navigator.storage?.persist === 'function') {
+      void navigator.storage.persist().catch(() => undefined);
+    }
+  } catch {
+    // A browser that objects to being asked. Nothing here was load-bearing.
+  }
+}
+
+function settleSlot(target: Slot, worldSeed: number): void {
+  const keys = slotKeys(target);
+  for (const key of [keys.world, keys.run, keys.receipt, keys.shop]) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // A storage that refuses the wipe still gets the world written below;
+      // the worst case is a stale receipt naming a shrine in another world.
+    }
+  }
+  createWorld(keys, worldSeed);
+}
+
 function saveWorld(keys: SlotKeys, world: WorldMemory): void {
   try {
     localStorage.setItem(keys.world, encodeWorld(world));
@@ -730,23 +768,23 @@ function runKeeping(
     if (document.visibilityState === 'hidden') flushWorld();
   });
 
-  // Asked once, after the first run save has actually succeeded — persistent
-  // storage is what stops iOS treating the world as evictable cache after a
-  // week of not playing. Best-effort by contract: some browsers prompt, some
-  // silently refuse, some lack the API, and the game is identical in every
-  // case, so nothing is awaited and nothing can throw past here.
-  let persistenceAsked = false;
-  const askPersistence = (): void => {
-    if (persistenceAsked) return;
-    persistenceAsked = true;
-    try {
-      if (typeof navigator.storage?.persist === 'function') {
-        void navigator.storage.persist().catch(() => undefined);
-      }
-    } catch {
-      // A browser that objects to being asked. The save already worked.
-    }
-  };
+  // Asked ONCE PER BOOT, as early as there is anything worth keeping —
+  // persistent storage is what stops iOS treating the world as evictable
+  // cache after a week of not playing. Best-effort by contract: some browsers
+  // prompt, some silently refuse, some lack the API, and the game is
+  // identical in every case, so nothing is awaited and nothing can throw
+  // past here.
+  //
+  // It used to wait for the first successful RUN save on the home world
+  // (2026-08-20 audit), which is far too late and far too narrow: a player
+  // who opened the daily and only ever played dailies never asked at all,
+  // and neither did one who booted — receiving a freshly minted world in the
+  // same tick — and then closed the tab. Both had a world on the device that
+  // the browser was free to evict, and neither had been counted as worth
+  // keeping. `main()` calls this right after `loadWorld` now; the call from
+  // the run save stays, because asking twice is free and the first ask can
+  // fail on a browser that wants a gesture.
+  // (Module-level, so boot can ask before any run exists — see askPersistence.)
 
   /**
    * Leave the active world behind, for BOTH doors that do it (the crossing
@@ -883,7 +921,12 @@ function runKeeping(
               CROSSING.baseRelics + current.territories.length * CROSSING.relicsPerTerritory;
             return {
               dowry: dowryOf,
-              cross: () => {
+              cross: (carried: number) => {
+                // The dowry AND what the run was carrying (2026-08-20). A
+                // crossing is the only way a run ends without `finish`, so
+                // `bankRelics` never ran for it and the run's own earnings
+                // died with the world — a player who walked to the shrine
+                // rich arrived poor, and nothing said so.
                 const dowry = dowryOf();
                 // The diary's entry FIRST, synchronously, before the world
                 // it names is dropped and the page navigates — a crossing
@@ -895,10 +938,13 @@ function runKeeping(
                   event: 'crossed',
                   slot,
                   worldSeed: world.worldSeed,
-                  n: dowry,
+                  n: dowry + Math.max(0, carried),
                 });
                 const progress = readProgress();
-                writeProgress({ ...progress, relics: progress.relics + dowry });
+                writeProgress({
+                  ...progress,
+                  relics: progress.relics + dowry + Math.max(0, carried),
+                });
                 dropWorld();
                 location.href = new URL(location.pathname, location.href).toString();
               },
@@ -937,19 +983,65 @@ function runKeeping(
         // The daily book left this ladder on the same day's fresh-eyes pass:
         // it is ~30 bytes a DAY (a year of play ≈ 11KB), the only
         // unrecoverable record on the device (per-date bests, the streak),
-        // and shedding it never freed enough to matter. The two stores that
-        // actually grow — the diary, then the world's revealed keys — are
-        // the ladder.
-        const shed: readonly (() => void)[] = [
-          () => localStorage.removeItem(TIMELINE_STORAGE_KEY),
-          () => localStorage.removeItem(keys.world),
+        // and shedding it never freed enough to matter.
+        //
+        // Reordered again 2026-08-20, because the old two-rung version could
+        // CORRUPT a world rather than merely lose one. Rung 2 removed
+        // `keys.world` and left `keys.run`: the next boot found no world,
+        // minted a fresh random one, then resumed the old run — whose
+        // `rootSeed` no longer matched — and the merge below has no seed
+        // guard, so a foreign geography was unioned into the new world's
+        // revealed ground. Fog memory of places that were never there.
+        //
+        // The ladder now spends the genuinely cheap things first, and never
+        // touches the world being played. Each rung says its OWN sentence,
+        // because "some history was cleared" is a fair description of the
+        // diary and a lie about a world.
+        const shed: readonly { readonly drop: () => void; readonly note: string }[] = [
+          {
+            // Free, and nobody's memory of anything.
+            drop: () => localStorage.removeItem(ERROR_STORAGE_KEY),
+            note: 'Storage was full — a diagnostic record was cleared so your run could be saved.',
+          },
+          {
+            // The other slots' receipts and shop keys: small, and a receipt
+            // is a one-shot toast nobody is waiting for on a world they are
+            // not in. Shop levels regenerate as "inherit", never as zero.
+            drop: () => {
+              for (const s of SLOTS) {
+                if (s === slot) continue;
+                localStorage.removeItem(slotKeys(s).receipt);
+              }
+            },
+            note: 'Storage was full — some notes from your other worlds were cleared so your run could be saved.',
+          },
+          {
+            drop: () => localStorage.removeItem(TIMELINE_STORAGE_KEY),
+            note: 'Storage was full — your diary was cleared so your run could be saved. Your worlds, relics and perks are untouched.',
+          },
+          {
+            // Only now, and only worlds you are NOT standing in. The active
+            // world is never shed: losing it silently is the worst thing
+            // this game can do, and the run it would corrupt is the very
+            // thing the ladder is trying to save.
+            drop: () => {
+              for (const s of SLOTS) {
+                if (s === slot) continue;
+                const other = slotKeys(s);
+                localStorage.removeItem(other.world);
+                localStorage.removeItem(other.run);
+                localStorage.removeItem(other.shop);
+              }
+            },
+            note: 'Storage was full — your OTHER worlds were forgotten so this run could be saved. The world you are in is untouched.',
+          },
         ];
-        for (const drop of shed) {
+        for (const { drop, note } of shed) {
           try {
             drop();
             localStorage.setItem(keys.run, encodeRun(state));
             askPersistence();
-            showStorageNote();
+            showStorageNote(note);
             break;
           } catch {
             // Still full — shed the next thing. (Private mode throws on
@@ -966,7 +1058,13 @@ function runKeeping(
       // when neither ground nor claims moved (one cheap counting pass — a
       // pop or a reselect reveals nothing), and the write itself is
       // debounced; see `flushWorld` above for why nothing can be lost.
-      if (replaySeed === null) {
+      // The seed guard (2026-08-20): a run may only ever be merged into the
+      // world it was PLAYED on. Nothing should be able to produce a mismatch
+      // — but the quota ladder above did, by shedding a world and leaving its
+      // run behind, and a corrupt world that silently decodes as null does
+      // the same. Ground unioned from a foreign geography is unremovable
+      // afterwards, so this is a cheap guard against an expensive class.
+      if (replaySeed === null && state.rootSeed === current.worldSeed) {
         const cells = Object.values(state.cells);
         let claims = 0;
         for (const cell of cells) {
@@ -1049,7 +1147,9 @@ function runKeeping(
       // (`?seed=`) is somebody else's geography and must not touch it.
       // `rememberRun` folds the FULL final state, so this write is also the
       // debounce's flush — nothing the merge skipped can be missing from it.
-      if (replaySeed === null) {
+      // Seed-guarded for the same reason `onChange`'s merge is: a run may
+      // only ever be folded into the world it was played on.
+      if (replaySeed === null && state.rootSeed === current.worldSeed) {
         current = rememberRun(current, state);
         worldDirty = false;
         actionsSinceWrite = 0;
@@ -1518,10 +1618,12 @@ function mountSettings(
   // Starting over is still the one destructive control in the game, so it
   // confirms — but it is an INVITATION now, not a punishment (Marc,
   // 2026-08-19: "a friendlier fresh start"): NEW WORLD, with the words
-  // saying what travels (shop, perks, teaching) and what stays (the map,
-  // the territories, the shrines). The paid way out is the crossing — a
-  // fully-awake world's shrines offer it with a relic dowry; this button is
-  // the unpaid anytime version.
+  // saying what travels and what stays. What travels CHANGED on 2026-08-20
+  // and this sentence did not follow it: shop LEVELS are a world's own now,
+  // so they stay behind with the map. Saying otherwise here was a promise
+  // made at the exact moment it was about to be broken.
+  // The paid way out is the crossing — a fully-awake world's shrines offer it
+  // with a relic dowry; this button is the unpaid anytime version.
   let armed = false;
   const abandon = document.createElement('button');
   abandon.type = 'button';
@@ -1532,7 +1634,7 @@ function mountSettings(
     if (!armed) {
       armed = true;
       abandon.textContent =
-        'TAP AGAIN — the map, territories and shrines stay behind; your shop and perks travel';
+        'TAP AGAIN — the map, territories, shrines and everything you bought here stay behind; your relics and perks travel';
       return;
     }
     live.abandon();
@@ -1551,6 +1653,13 @@ function mountSettings(
     button.type = 'button';
     button.className = 'flag-toggle';
     button.disabled = !f.wired;
+    // Named for screen readers (2026-08-20): the button's only content is
+    // ON/OFF, and the setting's name is an unwired sibling <span>, so every
+    // row in SETTINGS announced as "ON, toggle button" — identical to the one
+    // above and the one below it. The label element is given an id and
+    // pointed at, which names the control without duplicating any text.
+    const labelId = `flag-label-${f.id.replace(/[^a-z0-9]/gi, '-')}`;
+    button.setAttribute('aria-labelledby', labelId);
     const paint = (): void => {
       const on = isEnabled(features, f.id);
       button.textContent = f.wired ? (on ? 'ON' : 'OFF') : 'NOT BUILT';
@@ -1583,6 +1692,7 @@ function mountSettings(
 
     const label = document.createElement('span');
     label.className = 'flag-label';
+    label.id = labelId;
     label.textContent = f.label;
 
     const top = document.createElement('div');
@@ -1818,6 +1928,12 @@ async function main(): Promise<void> {
   // the active slot cannot change without a reload.
   shopKeys = keys;
   const world = loadWorld(keys);
+  // There is a world on this device now — possibly minted a line ago — so it
+  // is worth asking the browser not to evict it. Early and unconditional
+  // since 2026-08-20: waiting for a home run's first save meant a
+  // daily-only player never asked, and neither did anyone who booted and
+  // closed the tab.
+  askPersistence();
 
   // Teaching (`ideas/teaching.md`, 2026-08-19): `decodeProgress` already
   // treats a pre-teaching PROGRESS blob as a veteran's, but a device that has
@@ -2085,7 +2201,15 @@ async function main(): Promise<void> {
         // The seed settles EXACTLY as played — the old 31-bit mask would
         // have settled a different world than the one just previewed
         // whenever a hand-typed seed was negative.
-        createWorld(slotKeys(emptySlot), sharedSeed);
+        //
+        // Through the same footprint wipe the end screen's SETTLE uses
+        // (2026-08-20): this path called `createWorld` alone, so when the
+        // "empty" slot was the VIRGIN ACTIVE one, its saved run and shrine
+        // receipt survived into the settled world — and a run whose seed no
+        // longer matches its world is the corruption the seed guard in
+        // `onChange` now refuses. Clearing is the half that stops it
+        // happening at all.
+        settleSlot(emptySlot, sharedSeed);
         // The diary's arrival entry, before the navigation that follows —
         // settling is a world-scale moment, not a run, and it happens on a
         // door no run-end hook ever sees.
@@ -2563,6 +2687,12 @@ async function main(): Promise<void> {
   frontDoorBegin.addEventListener('click', () => {
     frontDoor.hidden = true;
     gameShell.inert = false;
+    // Focus follows the door (2026-08-20). Hiding the element that HAD focus
+    // drops it to <body>, so every keyboard and switch user restarted their
+    // tabbing from the top of the document at the exact moment the game
+    // began. The stats row is the first thing in the shell and is already
+    // focusable, so it is where the game starts for them.
+    gameShell.querySelector<HTMLElement>('.stat')?.focus();
     // The arrival toast fires HERE, not at boot (fresh-eyes finding 9): at
     // boot it played its five seconds to the back of the front door, and
     // the shrine receipt — read-and-cleared — was gone unseen.
@@ -2828,25 +2958,11 @@ async function main(): Promise<void> {
             go: (slot: number): void => {
               const target = SLOTS.find((s) => s === slot);
               if (target === undefined) return;
-              // Everything the old slot held goes first — world, run,
-              // receipt AND its shop levels — or the new world would inherit
-              // a build it never earned, and a run saved under the old world
-              // would resume on top of the new one's geography.
-              const targetKeys = slotKeys(target);
-              for (const key of [
-                targetKeys.world,
-                targetKeys.run,
-                targetKeys.receipt,
-                targetKeys.shop,
-              ]) {
-                try {
-                  localStorage.removeItem(key);
-                } catch {
-                  // A storage that refuses the wipe still gets the world
-                  // written below; the worst case is a stale receipt.
-                }
-              }
-              createWorld(targetKeys, detourSeed);
+              // Everything the old slot held goes with it — world, run,
+              // receipt AND its shop levels — or the new world inherits a
+              // build it never earned and a run that belongs to a different
+              // geography. Shared with the front door's SETTLE.
+              settleSlot(target, detourSeed);
               appendTimeline({
                 at: Date.now(),
                 kind: 'world',
@@ -3047,16 +3163,23 @@ function showInAppNote(): void {
  * gone on tap or after ten seconds — the player deserves to know why the
  * hall of fame's diary just got shorter, and nothing else says it.
  */
-function showStorageNote(): void {
+function showStorageNote(message: string): void {
   if (document.getElementById('storage-note') !== null) return;
   const note = document.createElement('button');
   note.type = 'button';
   note.id = 'storage-note';
-  note.textContent = 'STORAGE FULL — some history was cleared so your run could be saved';
+  // Announced (2026-08-20): this used to be a silent element with no role,
+  // saying "some history was cleared" whether it had dropped a diagnostic
+  // record or every world but this one. Each rung of the shed ladder names
+  // what IT lost, and the region says it out loud. Set after the node is in
+  // the document, because assistive tech commonly misses a live region that
+  // arrives pre-filled.
+  note.setAttribute('role', 'status');
   note.addEventListener('click', () => {
     note.remove();
   });
   document.body.appendChild(note);
+  note.textContent = message;
   setTimeout(() => {
     note.remove();
   }, 10000);
@@ -3180,7 +3303,17 @@ function showFailure(error?: unknown): void {
   copy.textContent = 'COPY REPORT';
   copy.style.cssText = buttonCss;
   copy.addEventListener('click', () => {
-    const report = `${NAME} ${__BUILD_SHA__.slice(0, 7)}\n${shown.textContent ?? ''}`;
+    // Enough context to act on (2026-08-20). A stack trace alone cannot
+    // tell you which build, which browser or which mode it came from, and
+    // the person pasting it is a stranger who will not know to add any of
+    // that. Nothing here identifies the player: a UA string and a URL are
+    // what the report is ABOUT, and both are already leaving the device by
+    // the time somebody chooses to paste it.
+    const mode =
+      askedDaily() !== null ? 'daily' : askedSeed() !== null ? 'shared seed' : 'own world';
+    const report =
+      `${NAME} ${__BUILD_SHA__.slice(0, 7)} · ${mode} · seen ×${failureCount}\n` +
+      `${navigator.userAgent}\n\n${shown.textContent ?? ''}`;
     // `navigator.clipboard` is undefined outside secure contexts, and the
     // property access THROWS synchronously — into the very error listener
     // whose panel this button sits on, overwriting the report it was

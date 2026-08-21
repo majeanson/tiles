@@ -115,6 +115,17 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 const keys = (v: unknown): string[] | null =>
   Array.isArray(v) && v.every((k) => typeof k === 'string') ? v : null;
 
+/**
+ * The same, but keeping the good entries instead of refusing the array.
+ *
+ * Still null for a non-array — a `revealed` that is not a list is a shape
+ * this module never wrote, and guessing at it would be inventing a world.
+ * But a list with one bad element is a list with one bad element, and the
+ * hexes either side of it are ground somebody actually walked.
+ */
+const keyList = (v: unknown): string[] | null =>
+  Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string') : null;
+
 /** Untrusted input, like every stored thing. A broken world is no world. */
 export function decodeWorld(raw: string | null): WorldMemory | null {
   if (raw === null) return null;
@@ -127,8 +138,15 @@ export function decodeWorld(raw: string | null): WorldMemory | null {
   if (!isRecord(parsed)) return null;
   if (typeof parsed['worldSeed'] !== 'number') return null;
 
-  const revealed = keys(parsed['revealed']);
-  const territories = keys(parsed['territories']);
+  // SALVAGED element-wise, not rejected wholesale (2026-08-20). These used
+  // to require every entry to be a string or the whole world decoded as
+  // null — and the caller's answer to null is to mint a fresh world OVER
+  // the old blob on the same tick, so one bad element meant a silently
+  // deleted world. A truncated write from an iOS kill mid-`setItem` is
+  // exactly that shape. `decodeTimeline` has always refused per entry; this
+  // is the same tolerance, applied to the one store that cannot be regrown.
+  const revealed = keyList(parsed['revealed']);
+  const territories = keyList(parsed['territories']);
   if (revealed === null || territories === null) return null;
   // Shrines arrived after the first worlds existed: an older world has none,
   // which is true rather than corrupt. Finds and goalsMet the same, since

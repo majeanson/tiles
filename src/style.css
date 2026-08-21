@@ -532,9 +532,17 @@ button.fame-run[aria-expanded='true'] {
  * split is not cosmetic — the left pair is what you have, the right pair is what
  * it costs you, and the gap between them is the run.
  */
+/* Six stats fit a 320px phone (2026-08-20). POINTS stopped sharing a slot
+   with LUCK that day, which put TILES · POINTS · LUCK · REACH · COST · LEFT
+   on one row: ~245px of digits at 1.5rem plus 60px of gaps plus 32px of
+   padding is ~337px in a 320px viewport, and it fails on every phone at 200%
+   OS text. Three rules, each doing one job — wrap so the row can become two
+   rather than overflow, `min-width: 0` because a flex item will not shrink
+   below its text without it, and a value that scales with the viewport. */
 #stats {
   flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px 8px;
@@ -544,6 +552,7 @@ button.fame-run[aria-expanded='true'] {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
   /* Tappable since 2026-08-19 (teaching: tap a stat, learn it where it
      sits) — a div wearing the button role, so the global button chrome
      cannot restyle the row. The inset pseudo-element below grows each one
@@ -580,7 +589,11 @@ button.fame-run[aria-expanded='true'] {
 
 .stat-value {
   font-family: var(--font-display, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 1.5rem;
+  /* Scales with the screen rather than sitting at a fixed 1.5rem: six stats
+     of four digits do not fit a narrow phone otherwise. The rem floor and
+     ceiling keep it obeying OS text size — a `vw`-only value would ignore
+     the accessibility setting the whole stylesheet is built to respect. */
+  font-size: clamp(1.05rem, 5.5vw, 1.5rem);
   font-weight: 600;
   line-height: 1;
   color: var(--ink, #e8ecf4);

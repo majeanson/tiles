@@ -33,9 +33,12 @@ is week 2.
 
 # WEEK 1 — five days to the tag (Aug 21 → 25)
 
-## P0 — fix before the stranger test
+## P0 — fix before the stranger test — ✅ ALL DONE 2026-08-20
 
-These are ordered. The first three are the ones I would not tag without.
+Every item in this section was fixed the evening the audit was written, in
+one batch, with the balance untouched (`pnpm sim` byte-identical — none of it
+reaches the economy). Kept in full rather than deleted: each one is a failure
+mode that can recur, and the reasoning is the part worth keeping.
 
 ### 1. HOW TO PLAY no longer opens the tutorial — a regression from today ✅ FIXED
 
@@ -61,7 +64,7 @@ the stranger test.
 two different doors that happen to share a dialog. Anything added to that
 dialog has to be checked from both.
 
-### 2. The crossing silently eats the run that reached it
+### 2. The crossing silently eats the run that reached it ✅ FIXED
 
 `src/main.ts:881-906`. `cross()` appends the timeline tick, adds the dowry,
 then `dropWorld()` and navigates — it **never calls `finish`**, so
@@ -75,11 +78,15 @@ earnings do not come with you, nor that your purchases die. And it is a
 **single tap**, no arming, inside a modal that appeared unrequested because a
 tile touched a shrine.
 
-**Fix:** bank the run before crossing (call `finish`, or `bankRelics` at
-minimum), say what is lost in the card, and arm it like every other
-world-destroying control.
+**Done:** `crossing.cross` takes what the run is carrying and banks it with
+the dowry, so the button now names the total that actually lands in the
+purse. The card says what stays behind — including, in as many words,
+everything bought in that world. And it ARMS: the event card grew an
+optional armed label, the first tap is swallowed (the card's own
+close-on-any-tap would otherwise dismiss the offer), and the second acts.
+Pinned by the crossing test.
 
-### 3. Two strings still promise the old economy, at the two exits that break it
+### 3. Two strings still promise the old economy, at the two exits that break it ✅ FIXED
 
 Both contradict the 2026-08-20 per-world rule _at the moment a player decides
 to leave a world_ — i.e. they actively mislead into losing a build:
@@ -91,7 +98,10 @@ to leave a world_ — i.e. they actively mislead into losing a build:
 
 Copy-only, so this stays legal after the Day-3 freeze.
 
-### 4. Accessibility items that are also plain mobile bugs
+**Done:** both now say that what you BOUGHT stays with the world, and that
+relics and perks are what travel.
+
+### 4. Accessibility items that are also plain mobile bugs ✅ FIXED
 
 - **The six-stat header overflows a narrow phone.** `src/style.css:535-541`:
   flex, no `flex-wrap` outside the landscape query, no `min-width:0`. All six
@@ -114,7 +124,17 @@ Copy-only, so this stays legal after the Day-3 freeze.
 - **`#front-door` has `role="dialog"` with no accessible name**
   (`index.html:91`).
 
-### 5. The launch-day blind spot
+**Done:** `#stats` wraps with `min-width: 0` and a `clamp()` value that still
+obeys OS text size; `user-scalable=no` is gone; the stat's `aria-label` names
+its number as well as its label; BEGIN moves focus into the shell; the event
+card remembers where focus came from and gives it back (the board is
+`tabindex="-1"` so it can receive it); the front door is `aria-labelledby`
+its own name. Two more from the same sweep while I was in there: `RESET ALL`
+is `hidden` in the markup rather than removed by JS — the pre-JS first paint
+was showing a stranger a wipe button — and `#hint`, an `aria-live` region
+written on every tap, is only written when the text actually changed.
+
+### 5. The launch-day blind spot ✅ MOSTLY FIXED — one decision left for you
 
 **Zero telemetry, by design and by promise** — verified: nothing in `src/`
 makes a network call but asset fetches. Errors are caught
@@ -123,8 +143,19 @@ SETTINGS ▸ DEVELOPER. **If a stranger's phone throws, you will never know.**
 
 The promise ("nothing leaves your phone") is worth keeping, so the fix is not
 analytics — it is making the existing report reachable by someone who is not
-you: a plain COPY REPORT on the failure screen, in a stranger's words, with
-somewhere to send it. Do it **before** Session C.
+you.
+
+**Done:** the failure panel already had a prominent COPY REPORT (the audit
+was wrong that it lived only behind DEVELOPER). What it lacked was context a
+stranger could not add themselves, so the copied report now carries the
+build, the mode (own world / daily / shared seed), the repeat count and the
+user-agent alongside the stack. Nothing about it identifies a player.
+
+**Left for you — and it is a decision, not code:** the report has nowhere to
+go. A stranger can copy it and has no idea who to send it to. Pick a
+destination you are willing to put on the failure screen (an email, a form,
+a GitHub issues link) and it is a one-line change. **Do it before Session C**
+— that is the first time this code meets a phone you do not own.
 
 ## The play sessions (already scripted in `PLAYTEST.md`)
 
@@ -164,13 +195,15 @@ or not at all.
 
 Provisional. Whatever real players hit outranks all of it.
 
-## The data-loss cluster — the highest-severity findings in the audit
+## The data-loss cluster — ✅ A–F FIXED 2026-08-20, G still open
 
 No backend, no account, and Safari evicts non-persisted origins after 7 days.
-Losing a world is the worst thing this game can do, and there are four ways it
-can happen today.
+Losing a world is the worst thing this game can do. The audit found six ways
+it could happen; all six are closed. **G — export/import — is the one that
+matters most and is still open**, because it is the only item on this list
+that makes the others _survivable_ rather than merely less likely.
 
-**A. Quota rung 2 corrupts the replacement world.** `src/main.ts:945` sheds
+**A. Quota rung 2 corrupts the replacement world.** ✅ FIXED — `src/main.ts:945` sheds
 `keys.world` but leaves `keys.run`. Next boot mints a fresh random world, then
 resumes the old run — whose `rootSeed` no longer matches. `onChange`'s merge
 has **no seed guard** (`:969-982`), so `mergeRun` unions a foreign geography
@@ -179,7 +212,7 @@ commits it. Fog memory showing ground that was never there.
 _Fix:_ shed run/receipt/shop with the world, and guard `mergeRun`/
 `rememberRun` on `state.rootSeed === current.worldSeed`.
 
-**B. The shed ladder is ordered wrong and its note is dishonest.**
+**B. The shed ladder is ordered wrong and its note is dishonest.** ✅ FIXED —
 (`:943-946`, `:3048-3061`.) It deletes the diary in full, then **the world you
 are standing in**, while the _other two slots'_ worlds — the same unbounded
 `revealed` arrays — are never touched, and `tiles.lasterror.v1` isn't either.
@@ -190,27 +223,42 @@ the timeline rather than delete it → inactive slots' worlds, named → **never
 the active world; stop autosaving and say so honestly instead. One distinct
 sentence per rung.
 
-**C. `decodeWorld` is all-or-nothing and overwrites the evidence.**
+**C. `decodeWorld` is all-or-nothing and overwrites the evidence.** ✅ FIXED —
 (`src/meta/world.ts:132`, `src/main.ts:625-630`.) One bad element in
 `revealed` returns `null`, and boot mints a new world _over the old blob on
 the same tick_ — which is exactly the shape of a truncated write from an iOS
 kill. Contrast `decodeTimeline`, which refuses per entry. _Fix:_ filter
 element-wise; on hard failure copy the raw string aside before replacing it.
 
-**D. `decodeProgress` wipes relics and found perks on any bad field.**
+**D. `decodeProgress` wipes relics and found perks on any bad field.** ✅ FIXED —
 (`src/meta/progress.ts:379-389.`) Salvage field-by-field instead.
 
-**E. Front-door SETTLE leaks the old slot's keys** (`src/main.ts:2088`) where
+**E. Front-door SETTLE leaks the old slot's keys** ✅ FIXED — (`src/main.ts:2088`) where
 the end-screen path (`:2836-2848`) wipes them properly — feeding the same
 foreign-merge corruption as (A). One shared helper for both.
 
-**F. `persist()` is asked too late and too narrowly** (`:738-749`, `:927-928`):
+**F. `persist()` is asked too late and too narrowly** ✅ FIXED — (`:738-749`, `:927-928`):
 only from the home `onChange` after a successful run save, so a daily-only
 visitor never asks, and neither does someone who boots and closes the tab. On
 Safari the install nudge _is_ the persistence mechanism, yet it lives only on
 the end screen, once ever, and burns its marker whether or not it was read
 (`src/ui/game.ts:3070`). _Fix:_ ask at boot right after `loadWorld`; don't
 burn the nudge until it has survived one interaction.
+
+**What A–F came to, in one paragraph.** The shed ladder is four rungs now and
+never touches the world being played: a diagnostic record, then other slots'
+receipts, then the diary, then other slots' worlds — each rung saying its own
+sentence out loud in a `role="status"` region, because "some history was
+cleared" was a fair description of the diary and a lie about a world. Both
+merges are seed-guarded, so a run can only ever fold into the world it was
+played on whatever else goes wrong. `decodeWorld` and `decodeProgress`
+salvage field-by-field instead of returning null — which mattered because the
+shell's answer to null is to mint a fresh world _over_ the old blob on the
+same tick, so refusing a damaged world was deleting it. Both SETTLE doors go
+through one `settleSlot` helper that takes the old slot's whole footprint.
+And `persist()` is asked at boot, right after `loadWorld`, rather than after
+a home run's first successful save — a daily-only player never reached the
+old call at all.
 
 **G. The one thing missing entirely: export/import.** With no backend, 7-day
 eviction, and in-app browsers that discard storage wholesale, a single

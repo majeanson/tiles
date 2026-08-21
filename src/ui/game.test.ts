@@ -2615,14 +2615,14 @@ describe('the crossing (2026-08-19)', () => {
   const actionButton = (): HTMLButtonElement =>
     document.getElementById('event-card-action') as HTMLButtonElement;
 
-  it('offers the crossing on a fully-awake shrine — priced, actionable, refusable', () => {
-    let crossed = 0;
+  it('offers the crossing on a fully-awake shrine — priced, armed, refusable', () => {
+    const carriedOut: number[] = [];
     const ctx = shrineAt({
       unlockLabel: () => null, // every rung woken: the ledger is done
       crossing: {
         dowry: () => 100,
-        cross: () => {
-          crossed++;
+        cross: (carried) => {
+          carriedOut.push(carried);
         },
       },
     });
@@ -2632,15 +2632,32 @@ describe('the crossing (2026-08-19)', () => {
     expect(text).toMatch(/THE WORLD IS AWAKE/);
     expect(text).toMatch(/100 relics/);
     expect(text).toMatch(/NEW WORLD/);
+    // The honest half (2026-08-20): a world's shop is its own now, so
+    // crossing spends it, and this card is the last place to say so.
+    expect(text).toMatch(/BOUGHT in this world stay behind/);
+    expect(text).toMatch(/perks come with you/);
 
     // The card grew its choice: CROSS acts, and the dismiss reads as STAY.
     const act = actionButton();
     expect(act.hidden).toBe(false);
-    expect(act.textContent).toContain('100');
+    // The button names the TOTAL — dowry plus what the run is carrying — so
+    // the number on it is the number that lands in the purse.
+    expect(act.textContent).toContain(String(100 + ctx.game.state.relics));
     expect(ctx.el.eventCardDismiss.textContent).toBe('STAY');
 
+    // ARMED, since 2026-08-20: crossing forgets a world, and every other
+    // control that does has always taken two taps. The first is swallowed —
+    // the card's own close-on-any-tap must not dismiss the offer instead.
     act.click();
-    expect(crossed).toBe(1);
+    expect(carriedOut).toEqual([]);
+    expect(act.textContent).toMatch(/TAP AGAIN/);
+    expect(ctx.el.eventCard.hidden).toBe(false);
+
+    act.click();
+    // It carries the run's own relics out, not only the dowry: the crossing
+    // is the one run-ending that never goes through `finish`, so before this
+    // the run's earnings died with the world.
+    expect(carriedOut).toEqual([ctx.game.state.relics]);
     // The same bubbling click that dismisses every card closed this one too.
     expect(ctx.el.eventCard.hidden).toBe(true);
   });

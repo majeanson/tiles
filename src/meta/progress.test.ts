@@ -199,7 +199,18 @@ describe('storage', () => {
     expect(decodeProgress(null)).toEqual(EMPTY_PROGRESS);
     expect(decodeProgress('not json')).toEqual(EMPTY_PROGRESS);
     expect(decodeProgress('[1,2,3]')).toEqual(EMPTY_PROGRESS);
-    expect(decodeProgress('{"relics":"lots","bought":{}}')).toEqual(EMPTY_PROGRESS);
+  });
+
+  it('reads a damaged blob as damaged, not as a new device', () => {
+    // `{"relics":"lots"}` used to return EMPTY_PROGRESS, which threw away the
+    // player's found perks over a malformed number (2026-08-20). It is a real
+    // progress blob with an unreadable purse, and it decodes as one: purse
+    // zero, and — having no `met` field — the veteran ledger every
+    // pre-teaching blob gets, rather than a stranger's empty one.
+    const damaged = decodeProgress('{"relics":"lots","bought":{}}');
+    expect(damaged.relics).toBe(0);
+    expect(damaged.bought).toEqual({});
+    expect(damaged.met).toEqual([...TEACH_IDS]);
   });
 
   it('drops upgrades it has never heard of rather than carrying them', () => {
@@ -354,5 +365,26 @@ describe('the shop climbs back to what the rebalance took', () => {
     expect(fresh.cachePays).toBeLessThan(PRE_REBALANCE.cachePays);
     expect(fresh.destinationChance).toBeLessThan(0.7);
     expect(fresh.costRisesEvery).toBeLessThan(PRE_REBALANCE.maxedCostRisesEvery);
+  });
+});
+
+describe('salvage, not surrender (2026-08-20)', () => {
+  it('keeps the purse and the shelf when an unrelated field is malformed', () => {
+    // Both of these used to return EMPTY_PROGRESS — throwing away relics AND
+    // every perk walked to — because one field was the wrong shape. Perks are
+    // the least replaceable thing on the device; nothing regenerates them.
+    const badBought = decodeProgress(
+      JSON.stringify({ relics: 250, bought: 'not an object', found: ['rootbound'], met: [] }),
+    );
+    expect(badBought.relics).toBe(250);
+    expect(badBought.found).toContain('rootbound');
+
+    const badRelics = decodeProgress(
+      JSON.stringify({ relics: 'lots', bought: { tiles: 3 }, found: ['openhand'], met: [] }),
+    );
+    expect(badRelics.found).toContain('openhand');
+    expect(levelOf(badRelics, 'tiles')).toBe(3);
+    // An unreadable purse is zero, not a reason to forget the shelf.
+    expect(badRelics.relics).toBe(0);
   });
 });

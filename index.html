@@ -5,13 +5,17 @@
     <!--
       Portrait phone is the design target. `viewport-fit=cover` plus the
       env(safe-area-inset-*) padding in style.css keeps the board clear of the
-      notch and the home indicator; user-scalable=no stops a double-tap on a hex
-      from zooming the page instead of placing a tile.
+      notch and the home indicator.
+
+      `user-scalable=no` was DROPPED on 2026-08-20: it is a WCAG 1.4.4 failure
+      and an automatic Lighthouse a11y failure, and it took pinch-to-zoom away
+      from anyone who needs it to read the board. What it was here for is
+      already done properly elsewhere — `touch-action: manipulation` on body
+      kills the double-tap-zoom and the 300ms tap delay, and `#board` sets
+      `touch-action: none`, which hands every board gesture to the game
+      outright. Nothing was relying on the flag itself.
     -->
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- Torchlit's own background: the browser chrome should be the same dark
          the board falls off into, or the page has a seam at the top. -->
     <meta name="theme-color" content="#0a0806" />
@@ -88,7 +92,16 @@
            already booting quietly underneath it — the game never waits on
            this screen, so dismissing it costs nothing. Quiet HOW TO PLAY
            opens the same manual the in-game ? does, via Game#openHelp. -->
-      <div id="front-door" role="dialog" aria-modal="true" tabindex="-1">
+      <!-- Named for screen readers (2026-08-20): a role="dialog" with no
+           accessible name is an automatic Lighthouse failure, and this one
+           is the first thing anybody meets. -->
+      <div
+        id="front-door"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="front-door-name"
+        tabindex="-1"
+      >
         <!-- Name, mark and tagline are IN the markup (2026-08-20, launch
              audit): the pre-JS first paint used to be a nameless dark
              screen. main.ts overwrites all three idempotently at boot. -->
@@ -125,7 +138,12 @@
         <button id="front-door-help" type="button" class="quiet">HOW TO PLAY</button>
         <!-- The one true wipe: run, world, shop, records, settings — the
              stranger-handing-back-the-phone control. Two taps, like NEW WORLD. -->
-        <button id="front-door-reset" type="button">RESET ALL</button>
+        <!-- `hidden` in the MARKUP (2026-08-20): main() decides whether this
+             device has anything worth wiping and unhides it, but until then
+             the pre-JS first paint was showing a stranger a RESET ALL button
+             on the very first screen they ever saw. Hidden by default and
+             revealed on purpose is the right way round for a wipe. -->
+        <button id="front-door-reset" type="button" hidden>RESET ALL</button>
       </div>
 
       <!-- The hall of fame's own screen, OUTSIDE #game-shell for the same
@@ -191,7 +209,13 @@
              here because it is the thing that eventually kills you. -->
         <header id="stats"></header>
 
-        <div id="board">
+        <!-- `tabindex="-1"` so focus can be GIVEN to the board without
+             putting it in the tab order (2026-08-20): closing an event card
+             hands focus back here rather than dropping it to <body>. The
+             board is a WebGL canvas with no accessible content of its own —
+             a real keyboard path for placing tiles is a post-1.0 job, noted
+             in POLISH.md; this is only the floor that stops focus vanishing. -->
+        <div id="board" tabindex="-1">
           <!-- The camera, floating over the canvas, bottom-right — a thumb's
                natural reach holding the phone one-handed. One discrete
                control (Stage 2, 2026-08-18): pinch and drag already do

@@ -376,7 +376,12 @@ export function decodeProgress(raw: string | null): Progress {
   if (raw === null) return EMPTY_PROGRESS;
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null) return EMPTY_PROGRESS;
+    // Arrays are rejected explicitly (2026-08-20). They used to fall out of
+    // the `bought` type check below, which the salvage pass replaced — an
+    // array is a shape this module never wrote, not a damaged one.
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return EMPTY_PROGRESS;
+    }
 
     const { relics, bought, found, equipped, met } = parsed as {
       relics?: unknown;
@@ -385,8 +390,15 @@ export function decodeProgress(raw: string | null): Progress {
       equipped?: unknown;
       met?: unknown;
     };
-    if (typeof relics !== 'number' || !Number.isFinite(relics)) return EMPTY_PROGRESS;
-    if (typeof bought !== 'object' || bought === null) return EMPTY_PROGRESS;
+    // SALVAGED field by field (2026-08-20). Both of these used to return
+    // EMPTY_PROGRESS — throwing away the relic purse AND every perk the
+    // player had walked to — because one unrelated field was the wrong
+    // shape. Perks are the least replaceable thing on the device: they are
+    // found in the world, one per hidden find, and nothing regenerates them.
+    // A bad `bought` is a reason to distrust `bought`, not the shelf.
+    const purse = typeof relics === 'number' && Number.isFinite(relics) ? relics : 0;
+    const levels: Record<string, unknown> =
+      typeof bought === 'object' && bought !== null ? (bought as Record<string, unknown>) : {};
 
     const knownUpgrades = new Set<string>(UPGRADES.map((u) => u.id));
     const knownPerks = new Set<string>(PERKS.map((p) => p.id));
@@ -394,7 +406,7 @@ export function decodeProgress(raw: string | null): Progress {
     const clean: Partial<Record<UpgradeId, number>> = {};
     const owned = new Set<PerkId>();
     let refund = 0;
-    for (const [id, n] of Object.entries(bought)) {
+    for (const [id, n] of Object.entries(levels)) {
       if (typeof n !== 'number' || n <= 0) continue;
       if (knownUpgrades.has(id)) clean[id as UpgradeId] = Math.floor(n);
       // The bought-perks era: a purchased perk is kept, as found.
@@ -435,7 +447,7 @@ export function decodeProgress(raw: string | null): Progress {
       : [...TEACH_IDS];
 
     return {
-      relics: Math.max(0, Math.floor(relics)) + refund,
+      relics: Math.max(0, Math.floor(purse)) + refund,
       bought: clean,
       found: [...owned],
       equipped: worn.slice(0, slotsOf()),

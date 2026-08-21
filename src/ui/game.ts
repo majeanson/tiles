@@ -300,7 +300,12 @@ export type GameHooks = {
    */
   readonly crossing?: {
     readonly dowry: () => number;
-    readonly cross: () => void;
+    /**
+     * `carried` is what the RUN earned and has not banked — the crossing is
+     * the one way a run ends without going through `finish`, so before
+     * 2026-08-20 those relics were simply destroyed along with the world.
+     */
+    readonly cross: (carried: number) => void;
   };
   /**
    * The three sounded moments (`ideas/sound.md`, behind `ui.sound`): the
@@ -613,6 +618,15 @@ export class Game {
    */
   #eventAction: HTMLButtonElement | null = null;
   #eventActionRun: (() => void) | null = null;
+  /**
+   * The armed label for an action that must be confirmed, and whether it has
+   * been. Set only by a card whose button is destructive — today that is the
+   * crossing, which forgets a world (2026-08-20).
+   */
+  #eventActionArm: string | null = null;
+  #eventActionArmed = false;
+  /** Where focus was when the event card opened, so closing can give it back. */
+  #eventCardReturn: HTMLElement | null = null;
 
   /**
    * The `ui.logo` slot's URL, once art has loaded and confirmed the theme
@@ -806,7 +820,18 @@ export class Game {
     act.type = 'button';
     act.id = 'event-card-action';
     act.hidden = true;
-    act.addEventListener('click', () => {
+    act.addEventListener('click', (event) => {
+      // An action that names an armed label confirms first (2026-08-20): the
+      // crossing forgets a world, and every other control that does — NEW
+      // WORLD, RESET ALL, SETTLE over a slot — has always taken two taps.
+      // The first tap is SWALLOWED, because the card's own close-on-any-tap
+      // would otherwise dismiss the offer instead of arming it.
+      if (this.#eventActionArm !== null && !this.#eventActionArmed) {
+        event.stopPropagation();
+        this.#eventActionArmed = true;
+        act.textContent = this.#eventActionArm;
+        return;
+      }
       this.#eventActionRun?.();
     });
     this.#el.eventCardDismiss.insertAdjacentElement('beforebegin', act);
@@ -1376,7 +1401,7 @@ export class Game {
   ): {
     text: string;
     eventWorthy: boolean;
-    action?: { readonly label: string; readonly run: () => void };
+    action?: { readonly label: string; readonly run: () => void; readonly arm?: string };
   } | null {
     const t = after.tuning;
     const RANK: Record<LandmarkReward, number> = {
@@ -1394,7 +1419,8 @@ export class Game {
     // timed toast is too quiet for a rule change.
     let firstSite = false;
     // The crossing's CROSS button, when a fully-awake shrine offered one.
-    let action: { readonly label: string; readonly run: () => void } | undefined;
+    let action:
+      { readonly label: string; readonly run: () => void; readonly arm?: string } | undefined;
 
     for (const [k, cell] of Object.entries(after.cells)) {
       if (cell.kind !== 'landmark' || !cell.claimed) continue;
@@ -1460,12 +1486,30 @@ export class Game {
           const crossing = this.#hooks.crossing;
           if (label === null && crossing !== undefined) {
             const dowry = crossing.dowry();
-            action = { label: `CROSS — carry ${dowry} relics`, run: crossing.cross };
+            // What the run itself is carrying, banked by the crossing since
+            // 2026-08-20 — before that it was simply lost, because `cross`
+            // never went through `finish` and so never banked anything.
+            const carried = after.relics;
+            const cross = crossing.cross;
+            action = {
+              label: `CROSS — carry ${dowry + carried} relics`,
+              arm: 'TAP AGAIN — this world is forgotten',
+              run: () => {
+                cross(carried);
+              },
+            };
             notes.push({
               rank: RANK.shrine,
               text:
                 '◈  THE WORLD IS AWAKE\nEvery unlock is yours — and this shrine is a way onward. ' +
-                `Cross to a NEW WORLD and carry ${dowry} relics out for what you leave: the ground and the territories stay behind; your shop and your perks travel. ` +
+                `Cross to a NEW WORLD carrying ${dowry} relics for what you leave` +
+                (carried > 0 ? `, plus the ${carried} this run earned` : '') +
+                '. ' +
+                // The honest half, added the day the economy split: what stays
+                // behind is no longer just the ground. A world's SHOP is its
+                // own now, so crossing spends it — and this card is the last
+                // place a player can be told before it happens.
+                'The ground, the territories and everything you have BOUGHT in this world stay behind; your perks come with you. ' +
                 'This run ends at the crossing. Or stay, and keep building this world.',
             });
             break;
@@ -2538,7 +2582,7 @@ export class Game {
    */
   #showEventCard(
     text: string,
-    action?: { readonly label: string; readonly run: () => void },
+    action?: { readonly label: string; readonly run: () => void; readonly arm?: string },
   ): void {
     this.#showNote(null);
     const match = EVENT_GLYPH.exec(text);
@@ -2549,8 +2593,18 @@ export class Game {
       this.#eventAction.hidden = action === undefined;
       this.#eventAction.textContent = action?.label ?? '';
       this.#eventActionRun = action?.run ?? null;
+      this.#eventActionArm = action?.arm ?? null;
+      this.#eventActionArmed = false;
     }
     this.#el.eventCardDismiss.textContent = action === undefined ? 'GOT IT' : 'STAY';
+    // Where focus goes back to when the card closes (2026-08-20). The manual
+    // has kept this contract since it was built; the event card never did,
+    // so dismissing a find, a shrine or a territory dropped focus to <body>
+    // — mid-run, repeatedly, at exactly the moments the game is loudest.
+    // Unlike the manual there is no opener button: these cards arrive
+    // unrequested, so focus returns to the board itself.
+    const active = document.activeElement;
+    this.#eventCardReturn = active instanceof HTMLElement ? active : null;
     this.#el.eventCard.hidden = false;
     this.#el.eventCardDismiss.focus();
   }
@@ -2560,6 +2614,15 @@ export class Game {
     this.#el.eventCard.hidden = true;
     if (this.#eventAction !== null) this.#eventAction.hidden = true;
     this.#eventActionRun = null;
+    this.#eventActionArm = null;
+    this.#eventActionArmed = false;
+    // Back where it came from, or the board — never <body>. Guarded on the
+    // node still being in the document: a card can outlive the row that
+    // opened it (the stats row is rebuilt wholesale every render).
+    const back = this.#eventCardReturn;
+    this.#eventCardReturn = null;
+    if (back !== null && back.isConnected) back.focus();
+    else this.#el.board.focus();
   }
 
   /* --------------------------------------------------------------- teaching
@@ -2824,7 +2887,13 @@ export class Game {
     const parts = [spotLine ?? hud.guide];
     if (this.#hooks.debug === true) parts.push(this.#debugLine());
     const hint = parts.filter((s) => s !== null).join(' · ');
-    this.#el.hint.textContent = hint;
+    // Written only when it CHANGED (2026-08-20). `#hint` is an aria-live
+    // region and this runs on every tap, drag and dispatch; assigning
+    // `textContent` replaces the text node even when the string is identical,
+    // which is enough for a screen reader to read the whole line again. A
+    // reorientation line that re-announces itself on every gesture is worse
+    // than no line at all.
+    if (this.#el.hint.textContent !== hint) this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
 
     // The destination signpost, as a TOAST on CHANGE rather than a line that
@@ -3713,11 +3782,15 @@ export class Game {
         const box = document.createElement('div');
         box.className = 'stat';
         box.dataset['stat'] = stat.id;
-        // A STABLE name per stat. The row is rebuilt wholesale every render,
-        // which is exactly why it must not be an aria-live region (every
-        // action would re-announce four numbers); a constant label instead,
-        // so a reader can find TILES by name and ask for it when it wants it.
-        box.setAttribute('aria-label', stat.label);
+        // Name AND number (2026-08-20). The row is rebuilt wholesale every
+        // render, which is exactly why it must not be an aria-live region —
+        // every action would re-announce six numbers — so a reader finds
+        // TILES by name and asks for it when it wants it. But the label
+        // alone was an `aria-label` on a role="button", which OVERRIDES the
+        // children: VoiceOver read "TILES, button" and never the number, so
+        // the one number a blind player most needs was the one thing the
+        // stat row would not say.
+        box.setAttribute('aria-label', `${stat.label} ${stat.value}`);
 
         const label = document.createElement('span');
         label.className = 'stat-label';

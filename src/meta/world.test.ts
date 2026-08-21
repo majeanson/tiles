@@ -110,14 +110,25 @@ describe('world memory', () => {
     expect(world.territories).not.toContain(unclaimedAt);
   });
 
-  it('round-trips, and refuses a broken world rather than half-loading it', () => {
+  it('round-trips, and refuses a shape it never wrote', () => {
     const world = rememberRun(newWorld(7), newRun(7, TUNING));
     expect(decodeWorld(encodeWorld(world))).toEqual(world);
 
     expect(decodeWorld(null)).toBeNull();
     expect(decodeWorld('{}')).toBeNull();
+    // A list that is not a list is not a damaged world; it is not a world.
     expect(decodeWorld('{"worldSeed":1,"revealed":"lots","territories":[]}')).toBeNull();
-    expect(decodeWorld('{"worldSeed":1,"revealed":[],"territories":[1,2]}')).toBeNull();
+
+    // But a list holding one bad ENTRY is salvaged, not refused (2026-08-20).
+    // This assertion used to expect null, under a "refuse rather than
+    // half-load" rule that was right in the abstract and wrong here: the
+    // shell's answer to null is to mint a fresh world OVER the old blob on
+    // the same tick, so refusing turned one bad element into a silently
+    // deleted world — which is the shape a write truncated by an iOS kill
+    // takes. Half a world you walked beats a new one you did not.
+    const salvaged = decodeWorld('{"worldSeed":1,"revealed":[],"territories":[1,2]}');
+    expect(salvaged).not.toBeNull();
+    expect(salvaged?.territories).toEqual([]);
   });
 
   it('remembers only finds that were actually claimed, mid-run', () => {
@@ -315,5 +326,37 @@ describe('rearmedSpent — spent landmarks reborn per run (2026-08-20)', () => {
     const out = rearmedSpent(w);
     for (const s of shrines) expect(out[s]).toBeUndefined();
     expect(out[key(9, 9)]).toBeDefined();
+  });
+});
+
+describe('a world survives one bad entry (2026-08-20)', () => {
+  it('salvages the hexes either side of it rather than deleting the world', () => {
+    // decodeWorld returning null makes the shell mint a fresh world OVER the
+    // old blob on the same tick, so an all-or-nothing decode turned one bad
+    // element into a silently deleted world — the shape a truncated write
+    // from an iOS kill mid-setItem takes.
+    const salvaged = decodeWorld(
+      JSON.stringify({
+        worldSeed: 7,
+        revealed: ['0,0', 42, '1,0', null, '2,0'],
+        territories: ['3,0'],
+        runs: 4,
+      }),
+    );
+    expect(salvaged).not.toBeNull();
+    expect(salvaged?.worldSeed).toBe(7);
+    expect(salvaged?.revealed).toEqual(['0,0', '1,0', '2,0']);
+    expect(salvaged?.territories).toEqual(['3,0']);
+    expect(salvaged?.runs).toBe(4);
+  });
+
+  it('still refuses a shape this module never wrote', () => {
+    // A `revealed` that is not a list is not a damaged world, it is not a
+    // world — guessing at it would be inventing ground.
+    expect(
+      decodeWorld(JSON.stringify({ worldSeed: 7, revealed: 'nope', territories: [] })),
+    ).toBeNull();
+    expect(decodeWorld('not json')).toBeNull();
+    expect(decodeWorld(null)).toBeNull();
   });
 });
