@@ -58,6 +58,7 @@ import {
   isOwnKey,
   restorePlan,
 } from '@meta/backup';
+import { shareOf } from '@meta/share';
 import { decodeRun, encodeRun } from '@meta/save';
 import {
   appendEntry,
@@ -1335,20 +1336,32 @@ function runKeeping(
       // arriving ?ff= is PERSISTED by resolveFeatures, so a stale override
       // would install itself on every phone the link ever reaches. A share
       // link carries only what the receiver needs: the seed, or the date.
+      // The sentence and the query come from `meta/share.ts` (2026-08-21),
+      // which is pure and tested; the ORIGIN stays here, because it is the
+      // half that has to know about `location` and the half both launch
+      // audits caught. `shareOf` hands back params rather than a URL for
+      // exactly that reason — it cannot accidentally carry this device's rig.
       const url = new URL(location.pathname, location.href);
-      let text: string;
-      if (dailyDate !== null) {
-        url.searchParams.set('daily', dailyDate);
-        const reach = reachOf(state);
-        const tries = readDailyBook()[dailyDate]?.tries ?? 1;
-        const arc = arcSparkline(state.log.harvests);
-        text =
-          `${NAME} ${dailyName(dailyDate)} · ${state.points} pts · reach ${reach}` +
-          `${arc === '' ? '' : ` · ${arc}`} · ${ordinal(tries)} try · beat it:`;
-      } else {
-        url.searchParams.set('seed', String(state.rootSeed));
-        text = `${NAME}: ${state.points} pts in ${state.placements} placements. Beat my run:`;
+      const shared =
+        dailyDate === null
+          ? shareOf(NAME, {
+              kind: 'run',
+              points: state.points,
+              placements: state.placements,
+              seed: state.rootSeed,
+            })
+          : shareOf(NAME, {
+              kind: 'daily',
+              date: dailyDate,
+              points: state.points,
+              reach: reachOf(state),
+              arc: arcSparkline(state.log.harvests),
+              tries: readDailyBook()[dailyDate]?.tries ?? 1,
+            });
+      for (const [key, value] of Object.entries(shared.params)) {
+        url.searchParams.set(key, value);
       }
+      const text = shared.text;
 
       // Best-effort, and never fatal: a browser missing a piece of the
       // canvas API (or an image that fails to decode) simply hands back

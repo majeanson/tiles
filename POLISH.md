@@ -378,94 +378,52 @@ per frame while zooming, and nobody has measured that on a mid-range phone.
 
 ---
 
-# STILL OPEN — the list as it stands 2026-08-21
+# STILL OPEN — as it stands 2026-08-21, small hours
 
-Everything above this line is done. These are what is left, in the order I
-would take them.
+Everything above this line is done, shipped and verified live. What follows
+is what is left, and it is short.
 
-## Two decisions only Marc can make
+## Needs Marc, and only Marc
 
-**1. The second shrine grants nothing.** `src/meta/world.ts:95` promises
-"A second stash slot" and `applyUnlocks` delivers `holdSlots: 2` — but
-`GameState.held` is `readonly held: Tile | null`, a single tile, and every
-reader tests `holdSlots > 0` as a boolean (`reduce.ts:423`, `rules.ts:475`,
-`view.ts:782`). The manual even contradicts the shrine in words: "The dashed
-HOLD card keeps one tile for later."
+**1. Where a stranger's crash report goes.** The failure panel has a
+prominent COPY REPORT and the report now carries the build, the mode, the
+repeat count and the user-agent — but it has nowhere to be sent. A stranger
+can copy it and has no idea who to give it to. Pick a destination you are
+willing to put on that screen (an email, a form, a GitHub issues link) and it
+is a one-line change. **Before Session C**, which is the first time this code
+meets a phone you do not own.
 
-This is the SECOND of five rungs, so nearly every returning player walks to
-it and receives nothing. It is the same shape as the 'treasure payout' entry
-retired on 2026-08-18 for exactly this reason. Three ways out, and the choice
-is a design one:
+**2. Session B and Session C themselves.** `PLAYTEST.md` scripts both. B is
+the verdict run, after which balance freezes; C is the stranger test, which
+is the one v1.0 gate. Note that Session A's rehearsal is worth re-running
+first: the first minute it saw no longer exists.
 
-- **Relabel the rung** to something `holdSlots + 1` actually does — but it
-  does nothing at all, so this means finding it a different gift.
-- **Implement the second slot** — a real engine change (`held` becomes a
-  list) four days from launch. Against it: CLAUDE.md's every-system-behind-a
-  -dial rule, and the size.
-- **Retire the rung and shift the ledger down**, the precedent the file
-  already set once, with the same one-time generosity.
+**3. Two art calls.** The OG image is a handsome brand card that shows no
+gameplay — for a game whose only distribution is people sharing links, the
+scroll-past hook could be a board: fog, a lit pocket, beacons in the dark.
+And `fx.pop.png` is 47KB; an audit called it a redundant radial gradient, but
+it is not — it carries rays and speckles the procedural fallback does not
+draw, so deleting it changes the look rather than saving free bytes.
 
-**2. The first pop can score literally zero.** `scored = floor(points ×
-0.35)`, so a first pocket of worth 2 at ×1 depth banks 0 — and the FIRST POP
-card celebrates "+0 pts" after six tiles were spent to build it. Reads as a
-punished action at the exact moment the loop is being taught. Either
-`pointsPerPop` moves (a dial, and **the freeze is after Session B**), or the
-display never prints a 0 for a scoring pop. I did not touch it: it is a
-balance number, and those are yours.
+## Worth doing, nobody blocked
 
-## The camp cluster — one afternoon, post-launch unless camp gets played
+- **Nothing visual is tested** (`STATUS.md`). A few Playwright screenshot
+  assertions — not pixel diffing, just "the board drew something" — is the
+  cheap floor, and the camera now animates, which is the class of change that
+  breaks silently.
+- **`src/render/shareCard.ts` has 2 tests** for the artifact that carries the
+  entire distribution mechanism.
+- **`src/main.ts` still has no unit tests.** It is shrinking the right way —
+  `meta/backup.ts`, `meta/daily.ts`'s run codec and `ui/dialog.ts` were all
+  extracted out of it with tests — and the next candidates are the shed
+  ladder's ordering and the shop-levels inherit rule.
+- **No onward-share invitation.** The recipient of a `?seed=` link gets the
+  same SHARE button and the chain propagates, but nothing invites them to
+  pass it on.
 
-`?camp=1` is reachable once the camp shrine is woken, and five places still
-measure from world origin instead of `homeOf(state)`:
+## Deferred by ruling — do not reopen
 
-- `cachePaysAt`'s own docblock says it exists so "the payment, the claim
-  announcement and the tap description can never disagree" — and all three UI
-  callers drop the origin argument (`game.ts:1440`, `game.ts:1588`,
-  `view.ts:1084`). With `cachePaysPerRing: 4` the announced tiles are off by
-  4 per ring of camp offset. The SITE line fifteen lines away does it right.
-- `view.ts:1062` `nearestUnclaimed` and `view.ts:1116` `whatGlows` mix
-  origin-based distance with home-based reach.
-- `view.ts:457` KEEN NOSE scans from origin while `beaconsFor` compensates —
-  at ring 15 with reach 5, no shimmer draws at all.
-- `meta/goals.ts:25` (`reach20`) and `meta/timeline.ts:271` compute reach
-  from ORIGIN, so a camp start at ring 15 pays the reach-20 relic for
-  standing still. `game.ts:2518` guards for this; these two do not.
-
-## Copy that disagrees with the shipped rules
-
-- `game.ts:2793` teaches "a WALL cannot be built on" with no WALLBREAKER
-  branch, where two other sites branch correctly.
-- `game.ts:1927` says stone/walls/edge "none of them match" — false under
-  the shipped `redAshMatches`; the same sentence at `game.ts:1991` is right.
-- The manual promises TREASURE that `treasureFor` refuses while OPEN HAND is
-  worn (`game.ts:1968` gates on `treasureNeed`, `rules.ts:475` also needs a
-  stash).
-- "NEW BEST" is computed from device-wide records in one place
-  (`main.ts:1287`) and per-world memory in another (`timeline.ts:270`) —
-  they diverge for anyone with a second slot or a crossing.
-- THE SURVEY renders `w.goalsMet` directly instead of `metGoalIds`, which
-  `goals.ts:12` says exists precisely so the panel and the tests share one
-  question. It has zero non-test callers.
-
-## Structural, post-launch
-
-- **`src/main.ts` has no unit tests** (~3,500 lines, every storage helper).
-  Keep extracting the pure decision into `meta/` — `backup.ts` and
-  `dailyRunFor` are the worked examples.
-- **Nothing visual is tested** (`STATUS.md:454-457`). A few Playwright
-  screenshot assertions — not pixel diffing, just "the board drew something".
-- **`shareCard.test.ts` has 2 tests** for the whole distribution mechanism.
-- **The OG image shows no gameplay** — the most-seen image the project has.
-- **`fx.pop.png` is 47KB** and an audit called it a redundant radial
-  gradient. It is not: it has rays and speckles the procedural fallback does
-  not draw. Deleting it is an art call, not a free win — left alone.
-
-## Documentation debt — do the first one before the tag
-
-- **`STATUS.md` is now six sessions stale.** It says 607 tests; the tree is 630. `CLAUDE.md` tells every future session to read it FIRST.
-- `FOLLOWUP.md` / `PLAYTEST.md` still schedule the rehearsal that happened.
-- `ideas/persistent-world.md:20` calls multiple worlds "deferred" (shipped
-  2026-08-19). `ROADMAP.md:139` is headed 2026-08-15 over a 2026-08-20 body.
-- `DESIGN.md:152` carries a bounded-map run length; the endless run is ~8
-  minutes at run one.
-- `prompt.md` is a fully-answered Session-2/3/4 artifact still at root.
+`ROADMAP.md`'s parking lot: Tier-1 uniques, the sound pass, a leaderboard
+(needs a backend, D13), store wrappers, the waypoint-perk earn, world mood,
+ground-feeds-draft, storage compaction, the timeline's spine-vs-✦ question,
+and pop-vs-burn-vs-wait (D18 — answered over weeks of play, not before a tag).
