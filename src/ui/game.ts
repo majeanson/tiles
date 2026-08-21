@@ -44,6 +44,7 @@ import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { COLOUR_MARK, type Theme } from '@theme/tokens';
 import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
+import { closeDialog, openDialog, siblingsOf } from './dialog';
 import { rememberedNativeAt, renderContext, toBoardView, toHudView, type HudView } from './view';
 
 /**
@@ -802,9 +803,9 @@ export class Game {
     this.#el.helpPanel.addEventListener('click', () => {
       this.#closeHelp();
     });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !this.#el.helpPanel.hidden) this.#closeHelp();
-    });
+    // (Escape is the dialog stack's, since 2026-08-21 — see ui/dialog.ts.
+    // Both panels used to install their own document-level handler, so one
+    // keypress with two panels open closed both.)
 
     // The popup goes away on a tap, like everything else that covers a board.
     this.#el.toast.addEventListener('click', () => {
@@ -840,9 +841,6 @@ export class Game {
     });
     this.#el.eventCardDismiss.insertAdjacentElement('beforebegin', act);
     this.#eventAction = act;
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !this.#el.eventCard.hidden) this.#closeEventCard();
-    });
 
     this.#el.harvestTiles.addEventListener('click', () => {
       this.#harvest('tiles');
@@ -1153,6 +1151,19 @@ export class Game {
     this.#helpOpener = opener;
     this.#el.helpPanel.hidden = false;
     this.#el.helpPanel.focus();
+    // Through the shared contract since 2026-08-21: what the panel covers
+    // goes inert, so the board and the front door behind it stop being
+    // tabbable and clickable, and Escape reaches this panel only while it is
+    // the one on top. `covers` is the panel's siblings — everything in `#app`
+    // that is not the panel itself.
+    openDialog({
+      panel: this.#el.helpPanel,
+      covers: siblingsOf(this.#el.helpPanel),
+      opener,
+      close: () => {
+        this.#closeHelp();
+      },
+    });
   }
 
   /** The manual's half of the panel, rebuilt from the live tuning and ledger. */
@@ -1169,6 +1180,10 @@ export class Game {
   #closeHelp(): void {
     if (this.#el.helpPanel.hidden) return;
     this.#el.helpPanel.hidden = true;
+    // `closeDialog` gives back what the panel made inert and returns focus;
+    // the explicit focus call stays for the case where nothing was opened
+    // through the stack (a bare test harness mounting the panel by hand).
+    closeDialog(this.#el.helpPanel);
     this.#helpOpener.focus();
   }
 
@@ -2727,11 +2742,23 @@ export class Game {
     this.#eventCardReturn = active instanceof HTMLElement ? active : null;
     this.#el.eventCard.hidden = false;
     this.#el.eventCardDismiss.focus();
+    // The card lives INSIDE the game shell rather than beside it, so what it
+    // covers is its own siblings — the stats row, the board, the controls —
+    // not the shell itself, which would take the card down with them.
+    openDialog({
+      panel: this.#el.eventCard,
+      covers: siblingsOf(this.#el.eventCard),
+      opener: this.#eventCardReturn,
+      close: () => {
+        this.#closeEventCard();
+      },
+    });
   }
 
   #closeEventCard(): void {
     if (this.#el.eventCard.hidden) return;
     this.#el.eventCard.hidden = true;
+    closeDialog(this.#el.eventCard);
     if (this.#eventAction !== null) this.#eventAction.hidden = true;
     this.#eventActionRun = null;
     this.#eventActionArm = null;

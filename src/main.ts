@@ -93,6 +93,7 @@ import { applyTheme } from '@theme/apply';
 import { assetPath, DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
 import type { Orientation, Theme } from '@theme/tokens';
 import type { GameState, LandmarkReward } from '@engine/state';
+import { closeDialog, openDialog, siblingsOf } from '@ui/dialog';
 import { Game, type Elements, type GameHooks } from '@ui/game';
 import { epitaphFor } from '@ui/view';
 import { Sound } from '@ui/audio';
@@ -2472,12 +2473,16 @@ async function main(): Promise<void> {
     };
     const closeFame = (): void => {
       famePanel.hidden = true;
+      closeDialog(famePanel);
       fameOpen.focus();
     };
     required<HTMLButtonElement>('fame-back').addEventListener('click', closeFame);
-    famePanel.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeFame();
-    });
+    // Escape belongs to the dialog stack now (2026-08-21). It was bound to
+    // the PANEL, so it only worked while focus was inside it — and since
+    // nothing behind was inert, tabbing out of the fame panel put you on the
+    // front door's BEGIN with no keyboard way back. Both halves of that are
+    // the stack's job: what it covers goes inert, and Escape is heard at the
+    // document for whichever panel is on top.
     // A hall of fame with nothing in it stays off the virgin door (the
     // same reasoning that hides RESET ALL, applied the day the audit
     // pointed out it had not been): a stranger's first screen should not
@@ -2827,6 +2832,12 @@ async function main(): Promise<void> {
       fameBody.replaceChildren(bar, ...panels);
       famePanel.hidden = false;
       famePanel.focus();
+      openDialog({
+        panel: famePanel,
+        covers: siblingsOf(famePanel),
+        opener: fameOpen,
+        close: closeFame,
+      });
     });
   }
   frontDoorBegin.addEventListener('click', () => {
