@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { THEMES } from '@theme/index';
-import { surface, type Surface } from '@theme/tokens';
+import { depthOf, surface, type Depth, type Surface } from '@theme/tokens';
 import { bakeSurface } from './bake';
+
+/** Any depth will do where the assertion is about the NO-CANVAS path. */
+const DEPTH: Depth = { sheen: 0.05, shade: 0.08, light: false };
 import { BakedCache, ghostKey, surfaceKey, SurfaceTextures } from './surfaces';
 
 /**
@@ -23,21 +26,21 @@ import { BakedCache, ghostKey, surfaceKey, SurfaceTextures } from './surfaces';
 describe('bakeSurface, with no canvas context available', () => {
   it('returns null rather than throwing, for every theme', () => {
     for (const theme of THEMES) {
-      expect(bakeSurface(theme.terrain.green, 23, theme.orientation)).toBeNull();
-      expect(bakeSurface(theme.wall, 23, theme.orientation)).toBeNull();
-      expect(bakeSurface(theme.ghost, 23, theme.orientation)).toBeNull();
+      expect(bakeSurface(theme.terrain.green, 23, theme.orientation, depthOf(theme))).toBeNull();
+      expect(bakeSurface(theme.wall, 23, theme.orientation, depthOf(theme))).toBeNull();
+      expect(bakeSurface(theme.ghost, 23, theme.orientation, depthOf(theme))).toBeNull();
     }
   });
 
   it('survives a degenerate size', () => {
-    expect(() => bakeSurface(surface(0x112233), 0, 'flat')).not.toThrow();
-    expect(() => bakeSurface(surface(0x112233), -5, 'pointy')).not.toThrow();
+    expect(() => bakeSurface(surface(0x112233), 0, 'flat', DEPTH)).not.toThrow();
+    expect(() => bakeSurface(surface(0x112233), -5, 'pointy', DEPTH)).not.toThrow();
   });
 });
 
 describe('SurfaceTextures', () => {
   it('refuses a non-positive size without touching the cache', () => {
-    const textures = new SurfaceTextures();
+    const textures = new SurfaceTextures(DEPTH);
     expect(textures.get(surface(0x112233), 0, 'flat')).toBeNull();
     expect(textures.get(surface(0x112233), -1, 'flat')).toBeNull();
     textures.destroy();
@@ -46,13 +49,13 @@ describe('SurfaceTextures', () => {
   it('reports null all the way up when baking cannot happen', () => {
     // The renderer's contract: a null texture means "draw no sprite for this
     // cell", not "crash". Everything else on the board still draws.
-    const textures = new SurfaceTextures();
+    const textures = new SurfaceTextures(DEPTH);
     expect(textures.get(surface(0x445566), 23, 'pointy')).toBeNull();
     textures.destroy();
   });
 
   it('evicts and destroys without a live cache', () => {
-    const textures = new SurfaceTextures();
+    const textures = new SurfaceTextures(DEPTH);
     expect(() => {
       textures.evictExcept(23, 'flat');
       textures.destroy();
@@ -173,7 +176,7 @@ describe('the colour symbols', () => {
   });
 
   it('degrades to the flat fill where there is no canvas, like every pattern', () => {
-    expect(bakeSurface(field('square'), 24, 'pointy')).toBeNull();
+    expect(bakeSurface(field('square'), 24, 'pointy', DEPTH)).toBeNull();
   });
 });
 
@@ -237,7 +240,7 @@ describe('the field ghost (2026-08-20, native fields wearing the terrain slot’
   });
 
   it('SurfaceTextures.get accepts a ghost and still degrades to null with no canvas, like every other bake', () => {
-    const textures = new SurfaceTextures();
+    const textures = new SurfaceTextures(DEPTH);
     expect(
       textures.get(surface(0x151310), 23, 'flat', { id: 'terrain.green', image, alpha: 0.3 }),
     ).toBeNull();
@@ -245,7 +248,9 @@ describe('the field ghost (2026-08-20, native fields wearing the terrain slot’
   });
 
   it('bakeSurface with a ghost still returns null with no canvas context, and never throws on a degenerate size', () => {
-    expect(bakeSurface(surface(0x151310), 23, 'flat', { image, alpha: 0.3 })).toBeNull();
-    expect(() => bakeSurface(surface(0x151310), 0, 'flat', { image, alpha: 0.3 })).not.toThrow();
+    expect(bakeSurface(surface(0x151310), 23, 'flat', DEPTH, { image, alpha: 0.3 })).toBeNull();
+    expect(() =>
+      bakeSurface(surface(0x151310), 0, 'flat', DEPTH, { image, alpha: 0.3 }),
+    ).not.toThrow();
   });
 });

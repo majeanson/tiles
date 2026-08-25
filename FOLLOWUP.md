@@ -27,7 +27,9 @@ RESET TEACHING previews the LESSONS a stranger sees, not their game —
 your shop, perks and known world all survive it. The closest true
 rehearsal, in order:
 
-1. **SETTINGS ▸ DEVELOPER ▸ RESET TEACHING.**
+1. **`?` ▸ MENU ▸ SETTINGS ▸ DEVELOPER ▸ RESET TEACHING** (SETTINGS is its
+   own screen since 2026-08-25 — from the MENU tab mid-run, or MORE on the
+   front door).
 2. Back out, **BEGIN DAILY** — the daily plays plain and fully fogged,
    which IS a stranger's run one (it even fires the first-contact card).
 3. Play it cold, notebook in hand. The written question is §1's oldest:

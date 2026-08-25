@@ -17,9 +17,17 @@
     -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- Torchlit's own background: the browser chrome should be the same dark
-         the board falls off into, or the page has a seam at the top. -->
+         the board falls off into, or the page has a seam at the top. This is the
+         PRE-JS value and stays torchlit's, because torchlit is what a device
+         with no stored choice and no light preference opens in; applyTheme
+         rewrites it from the resolved theme a moment later. -->
     <meta name="theme-color" content="#0a0806" />
-    <meta name="color-scheme" content="dark" />
+    <!-- "light dark", not "dark" (2026-08-25): the game has a light direction
+         now, and this meta is what tells the browser which form controls,
+         scrollbars and default canvas to hand the page. Declaring dark while
+         serving daylight gives a pale board dark scrollbars. Both, and the
+         theme decides. -->
+    <meta name="color-scheme" content="light dark" />
     <meta name="mobile-web-app-capable" content="yes" />
     <!-- iOS reads its own trio, not the standard above: without these an
          added-to-home-screen Ashwake opens inside Safari chrome. -->
@@ -90,7 +98,7 @@
       <!-- The front door: shown before the first interaction, over
            everything else in #app. BEGIN starts (or RESUMES) the run that is
            already booting quietly underneath it — the game never waits on
-           this screen, so dismissing it costs nothing. Quiet HOW TO PLAY
+           this screen, so dismissing it costs nothing. MORE ▸ HOW TO PLAY
            opens the same manual the in-game ? does, via Game#openHelp. -->
       <!-- Named for screen readers (2026-08-20): a role="dialog" with no
            accessible name is an automatic Lighthouse failure, and this one
@@ -114,78 +122,176 @@
           <p>Ashwake is a game, and it needs JavaScript switched on to play.</p>
         </noscript>
         <!-- The playstyle menu (2026-08-19): main.ts names which game BEGIN
-             opens — your world, the daily, or a shared run — and shows the
-             other doors beside it. The mode line and the two quiet buttons
-             start hidden; the shell reveals what applies. -->
+             opens — your world, the daily, or a shared run. The mode line and
+             every quiet button start hidden; the shell reveals what applies.
+
+             LEAN since 2026-08-25 (Marc: "make sure our homepage is lean —
+             WORLDS, DAILY, MORE"). The door had grown to eleven buttons and
+             three of them were data management; a stranger's first screen was
+             a control panel with a wipe on it. It is BEGIN and three doors
+             now, and everything that is not "play right now" lives behind
+             MORE. Nothing was deleted — every control still exists, one tap
+             further from the thumb that was never reaching for it. -->
         <p id="front-door-mode" class="flag-note" hidden></p>
         <button id="front-door-begin" type="button">BEGIN</button>
+        <!-- WORLDS: the three save slots, and the camp that starts deep in
+             one. A door rather than a list — the list is a panel now, because
+             three world rows plus BEGIN AT CAMP was four of the door's buttons
+             spent on a choice most loads do not make. Home mode only, so a
+             detour's door stays about the detour. -->
+        <button id="front-door-worlds" type="button" class="quiet" hidden>WORLDS</button>
         <button id="front-door-daily" type="button" class="quiet" hidden>DAILY</button>
-        <!-- Camps (2026-08-19): once the camp shrine is woken, a fresh run
-             may begin at the world's farthest territory. -->
-        <button id="front-door-camp" type="button" class="quiet" hidden>BEGIN AT CAMP</button>
-        <!-- The other two world slots (2026-08-19): settled ones switch,
-             empty ones begin new. Filled by main.ts; hidden off the home
-             mode so a detour's door stays about the detour. -->
-        <div id="front-door-worlds" hidden></div>
+        <!-- Continue FROM a seed (2026-08-19): shared-link mode only, and it
+             stays ON the door because that door has three buttons in total and
+             SETTLE is the whole reason somebody keeps a stranger's world. -->
         <button id="front-door-settle" type="button" class="quiet" hidden>SETTLE</button>
         <button id="front-door-home" type="button" class="quiet" hidden>YOUR WORLD</button>
-        <!-- The hall of fame (Marc, 2026-08-20): what this device has done,
-             across all three worlds. The timeline it was promised arrived
-             the same day (LOG.md Session 31; always on since launch week):
-             TIMELINE · DAILY · TOTALS tabs, filled by main.ts. Home mode
-             only, like the worlds above. -->
-        <button id="front-door-fame" type="button" class="quiet" hidden>HALL OF FAME</button>
-        <button id="front-door-help" type="button" class="quiet">HOW TO PLAY</button>
-        <!-- The one true wipe: run, world, shop, records, settings — the
-             stranger-handing-back-the-phone control. Two taps, like NEW WORLD. -->
+        <!-- MORE: HOW TO PLAY, the hall of fame, settings, the way off this
+             device, and the wipe. Always offered, because HOW TO PLAY is
+             behind it and that is the only tutorial door a stranger ever
+             sees. -->
+        <button id="front-door-more" type="button" class="quiet">MORE</button>
+      </div>
+
+      <!-- WORLDS (2026-08-25). The three save slots, one row each, plus the
+           camp that wakes a fresh run at this world's farthest territory —
+           every way INTO a world, in one place. Filled by main.ts from the
+           same storage the door reads. Outside #game-shell for the same inert
+           reason every other panel is: it opens from the front door, before
+           the shell is ever live. -->
+      <div
+        id="worlds-panel"
+        class="panel-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="worlds-title"
+        tabindex="-1"
+        hidden
+      >
+        <div class="panel-head">
+          <p id="worlds-title" class="panel-title">WORLDS</p>
+          <button id="worlds-back" type="button" class="panel-back">BACK</button>
+        </div>
+        <!-- What a world IS, said once, where the choice is actually made. It
+             was nowhere on the old door: three unexplained slot buttons and a
+             mode line that assumed you already knew. -->
+        <p id="worlds-note" class="flag-note">
+          Three worlds live on this device. Relics and the perks you find travel between them; the
+          map, the territories and everything you buy stay with the world you bought them in.
+        </p>
+        <div id="worlds-list" class="panel-menu"></div>
+        <!-- Camps (2026-08-19): once the camp shrine is woken, a fresh run may
+             begin at the world's farthest territory. -->
+        <div class="panel-menu">
+          <button id="worlds-camp" type="button" class="quiet" hidden>BEGIN AT CAMP</button>
+        </div>
+      </div>
+
+      <!-- MORE (2026-08-25): the door's second half, folded away. HOW TO PLAY
+           and SETTINGS open panels of their own on top of this one; the hall
+           of fame is its own screen below; and the three data controls sit at
+           the bottom under their own heading, where somebody thinking about
+           their data will look and nobody else has to. -->
+      <div
+        id="more-panel"
+        class="panel-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="more-title"
+        tabindex="-1"
+        hidden
+      >
+        <div class="panel-head">
+          <p id="more-title" class="panel-title">MORE</p>
+          <button id="more-back" type="button" class="panel-back">BACK</button>
+        </div>
+        <div class="panel-menu">
+          <button id="more-help" type="button" class="quiet">HOW TO PLAY</button>
+          <!-- The hall of fame (Marc, 2026-08-20): what this device has done,
+               across all three worlds. The timeline it was promised arrived
+               the same day (LOG.md Session 31; always on since launch week):
+               TIMELINE · DAILY · TOTALS tabs, filled by main.ts. Home mode
+               only, and absent entirely on a device with nothing in it. -->
+          <button id="more-fame" type="button" class="quiet" hidden>HALL OF FAME</button>
+          <button id="more-settings" type="button" class="quiet">SETTINGS</button>
+        </div>
         <!-- The way OUT of this device (2026-08-21). The game has no backend
              and no account, so localStorage is the only copy of everything a
              player has — and Safari evicts a non-persisted origin after about
              a week away, in-app browsers discard it wholesale, and phones get
              replaced. Every other guard makes loss less likely; this is the
              one that makes it survivable. Beside RESET ALL because this is
-             where somebody looks when they are thinking about their data. -->
-        <button id="front-door-backup" type="button" class="quiet" hidden>BACK UP MY WORLDS</button>
-        <button id="front-door-restore" type="button" class="quiet" hidden>RESTORE A BACKUP</button>
-        <!-- `hidden` in the MARKUP (2026-08-20): main() decides whether this
-             device has anything worth wiping and unhides it, but until then
-             the pre-JS first paint was showing a stranger a RESET ALL button
-             on the very first screen they ever saw. Hidden by default and
-             revealed on purpose is the right way round for a wipe. -->
-        <button id="front-door-reset" type="button" hidden>RESET ALL</button>
+             where somebody looks when they are thinking about their data —
+             which is now a place they have to go to, rather than the first
+             screen of the game. -->
+        <p id="more-data-title" class="panel-title" hidden>THIS DEVICE</p>
+        <div class="panel-menu">
+          <button id="more-backup" type="button" class="quiet" hidden>BACK UP MY WORLDS</button>
+          <button id="more-restore" type="button" class="quiet" hidden>RESTORE A BACKUP</button>
+          <!-- The one true wipe: run, world, shop, records, settings — the
+               stranger-handing-back-the-phone control. Two taps, like NEW
+               WORLD. `hidden` in the MARKUP (2026-08-20): main() decides
+               whether this device has anything worth wiping and unhides it. -->
+          <button id="more-reset" type="button" hidden>RESET ALL</button>
+        </div>
+      </div>
+
+      <!-- SETTINGS, its own screen since 2026-08-25. It was the bottom half of
+           the `?` panel, under the whole manual, which is why the front door
+           could not offer it without dumping a stranger into a scroll past
+           four tabs of prose. `mountSettings` (main.ts) writes the body from
+           the feature registry, whose notes carry the decisions — one source,
+           so the screen cannot go stale against them. Opened from MORE on the
+           door, and from the MENU tab mid-run. -->
+      <div
+        id="settings-panel"
+        class="panel-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        tabindex="-1"
+        hidden
+      >
+        <div class="panel-head">
+          <p id="settings-title" class="panel-title">SETTINGS</p>
+          <button id="settings-back" type="button" class="panel-back">BACK</button>
+        </div>
+        <div id="settings-body"></div>
       </div>
 
       <!-- The hall of fame's own screen, OUTSIDE #game-shell for the same
-           inert reason the manual is: it opens from the front door, before
-           the shell is ever live. Filled by main.ts from the same storage
-           the door's own rows read. -->
+           inert reason the manual is: it opens from MORE on the front door,
+           before the shell is ever live. Filled by main.ts from the same
+           storage the worlds panel's own rows read. -->
       <div
         id="fame-panel"
+        class="panel-sheet"
         role="dialog"
         aria-modal="true"
         aria-labelledby="fame-title"
         tabindex="-1"
         hidden
       >
-        <div id="fame-head">
-          <p id="fame-title">HALL OF FAME</p>
-          <button id="fame-back" type="button">BACK</button>
+        <div class="panel-head">
+          <p id="fame-title" class="panel-title">HALL OF FAME</p>
+          <button id="fame-back" type="button" class="panel-back">BACK</button>
         </div>
         <div id="fame-body"></div>
       </div>
 
-      <!-- The manual and the switchboard, OUTSIDE #game-shell on purpose: an
-           `inert` ancestor makes every descendant unfocusable and untappable
-           regardless of z-index, and this panel has to open (from the front
-           door's own quiet HOW TO PLAY) before #game-shell ever loses that
-           attribute. The manual half is written by the game from its LIVE
-           tuning; the settings half is written from the feature registry,
-           whose notes carry the decisions — one source for each, so neither
-           can go stale. Tapping prose closes the panel; the settings rows
-           swallow their taps. -->
-      <div id="help-panel" hidden>
+      <!-- The manual, OUTSIDE #game-shell on purpose: an `inert` ancestor
+           makes every descendant unfocusable and untappable regardless of
+           z-index, and this panel has to open (from MORE on the front door)
+           before #game-shell ever loses that attribute. Written by the game
+           from its LIVE tuning, so it cannot go stale. Tapping prose closes
+           the panel.
+
+           The switchboard that used to sit under it is its own screen now
+           (#settings-panel, 2026-08-25): a manual and a switchboard are two
+           different questions, and stacking them is exactly why SETTINGS
+           could only be reached by scrolling past four tabs of prose. -->
+      <div id="help-panel" class="panel-sheet" hidden>
         <div id="help-manual"></div>
-        <div id="help-meta"></div>
       </div>
 
       <!-- The MENU tab's contents (Marc, 2026-08-20: "add a menu in ? or
@@ -201,7 +307,7 @@
 
       <!-- Art directions, one button each. Declared here rather than inside
            #game-shell — `mountSettings` (main.ts) relocates this exact node
-           into #help-meta, under the DEVELOPER fold's ui.themePicker row,
+           into #settings-body, under the DEVELOPER fold’s ui.themePicker row,
            the moment SETTINGS first paints (2026-08-18: "the theme picker
            moves out of the page flow into SETTINGS"). Its own content is
            still only ever populated while ?ff=ui.themePicker is on; Gate E

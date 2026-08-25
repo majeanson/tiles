@@ -1,5 +1,7 @@
+import { DAYLIGHT } from './themes/daylight';
 import { PLACEHOLDER } from './themes/placeholder';
 import { TORCHLIT } from './themes/torchlit';
+import { TORCHLIT_BRIGHT } from './themes/torchlit-bright';
 import type { Theme, ThemeId } from './tokens';
 
 /**
@@ -18,8 +20,45 @@ import type { Theme, ThemeId } from './tokens';
  * bundle forever is a maintenance tax on a decision that is not coming back.
  * `PLACEHOLDER` stays — it is `resolveTheme`'s own fallback and the greyscale
  * test's control, not a direction competing to be chosen.
+ *
+ * **Four again (2026-08-25), and for a different reason.** `torchlit-bright` and
+ * `daylight` are not candidates and Gate E is not re-opened: they are the same
+ * game at two other contrast levels, added because Marc could not read the board
+ * on his phone. A losing direction in the bundle is a maintenance tax; an
+ * ACCESSIBLE one is the product working for someone it did not work for. The
+ * difference is that these two answer to `pickForScheme` and to
+ * `contrast.test.ts`, and a candidate direction answers to taste.
  */
-export const THEMES: readonly Theme[] = [PLACEHOLDER, TORCHLIT];
+export const THEMES: readonly Theme[] = [PLACEHOLDER, TORCHLIT, TORCHLIT_BRIGHT, DAYLIGHT];
+
+/**
+ * `auto` — let the device answer (2026-08-25).
+ *
+ * Not a theme and deliberately not in `THEMES`: it is the ABSENCE of a choice,
+ * and it is what a phone that has never opened the settings panel is set to. The
+ * stored value is a `ThemeId` like any other, so `resolveTheme` still falls back
+ * for it the way it falls back for a typo; `main.ts` checks for it first and
+ * calls `pickForScheme` instead.
+ */
+export const AUTO_THEME_ID = 'auto';
+
+/**
+ * Which direction a device that has not chosen one should open in.
+ *
+ * Pure, and takes the two media queries as booleans rather than reading them,
+ * for the reason this whole folder is built on: it is testable without a
+ * browser. `main.ts` samples `matchMedia` at the edge and hands the answers in.
+ *
+ * There is one light direction rather than two. `daylight`'s ink is already
+ * near-black on vellum — 16.7:1, the highest contrast of any direction here —
+ * so a "high contrast light" would have nothing left to raise. The dark side
+ * needs both because torchlit's whole argument is atmosphere, and atmosphere is
+ * exactly what a player asking for more contrast is asking to be spared.
+ */
+export function pickForScheme(prefersLight: boolean, prefersContrast: boolean): ThemeId {
+  if (prefersLight) return 'daylight';
+  return prefersContrast ? 'torchlit-bright' : DEFAULT_THEME_ID;
+}
 
 /**
  * **Torchlit is the direction, chosen 2026-08-15 when Gate E opened.**
@@ -45,6 +84,11 @@ export const THEMES: readonly Theme[] = [PLACEHOLDER, TORCHLIT];
  * mean resurrecting a direction from git history first. A default is still a
  * decision, not a cage; the cage just has fewer doors than this line used to
  * say.
+ *
+ * Still the default on 2026-08-25, when two more directions arrived — but it is
+ * now the default only for a device that has not said otherwise. `auto` is what
+ * a fresh phone stores, and `pickForScheme` sends it here only when the OS is
+ * asking for neither light nor more contrast.
  */
 export const DEFAULT_THEME_ID: ThemeId = 'torchlit';
 

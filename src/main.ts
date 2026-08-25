@@ -92,7 +92,15 @@ import { PixiRenderer } from '@render/PixiRenderer';
 import type { Renderer } from '@render/Renderer';
 import { renderShareCard } from '@render/shareCard';
 import { applyTheme } from '@theme/apply';
-import { assetPath, DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from '@theme/index';
+import {
+  assetPath,
+  AUTO_THEME_ID,
+  DEFAULT_THEME_ID,
+  parseThemeId,
+  pickForScheme,
+  resolveTheme,
+  THEMES,
+} from '@theme/index';
 import type { Orientation, Theme } from '@theme/tokens';
 import type { GameState, LandmarkReward } from '@engine/state';
 import { closeDialog, openDialog, siblingsOf } from '@ui/dialog';
@@ -175,7 +183,7 @@ const TIMELINE_STORAGE_KEY = 'tiles.timeline.v1';
  * Which of the three world slots is active (Marc, 2026-08-19: "maybe have 3
  * save game possibilities?"). A device keeps up to three worlds — each with
  * its own map, territories, shrines, run-in-progress and shrine receipt —
- * and plays ONE at a time; the front door's menu switches between them.
+ * and plays ONE at a time; the door's WORLDS panel switches between them.
  * The shop, perks, teaching and records stay device-wide, as ever.
  */
 const ACTIVE_SLOT_KEY = 'tiles.slot.v1';
@@ -277,7 +285,7 @@ function localToday(): string {
 }
 
 /** `?camp=1`: begin the next fresh run at the world's farthest territory —
- *  set by the front door's BEGIN AT CAMP button, honoured only when the
+ *  set by the BEGIN AT CAMP button in the door's WORLDS panel, honoured only when the
  *  camp shrine is woken and a territory exists to wake at. */
 function askedCamp(): boolean {
   return new URLSearchParams(location.search).get('camp') === '1';
@@ -454,12 +462,49 @@ function resolveFacing(): Orientation | null {
  */
 function resolveThemeId(): string {
   const asked = parseThemeId(location.search);
-  if (asked !== null) return asked;
+  // `?theme=auto` means auto, not "an id nobody has". Without this it would fall
+  // through `resolveTheme`'s unknown-id guard to torchlit, so the one spelling a
+  // person is most likely to type by hand would be the one that silently did
+  // something else.
+  if (asked !== null && asked !== AUTO_THEME_ID) return asked;
+  if (asked === AUTO_THEME_ID) return pickForScheme(...askedScheme());
 
+  let stored: string | null = null;
   try {
-    return localStorage.getItem(THEME_STORAGE_KEY) ?? DEFAULT_THEME_ID;
+    stored = localStorage.getItem(THEME_STORAGE_KEY);
   } catch {
-    return DEFAULT_THEME_ID;
+    // Private mode. The device gets whatever it is asking for right now, which
+    // is the same answer a device that has never chosen gets.
+  }
+
+  // AUTO is the new default (2026-08-25), and it is what a phone that has never
+  // opened SETTINGS is on. `null` — never chosen — means auto too, so the
+  // behaviour arrives for everyone rather than only for people who go looking.
+  // An explicit choice still wins, which is the whole reason the row exists.
+  if (stored === null || stored === AUTO_THEME_ID) return pickForScheme(...askedScheme());
+  return stored;
+}
+
+/**
+ * What the device is asking for: `[prefersLight, prefersContrast]`.
+ *
+ * The only two media queries the theme layer cares about, sampled at the edge
+ * and handed to `pickForScheme` as plain booleans so the decision itself stays
+ * pure and testable — the same split `resolveFacing` and the feature flags use.
+ *
+ * `matchMedia` is guarded because a system with no preference set answers "not
+ * light and not more contrast", which is exactly torchlit, and because a browser
+ * old enough to lack it should get the default rather than a crash on the way to
+ * the front door.
+ */
+function askedScheme(): [boolean, boolean] {
+  try {
+    return [
+      window.matchMedia('(prefers-color-scheme: light)').matches,
+      window.matchMedia('(prefers-contrast: more)').matches,
+    ];
+  } catch {
+    return [false, false];
   }
 }
 
@@ -1567,6 +1612,17 @@ function mountSettings(
     /** Back to the front door. The run is saved, so it is a pause. */
     mainMenu: () => void;
     /**
+     * Open the SETTINGS screen (2026-08-25). The switchboard used to be the
+     * bottom half of this very panel, so mid-run it needed no door of its
+     * own; now that it is a panel, the MENU tab is where the door belongs —
+     * MENU already holds every other way out of a run.
+     *
+     * Takes the button that asked, because the dialog stack hands focus back
+     * to it on close and this one is built here, inside a body that is
+     * replaced wholesale on every paint.
+     */
+    openSettings: (opener: HTMLElement) => void;
+    /**
      * Which game this is (Marc, 2026-08-20: "separate clearly worlds vs
      * daily, right now a lot of things are intertwined").
      *
@@ -1590,20 +1646,19 @@ function mountSettings(
     event.stopPropagation();
   });
 
-  const heading = document.createElement('p');
-  heading.className = 'help-title';
-  heading.textContent = 'SETTINGS';
-
   // Player things first (2026-08-18: "settings reordered"); the two
   // developer switches are testing tools, not something a run is asking a
   // player to decide, and moved into their own fold below.
+  // No SETTINGS heading of its own since 2026-08-25: the panel this writes
+  // into wears the word in its own header, and a screen that says its name
+  // twice in the first two lines reads as a bug.
   const intro = document.createElement('p');
   intro.textContent =
     'Sticky on this device. The switches sit folded under DEVELOPER, below — ' +
     'SOUND among them — and the address bar does the same job ' +
     '(?ff=ui.sound, ?ff=debug.overlay), each note carrying the decision ' +
-    'that set its default. NEW RUN is how a changed one actually takes ' +
-    'effect; it never touches the run in progress.';
+    'that set its default. RESTART — in the ? panel’s MENU tab — is how a ' +
+    'changed one actually takes effect; it never touches the run in progress.';
 
   // The privacy fact (2026-08-20, launch polish): it was true since Session
   // 0 and written only in a README no player ever sees. One quiet line,
@@ -1614,6 +1669,8 @@ function mountSettings(
     'Nothing leaves your phone: no account, no analytics, no server — every ' +
     'run, record and setting lives in this device’s own storage, and ' +
     'sharing only ever sends what you see in the share sheet.';
+
+  const appearance = buildAppearance(live.theme);
 
   // The atlas, as a label/value grid in the stat row's own language
   // (`.fact`/`.fact-label`/`.fact-value` — shared with the end screen's own
@@ -1940,6 +1997,20 @@ function mountSettings(
       ? 'Your board is kept — RESUME picks it up exactly where it is.'
       : 'This board is kept too — the door offers it back until you finish it.';
 
+  // The door into SETTINGS (2026-08-25). The switchboard used to be printed
+  // under this very panel, so mid-run there was nothing to open; now that it
+  // is its own screen, the way in belongs where every other way out of a run
+  // already is. Offered in all three modes — SOUND lives behind it, and a
+  // daily is exactly when somebody reaches for the mute.
+  const toSettings = document.createElement('button');
+  toSettings.type = 'button';
+  toSettings.id = 'to-settings';
+  toSettings.className = 'quiet';
+  toSettings.textContent = 'SETTINGS';
+  toSettings.addEventListener('click', () => {
+    live.openSettings(toSettings);
+  });
+
   // The MENU tab, in one of two shapes. A detour never sees the atlas, the
   // ledger, the survey or NEW WORLD: none of them are about the game being
   // played, and printing them here is what made the two modes feel like one
@@ -1964,6 +2035,7 @@ function mountSettings(
       ...(surveyStarted ? [surveyHeading, survey] : []),
       toMenu,
       toMenuNote,
+      toSettings,
       restart,
       abandon,
     );
@@ -1975,20 +2047,23 @@ function mountSettings(
       const badge = document.createElement('p');
       badge.className = 'flag-note';
       badge.textContent = live.mode.badge;
-      menuParts.push(menuTitle, menuNote, badge, toMenu, toMenuNote);
+      menuParts.push(menuTitle, menuNote, badge, toMenu, toMenuNote, toSettings);
     } else {
       menuTitle.textContent = 'A SHARED RUN';
       menuNote.textContent =
         "Somebody else's world and seed, played plain. Nothing here is kept, and your own world is untouched.";
-      menuParts.push(menuTitle, menuNote, toMenu, toMenuNote);
+      menuParts.push(menuTitle, menuNote, toMenu, toMenuNote, toSettings);
     }
   }
 
   // The CONTROLS swallow their taps — NEW WORLD arms on the first one, and a
   // panel that closed underneath it would make the second tap impossible —
   // but the prose above them does not: tapping what you have finished reading
-  // closes the panel, which is the contract every other tab keeps.
-  for (const control of [toMenu, restart, abandon]) {
+  // closes the panel, which is the contract every other tab keeps. SETTINGS
+  // is in the list for a sharper reason: it opens a panel ON TOP of this one,
+  // and a tap that also closed the manual would leave BACK pointing at a
+  // dialog that is no longer there.
+  for (const control of [toMenu, toSettings, restart, abandon]) {
     control.addEventListener('click', (event) => {
       event.stopPropagation();
     });
@@ -1999,7 +2074,98 @@ function mountSettings(
   // what the DEVICE does, rather than what this world is. NEW RUN and NEW
   // WORLD moved to MENU above; repeating them here is the intertwining the
   // MENU tab exists to undo.
-  host.replaceChildren(heading, intro, privacy, developer);
+  // APPEARANCE first, above the intro: it is the only row here a player is
+  // likely to have come looking for, and it is the answer to the one complaint
+  // the panel has ever had to field ("constrast is very bad", 2026-08-25).
+  host.replaceChildren(appearance, intro, privacy, developer);
+}
+
+/**
+ * How this device wants the game to look.
+ *
+ * The FIRST setting in the panel that is not a developer switch, and the first
+ * that is not behind a flag. There has been a theme picker since Session 2, but
+ * it lived behind `?ff=ui.themePicker` — a URL you have to know — because for
+ * eleven sessions the directions were CANDIDATES and letting a player pick one
+ * would have been letting them decide Gate E. Gate E is decided. What is left is
+ * not a vote on the art; it is whether the art is readable on the phone in your
+ * hand, and that is a question only the person holding it can answer.
+ *
+ * Four options, and AUTO is deliberately first and the default. A phone set to
+ * light mode, or set to increase contrast, has already answered this question
+ * once and should not have to answer it again inside a game — `pickForScheme`
+ * reads those two and picks. The other three are for the case the OS gets wrong,
+ * which is most cases: the setting is about the room you are in, not the device.
+ *
+ * The dev picker (`mountThemePicker`) stays where it is, in the DEVELOPER fold,
+ * because it does a different job — it offers the PLACEHOLDER and the
+ * orientation flip, which are workbench controls and not choices to put in front
+ * of anyone.
+ */
+function buildAppearance(current: Theme): HTMLElement {
+  const section = document.createElement('div');
+  section.id = 'appearance';
+
+  const label = document.createElement('span');
+  label.className = 'flag-label';
+  label.textContent = 'APPEARANCE';
+
+  // `chosen` is the STORED value, not the live theme: with AUTO stored, the
+  // live theme is whichever one the OS resolved to, and highlighting that one
+  // would tell the player they had chosen it. They chose to let the phone
+  // decide, and the row has to keep saying so.
+  let chosen: string;
+  try {
+    chosen = localStorage.getItem(THEME_STORAGE_KEY) ?? AUTO_THEME_ID;
+  } catch {
+    chosen = AUTO_THEME_ID;
+  }
+
+  const options: readonly (readonly [string, string])[] = [
+    [AUTO_THEME_ID, 'AUTO'],
+    [DEFAULT_THEME_ID, 'TORCHLIT'],
+    ['torchlit-bright', 'HIGH CONTRAST'],
+    ['daylight', 'DAYLIGHT'],
+  ];
+
+  const row = document.createElement('div');
+  row.id = 'appearance-options';
+  row.append(
+    ...options.map(([id, text]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'swatch';
+      button.textContent = text;
+      button.setAttribute('aria-pressed', String(id === chosen));
+      button.addEventListener('click', () => {
+        rememberTheme(id);
+        // A reload rather than a live swap, and the run survives it: the board
+        // is saved after every action (`tiles.run.v1`), and `PixiRenderer` takes
+        // its theme in the constructor and holds it `readonly` — so switching in
+        // place would mean tearing down and rebuilding the renderer, its texture
+        // caches and its ticker to save a reload that costs a blink. The dev
+        // picker has reloaded since Session 2 for the same reason.
+        const url = new URL(location.href);
+        // The stored choice is the one that has to win now, so a `?theme=` left
+        // over from an old shared link cannot override the tap that just
+        // happened.
+        url.searchParams.delete('theme');
+        location.href = url.toString();
+      });
+      return button;
+    }),
+  );
+
+  const note = document.createElement('p');
+  note.className = 'flag-note';
+  note.textContent =
+    current.note +
+    ' — AUTO follows this phone’s own light and contrast settings; the other ' +
+    'three ignore them. Sticky on this device, and applied on the spot: the ' +
+    'run in progress is saved and comes straight back.';
+
+  section.append(label, row, note);
+  return section;
 }
 
 /**
@@ -2028,7 +2194,8 @@ function applyUnlocks(base: Tuning, unlocked: readonly string[]): Tuning {
 async function main(): Promise<void> {
   const features = resolveFeatures();
   // Three world slots (Marc, 2026-08-19): the active one is the game; the
-  // front door's menu switches, settles and begins the others.
+  // door's WORLDS panel switches and begins the others, and a shared link's
+  // SETTLE fills an empty one.
   const slot = activeSlot();
   const keys = slotKeys(slot);
   // Before the first `readProgress` anywhere: the shop levels this boot reads
@@ -2191,15 +2358,65 @@ async function main(): Promise<void> {
   frontDoorName.textContent = NAME;
   required('front-door-tagline').textContent = TAGLINE;
 
-  // RESET ALL: the one true wipe — run, world, shop, records, settings, the
-  // lot. Everything this game keeps lives under one prefix, so the wipe is
-  // enumerated rather than listed and cannot go stale when a key is added.
-  // Two taps, the same arming contract ABANDON THIS WORLD keeps.
-  const frontDoorReset = required<HTMLButtonElement>('front-door-reset');
-  // A device with nothing to forget gets no wipe (2026-08-20, launch
-  // polish): on a virgin phone RESET ALL is a trap on the first screen a
-  // stranger ever sees. It appears once there is anything worth wiping.
-  frontDoorReset.hidden =
+  /**
+   * One open/close pair for every panel the door leads to (2026-08-25).
+   *
+   * `ui/dialog.ts` owns the hard parts already — what a panel covers goes
+   * inert, focus goes in and comes back, Escape reaches only the panel on
+   * top. This is the handful of DOM lines that sit either side of it, and it
+   * is written once because four hand-rolled copies is precisely how the
+   * hall of fame ended up with an Escape handler the other three did not
+   * have. WORLDS and MORE open over the door; the manual, the hall of fame
+   * and SETTINGS open over MORE, which the stack nests without being told.
+   */
+  const panelDoor = (
+    panelId: string,
+    backId: string,
+  ): {
+    readonly panel: HTMLElement;
+    readonly open: (opener: HTMLElement | null) => void;
+    readonly close: () => void;
+  } => {
+    const panel = required<HTMLElement>(panelId);
+    const close = (): void => {
+      if (panel.hidden) return;
+      panel.hidden = true;
+      closeDialog(panel);
+    };
+    required<HTMLButtonElement>(backId).addEventListener('click', close);
+    return {
+      panel,
+      close,
+      open: (opener: HTMLElement | null): void => {
+        panel.hidden = false;
+        // `openDialog` BEFORE `focus` (2026-08-25): a panel opened over
+        // another one arrives wearing the inert that one put on it, and
+        // focus does not land on an inert element. Opening it is what
+        // clears that, so focus has to come second.
+        openDialog({ panel, covers: siblingsOf(panel), opener, close });
+        panel.focus();
+      },
+    };
+  };
+
+  const worldsPanel = panelDoor('worlds-panel', 'worlds-back');
+  const morePanel = panelDoor('more-panel', 'more-back');
+  const settingsPanel = panelDoor('settings-panel', 'settings-back');
+  const famePanelDoor = panelDoor('fame-panel', 'fame-back');
+
+  const frontDoorMore = required<HTMLButtonElement>('front-door-more');
+  frontDoorMore.addEventListener('click', () => {
+    morePanel.open(frontDoorMore);
+  });
+
+  // What "this device has something on it" means, asked once (2026-08-25).
+  // It gated RESET ALL and the two backup buttons through one copy of the
+  // expression and the hall of fame through a second, slightly different
+  // one — the fame copy left out relics, so a device that had earned some
+  // and nothing else was offered a wipe and no museum. One predicate now,
+  // and the museum's extra condition (a world with runs) stays where it
+  // belongs, at its own button.
+  const virginDevice =
     world.runs === 0 &&
     world.revealed.length === 0 &&
     SLOTS.every((s) => s === slot || peekSlot(s) === null) &&
@@ -2209,12 +2426,24 @@ async function main(): Promise<void> {
     // A settled shared world writes a diary tick before any run finishes
     // (fresh-eyes, 2026-08-20) — a device holding one is not virgin.
     readTimeline().length === 0;
+
+  // RESET ALL: the one true wipe — run, world, shop, records, settings, the
+  // lot. Everything this game keeps lives under one prefix, so the wipe is
+  // enumerated rather than listed and cannot go stale when a key is added.
+  // Two taps, the same arming contract ABANDON THIS WORLD keeps.
+  const moreReset = required<HTMLButtonElement>('more-reset');
+  // A device with nothing to forget gets no wipe (2026-08-20, launch
+  // polish): on a virgin phone RESET ALL is a trap. Since 2026-08-25 it is
+  // not on the first screen at all — it lives behind MORE ▸ THIS DEVICE —
+  // but the guard stays: a heading over three hidden buttons is worse than
+  // no heading, and a virgin device has nothing for any of the three to do.
+  moreReset.hidden = virginDevice;
   let resetArmed = false;
-  frontDoorReset.addEventListener('click', () => {
+  moreReset.addEventListener('click', () => {
     if (!resetArmed) {
       resetArmed = true;
-      frontDoorReset.classList.add('armed');
-      frontDoorReset.textContent = 'TAP AGAIN — forgets everything on this device';
+      moreReset.classList.add('armed');
+      moreReset.textContent = 'TAP AGAIN — forgets everything on this device';
       return;
     }
     try {
@@ -2234,15 +2463,16 @@ async function main(): Promise<void> {
   // The backup rides the SAME ladder the run share already uses — share
   // sheet, then clipboard, then download — because that ladder is already
   // the answer to "get this off a phone" on every platform this runs on.
-  const frontDoorBackup = required<HTMLButtonElement>('front-door-backup');
-  const frontDoorRestore = required<HTMLButtonElement>('front-door-restore');
+  const moreBackup = required<HTMLButtonElement>('more-backup');
+  const moreRestore = required<HTMLButtonElement>('more-restore');
   // Offered on the same condition as the wipe: a device with nothing to
-  // forget has nothing to keep either, and a stranger's first screen should
-  // not carry three data-management buttons.
-  frontDoorBackup.hidden = frontDoorReset.hidden;
-  frontDoorRestore.hidden = frontDoorReset.hidden;
+  // forget has nothing to keep either. The heading above the three goes with
+  // them — an empty THIS DEVICE section reads as something broken.
+  moreBackup.hidden = virginDevice;
+  moreRestore.hidden = virginDevice;
+  required('more-data-title').hidden = virginDevice;
 
-  frontDoorBackup.addEventListener('click', () => {
+  moreBackup.addEventListener('click', () => {
     let entries: Record<string, string> = {};
     try {
       for (const key of Object.keys(localStorage)) {
@@ -2254,7 +2484,7 @@ async function main(): Promise<void> {
       entries = {};
     }
     if (Object.keys(entries).length === 0) {
-      frontDoorBackup.textContent = 'NOTHING TO BACK UP';
+      moreBackup.textContent = 'NOTHING TO BACK UP';
       return;
     }
     const text = encodeBackup(
@@ -2262,7 +2492,7 @@ async function main(): Promise<void> {
     );
     const file = `ashwake-backup-${localToday()}.json`;
     void saveBackupFile(file, text).then((how) => {
-      frontDoorBackup.textContent =
+      moreBackup.textContent =
         how === 'shared'
           ? 'BACKUP SENT'
           : how === 'copied'
@@ -2277,7 +2507,7 @@ async function main(): Promise<void> {
   // put back BEFORE it does, because "3 worlds · 412 relics · 2026-08-19" is
   // how a player tells their own backup from a stale one.
   let pending: ReturnType<typeof decodeBackup> = null;
-  frontDoorRestore.addEventListener('click', () => {
+  moreRestore.addEventListener('click', () => {
     if (pending !== null) {
       try {
         for (const key of Object.keys(localStorage)) {
@@ -2287,7 +2517,7 @@ async function main(): Promise<void> {
           localStorage.setItem(key, value);
         }
       } catch {
-        frontDoorRestore.textContent = 'RESTORE FAILED — storage refused';
+        moreRestore.textContent = 'RESTORE FAILED — storage refused';
         return;
       }
       location.href = '/';
@@ -2299,19 +2529,19 @@ async function main(): Promise<void> {
     if (pasted === null || pasted.trim() === '') return;
     const read = decodeBackup(pasted.trim());
     if (read === null) {
-      frontDoorRestore.textContent = 'THAT IS NOT A BACKUP';
+      moreRestore.textContent = 'THAT IS NOT A BACKUP';
       setTimeout(() => {
-        frontDoorRestore.textContent = 'RESTORE A BACKUP';
+        moreRestore.textContent = 'RESTORE A BACKUP';
       }, 2500);
       return;
     }
     pending = read;
-    frontDoorRestore.classList.add('armed');
-    frontDoorRestore.textContent = `TAP AGAIN — replace this device with ${describeBackup(read)}`;
+    moreRestore.classList.add('armed');
+    moreRestore.textContent = `TAP AGAIN — replace this device with ${describeBackup(read)}`;
   });
 
   const frontDoorBegin = required<HTMLButtonElement>('front-door-begin');
-  const frontDoorHelp = required<HTMLButtonElement>('front-door-help');
+  const moreHelp = required<HTMLButtonElement>('more-help');
   const frontDoorMode = required('front-door-mode');
   const frontDoorDaily = required<HTMLButtonElement>('front-door-daily');
   const frontDoorHome = required<HTMLButtonElement>('front-door-home');
@@ -2321,8 +2551,13 @@ async function main(): Promise<void> {
   // opens — your world, the daily, or somebody else's shared run — and
   // offers the other doors beside it, so a mode is entered on purpose and
   // never by accident of what was in the address bar.
+  //
+  // Lean since 2026-08-25 (Marc): those doors are BEGIN, WORLDS, DAILY and
+  // MORE. What each one leads to did not change; how much of it is shouted
+  // at somebody who only wants to play did.
   const today = localToday();
-  const frontDoorWorlds = required('front-door-worlds');
+  const frontDoorWorlds = required<HTMLButtonElement>('front-door-worlds');
+  const worldsList = required('worlds-list');
   const frontDoorSettle = required<HTMLButtonElement>('front-door-settle');
   const goHome = (): void => {
     location.href = new URL(location.pathname, location.href).toString();
@@ -2457,18 +2692,22 @@ async function main(): Promise<void> {
     // BEGIN AT CAMP (waypoints, 2026-08-19): the remembered world's missing
     // verb — deep ground you HOLD becomes ground you can start from. Only a
     // fresh run may camp; a run in progress resumes where it was.
+    // Inside the WORLDS panel since 2026-08-25 — it is a way INTO this world,
+    // which is what that panel is a list of. The one case where it still
+    // speaks on the door is the one where it IS the door: `?camp=1` was
+    // already asked for, so BEGIN itself is the camp.
     if (camp !== null) {
       const ring = distance(parse(camp), { q: 0, r: 0 });
-      const frontDoorCamp = required<HTMLButtonElement>('front-door-camp');
+      const worldsCamp = required<HTMLButtonElement>('worlds-camp');
       if (askedCamp()) {
         frontDoorBegin.textContent = `BEGIN AT CAMP — ring ${ring}`;
         frontDoorMode.textContent =
           `World ${slot} of 3 — waking at your farthest territory, ${ring} out. ` +
           'The climb starts there; the score measures from where you wake.';
       } else {
-        frontDoorCamp.hidden = false;
-        frontDoorCamp.textContent = `BEGIN AT CAMP — your farthest territory, ring ${ring}`;
-        frontDoorCamp.addEventListener('click', () => {
+        worldsCamp.hidden = false;
+        worldsCamp.textContent = `BEGIN AT CAMP — your farthest territory, ring ${ring}`;
+        worldsCamp.addEventListener('click', () => {
           goWith('camp', '1');
         });
       }
@@ -2479,17 +2718,31 @@ async function main(): Promise<void> {
     // active one is marked NOW and enters the same run BEGIN does; a
     // settled other switches; an empty one begins there — a switch is a
     // reload, the same cheap honesty the theme picker keeps.
+    //
+    // In their own panel since 2026-08-25, behind one WORLDS button. The
+    // list itself is unchanged: three rows, same words, same wiring. What
+    // changed is that a door offering ONE world you are already in stopped
+    // spending four of its buttons saying so.
     const worldFacts = (w: WorldMemory): string =>
       `${w.runs} ${w.runs === 1 ? 'run' : 'runs'} · best ${w.bestPoints} · ${w.territories.length} held`;
     frontDoorWorlds.hidden = false;
-    frontDoorWorlds.replaceChildren(
+    frontDoorWorlds.addEventListener('click', () => {
+      worldsPanel.open(frontDoorWorlds);
+    });
+    worldsList.replaceChildren(
       ...SLOTS.map((s) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'quiet';
         if (s === slot) {
           button.textContent = `WORLD ${s} · NOW — ${world.runs > 0 ? worldFacts(world) : 'untouched'}`;
-          button.addEventListener('click', () => frontDoorBegin.click());
+          // Close the panel before BEGIN fires: BEGIN hides the door and
+          // lifts the shell's `inert`, and a dialog still on the stack over
+          // a live board is a board you cannot tap.
+          button.addEventListener('click', () => {
+            worldsPanel.close();
+            frontDoorBegin.click();
+          });
         } else {
           const other = peekSlot(s);
           button.textContent =
@@ -2509,8 +2762,7 @@ async function main(): Promise<void> {
     // week). Three tabs: TIMELINE (the diary of runs and crossings, ✦
     // moments folded under their run), DAILY (the diary's daily ticks under
     // the ladder's own line), TOTALS (the original flat ledger, unmoved).
-    const fameOpen = required<HTMLButtonElement>('front-door-fame');
-    const famePanel = required<HTMLElement>('fame-panel');
+    const fameOpen = required<HTMLButtonElement>('more-fame');
     const fameBody = required('fame-body');
     const fameRow = (cls: string, text: string): HTMLElement => {
       const p = document.createElement('p');
@@ -2518,22 +2770,18 @@ async function main(): Promise<void> {
       p.textContent = text;
       return p;
     };
-    const closeFame = (): void => {
-      famePanel.hidden = true;
-      closeDialog(famePanel);
-      fameOpen.focus();
-    };
-    required<HTMLButtonElement>('fame-back').addEventListener('click', closeFame);
-    // Escape belongs to the dialog stack now (2026-08-21). It was bound to
-    // the PANEL, so it only worked while focus was inside it — and since
-    // nothing behind was inert, tabbing out of the fame panel put you on the
-    // front door's BEGIN with no keyboard way back. Both halves of that are
-    // the stack's job: what it covers goes inert, and Escape is heard at the
-    // document for whichever panel is on top.
-    // A hall of fame with nothing in it stays off the virgin door (the
-    // same reasoning that hides RESET ALL, applied the day the audit
-    // pointed out it had not been): a stranger's first screen should not
-    // offer a museum of nothing.
+    // Escape belongs to the dialog stack (2026-08-21). It was bound to the
+    // PANEL, so it only worked while focus was inside it — and since nothing
+    // behind was inert, tabbing out of the fame panel put you on the front
+    // door's BEGIN with no keyboard way back. Both halves of that are the
+    // stack's job, and since 2026-08-25 this panel gets them from the same
+    // `panelDoor` helper as WORLDS, MORE and SETTINGS rather than from its
+    // own copy of the wiring.
+    //
+    // A hall of fame with nothing in it stays hidden (the same reasoning
+    // that hides RESET ALL): MORE should not offer a museum of nothing. It
+    // asks one question more than `virginDevice` does — a world with runs in
+    // it has a museum even when nothing else on the device does.
     fameOpen.hidden =
       readTimeline().length === 0 &&
       world.runs === 0 &&
@@ -2877,17 +3125,17 @@ async function main(): Promise<void> {
       bar.replaceChildren(...buttons);
 
       fameBody.replaceChildren(bar, ...panels);
-      famePanel.hidden = false;
-      famePanel.focus();
-      openDialog({
-        panel: famePanel,
-        covers: siblingsOf(famePanel),
-        opener: fameOpen,
-        close: closeFame,
-      });
+      famePanelDoor.open(fameOpen);
     });
   }
   frontDoorBegin.addEventListener('click', () => {
+    // Nothing may still be covering the game when the game arrives
+    // (2026-08-25). WORLDS calls BEGIN through this same handler, and a panel
+    // left on the dialog stack would hold `#game-shell` inert — a board you
+    // can see and cannot tap. Closing a panel that is not open is a no-op, so
+    // this is the whole guard.
+    worldsPanel.close();
+    morePanel.close();
     frontDoor.hidden = true;
     gameShell.inert = false;
     // Focus follows the door (2026-08-20). Hiding the element that HAD focus
@@ -2943,14 +3191,16 @@ async function main(): Promise<void> {
     if (soundLive) soundReal.pop(1);
   });
 
-  // The settings half of the ? panel — mounted here rather than in Game
-  // because flags are resolved at this edge and stay out of the engine.
-  // Rebuilt every time the panel is opened, from storage rather than from the
-  // snapshot this page loaded with: a shrine woken at placement 40 has to
-  // show as found the moment you go and look, not after the run ends — and
-  // since the board's ♪ button writes the ui.sound flag between opens, the
-  // switchboard itself re-reads STORAGE too, not this page's boot snapshot.
-  const settingsHost = required('help-meta');
+  // SETTINGS, and the ? panel's MENU tab with it — mounted here rather than
+  // in Game because flags are resolved at this edge and stay out of the
+  // engine. Rebuilt every time either panel is opened, from storage rather
+  // than from the snapshot this page loaded with: a shrine woken at placement
+  // 40 has to show as found the moment you go and look, not after the run
+  // ends — and since the board's ♪ button writes the ui.sound flag between
+  // opens, the switchboard itself re-reads STORAGE too, not this page's boot
+  // snapshot. Its own screen since 2026-08-25; one call still writes both
+  // halves, because the MENU tab is built from the same live facts.
+  const settingsHost = required('settings-body');
   const paintSettings = (): void =>
     mountSettings(
       settingsHost,
@@ -2970,6 +3220,15 @@ async function main(): Promise<void> {
         },
         menuHost: required('help-menu'),
         mainMenu: goHome,
+        // No repaint on this path: the MENU tab that holds this button was
+        // painted by the very `?` open that made it visible, so the body it
+        // would rebuild is already current — and rebuilding it would replace
+        // the button under the thumb that just tapped it, leaving the dialog
+        // stack holding an opener no longer in the document to hand focus
+        // back to.
+        openSettings: (opener) => {
+          settingsPanel.open(opener);
+        },
         // Which game the ? panel is describing. Read fresh on every paint,
         // like everything else here, though these three cannot change without
         // a reload — the URL is what decides them.
@@ -2989,6 +3248,16 @@ async function main(): Promise<void> {
     );
   paintSettings();
   required('help').addEventListener('click', paintSettings);
+
+  // MORE ▸ SETTINGS (2026-08-25). Repainted first, unlike the MENU tab's own
+  // button: nothing has painted this body since boot, and LAST ERROR is the
+  // one row that can appear between then and now. Safe to repaint here
+  // because the button that asked lives on MORE, not inside what is rebuilt.
+  const moreSettings = required<HTMLButtonElement>('more-settings');
+  moreSettings.addEventListener('click', () => {
+    paintSettings();
+    settingsPanel.open(moreSettings);
+  });
 
   const renderer = new PixiRenderer(theme, AssetBook.empty(), prefersReducedMotion());
   await renderer.mount(elements.board);
@@ -3194,12 +3463,14 @@ async function main(): Promise<void> {
   );
   game.start();
 
-  // The front door's own opener — same dialog the in-game ? opens, so
-  // there is exactly one manual rather than two that could drift apart.
-  frontDoorHelp.addEventListener('click', () => {
+  // MORE ▸ HOW TO PLAY — the same dialog the in-game ? opens, so there is
+  // exactly one manual rather than two that could drift apart. It opens ON
+  // TOP of MORE rather than replacing it, which is what makes the manual's
+  // own close land the reader back on the panel they came from.
+  moreHelp.addEventListener('click', () => {
     // START, not MENU (2026-08-20): this is the only tutorial door a stranger
     // ever taps, and MENU took the tab bar's first seat the same day.
-    game.openHelp(frontDoorHelp, 'start');
+    game.openHelp(moreHelp, 'start');
   });
   // A keyboard or screen-reader user should land on the primary action, not
   // have to discover it. Best-effort: some browsers refuse focus during

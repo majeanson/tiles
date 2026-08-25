@@ -106,7 +106,24 @@ body {
   width: 100%;
 }
 
-/* ------------------------------------------------------------- front door
+/* ------------------------------------------------------------ the layers
+
+   Written down once (2026-08-25) because the door grew panels that open over
+   panels, and three files were each guessing at the order:
+
+     1–2  the board's own chrome (toast, camera, hint)
+     3    the front door
+     4    the door's own panels — WORLDS, MORE
+     5    what those open — the manual, the hall of fame
+     6    SETTINGS, which opens from MORE *and* from inside the manual
+     9    the notes (update, storage-full, in-app browser)
+
+   The notes sit above everything on purpose: a new build claiming the page
+   while a panel is open is exactly when their one tap matters, and they used
+   to be pinned at 5 — which was above the door and below nothing else, until
+   the panels arrived.
+
+   ------------------------------------------------------------- front door
 
    Shown before the first interaction, over the whole app — not injected
    late, so it costs the first paint nothing. BEGIN dismisses it; the game
@@ -125,7 +142,10 @@ body {
      clips BOTH ends with no way to scroll — RESET ALL was unreachable on an
      iPhone SE, and any phone in landscape got a broken menu. The auto
      margins below centre it exactly like `center` while it fits, and yield
-     to scrolling the moment it does not. */
+     to scrolling the moment it does not. Kept after the 2026-08-25 lean cut
+     took the door back to four buttons: the door is short again, but the
+     landscape rail and a 320px-wide phone are not, and this is the rule that
+     makes "too tall" merely scroll instead of clipping. */
   gap: 14px;
   /* Safe-area aware (fresh-eyes, 2026-08-20): the door is inset 0 over the
      whole screen, and 24px sits under a 34px home indicator. */
@@ -136,32 +156,20 @@ body {
 }
 
 /* The centring spacers: two equal flexible struts instead of auto margins
-   on real children, because the last child can be [hidden] (RESET ALL on a
-   virgin device) and an auto margin on a display:none element centres
-   nothing. They collapse to zero exactly when the menu is taller than the
-   screen, which is when scrolling takes over. */
+   on real children, because the last child can be [hidden] (SETTLE off the
+   home door) and an auto margin on a display:none element centres nothing.
+   They collapse to zero exactly when the menu is taller than the screen,
+   which is when scrolling takes over. */
 #front-door::before,
 #front-door::after {
   content: '';
   flex: 1 1 0;
 }
 
-/* The world slots (2026-08-19; all three since 2026-08-20): a small stack
-   inside the door's own column, one quiet button per world, same rhythm as
-   the door. */
-#front-door-worlds {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-self: stretch;
-  align-items: center;
-}
-
 /* One width for every door on the door (Marc, 2026-08-20: "make sure all
    buttons have the same width") — BEGIN keeps its height and accent, the
    quiet ones keep their voice, but the column reads as one menu. */
-#front-door button,
-#front-door-worlds button {
+#front-door button {
   width: 100%;
   max-width: 260px;
 }
@@ -217,37 +225,17 @@ body {
   color: var(--accent, #d7b45a);
 }
 
-#front-door-help {
-  min-height: 44px;
-}
+/* --------------------------------------------------------- panel sheets
 
-/* In the column with everything else now (Marc, 2026-08-20: one menu, one
-   width) — still the quietest voice on the door, still a 44px target, and
-   a step of air above it so the wipe never sits flush against a friendly
-   button. */
-#front-door-reset {
-  margin-top: 14px;
-  min-height: 44px;
-  padding: 0 18px;
-  border-color: transparent;
-  background: none;
-  font-size: 0.625rem;
-  color: var(--ink-faint, #767d8d);
-}
-
-#front-door-reset.armed {
-  border-color: var(--danger, #c1362b);
-  color: var(--danger, #c1362b);
-}
-
-/* The hall of fame (Marc, 2026-08-20): the manual's own panel shape — what
-   this device has done, per world and device-wide. The timeline it was
-   promised arrived the same day (Session 31) and was ruled always-on for
-   launch the same week. */
-#fame-panel {
+   The shape every screen that covers the door wears: WORLDS, MORE, SETTINGS
+   and the hall of fame. It was written out four times before 2026-08-25 —
+   twice identically (`#help-panel`, `#fame-panel`) and twice about to be —
+   which is how two of them ended up on the same z-index while one opened
+   from the other. One class for the box, ids for the layer only. */
+.panel-sheet {
   position: fixed;
   inset: 8px;
-  z-index: 4;
+  z-index: 5;
   overflow-y: auto;
   padding: 16px;
   border: 1px solid var(--panel-edge, #3a4150);
@@ -257,7 +245,23 @@ body {
   font-family: var(--font-body, inherit);
 }
 
-#fame-head {
+/* The door's own two open over the door and UNDER what they open in turn:
+   MORE offers HOW TO PLAY, HALL OF FAME and SETTINGS, and all three have to
+   land on top of it or BACK leads somewhere invisible. */
+#worlds-panel,
+#more-panel {
+  z-index: 4;
+}
+
+/* SETTINGS is reachable from MORE (z 4) and from the manual's MENU tab
+   (z 5), so it sits above both rather than picking a side. */
+#settings-panel {
+  z-index: 6;
+}
+
+/* Title left, BACK right — the hall of fame's header, generalised the day
+   three more panels needed the same one. */
+.panel-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -265,16 +269,76 @@ body {
   margin-bottom: 12px;
 }
 
-#fame-title {
+.panel-title {
   margin: 0;
   font-family: var(--font-label, inherit);
   letter-spacing: var(--label-tracking, 0.04em);
 }
 
-#fame-back {
+.panel-back {
   width: auto;
   min-height: 44px;
+  /* `flex: 1 1 0` (the global button rule) would let BACK eat the header;
+     it is a corner, not a column. */
+  flex: 0 0 auto;
 }
+
+/* A panel that IS a menu — WORLDS and MORE. The door's own rhythm, indoors:
+   one column, one width, natural heights. Without the `flex: 0 0 auto` the
+   global `button { flex: 1 1 0 }` splits the panel's height between however
+   many buttons it holds, which is the same bug the door hit in 2026-08. */
+.panel-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.panel-menu > * {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 280px;
+}
+
+/* The wipe: the quietest voice in the panel, a step of air above it so it
+   never sits flush against a friendly button, and the danger colour only
+   once it is armed. It lives behind MORE ▸ THIS DEVICE now (2026-08-25) —
+   it spent launch week as the last button on the first screen a stranger
+   ever saw, which two separate audits called out and one guard (hide it on
+   a virgin device) only half-answered. */
+#more-reset {
+  min-height: 44px;
+  padding: 0 18px;
+  border-color: transparent;
+  background: none;
+  font-size: 0.625rem;
+  color: var(--ink-faint, #767d8d);
+}
+
+#more-reset.armed {
+  border-color: var(--danger, #c1362b);
+  color: var(--danger, #c1362b);
+}
+
+/* A heading that names a group of buttons rather than a block of prose, so
+   it needs air above it and none of `.help-title`'s first-child reset. */
+#more-data-title {
+  margin: 22px 0 8px;
+  font-size: 0.625rem;
+  color: var(--ink-dim, #8a91a0);
+}
+
+/* What a world is, said once, above the three slots it explains. */
+#worlds-note {
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+/* The hall of fame (Marc, 2026-08-20): the manual's own panel shape — what
+   this device has done, per world and device-wide. The timeline it was
+   promised arrived the same day (Session 31) and was ruled always-on for
+   launch the same week. The box itself is `.panel-sheet` above. */
 
 .fame-h {
   margin: 14px 0 4px;
@@ -309,13 +373,12 @@ button.fame-chip {
   min-height: 44px;
   padding: 0 12px;
   font-size: 0.6875rem;
-  opacity: 0.55;
+  color: var(--ink-faint, #767d8d);
 }
 
 button.fame-chip[data-on='true'] {
   border-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
-  opacity: 1;
 }
 
 /* A run row with ✦ moments is a real button — full width, left-aligned,
@@ -434,7 +497,7 @@ button.fame-run[aria-expanded='true'] {
    ruling — so the off state reads plainly as "there is sound here, and it
    is off" rather than as broken chrome. */
 #sound-toggle.muted {
-  opacity: 0.6;
+  opacity: 0.7;
   text-decoration: line-through;
 }
 
@@ -444,29 +507,19 @@ button.fame-run[aria-expanded='true'] {
    in the open beside a panel that was supposed to be modal. Fixed insets
    from the VIEWPORT regardless of where in the document this element sits,
    which is what "truly modal" means here — and it puts the panel above the
-   front door's z-index, so its own quiet HOW TO PLAY can open this exact
-   dialog on top of itself. */
-#help-panel {
-  position: fixed;
-  inset: 8px;
-  z-index: 4;
-  overflow-y: auto;
-  padding: 16px;
-  border: 1px solid var(--panel-edge, #3a4150);
-  border-radius: 6px;
-  background: var(--panel, #1e222b);
-  color: var(--ink, #e8ecf4);
-  font-family: var(--font-body, inherit);
-}
-
-#help-panel p {
+   front door's z-index, so MORE ▸ HOW TO PLAY can open this exact dialog on
+   top of the panel that offered it. The box is `.panel-sheet` since
+   2026-08-25; what stays here is the prose. */
+#help-panel p,
+#settings-panel p {
   margin: 0 0 10px;
   line-height: 1.5;
   color: var(--ink-dim, #c3c9d6);
 }
 
 /* Section headings: the label voice the stats row already speaks. */
-#help-panel .help-title {
+#help-panel .help-title,
+#settings-panel .help-title {
   margin: 16px 0 6px;
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
   font-size: 0.625rem;
@@ -474,15 +527,9 @@ button.fame-run[aria-expanded='true'] {
   color: var(--ink, #e8ecf4);
 }
 
-#help-panel .help-title:first-child {
+#help-panel .help-title:first-child,
+#settings-panel .help-title:first-child {
   margin-top: 0;
-}
-
-/* The switchboard under the manual: one row per registered flag. */
-#help-meta {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--panel-edge, #3a4150);
 }
 
 .flag {
@@ -674,6 +721,19 @@ button {
   cursor: pointer;
 }
 
+/* Opacity may say DISABLED. It may not make reading text quieter (2026-08-25).
+
+   A control that is merely secondary used to be faded — 0.55 on the unselected
+   tabs and chips, 0.6 on the purse fold, 0.65 on the reset, 0.7 on the folded
+   arithmetic — and every one of those multiplied a colour that already had a
+   contrast budget spent on it. Against a panel, --ink-dim at 0.55 lands at
+   3.12:1 on torchlit and 2.71:1 on daylight, where the floor for text is 4.5.
+   That is most of what "the bottom of the screen is barely there" was.
+
+   Quiet is a voice, not a veil. Below, a secondary control says so with
+   --ink-faint and its border, at full opacity, and clears the bar in every
+   direction. This rule keeps its opacity because unavailable IS the meaning —
+   nobody has to read a button they cannot press. */
 button:disabled {
   opacity: 0.35;
   cursor: default;
@@ -730,7 +790,12 @@ button.quiet {
   color: var(--ink, #e8ecf4);
   font-size: 0.625rem;
   line-height: 1.2;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 65%);
+  /* The board's halo, in DOM (2026-08-25). This was a hand-typed black shadow,
+     which is the same "light on dark, obviously" assumption the tile numbers on
+     the canvas were making — and the card is the same problem: one ink over four
+     terrain fills. `--card-text-shadow` is built from the theme's own `ink.halo`
+     so a pale direction gets a pale one. */
+  text-shadow: var(--card-text-shadow, 0 1px 2px rgb(0 0 0 / 65%));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1196,6 +1261,21 @@ button.quiet {
   justify-content: center;
 }
 
+/* APPEARANCE (2026-08-25): the one row in SETTINGS a player comes looking for,
+   so it sits at the top of the panel and is not folded into anything. Four
+   swatches on a wrapping row, the same control the dev picker uses — the
+   difference is who it is for, not what it looks like. */
+#appearance {
+  margin: 0 0 18px;
+}
+
+#appearance-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 6px;
+}
+
 .swatch {
   /* The picker row wraps freely, so these grow to the 44px floor outright. */
   min-height: 44px;
@@ -1223,14 +1303,17 @@ button.quiet {
    voice, wearing the accent because it is the one thing here you can act on.
    Fixed on body since 2026-08-20: it used to render inside the inert
    #game-shell, untappable exactly when it most often fires — while the
-   front door is up. Above the door's z-index 3 and the panels' 4. */
+   front door is up. Layer 9, above every panel (see "the layers" at the top
+   of this file): it was pinned at 5 when 5 was above everything, and the
+   2026-08-25 panels would otherwise have buried the one tap that matters
+   most at the moment it fires. */
 #update-note,
 #storage-note {
   position: fixed;
   left: 12px;
   right: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom));
-  z-index: 5;
+  z-index: 9;
 }
 
 /* A ROW since the fresh-eyes pass (2026-08-20): the note parks over the
@@ -1279,7 +1362,7 @@ button.quiet {
   position: fixed;
   left: 12px;
   right: 12px;
-  z-index: 5;
+  z-index: 9;
 }
 
 /* The install nudge (2026-08-20): the end screen's quietest line, once
@@ -1318,7 +1401,7 @@ button.quiet {
 /* A real link, not a JS action — the gallery, from SETTINGS. Same 44px
    floor as every control, styled as a link rather than a button because it
    is one. */
-#help-meta a {
+#settings-panel a {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -1495,7 +1578,7 @@ button.quiet {
     animation: surface-in 160ms ease-out;
   }
 
-  #help-panel {
+  .panel-sheet {
     animation: event-card-in 180ms ease-out;
   }
 
@@ -1551,9 +1634,13 @@ button.quiet {
 }
 
 /* A payout that buys nothing looks like it. Still pressable — the rules do
-   not forbid it — but never again mistakable for the live option. */
+   not forbid it — but never again mistakable for the live option.
+
+   The dashed border was always the real signal; the 0.45 beside it (2026-08-25)
+   was doing the same job at 2.6:1, and this is a button whose LABEL is how you
+   decide it buys nothing. Pressable means readable. */
 button.spare {
-  opacity: 0.45;
+  color: var(--ink-faint, #767d8d);
   border-style: dashed;
 }
 
@@ -1583,9 +1670,8 @@ button.spare {
 
 .shop-note {
   grid-column: 1;
-  color: var(--ink-dim, #c3c9d6);
+  color: var(--ink-faint, #767d8d);
   font-size: 0.85em;
-  opacity: 0.75;
 }
 
 .shop-row button.shop-buy {
@@ -1663,14 +1749,13 @@ button.help-tab {
   min-height: 44px;
   padding: 0 6px;
   font-size: 0.6875rem;
-  opacity: 0.55;
+  color: var(--ink-faint, #767d8d);
 }
 
 /* The tab you are reading, in the direction's one signature colour. */
 button.help-tab[data-on='true'] {
   border-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
-  opacity: 1;
 }
 
 /* The arithmetic, folded away. Short by default, complete on demand — the
@@ -1689,14 +1774,12 @@ button.help-tab[data-on='true'] {
   font-size: 0.5625rem;
   letter-spacing: var(--label-tracking, 0.08em);
   cursor: pointer;
-  opacity: 0.7;
 }
 
 #help-panel .help-more[open] > summary {
   margin-bottom: 8px;
   border-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
-  opacity: 1;
 }
 
 /* Folded numbers read as a footnote to the lines above them, not as more
@@ -1774,14 +1857,13 @@ button.help-tab[data-on='true'] {
   min-height: 38px;
   flex: 1 1 auto;
   font-size: 0.84em;
-  opacity: 0.6;
+  color: var(--ink-faint, #767d8d);
 }
 
 /* Affordable: the fold advertises itself at the moment it can be used. */
 #purse-toggle.live {
   border-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
-  opacity: 1;
 }
 
 #spends {
@@ -1872,7 +1954,16 @@ button.help-tab[data-on='true'] {
    itself does not move — torchlit's values are Gate E's chosen direction and
    are pinned by the theme tests — so for the players who asked their OS for
    more contrast, the faintest TEXT is re-pointed at the dim ink, which
-   passes. Decorative faints (the arc chart's baseline) are left alone. */
+   passes. Decorative faints (the arc chart's baseline) are left alone.
+
+   SECOND now, not only (2026-08-25). This block was the whole of the game's
+   answer to "more contrast" and it could only ever reach the DOM: the canvas
+   is where the board is, and none of the tile numbers, strokes, fog or torch
+   falloff heard it. A phone asking for more contrast now opens `torchlit-bright`
+   outright — see `pickForScheme` — which moves the palette, the light floor
+   and the vignette together. This stays because AUTO is not the only setting:
+   somebody who has explicitly chosen TORCHLIT is asking for the atmosphere and
+   should still get the quiet text lifted. */
 @media (prefers-contrast: more) {
   .stat-label,
   .flag-note,
@@ -1933,8 +2024,9 @@ button:not(:disabled):active {
     transform: translateY(-2px);
   }
 
-  /* The manual and the end screen arrive the way the toast does. */
-  #help-panel:not([hidden]) {
+  /* Every panel that covers the door, and the end screen, arrive the way
+     the toast does. */
+  .panel-sheet:not([hidden]) {
     animation: toast-in 160ms ease-out;
   }
 
@@ -1954,12 +2046,12 @@ button:not(:disabled):active {
   }
 }
 
-/* Placement, not just motion: RESET ALL is the one destructive control on
-   the door, and it sat flush in the same stack as BEGIN and HOW TO PLAY —
-   one mis-tap from the game's friendliest buttons. It steps back and away. */
-#front-door-reset {
+/* Placement, not just motion: RESET ALL is the one destructive control in
+   the game, and it used to sit flush in the same stack as BEGIN and HOW TO
+   PLAY — one mis-tap from the game's friendliest buttons. Since 2026-08-25
+   it is not on the door at all; it steps back and away inside MORE. */
+#more-reset {
   margin-top: 20px;
-  opacity: 0.65;
 }
 
 /* ------------------------------------------------- other shapes of screen
@@ -1977,7 +2069,7 @@ button:not(:disabled):active {
   #app,
   #front-door,
   #help-panel,
-  #fame-panel {
+  .panel-sheet {
     max-width: 480px;
     margin-inline: auto;
   }

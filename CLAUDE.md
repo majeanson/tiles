@@ -12,8 +12,15 @@ region 3. Mine it for good ideas; do not implement it.
 
 Hard rules:
 
-- **No UI/UX or art direction until gates A–D pass** (`LOG.md`). Layout and
-  structure are fine; palette, type and texture are not.
+- **Art direction is decided, and the palette answers to tests.** Gate E opened
+  2026-08-15 and closed on torchlit 2026-08-20 (`LOG.md`), so this line no
+  longer says "no art direction until A–D pass" — it says what replaced it.
+  Every colour lives in `src/theme/` as data; `theme.test.ts` holds the
+  greyscale ladder and `contrast.test.ts` holds the reading budget (4.5:1 for
+  text, 3:1 for a mark), over **every** direction in the registry. **Do not
+  relax a threshold to make a palette pass — darken something.** A new
+  direction is a new file plus one line in `theme/index.ts`; it earns its place
+  by passing, not by being liked.
 - **The engine is pure.** No DOM, no `Math.random`, no `Date`, no async, no
   mutation. ESLint enforces all four — see `eslint.config.js`.
 - **Every balance number lives in `src/content/`.** A number that affects

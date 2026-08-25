@@ -2,8 +2,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import sharp from 'sharp';
 import { rngNext, stream, type RngStream } from '../src/engine/rng';
+import { DAYLIGHT } from '../src/theme/themes/daylight';
 import { TORCHLIT } from '../src/theme/themes/torchlit';
-import { hex, luma, type Rgb, type Surface } from '../src/theme/tokens';
+import { TORCHLIT_BRIGHT } from '../src/theme/themes/torchlit-bright';
+import { hex, isLight, luma, type Rgb, type Surface, type Theme } from '../src/theme/tokens';
 
 /**
  * Bake torchlit's terrain PNGs: the eight wired slots WORKPLAN Stage 3 asks
@@ -37,11 +39,27 @@ import { hex, luma, type Rgb, type Surface } from '../src/theme/tokens';
  * is optional). See `public/assets/README.md` and `LOG.md`.
  */
 
-const outDir = fileURLToPath(new URL('../public/assets/torchlit/', import.meta.url));
-mkdirSync(outDir, { recursive: true });
-const at = (name: string): string => `${outDir}${name}`;
+/*
+ * EVERY direction, not just torchlit (2026-08-25).
+ *
+ * This script always read colour off a theme object rather than a hand-copied
+ * palette — that was the point of it — but it read exactly one, so the two
+ * directions added for contrast would have run on the procedural floor while
+ * torchlit wore baked art. That is a supported state (`assets.ts`: missing files
+ * are the normal case) and it is still the wrong one here, because the whole
+ * reason those directions exist is that somebody could not read the board, and
+ * shipping them the plainer half of the renderer is a strange way to help.
+ *
+ * The drawing is unchanged and shared: moss tufts, dry grass, ember glints, ash
+ * pits, tide ripples. Only the colours differ, which is exactly what a variant
+ * IS. The placeholder is skipped — it is the control, it has no art slots, and
+ * baking it would give the greyscale test's reference a coat of paint.
+ */
+const THEMES_TO_BAKE: readonly Theme[] = [TORCHLIT, TORCHLIT_BRIGHT, DAYLIGHT];
 
-const T = TORCHLIT;
+let T: Theme = TORCHLIT;
+let outDir = '';
+const at = (name: string): string => `${outDir}${name}`;
 
 // ---------------------------------------------------------------- geometry
 
@@ -107,13 +125,24 @@ function fillRect(surface: Surface, w = TW, h = TH): string {
   );
 }
 
-/** The depth pass every slot gets — see `render/bake.ts#paintDepth`'s own doc. */
+/**
+ * The depth pass every slot gets — see `render/bake.ts#paintDepth`'s own doc.
+ *
+ * Reads the theme's own `sheen`/`shade` and its polarity since 2026-08-25,
+ * exactly as the live baker does. The two numbers were hand-typed here and
+ * hand-typed there, a hair apart (0.06/0.1 against 0.05/0.08) — close enough
+ * that nobody noticed and far enough that a baked tile and a procedural one
+ * were never quite the same material.
+ */
 function depthRect(w = TW, h = TH): string {
+  const light = isLight(T);
+  const stop = (c: string, o: number): string =>
+    `<stop offset="${light ? 1 : 0}" stop-color="${c}" stop-opacity="${o}"/>`;
   return (
     `<linearGradient id="depth" x1="0" y1="0" x2="0" y2="1">` +
-    `<stop offset="0" stop-color="#ffffff" stop-opacity="0.06"/>` +
+    stop('#ffffff', T.board.sheen) +
     `<stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>` +
-    `<stop offset="1" stop-color="#000000" stop-opacity="0.1"/>` +
+    `<stop offset="${light ? 0 : 1}" stop-color="#000000" stop-opacity="${T.board.shade}"/>` +
     `</linearGradient>` +
     `<rect width="${w}" height="${h}" fill="url(#depth)"/>`
   );
@@ -492,64 +521,71 @@ function popSvg(): string {
 
 type Slot = { readonly id: string; readonly svg: string; readonly terrain: boolean };
 
-const SLOTS: readonly Slot[] = [
-  { id: 'terrain.green', svg: greenSvg(), terrain: true },
-  { id: 'terrain.yellow', svg: yellowSvg(), terrain: true },
-  { id: 'terrain.red', svg: redSvg(), terrain: true },
-  { id: 'terrain.blue', svg: blueSvg(), terrain: true },
-  { id: 'terrain.wall', svg: wallSvg(), terrain: false },
-  { id: 'terrain.stone', svg: stoneSvg(), terrain: false },
-  { id: 'terrain.ghost', svg: ghostSvg(), terrain: false },
-  { id: 'fx.pop', svg: popSvg(), terrain: false },
-];
+for (const theme of THEMES_TO_BAKE) {
+  T = theme;
+  outDir = fileURLToPath(new URL(`../public/assets/${theme.id}/`, import.meta.url));
+  mkdirSync(outDir, { recursive: true });
+  console.log(`\n--- ${theme.id} ---`);
 
-const terrainLuma: Record<string, number> = {};
+  const SLOTS: readonly Slot[] = [
+    { id: 'terrain.green', svg: greenSvg(), terrain: true },
+    { id: 'terrain.yellow', svg: yellowSvg(), terrain: true },
+    { id: 'terrain.red', svg: redSvg(), terrain: true },
+    { id: 'terrain.blue', svg: blueSvg(), terrain: true },
+    { id: 'terrain.wall', svg: wallSvg(), terrain: false },
+    { id: 'terrain.stone', svg: stoneSvg(), terrain: false },
+    { id: 'terrain.ghost', svg: ghostSvg(), terrain: false },
+    { id: 'fx.pop', svg: popSvg(), terrain: false },
+  ];
 
-for (const slot of SLOTS) {
-  const file = at(`${slot.id}.png`);
-  const png = await sharp(Buffer.from(slot.svg)).png({ compressionLevel: 9 }).toBuffer();
-  writeFileSync(file, png);
-  console.log(`${slot.id}.png written`);
+  const terrainLuma: Record<string, number> = {};
 
-  if (slot.terrain) {
-    // Composited over the board's own background, the same near-black every
-    // in-play tile actually sits on — a mean over the transparent corners
-    // outside the hex clip would understate every colour by the same
-    // amount and could still mislead the ordering check below.
-    const bg = {
-      r: (T.board.background >> 16) & 0xff,
-      g: (T.board.background >> 8) & 0xff,
-      b: T.board.background & 0xff,
-    };
-    const stats = await sharp(png).flatten({ background: bg }).stats();
-    const [r, g, b] = stats.channels;
-    const mean: Rgb =
-      (Math.round(r!.mean) << 16) | (Math.round(g!.mean) << 8) | Math.round(b!.mean);
-    terrainLuma[slot.id] = luma(mean);
+  for (const slot of SLOTS) {
+    const file = at(`${slot.id}.png`);
+    const png = await sharp(Buffer.from(slot.svg)).png({ compressionLevel: 9 }).toBuffer();
+    writeFileSync(file, png);
+    console.log(`${slot.id}.png written`);
+
+    if (slot.terrain) {
+      // Composited over the board's own background, the same near-black every
+      // in-play tile actually sits on — a mean over the transparent corners
+      // outside the hex clip would understate every colour by the same
+      // amount and could still mislead the ordering check below.
+      const bg = {
+        r: (T.board.background >> 16) & 0xff,
+        g: (T.board.background >> 8) & 0xff,
+        b: T.board.background & 0xff,
+      };
+      const stats = await sharp(png).flatten({ background: bg }).stats();
+      const [r, g, b] = stats.channels;
+      const mean: Rgb =
+        (Math.round(r!.mean) << 16) | (Math.round(g!.mean) << 8) | Math.round(b!.mean);
+      terrainLuma[slot.id] = luma(mean);
+    }
   }
+
+  // The guardrail: the baked art must not invert the ordering the L* test
+  // enforces on the raw tokens (theme.test.ts, "separates its four terrains
+  // by value, not by hue"). Derived from the theme's own fills rather than
+  // hard-coded, so a future palette change re-checks itself.
+  const tokenOrder = (['green', 'yellow', 'red', 'blue'] as const)
+    .map((c) => {
+      const s = T.terrain[c];
+      const v = s.fillTo === null ? luma(s.fill) : (luma(s.fill) + luma(s.fillTo)) / 2;
+      return [`terrain.${c}`, v] as const;
+    })
+    .sort((a, b) => a[1] - b[1])
+    .map(([id]) => id);
+
+  const bakedOrder = Object.entries(terrainLuma)
+    .sort((a, b) => a[1] - b[1])
+    .map(([id]) => id);
+
+  if (tokenOrder.join(',') !== bakedOrder.join(',')) {
+    throw new Error(
+      `baked terrain PNGs inverted the greyscale ordering the L* test protects: ` +
+        `tokens say ${tokenOrder.join(' < ')}, art renders ${bakedOrder.join(' < ')}`,
+    );
+  }
+  console.log(`greyscale ordering holds: ${bakedOrder.join(' < ')}`);
 }
-
-// The guardrail: the baked art must not invert the ordering the L* test
-// enforces on the raw tokens (theme.test.ts, "separates its four terrains
-// by value, not by hue"). Derived from the theme's own fills rather than
-// hard-coded, so a future palette change re-checks itself.
-const tokenOrder = (['green', 'yellow', 'red', 'blue'] as const)
-  .map((c) => {
-    const s = T.terrain[c];
-    const v = s.fillTo === null ? luma(s.fill) : (luma(s.fill) + luma(s.fillTo)) / 2;
-    return [`terrain.${c}`, v] as const;
-  })
-  .sort((a, b) => a[1] - b[1])
-  .map(([id]) => id);
-
-const bakedOrder = Object.entries(terrainLuma)
-  .sort((a, b) => a[1] - b[1])
-  .map(([id]) => id);
-
-if (tokenOrder.join(',') !== bakedOrder.join(',')) {
-  throw new Error(
-    `baked terrain PNGs inverted the greyscale ordering the L* test protects: ` +
-      `tokens say ${tokenOrder.join(' < ')}, art renders ${bakedOrder.join(' < ')}`,
-  );
-}
-console.log(`greyscale ordering holds: ${bakedOrder.join(' < ')}`);

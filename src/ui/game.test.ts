@@ -125,7 +125,6 @@ function build(
       <div id="help-panel" hidden>
         <div id="help-manual"></div>
         <div id="help-menu"></div>
-        <div id="help-meta"></div>
       </div>
     </div>
     <p id="hint" hidden></p>
@@ -1188,15 +1187,15 @@ describe('a stranger arriving', () => {
     const ctx = build();
     ctx.game.start();
 
-    const frontDoorHelp = document.createElement('button');
-    document.body.appendChild(frontDoorHelp);
+    const moreHelp = document.createElement('button');
+    document.body.appendChild(moreHelp);
 
-    ctx.game.openHelp(frontDoorHelp);
+    ctx.game.openHelp(moreHelp);
     expect(ctx.el.helpPanel.hidden).toBe(false);
 
     ctx.el.helpPanel.click();
     expect(ctx.el.helpPanel.hidden).toBe(true);
-    expect(document.activeElement).toBe(frontDoorHelp);
+    expect(document.activeElement).toBe(moreHelp);
   });
 
   it('offers a share only when the shell can share, and sends the run', () => {

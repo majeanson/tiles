@@ -1,5 +1,5 @@
 import { COLOURS } from '@content/tuning';
-import { hex, type Theme } from './tokens';
+import { hex, rgba, type Theme } from './tokens';
 
 /**
  * A theme, as CSS custom properties.
@@ -32,6 +32,23 @@ export function themeCssVars(theme: Theme): CssVars {
     '--font-label': theme.type.label,
     '--font-body': theme.type.body,
     '--label-tracking': theme.type.labelTracking,
+
+    /*
+     * The draft card's own halo (2026-08-25).
+     *
+     * `style.css` had `text-shadow: 0 1px 2px rgb(0 0 0 / 65%)` on `.tile`,
+     * hand-typed and therefore assuming light-on-dark. It is the SAME problem
+     * the board's tile numbers had and it wants the same answer, because a
+     * draft card is a board tile that happens to be DOM: a word set on one of
+     * four terrain fills, needing to stay readable on all of them.
+     *
+     * So it is built from `ink.halo` rather than from black — one concept,
+     * two media, and a light direction gets a pale halo without `style.css`
+     * learning that light directions exist. Two shadows because CSS has no
+     * text outline worth using: a tight one for the letterform's edge and a
+     * soft one for the ground under it.
+     */
+    '--card-text-shadow': `0 0 3px ${rgba(theme.ink.halo, 0.9)}, 0 1px 2px ${rgba(theme.ink.halo, 0.7)}`,
   };
 
   // The draft cards are DOM but they stand for board tiles, so they take the same

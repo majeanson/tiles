@@ -1,5 +1,5 @@
 import { Texture } from 'pixi.js';
-import type { AssetId, Orientation, Pattern, Surface } from '@theme/tokens';
+import type { AssetId, Depth, Orientation, Pattern, Surface } from '@theme/tokens';
 import { bakeSurface } from './bake';
 
 /**
@@ -95,6 +95,18 @@ export class SurfaceTextures {
   });
 
   /**
+   * How this direction lights a cell (2026-08-25). Held once rather than passed
+   * per `get`: a cache instance belongs to one renderer, a renderer belongs to
+   * one theme, and a theme has exactly one answer — so `depth` cannot vary
+   * across the keys in this map and has no business being part of them.
+   */
+  readonly #depth: Depth;
+
+  constructor(depth: Depth) {
+    this.#depth = depth;
+  }
+
+  /**
    * A hex of `surface`, sized for a cell of circumradius `size` CSS pixels —
    * or, with `ghost` (2026-08-20), that same hex with a native field's
    * terrain PNG ghosted over it, from `theme/tokens.ts`'s `fieldGround`.
@@ -116,7 +128,7 @@ export class SurfaceTextures {
     const px = Math.max(4, Math.round(size));
     const key = `${orientation}:${px}:${surfaceKey(surface)}:${ghostKey(ghost)}`;
     return this.#cache.get(key, () => {
-      const canvas = bakeSurface(surface, px, orientation, ghost);
+      const canvas = bakeSurface(surface, px, orientation, this.#depth, ghost);
       return canvas === null ? null : Texture.from(canvas);
     });
   }

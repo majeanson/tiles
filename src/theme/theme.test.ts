@@ -3,7 +3,7 @@ import { COLOURS } from '@content/tuning';
 import { decodeManifest, manifestHas } from './assets';
 import { themeCssVars } from './css';
 import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from './index';
-import { fieldDots, luma, MIN_FIELD_LIFT, type Surface, type Theme } from './tokens';
+import { clearance, fieldDots, luma, MIN_FIELD_LIFT, type Surface, type Theme } from './tokens';
 
 /**
  * The art direction, checked without a screen.
@@ -157,16 +157,24 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
    * board is spent" and "this board still pays".
    */
   it('keeps every colour of its wall clear of the fog', () => {
-    const bg = luma(theme.board.background);
-    const paints: [string, number][] = [['fill', luma(theme.wall.fill)]];
-    if (theme.wall.fillTo !== null) paints.push(['fillTo', luma(theme.wall.fillTo)]);
+    // DISTANCE from the background, not height above it (2026-08-25). The two
+    // are the same sentence on a dark board and opposite ones on a pale board,
+    // where blocked ground is the DARKEST thing on screen: `daylight`'s wall
+    // scored -0.578 against a floor of 0.045 and failed a rule it passes by
+    // more than any dark direction does. See `clearance`.
+    const bg = theme.board.background;
+    const paints: [string, number][] = [['fill', clearance(theme.wall.fill, bg)]];
+    if (theme.wall.fillTo !== null) paints.push(['fillTo', clearance(theme.wall.fillTo, bg)]);
     if (theme.wall.pattern.kind === 'bands') {
-      paints.push(['band a', luma(theme.wall.pattern.a)], ['band b', luma(theme.wall.pattern.b)]);
+      paints.push(
+        ['band a', clearance(theme.wall.pattern.a, bg)],
+        ['band b', clearance(theme.wall.pattern.b, bg)],
+      );
     }
-    for (const [name, paint] of paints) {
+    for (const [name, gap] of paints) {
       expect(
-        paint - bg,
-        `the wall's ${name} sits ${(paint - bg).toFixed(3)} above the background; ` +
+        gap,
+        `the wall's ${name} sits ${gap.toFixed(3)} from the background; ` +
           `${MIN_WALL_CLEARANCE} is the floor that keeps blocked ground from reading as fog`,
       ).toBeGreaterThanOrEqual(MIN_WALL_CLEARANCE);
     }
@@ -186,9 +194,14 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
     // Ripe is the entire harvest decision. If it is not the loudest edge on the
     // board the player is guessing, and the gate B question stops meaning
     // anything.
+    // Louder means FURTHER FROM THE BOARD, not lighter (2026-08-25). On a pale
+    // direction the loudest edge is the darkest one — `daylight`'s ripe edge is
+    // very nearly black — and the old comparison ranked the whole ladder
+    // upside down. Same rule, stated in the terms it always meant.
+    const bg = theme.board.background;
     expect(theme.board.ripeEdgeWidth).toBeGreaterThan(theme.board.edgeWidth);
-    expect(luma(theme.board.ripeEdge)).toBeGreaterThan(luma(theme.board.edge));
-    expect(luma(theme.board.legalEdge)).toBeGreaterThan(luma(theme.board.edge));
+    expect(clearance(theme.board.ripeEdge, bg)).toBeGreaterThan(clearance(theme.board.edge, bg));
+    expect(clearance(theme.board.legalEdge, bg)).toBeGreaterThan(clearance(theme.board.edge, bg));
   });
 
   // Home (2026-08-19): a quiet PERMANENT marker, not a live one — it must
@@ -289,12 +302,15 @@ describe('the asset manifest', () => {
  * their legibility was whatever that colour's contrast happened to be.
  */
 describe.each(THEMES.map((t) => [t.name, t] as const))('%s field dots', (_name, theme: Theme) => {
-  const ground = luma(theme.empty.fill);
-
   it('reads every colour’s field at the same strength, against its own ground', () => {
     for (const colour of COLOURS) {
       const { ink, alpha } = fieldDots(theme, colour);
-      const lift = alpha * (luma(ink) - ground);
+      // Distance from the ground, not height above it (2026-08-25) — the same
+      // correction the wall clearance needed. On a pale board a field is
+      // DARKER than the ground it marks, and the signed form scored
+      // `daylight` at -0.250 against a floor of +0.25: a perfect field, read
+      // upside down.
+      const lift = alpha * clearance(ink, theme.empty.fill);
       expect(
         lift,
         `${colour} field dots lift ${lift.toFixed(3)} over the ground; ` +

@@ -22,8 +22,9 @@ rehearsal saw: HOW TO PLAY opens the tutorial again, the GLOW card waits for
 RIPE, SACRIFICE waits until relics have a name, NEW RUN sits under the score
 instead of two screens below it, and the first pop can no longer score zero.
 
-1. SETTINGS ▸ DEVELOPER ▸ **RESET TEACHING** (it forgets only the
-   lessons; your game survives).
+1. `?` ▸ MENU ▸ SETTINGS ▸ DEVELOPER ▸ **RESET TEACHING** (it forgets only
+   the lessons; your game survives). SETTINGS is its own screen since
+   2026-08-25 — reachable there, or from MORE on the front door.
 2. **BEGIN DAILY.** Play it cold. This is the closest thing to a
    stranger's run one that exists on your phone: plain economy, full fog,
    first-contact card and all.

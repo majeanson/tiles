@@ -59,14 +59,62 @@ export function mix(a: Rgb, b: Rgb, t: number): Rgb {
  * way one number can be a bar for four directions that share no palette.
  */
 export function luma(c: Rgb): number {
+  const y = luminance(c);
+  const f = y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116;
+  return (116 * f - 16) / 100;
+}
+
+/**
+ * Rec. 709 relative luminance, 0..1 — the linear-light half of `luma`.
+ *
+ * Extracted rather than duplicated (2026-08-25). It was computed inside `luma`
+ * and thrown away; `contrastRatio` below needs exactly this number and no other,
+ * because WCAG's ratio is defined on linear light rather than on L*. Two
+ * functions, one gamma decode, no chance of the two disagreeing.
+ */
+export function luminance(c: Rgb): number {
   const srgb = [(c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff].map((v) => {
     const s = v / 255;
     return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
   }) as [number, number, number];
 
-  const y = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-  const f = y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116;
-  return (116 * f - 16) / 100;
+  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+}
+
+/**
+ * WCAG contrast ratio, 1..21.
+ *
+ * `luma` answers "are these two greys tellable apart" — the greyscale question
+ * every direction is graded on. This answers a different one: "can a player READ
+ * this thing against that thing", and it has an agreed-on bar (4.5 for text, 3
+ * for a mark) that is not a number this project gets to invent.
+ *
+ * Added 2026-08-25, when a phone screenshot showed a tile's own number at
+ * **1.46:1** against EMBER — pale gold on pale sand. Nothing in the repo could
+ * have failed for that: `theme.test.ts` asserted crude L* deltas for `ink` and
+ * `inkDim` against the background and nothing at all about ink against GROUND.
+ * `contrast.test.ts` is what this function exists for.
+ */
+export function contrastRatio(a: Rgb, b: Rgb): number {
+  const x = luminance(a);
+  const y = luminance(b);
+  const [hi, lo] = x > y ? [x, y] : [y, x];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * How far a colour sits from the ground, in L*, **whichever way up the theme is**.
+ *
+ * The distinction this file was missing (2026-08-25). Several rules were written
+ * as "lighter than the background" — the wall must clear the fog, ripe must be
+ * louder than legal — and on a dark board lighter and louder are the same word,
+ * so the sign went unnoticed. On a pale board they are opposites: a wall that
+ * blocks is DARKER than the ground, and the loudest edge on the board is the
+ * darkest one. Distance is what those rules always meant; `luma(a) - luma(b)` is
+ * what they happened to say.
+ */
+export function clearance(c: Rgb, ground: Rgb): number {
+  return Math.abs(luma(c) - luma(ground));
 }
 
 /**
@@ -252,6 +300,29 @@ export type Ink = {
   readonly panelEdge: Rgb;
   /** The border of the card you have picked. */
   readonly panelEdgeActive: Rgb;
+  /**
+   * What a board label is outlined in (2026-08-25).
+   *
+   * A tile's number is drawn in ONE ink over eight different grounds, each with
+   * a gradient, and no single colour clears 4.5:1 against all of them — a light
+   * ink dies on EMBER and TIDE, a dark one dies on MOSS and STONE, and ASH sits
+   * squarely in the middle where neither works at both ends of its own fill.
+   *
+   * So the ink does not work alone. It works as a PAIR with this: where the ink
+   * vanishes into the ground the halo carries the letterform, and where the halo
+   * vanishes the ink does. `contrast.test.ts` states the rule as exactly that —
+   * `max(contrast(ink, ground), contrast(halo, ground)) >= 4.5` — over every
+   * surface and both ends of every gradient.
+   *
+   * The board's own background is the natural answer for both poles of theme:
+   * it is already the furthest thing from whatever a direction paints on top of
+   * it. The rare-tile star has been doing this since 2026-08-19 ("a small disc
+   * of the board's own dark so the accent reads on pale terrain"); the number
+   * standing next to it never was.
+   */
+  readonly halo: Rgb;
+  /** Halo thickness, as a fraction of the label's font size. */
+  readonly haloWidth: number;
 };
 
 export type Type = {
@@ -311,6 +382,22 @@ export type Board = {
    * without inventing a new colour for directions that never asked for one.
    */
   readonly home: { readonly ring: Rgb; readonly ringWidth: number };
+  /**
+   * The depth pass every baked surface wears (2026-08-25, promoted out of
+   * `render/bake.ts` where both numbers were hand-typed).
+   *
+   * `bake.ts`'s `paintDepth` runs a light wash down the top of every hex and a
+   * dark one along the bottom, so a cell reads as a physical thing in a lit room
+   * rather than a flat swatch. Both were fixed constants, which is fine while
+   * every direction is dark and wrong the moment one is not: a black wash at the
+   * foot of a pale hex reads as grime, not as shade.
+   *
+   * Two alphas, so a direction states how hard its own light falls. `isLight`
+   * decides which END of the hex gets which — that is geometry, not taste, and
+   * belongs in the baker.
+   */
+  readonly sheen: number;
+  readonly shade: number;
 };
 
 /**
@@ -465,6 +552,41 @@ export type Fog = {
 };
 
 /**
+ * Which way up this direction is (2026-08-25).
+ *
+ * DERIVED, not a token, and deliberately: it is a fact about the palette rather
+ * than a claim a theme file gets to make, so it can never disagree with the
+ * colours underneath it. A direction that paints a pale background IS a light
+ * direction; there is nothing to keep in sync and nothing to get wrong.
+ *
+ * Used only where polarity genuinely changes the ANSWER — which way `fieldDots`
+ * brightens, which end of a hex `bake.ts` shades, which way a card's text shadow
+ * falls. Everywhere else the right fix was `clearance`, not a branch.
+ */
+export function isLight(theme: Theme): boolean {
+  return luma(theme.ink.bg) > 0.5;
+}
+
+/**
+ * Everything `bake.ts` needs to know about a direction's light, and nothing else.
+ *
+ * The baker is deliberately Pixi-free and theme-free — it takes a described
+ * surface and paints exactly that — so handing it a whole `Theme` to read two
+ * numbers off would be the wrong shape. Three values, derived in one place, so
+ * the board and the gallery cannot disagree about which way up a hex is lit.
+ */
+export type Depth = {
+  readonly sheen: number;
+  readonly shade: number;
+  /** Which end of the hex the highlight goes on. See `isLight`. */
+  readonly light: boolean;
+};
+
+export function depthOf(theme: Theme): Depth {
+  return { sheen: theme.board.sheen, shade: theme.board.shade, light: isLight(theme) };
+}
+
+/**
  * How much lighter the field dots must READ than the ground they sit on, in
  * L* after the alpha is applied. This is the number Marc's report is about:
  * the dots were drawn in each colour's own fill at a flat 0.22 alpha, so
@@ -501,6 +623,22 @@ function vivid(c: Rgb): Rgb {
   const peak = Math.max(...channels, 1);
   const scaled = channels.map((v) => Math.min(255, Math.round((v * 255) / peak)));
   return ((scaled[0] ?? 0) << 16) | ((scaled[1] ?? 0) << 8) | (scaled[2] ?? 0);
+}
+
+/**
+ * `vivid`'s mirror: the same colour at full strength, reached by going DOWN.
+ *
+ * `vivid` maxes the brightest channel, which raises lightness — the right first
+ * move on a dark board and precisely the wrong one on a pale board, where it
+ * walks every field toward the ground it is supposed to separate from. This
+ * zeroes the DIMMEST channel instead: same hue, same gain in saturation, the
+ * lightness spent rather than bought.
+ *
+ * Written as `vivid` in the complement so there is one saturation rule in this
+ * file rather than two that could drift apart.
+ */
+function deep(c: Rgb): Rgb {
+  return 0xffffff & ~vivid(0xffffff & ~c);
 }
 
 /**
@@ -568,17 +706,30 @@ export const LANDMARK_GLYPH: Readonly<
 export const BAND_LIFT = 0.06;
 
 export function fieldDots(theme: Theme, colour: Colour): { ink: Rgb; alpha: number } {
-  const ground = luma(theme.empty.fill);
+  // Away from the ground, not toward white (2026-08-25). On a dark board those
+  // are the same direction and the loop below could say either; on a pale one
+  // they are opposites, and mixing toward white would walk every field INTO its
+  // own ground until all four were invisible at once.
+  const light = isLight(theme);
+  const away = light ? 0x000000 : 0xffffff;
 
-  // Full saturation first — hue kept, lightness bought, the four kept apart.
-  // Only if that still is not enough does white get involved, and by then the
-  // colour is as vivid as it can be, so the wash is as small as possible.
-  let ink = vivid(theme.terrain[colour].fill);
-  for (let step = 0; step < 12 && luma(ink) - ground < 0.45; step++) {
-    ink = mix(ink, 0xffffff, 0.1);
+  // Full saturation first — hue kept, lightness spent or bought depending on
+  // which way this direction is up, the four kept apart. Only if that still is
+  // not enough does black or white get involved, and by then the colour is as
+  // saturated as it can be, so the wash is as small as possible.
+  let ink = light ? deep(theme.terrain[colour].fill) : vivid(theme.terrain[colour].fill);
+  // The target is `MIN_FIELD_LIFT / 0.5`, not a hand-typed 0.45 (2026-08-25).
+  // 0.5 is the alpha ceiling three lines down, so a colour that stops short of
+  // this clearance clamps there and lands UNDER the lift it was pushed toward —
+  // `lift = 0.5 * gap`, which at a gap of 0.45 is 0.225 against a floor of 0.25.
+  // Torchlit never noticed because its inks overshot the old number on the first
+  // step; a direction whose ink lands inside [0.45, 0.5) failed silently. The
+  // loop's target and the clamp are now the same number by construction.
+  for (let step = 0; step < 12 && clearance(ink, theme.empty.fill) < MIN_FIELD_LIFT / 0.5; step++) {
+    ink = mix(ink, away, 0.1);
   }
 
-  const gap = Math.max(0.001, luma(ink) - ground);
+  const gap = Math.max(0.001, clearance(ink, theme.empty.fill));
   // Floor 0.18 → 0.24 with the lift above (2026-08-21): a colour whose own
   // contrast already clears the target sits ON the floor, so leaving it
   // would have made the quietest fields the only ones that did not move.

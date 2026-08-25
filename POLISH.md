@@ -292,7 +292,10 @@ once at boot, `src/main.ts:2660`, with no `change` listener).
 
 - **`RESET ALL` is painted in the pre-JS first paint.** No `hidden` in the
   markup (`index.html:128`); JS removes it (`src/main.ts:1977-1986`). On a
-  slow first load a stranger's first screen shows a red RESET ALL.
+  slow first load a stranger's first screen shows a red RESET ALL. ✅ FIXED
+  twice over: `hidden` moved into the markup on 2026-08-20, and on 2026-08-25
+  the wipe left the front door entirely — it lives behind MORE ▸ THIS DEVICE,
+  so no first paint of any speed can show it.
 - **TITHE converts the entire purse on one tap** (`src/ui/view.ts:873-881`)
   at 15%, explained only by a `title` attribute — invisible on a phone. Its
   card fires only on a deliberate purse open and **never on a detour**, so a

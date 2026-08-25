@@ -5448,3 +5448,151 @@ two — and now sits 0.218 above it, which meant threading between ember at
 **Verified:** 648 tests, 11 e2e, typecheck / lint / format clean, build
 green, `pnpm sim` unmoved but for the one-point score floor. Every batch
 deployed and confirmed live against `version.json`.
+
+---
+
+### Session 40 — the contrast pass, and the two directions it needed
+
+**Question:** the board is hard to read on a phone. Is that taste, or is it
+measurable — and if it is measurable, why was every test green?
+
+**Measurable, and the tests were green because nothing was asking.**
+`theme.test.ts` has asked the greyscale question well since Session 2: can a
+player tell these four grounds APART. Nothing asked whether a player can READ
+what stands on top of them. Two crude L\* deltas checked `ink` and `inkDim`
+against the BACKGROUND, `inkFaint` was asserted nowhere at all, and no test
+ever compared a label with the ground it is drawn on.
+
+What that let through, in WCAG contrast ratios off the shipped tokens:
+
+|                                                | was        | now            |
+| ---------------------------------------------- | ---------- | -------------- |
+| tile number on EMBER                           | **1.46:1** | 9.56 (by halo) |
+| tile number on TIDE                            | 2.53:1     | 5.53 (by halo) |
+| tile number on ASH, bright end                 | 3.78:1     | 4.74           |
+| `danger` on a panel — the count that kills you | 4.21:1     | 4.75           |
+| `inkFaint` on remembered EMBER                 | 2.94:1     | 3.26           |
+| unselected tab / chip / purse fold             | ~2.5–3.1:1 | ≥ 4.5          |
+
+**The number was never going to work alone.** One ink is drawn over eight
+grounds, each with a gradient, and no single colour clears 4.5:1 against all of
+them: a light ink dies on the pale terrains, a dark one on the dark ones, and
+whichever you pick there is a band in the middle where neither works — ASH sits
+in it. So `Ink.halo` is the ink's other half, and the rule is stated on the
+pair: wherever the ink cannot be seen the halo can. The trick was already in the
+file — the rare-tile star has drawn on "a small disc of the board's own dark so
+the accent reads on pale terrain" since 2026-08-19. The number standing beside
+it never got it.
+
+**The torch was innocent.** The obvious suspect — a falloff that dims a tile to
+42% — turns out not to touch labels at all: the tint lands on the ground sprite
+and the label is added to the group after it, so a far number reads BETTER than a
+near one. Worth writing down, because it is the fix that was not needed.
+
+**`theme/` assumed dark, in four places.** Not a style problem — a sign error.
+"The wall must clear the fog" and "ripe must be louder than legal" were written
+as `luma(x) - luma(bg)`, which is the same sentence as distance on a dark board
+and its opposite on a pale one. `daylight`'s wall scored **-0.578** against a
+floor of 0.045 and failed a rule it passes by more than any dark direction does.
+`clearance()` is what those rules always meant. Same for `fieldDots`, which
+brightened toward white (walking a pale board's fields INTO their own ground),
+and for `bake.ts`'s depth pass, which put a black wash at the foot of every hex.
+
+**One latent bug fell out.** `fieldDots` pushed its ink until it cleared 0.45 of
+the ground, then clamped alpha at 0.5 — so a colour landing inside [0.45, 0.5)
+got `lift = 0.5 × gap < 0.25` and silently missed the floor it was aimed at.
+Torchlit's inks overshot on the first step and never noticed. The loop target is
+`MIN_FIELD_LIFT / 0.5` now, so the two cannot disagree.
+
+**Two directions, and they are not candidates.** Gate E is not re-opened.
+`torchlit-bright` is the same fiction with the value ladder stretched
+(0.203 · 0.376 · 0.543 · 0.774 against torchlit's 0.233 · 0.361 · 0.451 · 0.648),
+`light.floor` 0.42 → 0.72 and the vignette nearly off. `daylight` is the first
+pale board the game has ever had — ink on vellum, no torch, the ladder running
+the other way up — and it was authored against `contrast.test.ts` rather than
+checked after. A losing direction in the bundle is a maintenance tax; an
+accessible one is the product working for someone it did not work for.
+
+**And the switch is a setting now, not a URL.** The picker has existed since
+Session 2 behind `?ff=ui.themePicker`, because while the directions were
+candidates letting a player pick one would have been letting them decide Gate E.
+That is decided. APPEARANCE — AUTO / TORCHLIT / HIGH CONTRAST / DAYLIGHT — is
+the first row in SETTINGS, and AUTO is the new default: `pickForScheme` reads
+`prefers-color-scheme` and `prefers-contrast`, so a phone that has answered this
+question once is not asked again. The dev picker keeps its own job in the
+DEVELOPER fold, where the placeholder and the orientation flip belong.
+
+**Opacity may say DISABLED; it may not make reading text quieter.** Seven
+controls faded a colour that already had a contrast budget spent on it. Quiet is
+now `--ink-faint` and a border, at full opacity. `button:disabled` keeps its
+0.35, because unavailable IS the meaning.
+
+**Verified:** 700 tests (20 of them the new budget, run over all four
+directions), 15 e2e, typecheck / lint / format clean, build green. The terrain
+baker now bakes every direction rather than only torchlit — its greyscale
+guardrail holds for each, including daylight's inverted ordering — and it reads
+`sheen`/`shade` off the theme instead of two constants that had drifted a hair
+from the live baker's. **Not judged by looking yet: that is Marc's, on the
+phone, in portrait, against the deployed site.**
+
+---
+
+### Session 41 — the door goes lean, and settings become a place
+
+**Question (Marc):** "make sure our homepage is lean. WORLDS. DAILY. MORE (or
+similar) where we have settings, how to play, hall of fame, reset all."
+
+**The door had eleven buttons.** Not one of them was added carelessly — BEGIN,
+DAILY with its badge, BEGIN AT CAMP, three world rows, HALL OF FAME, HOW TO
+PLAY, BACK UP MY WORLDS, RESTORE A BACKUP, RESET ALL, each landing with a
+reason between 2026-08-18 and launch week. Read as a list they are all
+defensible. Read as a screen, three of them are data management and one is a
+wipe, and it is the first thing a stranger meets. The CSS had already been
+patched around it twice: the centring struts exist because a ten-button column
+clipped both ends on an iPhone SE, and RESET ALL got its own step of air
+because it sat one mis-tap from BEGIN.
+
+**It is four now, and nothing was deleted.** BEGIN, then WORLDS, DAILY, MORE.
+The three slots and BEGIN AT CAMP moved into a WORLDS panel — which finally
+has room to SAY what a world is, a sentence that lived on no screen while
+three unexplained slot buttons sat on the door. HOW TO PLAY, HALL OF FAME,
+SETTINGS and the three data controls moved behind MORE, the last three under
+their own THIS DEVICE heading. A detour's door is three buttons: BEGIN, YOUR
+WORLD, MORE. Every control is still one tap further from a thumb that was
+never reaching for it.
+
+**SETTINGS became a screen.** It was the bottom half of the `?` panel, under
+the whole manual, which is exactly why the front door could not offer it — the
+only honest wiring was "open the manual and scroll past four tabs of prose". It
+is `#settings-panel` now, opened from MORE on the door and from a button in the
+MENU tab mid-run, where every other way out of a run already lives. Its own
+header says SETTINGS, so the body stopped saying it twice.
+
+**Four hand-rolled panels became one helper, and it found a bug the unit suite
+could not see.** `panelDoor` in main.ts is the three lines of DOM either side
+of `ui/dialog.ts`; `.panel-sheet` is the box, written out twice identically
+before today and about to be twice more. Then four e2e tests failed at once:
+a panel opened from MORE arrived visible, focusable-looking, and completely
+dead to touch. `openDialog` inerts a panel's siblings — and every panel MORE
+offers is a sibling of MORE. Until MORE existed nothing on the stack had ever
+covered another panel, so `openDialog` had never had to WAKE the panel it was
+opening. It does now, and puts the inert back on close, because the panel
+underneath is still there. Two focus calls moved after their `openDialog` for
+the same reason: focus does not land on an inert element.
+
+**One predicate for "this device has something on it".** It was written twice
+— once for the wipe and the backups, once for the hall of fame — and the
+copies had drifted: the fame copy left out relics, so a device that had earned
+some and nothing else was offered a wipe and no museum. One `virginDevice` now,
+with the museum's extra condition kept at its own button where it belongs.
+
+**The layers are written down.** Panels that open over panels needed an order,
+and three files were each guessing at one. Door 3, its panels 4, what those
+open 5, SETTINGS 6, the notes 9 — the notes moved up from 5, where they had
+been "above everything" until this session made that false. A new build
+claiming the page while a panel is open is exactly when that one tap matters.
+
+**Verified:** 700 tests (one new, for the inert-wake), 15 e2e (four new: the
+door's button COUNT, the WORLDS panel, MORE on a virgin device, and SETTINGS
+from both its doors), typecheck / lint / format clean, build green. **Not
+judged by looking yet: that is Marc's, on the phone, in portrait.**

@@ -56,13 +56,34 @@ export const TORCHLIT: Theme = {
     // `ripeEdgeWidth`, and the stroke ladder in `PixiRenderer.ts` never draws
     // it over anything louder regardless.
     home: { ring: 0xe0803c, ringWidth: 0.065 },
+    // A torch throws hard light: a bright lip along the top of every cell and a
+    // deep one at its foot. These are the numbers `bake.ts` used to hold as
+    // constants for every direction; torchlit is the direction they were tuned
+    // for, so it keeps them exactly.
+    sheen: 0.05,
+    shade: 0.08,
   },
 
   ink: {
     bg: 0x0a0806,
-    ink: 0xe8d6ae,
+    // Lifted 0xe8d6ae → 0xf2e4c4 on 2026-08-25 (Marc, with a screenshot:
+    // "constrast is very bad"). The old ink cleared 4.5:1 on MOSS and STONE
+    // and failed everywhere else — ASH's bright end at 3.78:1, TIDE at 2.53,
+    // EMBER at **1.46**, which is a number you cannot read at all. The halo
+    // below is what rescues EMBER and TIDE; this lift is what lets ASH clear
+    // the bar on the ink alone rather than leaning on the outline for a
+    // ground the ink ought to manage by itself. Warmer-white rather than
+    // white: the direction's gold is the point, and 0xf2e4c4 is still gold.
+    ink: 0xf2e4c4,
     inkDim: 0xb9a480,
-    inkFaint: 0x9a8358,
+    // Lifted 0x9a8358 → 0xa28b5e (2026-08-25). Against the board it was already
+    // fine at 5.49:1; what it failed was the one place it is drawn on the BOARD
+    // rather than in the chrome — a remembered landmark's glyph, over fogged
+    // EMBER, at 2.94:1 against a floor of 3. A remembered destination is the
+    // thing a next run is oriented by, and "dim, never hidden" is the rule it
+    // was breaking. Still the quietest ink here by a wide margin; it just stops
+    // disappearing into the one ground that was pale enough to swallow it.
+    inkFaint: 0xa28b5e,
     accent: 0xc79a4b,
     // The rarities' own voices (2026-08-20, Marc): the selected ring below
     // is the SAME gold as the accent, so a rare card and a selected card
@@ -72,10 +93,23 @@ export const TORCHLIT: Theme = {
     // own muted gold, redder than the hearth ring, lighter than danger.
     magic: 0xb08fe0,
     unique: 0xf2914a,
-    danger: 0xc1362b,
+    // Raised 0xc1362b → 0xe05244 on 2026-08-25. It sat at 3.65:1 against the
+    // board — under the bar, on the ONE number in the game that kills you.
+    // Now 5.20:1 on the board and 4.75 on a panel, still the same blood: a
+    // lift in value, not a move in hue, and it stays the only warm colour the
+    // tile count ever wears. The panel behind it, not the board, is what set
+    // the value — 4.62 on the board was already enough, and the same red on
+    // `panel` was 4.21.
+    danger: 0xe05244,
     panel: 0x1a140e,
     panelEdge: 0x433624,
     panelEdgeActive: 0xc79a4b,
+    // The board's own dark, which is already the furthest thing from anything
+    // painted on top of it — see `Ink.halo`. EMBER and TIDE are read entirely
+    // through this: 9.56:1 and 5.53:1 where the ink itself manages 1.66 and
+    // 2.87.
+    halo: 0x0a0806,
+    haloWidth: 0.16,
   },
 
   type: {
@@ -161,7 +195,15 @@ export const TORCHLIT: Theme = {
     // factor with the first (9 and 5) so the two grids never line up into a
     // visible lattice — the two together read as mottled ash rather than
     // polka dots.
-    red: surface(0x9a5a32, {
+    // The bright end darkened 0x9a5a32 → 0x915430 on 2026-08-25. ASH is the
+    // one terrain that sits in the middle of the value range, which is exactly
+    // where a label has no good answer: the ink managed 4.29:1 on it and the
+    // halo 3.70, so neither half of the pair cleared the bar and the number on
+    // an ash tile was the second-worst on the board. Twenty-seven thousandths
+    // of L* buys 4.74. The gradient end, the pattern and the hue are untouched,
+    // and the ladder still runs green 0.233 · ash 0.361 · tide 0.451 · ember
+    // 0.648 — every gap well past the 0.05 the greyscale rule asks for.
+    red: surface(0x915430, {
       fillTo: 0x6b3a1e,
       pattern: { kind: 'dots', ink: 0x000000, alpha: 0.24, radius: 1.5, pitch: 9 },
       overlay: { kind: 'dots', ink: 0x000000, alpha: 0.12, radius: 0.6, pitch: 5 },

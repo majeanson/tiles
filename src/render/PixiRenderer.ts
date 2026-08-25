@@ -2,6 +2,7 @@ import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } 
 import { distance, key, parse, type HexKey } from '@engine/hex';
 import {
   BAND_LIFT,
+  depthOf,
   fieldGround,
   LANDMARK_GLYPH,
   hex,
@@ -251,7 +252,7 @@ export class PixiRenderer implements Renderer {
 
   readonly #theme: Theme;
   #assets: AssetBook;
-  readonly #surfaces = new SurfaceTextures();
+  readonly #surfaces: SurfaceTextures;
   /**
    * Label textures, cached by what changes their pixels: the text, the
    * rounded font size, and which ink. `#drawLabel` used to create a fresh
@@ -343,6 +344,7 @@ export class PixiRenderer implements Renderer {
 
   constructor(theme: Theme, assets: AssetBook = AssetBook.empty(), reducedMotion = false) {
     this.#theme = theme;
+    this.#surfaces = new SurfaceTextures(depthOf(theme));
     this.#assets = assets;
     this.#reducedMotion = reducedMotion;
   }
@@ -1436,14 +1438,35 @@ export class PixiRenderer implements Renderer {
     return text;
   }
 
-  /** The Text a label draws as — one place, so the cache renders exactly it. */
+  /**
+   * The Text a label draws as — one place, so the cache renders exactly it.
+   *
+   * The HALO (2026-08-25) is what makes a tile's own number readable. One ink is
+   * drawn over eight different grounds, each with a gradient, and no single
+   * colour clears 4.5:1 against all of them — EMBER, the palest terrain, was
+   * showing torchlit's pale gold at **1.46:1**, which is not a number you can
+   * read at all. The outline works as the ink's other half: where the ink
+   * vanishes into the ground the halo carries the letterform, and where the halo
+   * vanishes the ink does. `contrast.test.ts` states that as the rule and checks
+   * it over every surface both directions are painted on.
+   *
+   * The same trick the rare-tile star has used since 2026-08-19 — "a small disc
+   * of the board's own dark so the accent reads on pale terrain". The number
+   * standing beside it never got it.
+   */
   #labelText(label: { text: string; faint: boolean }, size: number): Text {
+    const px = labelPx(size);
+    const { halo, haloWidth } = this.#theme.ink;
     return new Text({
       text: label.text,
       style: {
         fill: label.faint ? this.#theme.ink.inkFaint : this.#theme.ink.ink,
-        fontSize: labelPx(size),
+        fontSize: px,
         fontFamily: this.#theme.type.display,
+        // `Math.max(1, …)` for the same reason `labelPx` has a floor: at FIT
+        // zoom a proportional outline rounds to nothing, and the cell that most
+        // needs its number outlined is the small far one.
+        stroke: { color: halo, width: Math.max(1, px * haloWidth), join: 'round' },
       },
     });
   }

@@ -1,8 +1,11 @@
 /**
  * One contract for every panel that covers the game.
  *
- * The game has four: the front door, the manual, the hall of fame and the
- * event card. Each grew its own open/close, and by 2026-08-21 they agreed on
+ * The game had four when this was written: the front door, the manual, the
+ * hall of fame and the event card — six since the door went lean on
+ * 2026-08-25 and grew WORLDS, MORE and SETTINGS, three of which open over
+ * another panel rather than over the board. Each grew its own open/close,
+ * and by 2026-08-21 they agreed on
  * almost nothing — three had a document-level Escape handler that fired
  * whether or not that panel was the one on top, one scoped Escape to the
  * panel itself (so tabbing out of it stranded you with no keyboard way back),
@@ -27,6 +30,11 @@ type Open = {
   readonly panel: HTMLElement;
   /** Only what THIS panel made inert, so nesting restores correctly. */
   readonly inerted: readonly HTMLElement[];
+  /**
+   * Whether the panel was inert when it opened — because something BELOW it
+   * on the stack had covered it (2026-08-25). See `openDialog`.
+   */
+  readonly reInert: boolean;
   readonly opener: HTMLElement | null;
   readonly close: () => void;
 };
@@ -71,11 +79,21 @@ export function openDialog(options: {
   readonly close: () => void;
 }): void {
   listen();
+  // A panel being opened is LIVE, whatever the panel below it decided
+  // (2026-08-25). `covers` is siblings, so the moment one panel opens over
+  // another — MORE, then the manual or the hall of fame or SETTINGS from
+  // inside it — the one about to open is already wearing the inert the first
+  // one put on it, and would arrive visible, focusable-looking and
+  // completely dead to touch. Cleared here and put BACK on close, because
+  // the panel underneath is still open and still covering it.
+  const reInert = isInert(options.panel);
+  if (reInert) options.panel.removeAttribute('inert');
   const inerted = options.covers.filter((el) => !isInert(el));
   for (const el of inerted) el.setAttribute('inert', '');
   stack.push({
     panel: options.panel,
     inerted,
+    reInert,
     opener: options.opener ?? null,
     close: options.close,
   });
@@ -92,6 +110,10 @@ export function closeDialog(panel: HTMLElement): void {
   const [open] = stack.splice(index, 1);
   if (open === undefined) return;
   for (const el of open.inerted) el.removeAttribute('inert');
+  // Back under the cover it came out from: whatever inerted this panel is
+  // still open below it, and handing it back live would leave a hidden panel
+  // tabbable behind the one the reader is looking at.
+  if (open.reInert) open.panel.setAttribute('inert', '');
   // Only if it is still in the document: a panel can outlive the button that
   // opened it (the stats row is rebuilt wholesale every render).
   if (open.opener !== null && open.opener.isConnected) open.opener.focus();
@@ -120,6 +142,7 @@ export function siblingsOf(panel: HTMLElement): HTMLElement[] {
 export function resetDialogs(): void {
   for (const open of stack) {
     for (const el of open.inerted) el.removeAttribute('inert');
+    if (open.reInert) open.panel.setAttribute('inert', '');
   }
   stack.length = 0;
 }

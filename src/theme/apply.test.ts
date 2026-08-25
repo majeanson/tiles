@@ -42,7 +42,7 @@ describe('applyTheme', () => {
     const style = document.documentElement.style;
 
     expect(style.getPropertyValue('--bg')).toBe('#0a0806');
-    expect(style.getPropertyValue('--danger')).toBe('#c1362b');
+    expect(style.getPropertyValue('--danger')).toBe('#e05244');
     expect(style.getPropertyValue('--tile-yellow')).toBe('#c6b187');
     expect(style.getPropertyValue('--font-display')).toContain('Cinzel');
     expect(document.documentElement.dataset['theme']).toBe('torchlit');

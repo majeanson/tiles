@@ -42,7 +42,7 @@ import {
 import type { Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
-import { COLOUR_MARK, type Theme } from '@theme/tokens';
+import { COLOUR_MARK, depthOf, type Theme } from '@theme/tokens';
 import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
 import { closeDialog, openDialog, siblingsOf } from './dialog';
 import { rememberedNativeAt, renderContext, toBoardView, toHudView, type HudView } from './view';
@@ -234,8 +234,9 @@ export type GameHooks = {
   readonly unlockLabel?: (nth: number) => string | null;
   // `firstVisit` used to live here and auto-open the manual once, ever
   // (2026-08-15). Stage 2's front door (main.ts) is a stranger's greeting
-  // now — BEGIN and a quiet HOW TO PLAY, shown before the first interaction
-  // rather than a panel sprung open over a board nobody has seen yet — so
+  // now — BEGIN and, behind MORE, a quiet HOW TO PLAY, shown before the first
+  // interaction rather than a panel sprung open over a board nobody has seen
+  // yet — so
   // the flag's one job moved out of this class entirely. `Game.openHelp` is
   // the seam the front door calls into instead of reimplementing the dialog.
   /**
@@ -608,9 +609,9 @@ export class Game {
 
   /**
    * Which button opened the manual, so closing it returns focus to the right
-   * place — the in-game ? most of the time, but the front door's quiet HOW TO
-   * PLAY lives outside this class entirely (main.ts), and its own button is
-   * where a keyboard or screen-reader user actually was. Set on every open;
+   * place — the in-game ? most of the time, but MORE ▸ HOW TO PLAY on the
+   * front door lives outside this class entirely (main.ts), and its own button
+   * is where a keyboard or screen-reader user actually was. Set on every open;
    * defaults to the in-game button below.
    */
   #helpOpener: HTMLButtonElement;
@@ -663,7 +664,7 @@ export class Game {
     claimed: readonly HexKey[] = [],
     claimedFinds: readonly HexKey[] = [],
     // Camps (2026-08-19): where this run wakes. Null — every run before
-    // today, and every run not begun from the front door's camp button — is
+    // today, and every run not begun from the door's BEGIN AT CAMP — is
     // the world origin, exactly as always. A resumed run ignores it: the
     // save carries its own.
     wakeAt: HexKey | null = null,
@@ -686,7 +687,12 @@ export class Game {
 
     for (const colour of COLOURS) {
       try {
-        const baked = bakeSurface(theme.terrain[colour], HAND_HEX_SIZE, theme.orientation);
+        const baked = bakeSurface(
+          theme.terrain[colour],
+          HAND_HEX_SIZE,
+          theme.orientation,
+          depthOf(theme),
+        );
         if (baked !== null) this.#art[colour] = baked.toDataURL();
       } catch {
         // No canvas here. The card keeps its coloured background and its word.
@@ -1150,7 +1156,6 @@ export class Game {
     this.#paintManual(tab);
     this.#helpOpener = opener;
     this.#el.helpPanel.hidden = false;
-    this.#el.helpPanel.focus();
     // Through the shared contract since 2026-08-21: what the panel covers
     // goes inert, so the board and the front door behind it stop being
     // tabbable and clickable, and Escape reaches this panel only while it is
@@ -1164,6 +1169,10 @@ export class Game {
         this.#closeHelp();
       },
     });
+    // Focus AFTER the open (2026-08-25): MORE ▸ HOW TO PLAY opens this panel
+    // over a panel that has already made it inert, and focus does not land on
+    // an inert element. `openDialog` is what wakes it, so it has to go first.
+    this.#el.helpPanel.focus();
   }
 
   /** The manual's half of the panel, rebuilt from the live tuning and ledger. */
@@ -2407,7 +2416,11 @@ export class Game {
               ` +1 per ${t.costRisesEvery} placed` +
               (t.runLength > 0 ? ` · ${t.runLength} placements to the expedition` : '') +
               ` · ${t.draftWidth}-card draft${t.holdSlots > 0 ? ' plus the stash' : ''}.`,
-            'SETTINGS below switches every system and carries the decision that set each default.',
+            // "below" until 2026-08-25, when SETTINGS stopped being the
+            // bottom of this panel and became a screen of its own. It has two
+            // doors now, and a manual that names neither is a manual that
+            // sends the reader scrolling for something that is not there.
+            'SETTINGS — the MENU tab’s own button, or MORE on the front door — switches every system and carries the decision that set each default.',
             '?ff=debug.overlay adds a raw readout in the hint line and the footer, for reporting a bug with no console to hand.',
           ],
         },

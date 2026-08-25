@@ -14,6 +14,7 @@ import {
   BAND_LIFT,
   LANDMARK_GLYPH,
   brightness,
+  depthOf,
   fieldGround,
   hex,
   luma,
@@ -72,7 +73,7 @@ function surfaceCard(
 ): HTMLElement {
   const box = el('div', 'surface');
 
-  const canvas = bakeSurface(surface, 23, theme.orientation);
+  const canvas = bakeSurface(surface, 23, theme.orientation, depthOf(theme));
   if (canvas !== null) box.appendChild(canvas);
 
   box.appendChild(el('span', 'surface-name', name));
@@ -129,7 +130,7 @@ function lightStrip(theme: Theme): HTMLElement {
   for (const dist of [0, 3, 5, 7, 9, 12, 15, 20]) {
     const level = brightness(theme.light, dist);
     const box = el('div', 'surface');
-    const canvas = bakeSurface(theme.terrain.green, 23, theme.orientation);
+    const canvas = bakeSurface(theme.terrain.green, 23, theme.orientation, depthOf(theme));
     if (canvas !== null) {
       box.appendChild(tinted(canvas, mix(theme.board.background, 0xffffff, level)));
     }
@@ -154,7 +155,7 @@ function structureLightStrip(theme: Theme): HTMLElement {
   for (let dist = 0; dist <= 10; dist++) {
     const level = brightness(theme.light, dist);
     const box = el('div', 'surface');
-    const canvas = bakeSurface(theme.terrain.green, 23, theme.orientation);
+    const canvas = bakeSurface(theme.terrain.green, 23, theme.orientation, depthOf(theme));
     if (canvas !== null) {
       box.appendChild(tinted(canvas, mix(theme.board.background, 0xffffff, level)));
     }
@@ -176,7 +177,7 @@ function elevationStrip(theme: Theme): HTMLElement {
   for (let band = 0; band < 5; band++) {
     const level = Math.min(1, dim * (1 + band * BAND_LIFT));
     const box = el('div', 'surface');
-    const canvas = bakeSurface(theme.empty, 23, theme.orientation);
+    const canvas = bakeSurface(theme.empty, 23, theme.orientation, depthOf(theme));
     if (canvas !== null) {
       box.appendChild(tinted(canvas, mix(theme.board.background, 0xffffff, level)));
     }
@@ -200,7 +201,12 @@ function landmarkRow(theme: Theme): HTMLElement {
     for (const claimed of [false, true]) {
       const box = el('div', 'surface landmark');
       box.style.position = 'relative';
-      const canvas = bakeSurface(claimed ? theme.stone : theme.wall, 23, theme.orientation);
+      const canvas = bakeSurface(
+        claimed ? theme.stone : theme.wall,
+        23,
+        theme.orientation,
+        depthOf(theme),
+      );
       if (canvas !== null) box.appendChild(canvas);
 
       if (!claimed) {
@@ -273,6 +279,7 @@ function fieldCard(theme: Theme, colour: Colour, manifest: AssetManifest): HTMLE
     ground.kind === 'art' ? ground.base : ground.surface,
     23,
     theme.orientation,
+    depthOf(theme),
   );
   if (canvas !== null) box.appendChild(canvas);
 
@@ -361,8 +368,8 @@ function ghostStrip(theme: Theme): HTMLElement {
   const row = el('div', 'row');
   for (const c of COLOURS) {
     const box = el('div', 'surface ghost-sample');
-    const ground = bakeSurface(theme.empty, 23, theme.orientation);
-    const fill = bakeSurface(theme.ghost, 23, theme.orientation);
+    const ground = bakeSurface(theme.empty, 23, theme.orientation, depthOf(theme));
+    const fill = bakeSurface(theme.ghost, 23, theme.orientation, depthOf(theme));
     if (ground !== null) {
       if (fill !== null) {
         fill.style.position = 'absolute';
@@ -422,7 +429,7 @@ function fogStrip(theme: Theme): HTMLElement {
   const veilTint = mix(0xffffff, theme.board.background, theme.fog.veil);
   for (const c of COLOURS) {
     const box = el('div', 'surface');
-    const canvas = bakeSurface(theme.terrain[c], 23, theme.orientation);
+    const canvas = bakeSurface(theme.terrain[c], 23, theme.orientation, depthOf(theme));
     if (canvas !== null) {
       const veiled = tinted(canvas, veilTint);
       veiled.style.opacity = String(theme.fog.alpha);
@@ -442,9 +449,18 @@ function inkRow(theme: Theme): HTMLElement {
     ['inkDim', theme.ink.inkDim],
     ['inkFaint', theme.ink.inkFaint],
     ['accent', theme.ink.accent],
+    ['magic', theme.ink.magic],
+    ['unique', theme.ink.unique],
     ['danger', theme.ink.danger],
     ['panel', theme.ink.panel],
     ['panelEdge', theme.ink.panelEdge],
+    // The halo (2026-08-25) belongs on this strip because it is half of how a
+    // board label reads — `ink` alone clears 4.5:1 on some grounds and the halo
+    // carries the rest. A workbench that shows one and not the other shows half
+    // the decision. `magic` and `unique` join it for the plainer reason that
+    // they have been ink tokens since 2026-08-20 and this strip never listed
+    // them.
+    ['halo', theme.ink.halo],
   ];
 
   for (const [name, colour] of entries) {

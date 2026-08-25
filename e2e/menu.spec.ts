@@ -35,9 +35,20 @@ async function begin(page: Page): Promise<void> {
   }
 }
 
-test('the home door is the menu: mode line, daily, three worlds, no wipe for a virgin', async ({
-  page,
-}) => {
+/** Open MORE, where everything that is not "play right now" lives since
+ *  2026-08-25 — the wipe, the backups, the manual, the hall of fame. */
+async function openMore(page: Page): Promise<void> {
+  await page.locator('#front-door-more').click();
+  await expect(page.locator('#more-panel')).toBeVisible();
+}
+
+/**
+ * The lean door (Marc, 2026-08-25: "make sure our homepage is lean — WORLDS,
+ * DAILY, MORE"). Pinned as a COUNT as well as a list, because the failure
+ * mode is not one wrong button, it is the eleven that accumulated one
+ * defensible addition at a time between 2026-08-18 and launch week.
+ */
+test('the home door is four buttons: BEGIN, WORLDS, DAILY, MORE', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/');
 
@@ -48,18 +59,125 @@ test('the home door is the menu: mode line, daily, three worlds, no wipe for a v
   await expect(page.locator('#front-door-name')).toHaveText(/ashwake/i);
   await expect(page.locator('#front-door-mode')).toContainText('A fresh world');
 
-  // The daily door carries its badge; all three world rows are offered.
-  await expect(page.locator('#front-door-daily')).toBeVisible();
-  const worlds = page.locator('#front-door-worlds button');
+  // Four, in this order, and nothing else. `:visible` rather than a count of
+  // the markup: SETTLE and YOUR WORLD exist in the DOM for the detour modes.
+  const buttons = page.locator('#front-door button:visible');
+  await expect(buttons).toHaveCount(4);
+  await expect(buttons.nth(0)).toHaveAttribute('id', 'front-door-begin');
+  await expect(buttons.nth(1)).toHaveText('WORLDS');
+  await expect(buttons.nth(2)).toContainText('DAILY');
+  await expect(buttons.nth(3)).toHaveText('MORE');
+
+  // A detour's door is leaner still, and stays about the detour: no WORLDS
+  // and no DAILY on a daily, because neither is the game this door opens.
+  await page.locator('#front-door-daily').click();
+  await expect(page.locator('#front-door-begin')).toContainText('DAILY');
+  const dailyButtons = page.locator('#front-door button:visible');
+  await expect(dailyButtons).toHaveCount(3);
+  await expect(dailyButtons.nth(1)).toHaveText('YOUR WORLD');
+  await expect(dailyButtons.nth(2)).toHaveText('MORE');
+
+  expect(errors).toEqual([]);
+});
+
+test('WORLDS holds all three slots, and NOW begins the run BEGIN would', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  await page.locator('#front-door-worlds').click();
+  const panel = page.locator('#worlds-panel');
+  await expect(panel).toBeVisible();
+  // What a world IS, said where the choice is made — it was on no screen at
+  // all while the slots sat unexplained on the door.
+  await expect(panel).toContainText('Relics and the perks you find travel');
+
+  const worlds = page.locator('#worlds-list button');
   await expect(worlds).toHaveCount(3);
   await expect(worlds.nth(0)).toContainText('WORLD 1 · NOW');
   await expect(worlds.nth(1)).toContainText('WORLD 2');
 
-  // A device with nothing to forget gets no wipe (Session 32) and no
-  // museum of nothing (Day-1 batch): RESET ALL and HALL OF FAME both wait
-  // until there is anything behind them.
-  await expect(page.locator('#front-door-reset')).toBeHidden();
-  await expect(page.locator('#front-door-fame')).toBeHidden();
+  // NOW is BEGIN wearing the slot's name. The panel has to CLOSE on the way
+  // through, or the dialog stack leaves #game-shell inert and hands the
+  // player a board they can see and cannot tap.
+  await worlds.nth(0).click();
+  await expect(panel).toBeHidden();
+  await expect(page.locator('#front-door')).toBeHidden();
+  await expect(page.locator('#game-shell')).not.toHaveAttribute('inert', /.*/);
+  await expect(page.locator('#board canvas')).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+test('MORE holds the manual, and a virgin device is offered no wipe and no museum', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await openMore(page);
+
+  // HOW TO PLAY and SETTINGS are unconditional — the tutorial door a stranger
+  // taps cannot be behind a ledger they have not filled.
+  await expect(page.locator('#more-help')).toBeVisible();
+  await expect(page.locator('#more-settings')).toBeVisible();
+
+  // A device with nothing to forget gets no wipe (Session 32) and no museum
+  // of nothing (Day-1 batch) — and, since 2026-08-25, no THIS DEVICE heading
+  // standing over three buttons that are all hidden.
+  await expect(page.locator('#more-reset')).toBeHidden();
+  await expect(page.locator('#more-fame')).toBeHidden();
+  await expect(page.locator('#more-backup')).toBeHidden();
+  await expect(page.locator('#more-data-title')).toBeHidden();
+
+  // BACK returns to the door and gives focus back to the button that opened
+  // it — the dialog-stack contract, which MORE gets from the same helper the
+  // other three panels do rather than from a fourth copy of the wiring.
+  await page.locator('#more-back').click();
+  await expect(page.locator('#more-panel')).toBeHidden();
+  expect(await page.evaluate(() => document.activeElement?.id ?? '')).toBe('front-door-more');
+
+  expect(errors).toEqual([]);
+});
+
+/**
+ * SETTINGS is a destination now (2026-08-25), not the bottom of a scroll.
+ * It opens from MORE on the door and from the MENU tab mid-run, and both
+ * paths land on the same panel — there is one switchboard, as there is one
+ * manual.
+ */
+test('SETTINGS opens from the door and from the MENU tab, and stacks over both', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  await openMore(page);
+  await page.locator('#more-settings').click();
+  const settings = page.locator('#settings-panel');
+  await expect(settings).toBeVisible();
+  await expect(settings).toContainText('Nothing leaves your phone');
+  // Over MORE, not instead of it: BACK has to lead somewhere that is still
+  // there, and the panel underneath must be inert while it is covered.
+  await expect(page.locator('#more-panel')).toBeVisible();
+  expect(await page.locator('#more-help').evaluate((el) => el.closest('[inert]') !== null)).toBe(
+    true,
+  );
+  await page.locator('#settings-back').click();
+  await expect(settings).toBeHidden();
+  await expect(page.locator('#more-help')).toBeEnabled();
+
+  // Mid-run, the same panel through the MENU tab — where every other way out
+  // of a run already lives.
+  await page.locator('#more-back').click();
+  await begin(page);
+  await page.locator('#help').click();
+  await expect(page.locator('#help-panel')).toBeVisible();
+  await page.locator('#to-settings').click();
+  await expect(settings).toBeVisible();
+  await expect(settings).toContainText('Sticky on this device');
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+  // Escape reaches the TOP panel only — the manual it opened over is still up.
+  await expect(page.locator('#help-panel')).toBeVisible();
 
   expect(errors).toEqual([]);
 });
@@ -116,23 +234,27 @@ test('RESET ALL arms, wipes, and leaves a device it no longer offers itself to',
   }
   expect(await tiles()).toBeLessThan(tilesBefore);
 
-  // The run autosaves; a reload's door says RESUME and now offers the wipe.
+  // The run autosaves; a reload's door says RESUME, and MORE now offers the
+  // wipe under its own heading (2026-08-25 — it is not on the door at all).
   await page.reload();
-  const reset = page.locator('#front-door-reset');
   await expect(page.locator('#front-door-begin')).toContainText('RESUME');
+  await openMore(page);
+  const reset = page.locator('#more-reset');
+  await expect(page.locator('#more-data-title')).toBeVisible();
   await expect(reset).toBeVisible();
 
   // Two taps, the arming contract: the first only changes the words.
   await reset.click();
   await expect(reset).toContainText('TAP AGAIN');
-  await expect(page.locator('#front-door')).toBeVisible();
+  await expect(page.locator('#more-panel')).toBeVisible();
   await reset.click();
 
-  // The wipe navigates home. Everything is forgotten: BEGIN (no resume),
-  // and the wipe button itself is gone — a virgin device again.
+  // The wipe navigates home. Everything is forgotten: BEGIN (no resume), and
+  // the wipe button itself is gone — a virgin device again.
   await expect(page.locator('#front-door-begin')).toBeVisible();
   await expect(page.locator('#front-door-begin')).toHaveText('BEGIN');
-  await expect(page.locator('#front-door-reset')).toBeHidden();
+  await openMore(page);
+  await expect(page.locator('#more-reset')).toBeHidden();
 
   expect(errors).toEqual([]);
 });
@@ -173,7 +295,8 @@ test('the hall of fame opens tabbed, and a run row unfolds its night', async ({ 
   });
   await page.goto('/');
 
-  await page.locator('#front-door-fame').click();
+  await openMore(page);
+  await page.locator('#more-fame').click();
   const panel = page.locator('#fame-panel');
   await expect(panel).toBeVisible();
 
@@ -204,8 +327,10 @@ test('the hall of fame opens tabbed, and a run row unfolds its night', async ({ 
   await expect(panel).toContainText('THE DAILY');
   await expect(panel).toContainText('PERKS FOUND');
 
+  // BACK lands on MORE, the panel it was opened from — not on the door.
   await page.locator('#fame-back').click();
   await expect(panel).toBeHidden();
+  await expect(page.locator('#more-panel')).toBeVisible();
 
   expect(errors).toEqual([]);
 });
@@ -221,11 +346,15 @@ test('the ♪ toggle flips sound on, persists it, and SETTINGS agrees', async ({
   await sound.click();
   await expect(sound).toHaveAttribute('aria-pressed', 'true');
 
-  // One wire: the SETTINGS switch reads the same flag as ON.
+  // One wire: the SETTINGS switch reads the same flag as ON. Through the
+  // MENU tab since 2026-08-25 — the switchboard is its own screen now.
   await page.locator('#help').click();
   await expect(page.locator('#help-panel')).toBeVisible();
+  await page.locator('#to-settings').click();
+  await expect(page.locator('#settings-panel')).toBeVisible();
   const soundRow = page.locator('.flag', { hasText: 'Sound' }).locator('.flag-toggle');
   await expect(soundRow).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#settings-back').click();
   await page.locator('#help-panel').click();
 
   // Sticky: the choice survives a reload.
@@ -243,13 +372,15 @@ test('the ♪ toggle flips sound on, persists it, and SETTINGS agrees', async ({
  * the front door's only tutorial door at an atlas of zeroes and three
  * navigation buttons — with the actual lesson one tap to the right, four days
  * before the stranger test. The stranger test is the one v1.0 gate, so this
- * is pinned rather than trusted.
+ * is pinned rather than trusted. Behind MORE since 2026-08-25, which is one
+ * tap further and makes the pinning matter more, not less.
  */
 test('HOW TO PLAY opens on the tutorial, and the in-run ? opens on MENU', async ({ page }) => {
   const errors = watchErrors(page);
   await page.goto('/');
 
-  await page.locator('#front-door-help').click();
+  await openMore(page);
+  await page.locator('#more-help').click();
   await expect(page.locator('#help-panel')).toBeVisible();
   // The visible panel body is START's — the first lesson, not the atlas.
   const shown = page.locator('.help-panel-body:not([hidden])');
@@ -257,6 +388,9 @@ test('HOW TO PLAY opens on the tutorial, and the in-run ? opens on MENU', async 
   await expect(shown).not.toContainText('YOUR WORLD ·');
   await page.locator('#help-name').click();
   await expect(page.locator('#help-panel')).toBeHidden();
+  // Back on MORE, where it was opened from.
+  await expect(page.locator('#more-panel')).toBeVisible();
+  await page.locator('#more-back').click();
 
   // Mid-run the default stands: ? opens onto MENU, which is what it is for.
   await page.locator('#front-door-begin').click();
@@ -309,7 +443,8 @@ test('a backup survives a wipe and puts the same world back', async ({ page }) =
   expect(backup).toContain('4242');
 
   // RESET ALL, for real, through the UI — the wipe this is insurance against.
-  const reset = page.locator('#front-door-reset');
+  await openMore(page);
+  const reset = page.locator('#more-reset');
   await expect(reset).toBeVisible();
   await reset.click();
   await reset.click();
@@ -379,8 +514,7 @@ test('a panel over the front door makes it unreachable, not just invisible', asy
 
   const begin = page.locator('#front-door-begin');
   await expect(begin).toBeVisible();
-  await page.locator('#front-door-fame').click();
-  await expect(page.locator('#fame-panel')).toBeVisible();
+  await openMore(page);
 
   // The door must be INERT, not merely painted over. A full-screen panel
   // already swallows a mouse click by layout — I checked, by disabling the
@@ -397,13 +531,34 @@ test('a panel over the front door makes it unreachable, not just invisible', asy
   });
   expect(await page.evaluate(() => document.activeElement?.id ?? '')).not.toBe('front-door-begin');
 
+  // Two deep (2026-08-25): the hall of fame opens over MORE, and MORE goes
+  // inert in its turn while keeping the door inert underneath it. This is
+  // the case the old hand-rolled panels could not have got right — each one
+  // cleared what it found rather than restoring what it changed.
+  await page.locator('#more-fame').click();
+  await expect(page.locator('#fame-panel')).toBeVisible();
+  expect(await page.locator('#more-fame').evaluate((el) => el.closest('[inert]') !== null)).toBe(
+    true,
+  );
+
   // Escape from ANYWHERE, not only with focus inside the panel — which is
   // all the old panel-scoped handler could manage, and tabbing out of it
-  // used to strand you on a door you could not use.
+  // used to strand you on a door you could not use. One press, ONE panel:
+  // the hall of fame closes and MORE is live again underneath it.
   await page.keyboard.press('Escape');
   await expect(page.locator('#fame-panel')).toBeHidden();
+  await expect(page.locator('#more-panel')).toBeVisible();
+  expect(await page.locator('#more-fame').evaluate((el) => el.closest('[inert]') !== null)).toBe(
+    false,
+  );
+  // The door is still inert under MORE — closing the top panel must not have
+  // handed back what the one below it took.
+  expect(await begin.evaluate((el) => el.closest('[inert]') !== null)).toBe(true);
 
-  // And with it gone, the door works again.
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#more-panel')).toBeHidden();
+
+  // And with both gone, the door works again.
   await begin.click();
   await expect(page.locator('#front-door')).toBeHidden();
 

@@ -1,4 +1,4 @@
-import { hex, rgba, type Orientation, type Pattern, type Surface } from '@theme/tokens';
+import { hex, rgba, type Depth, type Orientation, type Pattern, type Surface } from '@theme/tokens';
 import { corners } from './layout';
 
 /**
@@ -48,6 +48,7 @@ export function bakeSurface(
   surface: Surface,
   size: number,
   orientation: Orientation,
+  depth: Depth,
   ghost: Ghost | null = null,
 ): HTMLCanvasElement | null {
   const halfW = orientation === 'pointy' ? (Math.sqrt(3) / 2) * size : size;
@@ -79,7 +80,7 @@ export function bakeSurface(
   paintPattern(ctx, surface.pattern, w, h);
   paintPattern(ctx, surface.overlay, w, h);
   if (ghost !== null) paintGhost(ctx, ghost, w, h);
-  paintDepth(ctx, w, h);
+  paintDepth(ctx, depth, w, h);
   if (surface.scorch) paintScorch(ctx, w, h);
 
   return canvas;
@@ -106,12 +107,23 @@ function paintGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, w: number, h: n
  * physical thing sitting in a lit room rather than a flat swatch, and it
  * costs every surface the same — no theme opts in or out, the way no theme
  * opted out of the seam between cells.
+ *
+ * The two alphas became theme tokens on 2026-08-25 (`Board.sheen`/`shade`) and
+ * the polarity became a question rather than an assumption — see `Depth`.
  */
-function paintDepth(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+function paintDepth(ctx: CanvasRenderingContext2D, depth: Depth, w: number, h: number): void {
+  // The highlight goes where the light comes from and the shade goes opposite
+  // it. On every dark direction that is top-lit, which is what the two constants
+  // this replaced assumed. A pale direction is a DRAWING rather than a lit room:
+  // the paper is already the brightest thing, so the wash that models a cell has
+  // to be the dark one, and a black smear at the foot of a vellum hex reads as
+  // grime rather than as shadow. Same gradient, ends swapped.
+  const top = depth.light ? `rgba(0,0,0,${depth.shade})` : `rgba(255,255,255,${depth.sheen})`;
+  const bottom = depth.light ? `rgba(255,255,255,${depth.sheen})` : `rgba(0,0,0,${depth.shade})`;
   const gradient = ctx.createLinearGradient(0, 0, 0, h);
-  gradient.addColorStop(0, 'rgba(255,255,255,0.05)');
+  gradient.addColorStop(0, top);
   gradient.addColorStop(0.5, 'rgba(255,255,255,0)');
-  gradient.addColorStop(1, 'rgba(0,0,0,0.08)');
+  gradient.addColorStop(1, bottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, w, h);
 }

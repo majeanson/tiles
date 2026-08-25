@@ -56,8 +56,8 @@ prototype — are in `CLAUDE.md`.
 Ashwake has no backend, no accounts, no analytics and no network calls once
 the page has loaded. Your world, your saved run and your records live in your
 browser's local storage on your own device, and nothing is ever sent anywhere.
-Clearing your browser data, or "Abandon this world" in SETTINGS, deletes them
-for good. Sharing a run copies a link containing only a seed — a number the
+Clearing your browser data, RESET ALL (behind MORE on the front door), or NEW
+WORLD (in the `?` panel's MENU tab) deletes them for good. Sharing a run copies a link containing only a seed — a number the
 game can regrow the same world from.
 
 ## Licence

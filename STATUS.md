@@ -4,7 +4,12 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-21, small hours — launch week Day 2 closed, and
+Last checkpoint: **2026-08-25 — the contrast pass, and the two directions it
+needed.** The board was unreadable on a phone and every test was green; the
+budget that would have caught it is now `contrast.test.ts`, running over four
+directions. See LOG.md Session 40. Not judged by looking yet.
+
+Previous checkpoint: **2026-08-21, small hours — launch week Day 2 closed, and
 its audits with it.** Eighteen commits since the Day-1 entry below, every one
 shipped and verified live. Four strands.
 
@@ -417,7 +422,13 @@ milestone: M1.**
   two losing directions to begin with, and neither is coming back), and
   **torchlit is the default**, asserted by the very test this bullet cited.
   Switchable with `?theme=`. Gate E is opened, not shut; see the gates table
-  below.
+  below. **Stale again since 2026-08-25, and this is the correction: FOUR are
+  loaded** — `placeholder`, `torchlit`, `torchlit-bright`, `daylight`. The two
+  new ones are not candidates and do not re-open Gate E; they are the same game
+  at two other contrast levels, added because the board was unreadable on a
+  phone. Torchlit is still the default, still asserted by the same test — but
+  only for a device that has not chosen, and only when its OS is asking for
+  neither light nor more contrast (`pickForScheme`).
 - **Art is optional everywhere.** Every bitmap is a slot. Drop a PNG at
   `public/assets/<themeId>/<slotId>.png`, and a build-time scan writes the
   manifest the client reads; missing files are the normal case and cost neither a
@@ -426,7 +437,7 @@ milestone: M1.**
   purpose" — stale since 2026-08-19, corrected 2026-08-20 by the pipeline's
   fresh-eyes review**: torchlit's eight terrain/fx slots are FILLED, baked by
   `scripts/terrain.ts` (deterministic, offline, regenerable — verified
-  byte-identical on rerun) per WORKPLAN Stage 3, and `verify-deploy` now
+  byte-identical on rerun) per WORKPLAN Stage 3 — for all three real directions since 2026-08-25, not only torchlit, and `verify-deploy` now
   proves every file the live manifest names actually serves. `ui.logo` and
   `ui.runEnd` are wired with live drawn/CSS defaults and no PNG yet;
   `fog.hard`, `fog.soft` and `ui.cardFrame` stay empty because no mechanic
@@ -435,6 +446,22 @@ milestone: M1.**
   `render/layout.ts` and parameterised; the geometry suite runs against both.
   The engine was not touched, because axial coordinates mean the same thing
   either way up.
+- **A player can READ the board, and that is a test too (2026-08-25).**
+  `contrast.test.ts` holds a WCAG budget — 4.5:1 for anything read, 3:1 for a
+  mark — over every direction in the registry, against the board, against a
+  panel, and against every ground a label is drawn on including both ends of
+  every gradient. It exists because a phone screenshot showed torchlit's own
+  tile number at **1.46:1** over EMBER while every test in the project was
+  green: nothing compared a label with its ground, and `inkFaint` was asserted
+  nowhere. A board label is now ink PLUS a halo (`Ink.halo`) and the rule is
+  stated on the pair, because no single ink clears the bar over all eight
+  grounds. Same standing instruction as the greyscale rule: do not relax it,
+  darken something.
+- **The theme layer no longer assumes dark (2026-08-25).** `clearance()`
+  measures distance from the background rather than height above it — four
+  rules were written the signed way, which is the same sentence on a dark
+  board and the opposite one on `daylight`, whose wall scored -0.578 against a
+  floor of +0.045. `isLight()` is derived from the palette, never declared.
 - **The greyscale rule is a test, not a sentence.** `theme.test.ts` measures the
   four terrains in CIE L* and fails a direction whose values collapse. It found
   three real defects on its first run, one of them in the palette that had

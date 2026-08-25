@@ -36,13 +36,26 @@ export const PLACEHOLDER: Theme = {
     // well under `ripeEdgeWidth` — a marker every theme renders something for,
     // not a fifth colour invented for one token.
     home: { ring: 0xe8ecf4, ringWidth: 0.07 },
+    // The control's depth pass: the exact alphas `bake.ts` hand-typed for every
+    // direction before they became tokens (2026-08-25). Unchanged on purpose —
+    // moving the placeholder's would make it a second opinion instead of one.
+    sheen: 0.05,
+    shade: 0.08,
   },
 
   ink: {
     bg: 0x14161c,
-    ink: 0xe8ecf4,
+    // White rather than near-white since 2026-08-25. The contrast budget
+    // (`contrast.test.ts`) reads a label against the GROUND it sits on, and the
+    // control's mid-green landed at 4.15:1 with the old ink — under the bar,
+    // and not rescuable by the halo either, which manages 4.28 on the same
+    // cell. White clears it at 4.91 and costs the placeholder nothing: it has
+    // no mood for a warm white to be warm against.
+    ink: 0xffffff,
     inkDim: 0xc3c9d6,
-    inkFaint: 0x767d8d,
+    // Lifted 0x767d8d → 0x828a99 (2026-08-25): 4.38:1 on the board and 3.86 on
+    // a panel, both under the bar for text nobody is asked to squint at.
+    inkFaint: 0x828a99,
     accent: 0xe8ecf4,
     // Plain but its own (2026-08-20): even the placeholder must keep the
     // rarities apart from its white accent/selection, or the contract
@@ -53,6 +66,11 @@ export const PLACEHOLDER: Theme = {
     panel: 0x1e222b,
     panelEdge: 0x3a4150,
     panelEdgeActive: 0xe8ecf4,
+    // Plain black, not the background: the control's board is a fairly light
+    // slate, and the halo's whole job is to be the furthest thing from whatever
+    // the label sits on. See `Ink.halo`.
+    halo: 0x000000,
+    haloWidth: 0.16,
   },
 
   type: {

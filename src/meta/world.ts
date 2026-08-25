@@ -103,7 +103,8 @@ export const UNLOCKS: readonly { readonly id: string; readonly label: string }[]
   // rule above: the four woken rungs stay woken and nobody moves backward —
   // a fully-awake world simply has one more shrine worth walking to, which
   // also serves his "stretch the ledger a bit". The unlock is not a tuning
-  // dial: it gates the front door's BEGIN AT CAMP button (main.ts), and the
+  // dial: it gates the BEGIN AT CAMP button in the door's WORLDS panel
+  // (main.ts), and the
   // engine's own `wakeAt` does the rest.
   { id: 'camp', label: 'Camps — later runs may begin at your farthest territory' },
 ];

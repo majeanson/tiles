@@ -70,6 +70,36 @@ describe('a panel covers what it covers', () => {
     expect(board.hasAttribute('inert')).toBe(false);
   });
 
+  it('wakes a panel that the one below it had already made inert', () => {
+    // The 2026-08-25 shape: MORE covers its siblings — which includes every
+    // panel MORE itself offers. Opening one of those arrived visible and
+    // completely dead to touch, because it was still wearing the inert MORE
+    // had put on it. Four e2e tests found this within a minute of the door
+    // going lean; the unit suite could not see it, because until MORE
+    // existed nothing on the stack had ever covered another panel.
+    const more = el('more');
+    const fame = el('fame');
+    const door = el('door');
+
+    openDialog({ panel: more, covers: [fame, door], close: () => closeDialog(more) });
+    expect(fame.hasAttribute('inert')).toBe(true);
+
+    openDialog({ panel: fame, covers: [more, door], close: () => closeDialog(fame) });
+    expect(fame.hasAttribute('inert')).toBe(false);
+    expect(more.hasAttribute('inert')).toBe(true);
+
+    // And back under cover on the way out: MORE is still open, still covering
+    // it, and a hidden panel left live behind an open one is tabbable.
+    closeDialog(fame);
+    expect(fame.hasAttribute('inert')).toBe(true);
+    expect(more.hasAttribute('inert')).toBe(false);
+    expect(door.hasAttribute('inert')).toBe(true);
+
+    closeDialog(more);
+    expect(fame.hasAttribute('inert')).toBe(false);
+    expect(door.hasAttribute('inert')).toBe(false);
+  });
+
   it('returns focus to whatever opened it', () => {
     const opener = document.createElement('button');
     document.body.append(opener);
