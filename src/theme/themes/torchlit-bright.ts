@@ -79,7 +79,7 @@ export const TORCHLIT_BRIGHT: Theme = {
     // in the game and this direction makes it paler still, so the halo is doing
     // more of the work here than anywhere else.
     halo: 0x000000,
-    haloWidth: 0.2,
+    haloWidth: 0.12,
   },
 
   type: {

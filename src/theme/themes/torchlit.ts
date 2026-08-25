@@ -109,7 +109,7 @@ export const TORCHLIT: Theme = {
     // through this: 9.56:1 and 5.53:1 where the ink itself manages 1.66 and
     // 2.87.
     halo: 0x0a0806,
-    haloWidth: 0.16,
+    haloWidth: 0.1,
   },
 
   type: {

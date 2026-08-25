@@ -5661,3 +5661,22 @@ agent, verified against the same tree.
 **Verified:** 704 tests (4 new: the fit cap ×2 orientations), 15 e2e,
 typecheck / lint / format clean, build green. **Not judged by looking yet:
 that is Marc's, on the phone, in portrait, against the deployed site.**
+
+**Addendum, same day — the first phone verdicts.** Marc, from the deployed
+site: "light is too light and text black outline too thick." Two dials, both
+turned the same hour:
+
+- **The halo thinned in every direction** — torchlit 0.16 → 0.10, bright
+  0.20 → 0.12, daylight 0.18 → 0.10, the placeholder with them. The pair
+  rule is about the halo's COLOUR carrying grounds the ink cannot; the
+  width only ever needed to be enough to read as an edge, and at a 24px
+  label the old numbers drew a four-pixel rind around every digit.
+- **Daylight went from bright cream to aged paper** — bg 0xf2ece0 → 0xe8dcc4
+  (L* 0.936 → 0.881), with the panel, the ground, the edges and every dark
+  ink pulled down IN STEP so the whole budget stayed green rather than one
+  number moving alone (`inkFaint`, `accent` and `unique` all sat within a
+  tenth of the 4.5 floor after the paper moved). The darker ground re-ran
+  `fieldDots`' equalisation and ember/ash collided again at 54 where the
+  field rule wants 60 — ASH rotated another step redder (0xc45a2c), the
+  same fix for the same collision at a new ground. Art re-baked, ordering
+  guardrail green in all three directions.

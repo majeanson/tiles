@@ -42,14 +42,18 @@ export const DAYLIGHT: Theme = {
   board: {
     // Warm vellum, not white. A pure-white board is a torch of its own at night,
     // and this direction is meant to be the comfortable one.
-    background: 0xf2ece0,
+    // Darkened 0xf2ece0 → 0xe8dcc4 on 2026-08-25, same day it shipped (Marc,
+    // from the phone: "light is too light") — from bright cream to aged paper,
+    // with every ink and the ground pulled down in step so the whole budget
+    // stayed green rather than one number moving alone.
+    background: 0xe8dcc4,
     seam: 0.04,
-    edge: 0xcabfa9,
+    edge: 0xbfb096,
     edgeWidth: 0.04,
     // On a pale board the loudest edge is the DARKEST one. Both of these are
     // dark, which is why `theme.test.ts` had to start measuring distance from
     // the background rather than raw lightness.
-    legalEdge: 0x715723,
+    legalEdge: 0x64491c,
     ripeEdge: 0x24180a,
     ripeEdgeWidth: 0.14,
     // No vignette. There is no dark for the board to fall off into, and a pale
@@ -63,27 +67,27 @@ export const DAYLIGHT: Theme = {
   },
 
   ink: {
-    bg: 0xf2ece0,
+    bg: 0xe8dcc4,
     // Very nearly black, and warm rather than neutral. It is doing the same job
     // torchlit's pale gold does — reading against seven different grounds — and
     // the further it sits from the middle of the range, the more grounds it can
     // carry on its own.
     ink: 0x0e0b07,
-    inkDim: 0x453d2f,
-    inkFaint: 0x6b6150,
-    accent: 0x715723,
-    magic: 0x5b3396,
-    unique: 0x9c400b,
-    danger: 0xa4231a,
-    panel: 0xe6ddcb,
-    panelEdge: 0xbfb29a,
-    panelEdgeActive: 0x715723,
+    inkDim: 0x40382a,
+    inkFaint: 0x5c5342,
+    accent: 0x64491c,
+    magic: 0x532e8a,
+    unique: 0x8e3a0a,
+    danger: 0x9c1f16,
+    panel: 0xdccfb2,
+    panelEdge: 0xab9c7e,
+    panelEdgeActive: 0x64491c,
     // White, not the background: the halo's whole job is to be the furthest
     // thing from whatever the label sits on, and on a pale board that means
     // going past the board. It is what carries the number over the wall and
     // over the darker end of ASH.
     halo: 0xffffff,
-    haloWidth: 0.18,
+    haloWidth: 0.1,
   },
 
   type: {
@@ -119,17 +123,20 @@ export const DAYLIGHT: Theme = {
   },
 
   /*
-   * The ladder runs the other way up: ash 0.474 / moss 0.606 / tide 0.726 /
-   * ember 0.847, all measured against a ground at 0.936. Ash is the darkest
+   * The ladder runs the other way up: ash 0.453 / moss 0.606 / tide 0.726 /
+   * ember 0.847, all measured against a ground at 0.881. Ash is the darkest
    * terrain here where it is the second-darkest in torchlit, which is what a
    * pale board does — the colour with the most pigment ends up furthest from
    * the paper.
    *
-   * ASH is redder than torchlit's (0xc06a38 against 0x915430) and that is not a
+   * ASH is redder than torchlit's (0xc45a2c against 0x915430) and that is not a
    * taste decision: `fieldDots` deepens each colour to full saturation before
    * inking a field with it, and on this board ash and ember deepened into each
    * other — 54 apart in RGB where the field rule wants 60. Rotating ash away
    * from yellow buys 67 and keeps ember the only sandy thing on the map.
+   * Rotated a step further when the paper darkened (2026-08-25): the darker
+   * ground re-ran fieldDots' equalisation and ember/ash collided again at 54
+   * where the rule wants 60.
    */
   terrain: {
     green: surface(0x8fae70, {
@@ -144,8 +151,8 @@ export const DAYLIGHT: Theme = {
       overlay: { kind: 'hatch', angleDeg: 90, ink: 0x8a6d2e, alpha: 0.1, bar: 1, gap: 5 },
       asset: 'terrain.yellow',
     }),
-    red: surface(0xc06a38, {
-      fillTo: 0x9a4a22,
+    red: surface(0xc45a2c, {
+      fillTo: 0x9e401c,
       pattern: { kind: 'dots', ink: 0x4a2210, alpha: 0.22, radius: 1.5, pitch: 9 },
       overlay: { kind: 'dots', ink: 0x4a2210, alpha: 0.12, radius: 0.6, pitch: 5 },
       asset: 'terrain.red',
@@ -184,7 +191,7 @@ export const DAYLIGHT: Theme = {
     asset: 'terrain.stone',
   }),
 
-  empty: surface(0xe9e1d1, { inset: 0.09 }),
+  empty: surface(0xd8cba9, { inset: 0.09 }),
   ghost: surface(0x715723, { fillTo: 0xb59a5e, alpha: 0.28, asset: 'terrain.ghost' }),
 
   // Daylight. The floor is nearly the ceiling, so the falloff survives only as a

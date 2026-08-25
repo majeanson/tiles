@@ -70,7 +70,7 @@ export const PLACEHOLDER: Theme = {
     // slate, and the halo's whole job is to be the furthest thing from whatever
     // the label sits on. See `Ink.halo`.
     halo: 0x000000,
-    haloWidth: 0.16,
+    haloWidth: 0.1,
   },
 
   type: {
