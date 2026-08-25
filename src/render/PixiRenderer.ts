@@ -19,10 +19,19 @@ import type { BoardView, CellView, Renderer } from './Renderer';
 import { BakedCache, SurfaceTextures } from './surfaces';
 
 /**
- * The camera's range. 1 is the auto-fit that shows the whole grown world plus
- * its beacons — you can always get everything back on screen — and 4 is close
- * enough that a single hex is unmistakable under a thumb. Interaction bounds,
- * not balance and not art: they live with the renderer that enforces them.
+ * The camera's range. 1 is the auto-fit that shows the whole grown world —
+ * you can always get everything back on screen — and 4 is close enough that a
+ * single hex is unmistakable under a thumb. Interaction bounds, not balance
+ * and not art: they live with the renderer that enforces them.
+ *
+ * "The whole grown world" stopped including the beacon disc on 2026-08-25.
+ * Beacons ring home at `reach + beaconHorizon` in every direction whether or
+ * not the structure grew that way, so fitting them framed the thing actually
+ * played — the structure — as a footnote in a huge void (Marc, with three
+ * screenshots: "this should be the essence of the game"). FIT now frames the
+ * structure and its remembered ground; beacons past the frame become edge
+ * chips (see `#syncEdgeChips`), so the somewhere-to-go signal survives the
+ * reframe.
  */
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
@@ -59,15 +68,20 @@ const REFIT_SLOP = 0.01;
  * The bug this fixes (Marc, on a phone, 2026-08-15: "there is a point on
  * mobile where the map grows and i cant zoom in to see numbers anymore"):
  * ZOOM_MAX was a multiple of FIT, and fit shrinks as the world grows. Early
- * on, fit is ~40px a hex and 4x is enormous. By reach 16 — with the beacon
- * horizon stretching the fitted extent another 8 hexes past that — fit is
- * about 5px a hex, so the same 4x cap tops out around 18px and the worth
- * numbers (drawn from size 12 up) are technically present and practically
- * unreadable. The ceiling has to be absolute, not relative to a board that
- * keeps getting bigger.
+ * on, fit is ~40px a hex and 4x is enormous. By reach 16 fit was about 5px a
+ * hex (the beacon horizon stretched the fitted extent another 8 hexes then —
+ * it no longer does, see ZOOM_MIN's own doc — but a deep structure still
+ * shrinks fit plenty), so the same 4x cap topped out around 18px and the
+ * worth numbers (drawn from size 12 up) were technically present and
+ * practically unreadable. The ceiling has to be absolute, not relative to a
+ * board that keeps getting bigger.
  *
  * 34px of radius is a hex about a thumb across, which is the size the whole
- * layout was designed around in the first place.
+ * layout was designed around in the first place. Since 2026-08-25 the same
+ * constant caps FIT itself: with the beacon disc out of the fitted extent, a
+ * three-tile opening board would otherwise fit at ninety-plus pixels a hex —
+ * past readable and into comic. One number, one meaning: as big as a hex is
+ * ever worth drawing.
  */
 const HEX_PX_MAX = 34;
 
@@ -336,6 +350,32 @@ export class PixiRenderer implements Renderer {
   #beaconClock = 0;
 
   /**
+   * Edge chips (2026-08-25): the beacons the camera cannot see.
+   *
+   * FIT frames the structure now, not the beacon disc — see ZOOM_MIN's doc —
+   * so most beacons sit outside the viewport most of the time, and before this
+   * they were drawn anyway: full-size hexes at their true positions, cut in
+   * half by the canvas edge, one of them poking up from behind the control bar
+   * looking exactly like a rendering bug (Marc's three screenshots). A beacon
+   * past the frame is now a CHIP instead — a deliberately smaller, denser hex
+   * pinned just inside the edge, carrying the destination's ring colour and
+   * glyph. Smaller on purpose, and not only for looks: taps resolve by
+   * `hexAt`, so a full-size hex clamped to the edge would sit on ground it is
+   * not at and answer taps about the wrong place. The chip's own scale is what
+   * says "pointer to a place", never "a place".
+   *
+   * The layer is SCREEN-SPACE — `#applyPan`'s translate+scale never touches
+   * it — and above the vignette, because a pointer dimmed by the very dark it
+   * points through would be atmosphere costing information. `#edgeChips`
+   * remembers each chip's true layout position so `#applyPan` can re-clamp
+   * them as the board pans underneath; `#edgeHalos` rides `#advanceBeacons`'
+   * breath so a chip glows in the same rhythm as the full halo it stands for.
+   */
+  readonly #edge = new Container();
+  #edgeChips: { readonly chip: Container; readonly lx: number; readonly ly: number }[] = [];
+  #edgeHalos: { readonly sprite: Sprite; readonly peak: number }[] = [];
+
+  /**
    * `reducedMotion` is read once at construction rather than per frame. A player
    * who has asked their phone for less movement is not asking for a board that
    * decides per animation — and the pop flash is the one place this game moves.
@@ -374,7 +414,9 @@ export class PixiRenderer implements Renderer {
     });
 
     host.appendChild(app.canvas);
-    app.stage.addChild(this.#cells, this.#fx, this.#vignette);
+    // Edge chips sit ABOVE the vignette — see their own doc.
+    this.#edge.eventMode = 'none';
+    app.stage.addChild(this.#cells, this.#fx, this.#vignette, this.#edge);
     this.#app = app;
 
     // WebGL context loss (the same hunt): iOS drops contexts under memory
@@ -395,6 +437,8 @@ export class PixiRenderer implements Renderer {
       this.#clearFlashes();
       for (const { sprite } of this.#beacons.values()) sprite.destroy();
       this.#beacons.clear();
+      // Edge-chip halos ride the same flash texture — same reasoning, same sweep.
+      this.#clearEdgeChips();
       this.#surfaces.clear();
       this.#labels.clear();
       this.#flashTexture?.destroy(true);
@@ -481,21 +525,36 @@ export class PixiRenderer implements Renderer {
     const w = app.screen.width;
     const h = app.screen.height;
     // The frontier fix (Stage 2, WORKPLAN.md's "fit recomputes every draw"):
-    // recomputing the extent from the full cell set on every draw is right
+    // recomputing the extent from the fitted cell set on every draw is right
     // AT fit — the whole point of FIT is to keep showing everything as the
-    // board grows — and wrong once zoomed in. A placement, or a beacon
-    // drifting into beacon-horizon range, nudges the extent every draw; that
-    // nudge gets multiplied by the zoom, which reads as the world sliding
-    // under a camera that never moved rather than as the camera being asked
-    // to move. Past FIT the frontier — the extent `fit` was last computed
+    // board grows — and wrong once zoomed in. A placement, or a wall pushing
+    // the frontier out, nudges the extent every draw; that nudge gets
+    // multiplied by the zoom, which reads as the world sliding under a
+    // camera that never moved rather than as the camera being asked to
+    // move. Past FIT the frontier — the extent `fit` was last computed
     // against — is held still until the screen itself resizes (rotation) or
     // the camera returns to FIT, where a fresh extent is exactly what
     // "everything" has to mean.
     const dimsChanged =
       this.#frontierFor === null || this.#frontierFor.w !== w || this.#frontierFor.h !== h;
+    // What FIT means (2026-08-25): the structure and its remembered ground,
+    // never the beacon disc — see ZOOM_MIN's doc. Beacons ring home in every
+    // direction at `reach + beaconHorizon`, so including them fitted a near-
+    // circle dozens of hexes across around a structure that might be a thin
+    // arm of it. The filter can only be empty if the whole view is beacons,
+    // which never happens (the seed tile is always in `state.cells`) — but a
+    // fallback beats a `size: 0` board if that invariant ever breaks.
+    const anchored = view.cells.filter((cell) => !cell.beacon);
     const fit =
       this.#zoom <= 1 || this.#frontierFit === null || dimsChanged
-        ? fitLayout(view.cells, w, h, 10, this.#theme.orientation)
+        ? fitLayout(
+            anchored.length > 0 ? anchored : view.cells,
+            w,
+            h,
+            16,
+            this.#theme.orientation,
+            HEX_PX_MAX,
+          )
         : this.#frontierFit;
     if (this.#zoom <= 1 || dimsChanged) {
       this.#frontierFit = fit;
@@ -503,10 +562,11 @@ export class PixiRenderer implements Renderer {
     }
 
     // The automatic zoom-out, softened (2026-08-20). At FIT the extent is
-    // recomputed every draw, so the placement that first reveals a distant
-    // beacon shrinks the whole board between one frame and the next. Keep
-    // drawing at the size it HAD and let `#advanceCamera` walk the difference
-    // back to 1. Guarded three ways: only at FIT (past it the frontier is
+    // recomputed every draw, so the placement that pushes the frontier out
+    // (it was "reveals a distant beacon" until beacons left the fitted set,
+    // 2026-08-25) shrinks the whole board between one frame and the next.
+    // Keep drawing at the size it HAD and let `#advanceCamera` walk the
+    // difference back to 1. Guarded three ways: only at FIT (past it the frontier is
     // held still and there is nothing to soften), only for a real change (a
     // rounding wobble is not a zoom-out), and never under reduced motion or
     // on the first draw, where there is no previous size to ease FROM.
@@ -530,9 +590,28 @@ export class PixiRenderer implements Renderer {
     this.#layout = layout;
     if (layout.size <= 0) return;
 
-    for (const cell of view.cells) this.#cells.addChild(this.#drawCell(cell, layout));
+    // The safe rect: where a full-size cell may stand without the canvas edge
+    // cutting it. Inside it, a beacon draws exactly as it always has; outside,
+    // it becomes an edge chip (unclaimed) or simply waits for the camera
+    // (claimed — a visited destination points at nothing). Everything that is
+    // not a beacon is board, and board clips at the edge the way ground does.
+    const inset = Math.min(48, Math.max(14, layout.size * 1.6));
+    const chipped = new Set<HexKey>();
+    this.#clearEdgeChips();
 
-    this.#syncBeacons(view.cells, layout);
+    for (const cell of view.cells) {
+      if (cell.kind === 'landmark' && cell.beacon) {
+        const { x, y } = place(cell, layout);
+        if (x < inset || x > w - inset || y < inset || y > h - inset) {
+          chipped.add(cell.key);
+          if (!cell.claimed) this.#addEdgeChip(cell, x, y, layout, w, h, inset);
+          continue;
+        }
+      }
+      this.#cells.addChild(this.#drawCell(cell, layout));
+    }
+
+    this.#syncBeacons(view.cells, layout, chipped);
     this.#applyPan();
     this.#spawnFlashes(previous, view, layout);
     this.#drawVignette(app.screen.width, app.screen.height);
@@ -863,6 +942,27 @@ export class PixiRenderer implements Renderer {
     this.#fx.scale.set(scale);
     this.#cells.position.set(x, y);
     this.#fx.position.set(x, y);
+
+    // The edge chips stay pinned while the board pans under them (2026-08-25):
+    // each remembers its beacon's true layout position, so its screen position
+    // is that point through the transform just applied to the board — then
+    // clamped back inside the safe rect, exactly as at draw time. A beacon
+    // that was drawn FULL because it was on-safe at draw time still clips if
+    // a pan carries it off-screen — promoting it to a chip mid-gesture would
+    // mean a redraw per pan frame — but a hex sliding off under a moving
+    // camera reads as the world continuing, where a static cut hex read as a
+    // bug. The next action's draw re-sorts everything.
+    if (this.#edgeChips.length > 0) {
+      const w = app.screen.width;
+      const h = app.screen.height;
+      const inset = Math.min(48, Math.max(14, (this.#layout?.size ?? 0) * scale * 1.6));
+      for (const { chip, lx, ly } of this.#edgeChips) {
+        chip.position.set(
+          Math.min(w - inset, Math.max(inset, x + lx * scale)),
+          Math.min(h - inset, Math.max(inset, y + ly * scale)),
+        );
+      }
+    }
   }
 
   /**
@@ -944,6 +1044,7 @@ export class PixiRenderer implements Renderer {
     this.#clearFlashes();
     for (const { sprite } of this.#beacons.values()) sprite.destroy();
     this.#beacons.clear();
+    this.#clearEdgeChips();
     for (const sprite of this.#emberFree) sprite.destroy();
     this.#emberFree = [];
     this.#emberSpriteCount = 0;
@@ -1779,12 +1880,16 @@ export class PixiRenderer implements Renderer {
    * A shimmer is never a beacon (`cell.beacon` is false for one) and gets no
    * halo at all — it has to stay clearly dimmer and vaguer than a promise.
    */
-  #syncBeacons(cells: readonly CellView[], layout: Layout): void {
+  #syncBeacons(cells: readonly CellView[], layout: Layout, chipped: ReadonlySet<HexKey>): void {
     const texture = this.#flashTextureFor();
     const seen = new Set<HexKey>();
 
     for (const cell of cells) {
       if (cell.kind !== 'landmark' || !cell.beacon || cell.claimed) continue;
+      // A chipped beacon's glow lives inside its chip (2026-08-25) — a full
+      // halo left breathing at the true position would put a bloom at the
+      // clipped spot the chip exists to replace.
+      if (chipped.has(cell.key)) continue;
       seen.add(cell.key);
 
       const { x, y } = place(cell, layout);
@@ -1819,7 +1924,7 @@ export class PixiRenderer implements Renderer {
   /** The slow breath: skipped entirely under reduced motion, which keeps its
    * static alpha from `#syncBeacons` instead. */
   #advanceBeacons(deltaMs: number): void {
-    if (this.#reducedMotion || this.#beacons.size === 0) return;
+    if (this.#reducedMotion || (this.#beacons.size === 0 && this.#edgeHalos.length === 0)) return;
     this.#beaconClock = (this.#beaconClock + deltaMs) % BEACON_PULSE_MS;
     const wave = 0.5 + 0.5 * Math.sin((this.#beaconClock / BEACON_PULSE_MS) * Math.PI * 2);
     // Floor kept well above zero — dim, never dark, the same rule the torch
@@ -1827,6 +1932,90 @@ export class PixiRenderer implements Renderer {
     for (const { sprite, peak } of this.#beacons.values()) {
       sprite.alpha = peak * (0.35 + 0.65 * wave);
     }
+    // The chips breathe in the same rhythm as the halos they stand for —
+    // one pulse, wherever a destination shows itself.
+    for (const { sprite, peak } of this.#edgeHalos) {
+      sprite.alpha = peak * (0.35 + 0.65 * wave);
+    }
+  }
+
+  /**
+   * One edge chip — see `#edgeChips`' own doc for why these exist at all.
+   *
+   * `(x, y)` is the beacon's TRUE position in layout space, already known to
+   * be outside the safe rect; the chip is drawn at that position clamped
+   * per-axis to the rect, so a beacon past the top-right corner sits IN the
+   * corner and one straight below sits on the bottom edge — direction kept,
+   * clipping impossible. The true position is remembered on the entry so
+   * `#applyPan` can re-clamp as the board pans under the pinned layer.
+   */
+  #addEdgeChip(
+    cell: CellView,
+    x: number,
+    y: number,
+    layout: Layout,
+    w: number,
+    h: number,
+    inset: number,
+  ): void {
+    const theme = this.#theme;
+    const chip = new Container();
+    chip.position.set(
+      Math.min(w - inset, Math.max(inset, x)),
+      Math.min(h - inset, Math.max(inset, y)),
+    );
+    chip.alpha = 0.85;
+
+    // The ring speaks the same colour language as the full beacon: the
+    // claiming territory's own fill, or the accent where no colour owns it.
+    const tint = cell.colour !== null ? theme.terrain[cell.colour].fill : theme.ink.accent;
+    const r = Math.min(14, Math.max(8, layout.size * 0.6));
+
+    // A small breathing glow first, so it sits under the hex.
+    const texture = this.#flashTextureFor();
+    if (texture !== null && !this.#reducedMotion) {
+      const halo = new Sprite(texture);
+      halo.anchor.set(0.5);
+      halo.blendMode = 'add';
+      halo.setSize(r * 3.2, r * 3.2);
+      halo.tint = tint;
+      chip.addChild(halo);
+      this.#edgeHalos.push({ sprite: halo, peak: 0.3 });
+    }
+
+    chip.addChild(
+      new Graphics()
+        .poly(corners(0, 0, r, layout.orientation))
+        .fill({ color: theme.wall.fill })
+        .stroke({ width: Math.max(1.5, r * 0.18), color: tint, alignment: 0.5 }),
+    );
+
+    // The destination's glyph, so a chip says WHAT is out there, not only
+    // that something is. `labelFor` keeps a shimmer wordless here exactly as
+    // it does on the board — a chip must not sell what the sense upgrade
+    // sells. A fresh, UNCACHED Text on purpose: the chip's glyph size is not
+    // the board's label size, so a cached texture for it is exactly what the
+    // settle-time `#labels.evictExcept` sweeps away — under a sprite this
+    // layer keeps until the next draw, which is the captured-alphaMode crash
+    // the cache's own doc warns about. A dozen chips a draw can afford the
+    // rasterise the cache exists to spare hundreds of cells.
+    const label = labelFor(cell);
+    if (label !== null) {
+      const text = this.#labelText(label, r / 0.7);
+      text.anchor.set(0.5);
+      chip.addChild(text);
+    }
+
+    this.#edge.addChild(chip);
+    this.#edgeChips.push({ chip, lx: x, ly: y });
+  }
+
+  #clearEdgeChips(): void {
+    this.#edge.removeChildren().forEach((c) => {
+      c.destroy({ children: true });
+    });
+    this.#edgeChips = [];
+    this.#edgeHalos = [];
   }
 
   #clearFlashes(): void {

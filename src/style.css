@@ -464,23 +464,37 @@ button.fame-run[aria-expanded='true'] {
    corner and sits above it while a claim is showing — an accepted trade,
    since the toast is transient and dismisses on the very tap that would
    otherwise land on the camera. */
+/* One instrument, not a stack of loose buttons (2026-08-25): the container
+   now carries the chrome (border, rounded corners, panel fill) and the
+   buttons go bare, divided by hairlines — the same "one cohesive pill"
+   language the rest of the chrome speaks elsewhere. */
 #camera {
   position: absolute;
   right: 8px;
   bottom: 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   z-index: 1;
+  border: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel, #1e222b) 85%, transparent);
+  overflow: hidden;
 }
 
 #camera button {
   flex: 0 0 auto;
   min-height: 40px;
-  width: 40px;
+  width: 44px;
   padding: 0;
-  font-size: 0.9375rem;
-  opacity: 0.9;
+  font-size: 0.875rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+#camera button + button {
+  border-top: 1px solid var(--panel-edge, #3a4150);
 }
 
 /* `#camera button` (one id + one type) outweighs a bare `#camera-toggle`
@@ -701,10 +715,6 @@ button.fame-run[aria-expanded='true'] {
   display: none;
 }
 
-#stash .tile.hold {
-  flex: 0 1 96px;
-}
-
 /* 44px is the smallest target a thumb hits reliably; everything here is sized
    from that up rather than down. */
 button {
@@ -746,6 +756,14 @@ button:disabled {
 :focus-visible {
   outline: 2px solid var(--accent, #d7b45a);
   outline-offset: 2px;
+}
+
+/* #board is a script-only focus sink (tabindex="-1" — BEGIN and the event
+   card's close both land focus here). It can never be reached by Tab, so a
+   ring around the whole canvas would announce keyboard focus that keyboard
+   users cannot actually have (2026-08-25). */
+#board:focus-visible {
+  outline: none;
 }
 
 /* The bounty is collectable by this exact press. The theme's one signature
@@ -923,24 +941,18 @@ button.quiet {
   color: var(--unique, #d8892f);
 }
 
-/* The stash: one more card, behind a divider and narrower than a draft card
-   (Stage 2, 2026-08-18: "bottom-third reclaim") — it is not a fourth choice,
-   it is a place to put one aside, and the row should read that difference
-   at a glance rather than four equal-width cards in an unbroken line. */
+/* The stash: one more card, narrower than a draft card (Stage 2, 2026-08-18:
+   "bottom-third reclaim") — it is not a fourth choice, it is a place to put
+   one aside, and the row should read that difference at a glance rather
+   than four equal-width cards in an unbroken line.
+   2026-08-25: this used to carry `margin-left: 10px` plus a `::before`
+   1px divider, both there to set the stash apart from the draft row it
+   used to trail at the end of. The stash moved to its own centred row on
+   2026-08-21; the divider kept floating with nothing left to divide from,
+   so both relics are gone. */
 .tile.hold {
   position: relative;
   max-width: 64px;
-  margin-left: 10px;
-}
-
-.tile.hold::before {
-  content: '';
-  position: absolute;
-  left: -6px;
-  top: 6px;
-  bottom: 6px;
-  width: 1px;
-  background: var(--panel-edge, #3a4150);
 }
 
 /* Dashed while empty, so it reads as a place to put something rather than a

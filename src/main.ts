@@ -3143,7 +3143,12 @@ async function main(): Promise<void> {
     // tabbing from the top of the document at the exact moment the game
     // began. The stats row is the first thing in the shell and is already
     // focusable, so it is where the game starts for them.
-    gameShell.querySelector<HTMLElement>('.stat')?.focus();
+    // 2026-08-25: that used to focus `.stat`, but script-focusing a
+    // `tabindex=0` div matches `:focus-visible`, so every run opened wearing
+    // an accent-outline rectangle around TILES until the next tap. `#board`
+    // is the same focus sink the event card's close path already lands on
+    // (`tabindex="-1"`, exempt from `:focus-visible` styling below).
+    elements.board.focus();
     // The arrival toast fires HERE, not at boot (fresh-eyes finding 9): at
     // boot it played its five seconds to the back of the front door, and
     // the shrine receipt — read-and-cleared — was gone unseen.

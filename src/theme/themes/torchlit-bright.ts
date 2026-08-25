@@ -52,7 +52,11 @@ export const TORCHLIT_BRIGHT: Theme = {
     // Louder than torchlit's 0.12. Ripe is the whole harvest decision, and this
     // is the direction for people who are having trouble seeing it.
     ripeEdgeWidth: 0.15,
-    vignette: { colour: 0x000000, strength: 0.28 },
+    // Null since 2026-08-25: the value shipped as { colour: 0x000000, strength:
+    // 0.28 } — a black vignette over a true-black background, which is a no-op
+    // that still bakes and blends a full-screen sprite. This direction's answer
+    // to atmosphere is a high light floor, not a dark frame; say so honestly.
+    vignette: null,
     home: { ring: 0xff9440, ringWidth: 0.07 },
     // A brighter room throws a harder highlight and a shorter shadow.
     sheen: 0.07,

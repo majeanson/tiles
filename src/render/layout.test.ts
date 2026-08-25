@@ -88,6 +88,32 @@ describe.each(BOTH)('fitLayout (%s-top)', (orientation) => {
     expect(wide).toBeGreaterThan(fit(disc(4), box.w, box.h, 8).size);
   });
 
+  /**
+   * The cap (2026-08-25). FIT frames only the played structure now, and a
+   * three-tile opening board fitted to a phone screen with no ceiling is a hex
+   * ninety pixels wide. `maxSize` states the ceiling in the same pixels-a-hex
+   * currency as `zoomCeiling`'s `maxHexPx`, and the board must stay CENTRED at
+   * the capped size — a cap applied after the origin math would anchor a small
+   * board to a corner sized for a bigger one.
+   */
+  it('caps the fitted hex size, and stays centred at the cap', () => {
+    const uncapped = fitLayout(disc(1), PORTRAIT.w, PORTRAIT.h, 8, orientation);
+    expect(uncapped.size).toBeGreaterThan(34); // the case the cap exists for
+
+    const capped = fitLayout(disc(1), PORTRAIT.w, PORTRAIT.h, 8, orientation, 34);
+    expect(capped.size).toBe(34);
+    const b = drawnBounds(disc(1), capped);
+    expect((b.minX + b.maxX) / 2).toBeCloseTo(PORTRAIT.w / 2, 6);
+    expect((b.minY + b.maxY) / 2).toBeCloseTo(PORTRAIT.h / 2, 6);
+  });
+
+  it('leaves a board already smaller than the cap alone', () => {
+    const plain = fitLayout(disc(6), PORTRAIT.w, PORTRAIT.h, 8, orientation);
+    const capped = fitLayout(disc(6), PORTRAIT.w, PORTRAIT.h, 8, orientation, 34);
+    expect(plain.size).toBeLessThan(34);
+    expect(capped).toEqual(plain);
+  });
+
   it('handles degenerate inputs without producing NaN', () => {
     const empty = fit([], 390, 620, 8);
     expect(empty.size).toBe(0);
@@ -268,8 +294,11 @@ describe('the zoom ceiling', () => {
   });
 
   it('reproduces the phone: a late run could not read its own board', () => {
-    // Reach 16 plus an 8-hex beacon horizon is ~49 hexes across a 390px
-    // screen, which fits at about 4.6px a hex.
+    // Reach 16 plus an 8-hex beacon horizon was ~49 hexes across a 390px
+    // screen, which fitted at about 4.6px a hex. (The beacon disc left the
+    // fitted extent on 2026-08-25 — FIT frames the structure now — but a
+    // deep structure still shrinks fit toward this size, so the number
+    // stays a fair regression case even though its arithmetic is history.)
     const late = 4.6;
     expect(late * FLOOR).toBeLessThan(20); // the old cap: numbers unreadable
     expect(late * zoomCeiling(late, FLOOR, MAX_PX)).toBeCloseTo(MAX_PX);

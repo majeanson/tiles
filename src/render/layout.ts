@@ -132,6 +132,15 @@ export function corners(cx: number, cy: number, size: number, o: Orientation = '
  * full extent — cell centres plus the half-hex that sticks out past the outermost
  * ones — so edge tiles are never clipped, which is exactly the bug you get from
  * fitting centres alone and only notice on a narrow phone.
+ *
+ * `maxSize` (2026-08-25) caps how BIG a hex the fit may choose. Unbounded fit
+ * was harmless while the fitted set always included the beacon disc — dozens of
+ * hexes across, so the computed size was always small. Fit frames only the
+ * played structure now, and a three-tile opening board fitted to a phone screen
+ * is a hex ninety pixels wide: past readable and into comic. The cap is stated
+ * by the caller in the same currency as the zoom ceiling (pixels a hex), and
+ * the centring math runs on the capped size so the board stays centred rather
+ * than anchored to a corner sized for a bigger hex.
  */
 export function fitLayout(
   cells: readonly Hex[],
@@ -139,6 +148,7 @@ export function fitLayout(
   height: number,
   padding = 0,
   orientation: Orientation = 'pointy',
+  maxSize = Infinity,
 ): Layout {
   if (cells.length === 0) {
     return { size: 0, originX: width / 2, originY: height / 2, orientation };
@@ -161,7 +171,7 @@ export function fitLayout(
 
   const availW = Math.max(0, width - padding * 2);
   const availH = Math.max(0, height - padding * 2);
-  const size = Math.min(availW / (maxX - minX), availH / (maxY - minY));
+  const size = Math.min(maxSize, availW / (maxX - minX), availH / (maxY - minY));
 
   // Centre the scaled extent in the box.
   return {

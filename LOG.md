@@ -5596,3 +5596,68 @@ claiming the page while a panel is open is exactly when that one tap matters.
 door's button COUNT, the WORLDS panel, MORE on a virgin device, and SETTINGS
 from both its doors), typecheck / lint / format clean, build green. **Not
 judged by looking yet: that is Marc's, on the phone, in portrait.**
+
+---
+
+### Session 42 — fresh eyes on the play screen: the board becomes the hero
+
+**Question (Marc, with three screenshots — daylight, torchlit, bright):**
+"review all three from fresh eyes, make it cleaner and prettier to look at,
+this should be the essence of the game." What does a fresh eye actually see?
+
+**Four things, and the biggest was structural.** The played structure sat tiny
+in a huge void in every screenshot — and not by accident: FIT fitted
+`view.cells`, which includes the BEACON DISC, a circle of radius
+`reach + beaconHorizon` around home in every direction whether or not the
+structure grew that way. The essence of the game was framed as a footnote to
+its own horizon. The refit softener (2026-08-20) existed to soften exactly
+this shrink; nothing anywhere defended it as a choice.
+
+**FIT frames the structure now.** The fitted set is every cell that is not a
+beacon — played ground, stones, walls, landmarks, and remembered fog, because
+the map you walked is part of the essence; only the undiscovered horizon
+leaves the frame. And `fitLayout` gained a `maxSize` cap (HEX_PX_MAX, the same
+34px "as big as a hex is worth drawing" the zoom ceiling already speaks),
+because a three-tile opening board fitted uncapped to a phone is a hex ninety
+pixels wide. Two new layout tests pin the cap and its centring.
+
+**Beacons past the frame become edge chips.** They used to draw at their true
+positions with no culling and no clamping — full hexes cut in half by the
+canvas edge, one poking up from behind the control bar looking exactly like a
+rendering bug. A beacon outside the safe rect is now a deliberately SMALLER
+hex chip pinned just inside the edge, wearing the destination's ring colour
+and glyph, breathing in the same rhythm as the full halo. Smaller on purpose
+and not only for looks: taps resolve by `hexAt`, so a full-size hex clamped to
+the edge would sit on ground it is not at and answer taps about the wrong
+place — the chip's own scale is what says "pointer to a place", never "a
+place". The chips live in a screen-space layer above the vignette (a pointer
+dimmed by the dark it points through would be atmosphere costing information)
+and `#applyPan` re-clamps them as the board pans underneath. A claimed beacon
+past the frame draws nothing — a visited destination points at nothing.
+
+**The accent rectangle around TILES was the focus ring.** BEGIN's handler
+script-focused the first stat when the front door closed ("focus follows the
+door", 2026-08-20), script focus on a `tabindex=0` div matches
+`:focus-visible`, and the 2px accent outline stood there until the next tap —
+at the start of EVERY run, and in every theme-switch screenshot, because
+switching reloads through the door. Focus lands on `#board` now (the same
+script-only sink the event card's close already uses, with its ring
+suppressed — Tab can never reach it, so the ring announced keyboard focus a
+keyboard cannot have), and a pointer tap on a stat blurs it after explaining.
+
+**Chrome, tidied.** The camera cluster is one instrument — a bordered
+translucent pill with hairline dividers — instead of three floating boxes.
+The HOLD slot dropped two relics of its draft-row days (the orphaned 1px
+left-divider and a dead flex basis); it has been on its own centred row since
+2026-08-21. And torchlit-bright's vignette is `null` now: it shipped as a
+black vignette over a true-black background — a no-op that still baked and
+blended a full-screen sprite.
+
+**Split across two models on Marc's instruction** ("execute the plan in
+sonnet/opus"): the renderer core (fit, cap, chips) in this session's own
+hands, the DOM fixes (focus ring, camera pill, HOLD, vignette) by a delegated
+agent, verified against the same tree.
+
+**Verified:** 704 tests (4 new: the fit cap ×2 orientations), 15 e2e,
+typecheck / lint / format clean, build green. **Not judged by looking yet:
+that is Marc's, on the phone, in portrait, against the deployed site.**

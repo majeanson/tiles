@@ -4028,7 +4028,14 @@ export class Game {
         const explain = (): void => {
           this.#showNote(this.#statNote(stat.id, hud), true);
         };
-        box.addEventListener('click', explain);
+        box.addEventListener('click', (event) => {
+          explain();
+          // A tap must not leave the focus ring standing (2026-08-25): Chrome on
+          // Android treats a tapped tabindex div as :focus-visible, so the ring
+          // outlived the tap it acknowledged. `detail > 0` is a real pointer press;
+          // keyboard activation arrives via the keydown path below and keeps focus.
+          if (event.detail > 0) box.blur();
+        });
         box.addEventListener('keydown', (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();

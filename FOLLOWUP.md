@@ -59,7 +59,14 @@ five things that shipped after this list was written:
 - the six-stat header in portrait, on the narrowest phone to hand,
 - the MENU tab's layout, and SETTLE's slot list on the end screen,
 - the two stash slots on their own row (thumb reach, at 3 and 4 draft cards),
-- **the lighter TIDE against MOSS**, and the louder biome fields.
+- **the lighter TIDE against MOSS**, and the louder biome fields,
+- **the reframed camera** (2026-08-25, Session 42): FIT frames the structure
+  now, not the beacon disc, capped at a readable hex — does the opening board
+  feel right, and does a deep run still breathe?
+- **the edge chips** (same session): beacons past the frame are small pinned
+  hexes at the screen edge instead of clipped full hexes — do they read as
+  pointers, and is a dozen of them at FIT calm or busy?
+- the camera cluster as one pill, and the HOLD slot without its stray divider.
 
 Every one is a by-looking verdict the repo cannot test:
 
