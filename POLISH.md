@@ -410,19 +410,21 @@ draw, so deleting it changes the look rather than saving free bytes.
 
 ## Worth doing, nobody blocked
 
-- **Nothing visual is tested** (`STATUS.md`). A few Playwright screenshot
-  assertions — not pixel diffing, just "the board drew something" — is the
-  cheap floor, and the camera now animates, which is the class of change that
-  breaks silently.
-- **`src/render/shareCard.ts` has 2 tests** for the artifact that carries the
-  entire distribution mechanism.
-- **`src/main.ts` still has no unit tests.** It is shrinking the right way —
-  `meta/backup.ts`, `meta/daily.ts`'s run codec and `ui/dialog.ts` were all
-  extracted out of it with tests — and the next candidates are the shed
-  ladder's ordering and the shop-levels inherit rule.
-- **No onward-share invitation.** The recipient of a `?seed=` link gets the
-  same SHARE button and the chain propagates, but nothing invites them to
-  pass it on.
+- **Nothing visual is tested — ✅ DONE 2026-08-26.** The screenshot-entropy
+  floor now covers a placement, either side of the FIT⇄HERE camera toggle,
+  and the end screen's own snapshot image, not only the boot frame
+  (`e2e/smoke.spec.ts`, LOG.md Session 44).
+- **`src/render/shareCard.ts` has 2 tests — ✅ DONE 2026-08-26.** 11 tests
+  now, pinning the actual drawn contract (dimensions, site address, score/
+  reach, headline placement, arc bars, degenerate inputs) via a recording
+  canvas context, not just the no-context fallback.
+- **`src/main.ts` still has no unit tests — ✅ PARTIALLY DONE 2026-08-26.**
+  The shed ladder's ordering (`@meta/shedLadder`) and the shop-levels
+  inherit rule (`@meta/shopLevels`) are both extracted and tested; `main.ts`
+  is otherwise unchanged and still the largest untested file.
+- **No onward-share invitation — ✅ DONE 2026-08-26.** The end screen now
+  prints one quiet line beside SHARE when this run was itself opened from a
+  `?seed=` link (`GameHooks.fromLink`, `src/ui/game.ts`).
 
 ## Deferred by ruling — do not reopen
 

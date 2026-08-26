@@ -5723,3 +5723,65 @@ Not a balance change, not an engine change; `src/meta/` only, plus the two
 buttons. 711 tests (6 new). **What remains of POLISH.md's "Needs Marc" is
 now entirely phone work: the rehearsal re-run, Session B, Session C — and
 the OG-image art call.**
+
+### Session 44 — POLISH.md's "Worth doing" list, closed to zero (2026-08-26)
+
+Four items, one commit each, all shipped — the last of POLISH.md's "Worth
+doing, nobody blocked" bullets, engine and content untouched throughout.
+
+**The picture floor follows the camera where it now flies** (`86664f5`).
+The screenshot-entropy floor (Session 38's `e6ac9bd`) only ever checked the
+board at boot. Three more states get the same non-pixel-diffing check: after
+a placement, either side of the FIT⇄HERE toggle, and the end screen's own
+`<img class="end-snapshot">` (decoded straight from its PNG data URL). No
+debug shortcut exists to reach "ended", so that test drives seed 7 to its
+own deterministic finish — 24 placements, ~250 taps, measured by hand.
+Found and deliberately left alone: `#syncCamera` reads the renderer's zoom
+synchronously at click time, before that click's tween has advanced a
+frame, so the toggle's own label can go stale until a later gesture
+re-syncs it — worth Marc's eyes, out of scope for a test-floor session. 18
+e2e tests (4 new).
+
+**The share card earns its contract, not just its null** (`bdacb20`).
+`shareCard.test.ts` had 2 tests, both pinning the happy-dom fallback (no 2D
+context, resolve null) and never once checking what the card actually
+draws — the PNG carrying the whole distribution mechanism. happy-dom's
+canvas adapter is pluggable, so a hand-rolled recording context substituted
+via `HTMLCanvasElement.prototype.getContext` runs the module's real drawing
+code — no new dependency; happy-dom's `Image` and `canvas.toBlob` already
+resolve without a native canvas backend. Nine new tests pin the actual
+contract: 1200×630 (the og:image aspect), the site address drawn
+right-aligned, this run's own points/reach, the headline only when earned
+(and the score moving down to make room for it), the footer line skipped
+when there's nothing worth sharing, one bar per harvest, the score still
+drawing when the mark image fails to decode, and degenerate zero/empty
+inputs. 11 tests total.
+
+**The world says how it got here, and where it can go next** (`cf8cd12`).
+POLISH.md's onward-share gap: a recipient of a `?seed=` link got the same
+SHARE button as everyone and the chain propagated, but nothing on the end
+screen ever said so. `fromLink` is a new `GameHooks` flag — narrower than
+the existing `replay`, which is also true for the daily — wired in
+`main.ts` from the `askedSeed()` it already computes. True, with SHARE
+itself available, prints one quiet line beside the button: "This world
+reached you by a link — it travels the same way out." No new button, no
+new system. 3 new tests: silent by default, present only with both
+`fromLink` and `share`, silent again if SHARE itself is unavailable.
+Wording is Marc's call on the phone.
+
+**Two more decisions leave main.ts for meta/, tested where they stand**
+(`35b01b8`). The next two extractions POLISH.md named after `daily.ts`'s
+run codec. `@meta/shedLadder` owns the storage-full triage ORDER (a
+diagnostic record, then other slots' receipts, then the diary, then every
+OTHER world) and each rung's own honest sentence — the actual
+`localStorage.removeItem` calls stay in `main.ts`, keyed the same way so
+the two cannot drift. `@meta/shopLevels` owns the per-world shop split's
+inherit decision: no shop key of its own means the world predates the
+split and inherits the device's legacy levels once; its own levels — even
+an empty object — win outright. Pure refactor, behavior identical; 17 new
+tests pin the ladder's order and wording and the parse/inherit rules'
+salvage and reference-equality behavior.
+
+**711 → 740 tests (29 new), 15 → 18 e2e (3 new).** Format, lint, typecheck,
+the full unit suite and the full e2e suite (against a real production
+build) all green after every commit, pushed one at a time.
