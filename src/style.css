@@ -819,8 +819,12 @@ button.quiet {
  * it survive a change of palette that puts two of them closer together.
  */
 .tile {
-  max-width: 108px;
-  min-height: 56px;
+  /* 68px, up from 56 (2026-08-26, "make sure bottom space is used
+     properly"): the hint row left the column and the empty POP row stopped
+     spending gaps, and the hand — the thing a thumb actually aims at — is
+     what earns the reclaimed height. */
+  max-width: 120px;
+  min-height: 68px;
   border-width: 2px;
   color: var(--ink, #e8ecf4);
   font-size: 0.625rem;
@@ -1869,10 +1873,29 @@ button.help-tab[data-on='true'] {
   display: none;
 }
 
+/* The POP row too (2026-08-26): with every harvest button hidden the empty
+   div still sat in the flex flow collecting gaps — part of the dead band
+   Marc's screenshot showed between the stash and the purse line. */
+#actions:not(:has(button:not([hidden]))) {
+  display: none;
+}
+
 #actions-more button {
   min-height: 40px;
   font-size: 0.86em;
   opacity: 0.85;
+}
+
+/* SACRIFICE destroys the pocket it prices — tiles you LOSE, not a variation
+   you might prefer (Marc, 2026-08-26: "easy to know you're gonna lose
+   them"). The danger colour is spent almost nowhere else on purpose — the
+   armed wipe wears it — so red here reads as exactly one thing: this
+   button costs you the tiles. Full opacity: a warning has no business
+   whispering. */
+#harvest-burn {
+  border-color: var(--danger, #c1362b);
+  color: var(--danger, #c1362b);
+  opacity: 1;
 }
 
 /* The purse, folded. One line closed; a shop open. */
@@ -1882,16 +1905,26 @@ button.help-tab[data-on='true'] {
   gap: 8px;
 }
 
+/* A drawer handle, not another button (Marc, 2026-08-26: "make sure it has
+   different visuals for other buttons"). Every other control in this column
+   is a boxed action; this one is a door. It reads as a full-width bar over
+   a single hairline — no box, no fill — and since the spends grid sits
+   BEFORE it in the column, opening unfolds the shop UPWARD while this
+   handle keeps its exact place at the bottom of the screen. */
 #purse-toggle {
-  min-height: 38px;
+  min-height: 44px;
   flex: 1 1 auto;
   font-size: 0.84em;
   color: var(--ink-faint, #767d8d);
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 0;
 }
 
 /* Affordable: the fold advertises itself at the moment it can be used. */
 #purse-toggle.live {
-  border-color: var(--accent, #d7b45a);
+  border-top-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
 }
 

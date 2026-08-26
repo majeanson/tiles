@@ -416,10 +416,14 @@
 
           <!-- The luck purse, folded. Open it and it is a shop; closed it is one
              line that says what you are carrying — and lights up when there is
-             something you can actually afford. -->
+             something you can actually afford. The spends sit BEFORE the
+             toggle on purpose (Marc, 2026-08-26: "make sure it stays at the
+             same place — opens up"): the toggle is the bottom-most control,
+             so the shop has to unfold ABOVE it, and with the grid first in
+             the column the toggle never moves when it opens. -->
           <div id="purse" hidden>
-            <button id="purse-toggle" type="button" aria-expanded="false"></button>
             <div id="spends" hidden></div>
+            <button id="purse-toggle" type="button" aria-expanded="false"></button>
           </div>
         </div>
 

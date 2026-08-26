@@ -5939,3 +5939,32 @@ notes and the unlock ledger 15px, fold summaries and atlas labels 13px,
 atlas values 18px, fame rows 16px, and the front door's buttons inherit
 1rem instead of the body's 13px chrome voice. The board chrome still
 belongs to the board. Same gates, green again.
+
+**Addendum 3 — the play screen's bottom chrome, on four phone verdicts.**
+Marc, two screenshots into the evening:
+
+- **"Remove place tiles surround one on all six sides text"** — the hint's
+  standing default is GONE (`guideFor` returns null on a quiet board; the
+  row hides rather than blanks). The RIPE teaching card owns that sentence;
+  the runway alarm and pocket-ready calls still speak when situational.
+- **"Make sure bottom space is used properly"** — the empty POP row
+  stopped collecting flex gaps (`#actions` now collapses like
+  `#actions-more` always did), and the hand cards grew 56 → 68px tall —
+  the thing a thumb aims at is what earns the reclaimed height.
+- **"The luck button… different visuals… stays at the same place (opens
+  up)"** — the purse toggle is a DRAWER HANDLE now, not another boxed
+  button: full-width over a single hairline, no fill; and `#spends` moved
+  BEFORE it in the column, so the shop unfolds UPWARD while the handle
+  keeps its exact place at the bottom.
+- **"Sacrifice… easy to know you're gonna lose them"** — `#harvest-burn`
+  wears the danger red (border and ink, full opacity), a colour spent
+  almost nowhere else, so the one button that destroys the pocket is the
+  one button that looks like it.
+- **"All types of shrines same visibility — the + cache not so much"** —
+  the cache glyph is `✚` (heavy cross) now: the old typographic `+` was
+  the one hairline-stroke mark in a set of filled ones, invisible at
+  beacon sizes where every other glyph survived. Copy follows in the
+  manual and the tap-line (legal: copy is exactly what the freeze
+  permits), and three pins moved with the deliberate change.
+
+760 tests, 18 e2e, green. Judged by looking is Marc's, next run.

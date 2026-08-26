@@ -1030,7 +1030,13 @@ function guideFor(state: GameState, ctx: RenderContext): string | null {
       ? `${pockets} — tap one to price it, then POP or sacrifice it`
       : `${pockets} — tap one, then POP for tiles or pts`;
   }
-  return 'Place tiles — surround one on all six sides to ripen it';
+  // No standing default any more (Marc, 2026-08-26: "remove place tiles
+  // surround one on all six sides text"). The teaching cards own that
+  // sentence's job now — RIPE fires at the first surround — and a line that
+  // sat there being true the whole run was spending a row on it. The guide
+  // still speaks when it has something situational to say: the runway
+  // alarm and the pocket-ready calls above.
+  return null;
 }
 
 /**
@@ -1537,8 +1543,8 @@ export function describeHexOf(ctx: DescribeContext, hex: HexKey): string {
   const destination = (reward: LandmarkReward, colour: Colour | null, claimed: boolean): string => {
     if (reward === 'cache') {
       return claimed
-        ? '+ CACHE — already claimed. It gave its tiles.'
-        : `+ CACHE — build a tile touching it to claim ${cachePaysAt(hex, t, homeOf(state))} tiles on the spot.`;
+        ? '✚ CACHE — already claimed. It gave its tiles.'
+        : `✚ CACHE — build a tile touching it to claim ${cachePaysAt(hex, t, homeOf(state))} tiles on the spot.`;
     }
     if (reward === 'site') {
       return claimed

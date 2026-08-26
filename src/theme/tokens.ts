@@ -678,17 +678,21 @@ export const COLOUR_MARK: Readonly<Record<Colour, string>> = {
 /**
  * The destination glyphs — fixed across directions for the same reason the
  * colour marks are: a symbol language that changes with the art direction is
- * a language nobody learns. `+` pays tiles, `★` pays points, `◈` wakes an
- * unlock, `◆` is ground to claim, `✦` is a hidden find — a four-pointed
- * spark, distinct from the star and both diamonds at the sizes a phone draws
- * them. Keyed by plain strings so the theme layer needs nothing from the
- * engine. A find only ever wears its glyph once REVEALED: the shimmer draws
- * no glyph at all, by design.
+ * a language nobody learns. `✚` pays tiles (the HEAVY cross since
+ * 2026-08-26 — Marc, from the phone: "I can clearly see the stars one, the
+ * + cache not so much"; a thin typographic plus was the one glyph in the
+ * set with hairline strokes, so it vanished at beacon sizes where every
+ * filled mark survived), `★` pays points, `◈` wakes an unlock, `◆` is
+ * ground to claim, `✦` is a hidden find — a four-pointed spark, distinct
+ * from the star and both diamonds at the sizes a phone draws them. Keyed by
+ * plain strings so the theme layer needs nothing from the engine. A find
+ * only ever wears its glyph once REVEALED: the shimmer draws no glyph at
+ * all, by design.
  */
 export const LANDMARK_GLYPH: Readonly<
   Record<'cache' | 'site' | 'shrine' | 'territory' | 'find', string>
 > = {
-  cache: '+',
+  cache: '✚',
   site: '★',
   shrine: '◈',
   territory: '◆',

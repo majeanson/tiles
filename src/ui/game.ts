@@ -1900,8 +1900,8 @@ export class Game {
             ...(show('cache')
               ? [
                   t.cachePaysPerRing > 0
-                    ? `+ CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} more per ring out. Caches and sites re-arm every run, so ground you know stays worth walking.`
-                    : `+ CACHE — ${t.cachePays} tiles on the spot. Caches and sites re-arm every run, so ground you know stays worth walking.`,
+                    ? `✚ CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} more per ring out. Caches and sites re-arm every run, so ground you know stays worth walking.`
+                    : `✚ CACHE — ${t.cachePays} tiles on the spot. Caches and sites re-arm every run, so ground you know stays worth walking.`,
                 ]
               : []),
             // The bounty's RULE, not just its name (2026-08-21). It lived

@@ -736,8 +736,12 @@ describe('the camera, and staying oriented', () => {
     expect(ctx.game.state.selected).toBe(1);
   });
 
-  it('always says what to do now, and hides the harvest until it exists', () => {
-    expect(ctx.el.hint.textContent).toMatch(/place tiles/i);
+  it('speaks only when it has something to say, and hides the harvest until it exists', () => {
+    // No standing default line any more (2026-08-26): the teaching cards own
+    // "surround one on all six sides", and a quiet board keeps a quiet hint —
+    // the row is HIDDEN, not blank, so it spends no height.
+    expect(ctx.el.hint.textContent).toBe('');
+    expect(ctx.el.hint.hidden).toBe(true);
     expect(ctx.el.harvestTiles.hidden).toBe(true);
     expect(ctx.el.harvestPoints.hidden).toBe(true);
 
@@ -2344,7 +2348,7 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     expect(fresh).not.toContain('RARE TILES');
     expect(fresh).not.toContain('LUCK IS A PURSE');
     expect(fresh).not.toContain('RELICS AND THE SHOP');
-    expect(fresh).not.toContain('+ CACHE');
+    expect(fresh).not.toContain('✚ CACHE');
     expect(fresh).toContain('More appears here as you meet it.');
     // START stays whole — it is the stranger's tab.
     expect(fresh).toContain('WHAT YOU SEE');
@@ -2356,7 +2360,7 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     expect(grown).toContain('RARE TILES');
     expect(grown).toContain('LUCK IS A PURSE');
     expect(grown).toContain('RELICS AND THE SHOP');
-    expect(grown).toContain('+ CACHE');
+    expect(grown).toContain('✚ CACHE');
     expect(grown).not.toContain('More appears here as you meet it.');
   });
 
@@ -3242,9 +3246,9 @@ describe('#describe’s destination() closure, pinned ahead of its move to view.
     // TUNING.cachePays is 6, and `HEX` sits at distance 0 from home, where
     // `cachePaysPerRing`'s per-ring bonus is exactly zero.
     expect(tapLandmark('cache', false, null)).toBe(
-      '+ CACHE — build a tile touching it to claim 6 tiles on the spot.',
+      '✚ CACHE — build a tile touching it to claim 6 tiles on the spot.',
     );
-    expect(tapLandmark('cache', true, null)).toBe('+ CACHE — already claimed. It gave its tiles.');
+    expect(tapLandmark('cache', true, null)).toBe('✚ CACHE — already claimed. It gave its tiles.');
   });
 
   it('prices a site, before and after it is claimed', () => {
