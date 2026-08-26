@@ -3590,11 +3590,16 @@ async function main(): Promise<void> {
     // ever taps, and MENU took the tab bar's first seat the same day.
     game.openHelp(moreHelp, 'start');
   });
-  // A keyboard or screen-reader user should land on the primary action, not
-  // have to discover it. Best-effort: some browsers refuse focus during
-  // load, and the door is still fully usable by touch either way.
+  // A keyboard or screen-reader user should land inside the door and hear
+  // its name; the first Tab is BEGIN. The DOOR, not BEGIN itself
+  // (2026-08-26): programmatic focus before any interaction matches
+  // :focus-visible in Chromium, so focusing the button painted a permanent
+  // accent ring around BEGIN on every boot — the same container-focus
+  // pattern every panel already uses, for the same reason. Best-effort:
+  // some browsers refuse focus during load, and the door is still fully
+  // usable by touch either way.
   try {
-    frontDoorBegin.focus();
+    required('front-door').focus();
   } catch {
     // Not focusable yet, or focus refused. BEGIN is still one tap away.
   }

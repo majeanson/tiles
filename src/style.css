@@ -248,6 +248,17 @@ body {
   color: var(--accent, #d7b45a);
 }
 
+/* The primary's ember (2026-08-26, with the button gradient below): the
+   accent-edged buttons that start or seize something — BEGIN, the event
+   card's action, a collectable bounty — sit in a soft pool of their own
+   accent. Outer and blurred so it reads as heat under the button, never
+   as a second border; decoration only, so no contrast budget rides on it. */
+#front-door-begin,
+#event-card-dismiss,
+button.bounty {
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--accent, #d7b45a) 30%, transparent);
+}
+
 /* --------------------------------------------------------- panel sheets
 
    The shape every screen that covers the door wears: WORLDS, MORE, SETTINGS
@@ -281,6 +292,42 @@ body {
 #worlds-panel,
 #more-panel {
   z-index: 4;
+}
+
+/* The door's two panels hold a handful of rows in a full-height sheet —
+   without this, MORE is two lonely buttons in a corner over 90% empty
+   parchment (2026-08-26, the placement audit). The header keeps the top
+   edge; the twin auto margins (the header's bottom, the ::after's top —
+   ::after because the real last child can be [hidden], whose margin would
+   vanish with it) float the short menus to the sheet's middle, the same
+   centred column the door behind them draws. Overflowing content collapses
+   both margins to zero and scrolls exactly as before. */
+#worlds-panel,
+#more-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+#worlds-panel > .panel-head,
+#more-panel > .panel-head {
+  margin-bottom: auto;
+}
+
+#worlds-panel::after,
+#more-panel::after {
+  content: '';
+  margin-top: auto;
+}
+
+/* A flex column stretches children full-width; the sheets' prose notes and
+   menus should hold the same centred measure the door's column does. */
+#worlds-panel > .flag-note,
+#more-panel > .panel-title,
+#worlds-panel > .panel-menu,
+#more-panel > .panel-menu {
+  width: 100%;
+  max-width: var(--menu-col, 320px);
+  align-self: center;
 }
 
 /* SETTINGS is reachable from MORE (z 4) and from the manual's MENU tab
@@ -656,12 +703,19 @@ button.fame-run[aria-expanded='true'] {
   color: var(--ink-faint, #767d8d);
 }
 
-/* MAIN MENU shares RESTART's width — the MENU tab's column read as four
-   buttons at three widths before 2026-08-26. */
+/* The MENU tab's whole column, one grammar (2026-08-26 twice: first MAIN
+   MENU joined RESTART's width, then the placement audit found SETTINGS
+   still shrink-wrapped left beside full-panel siblings). Every control in
+   the tab is a centred --menu-col button — the same column the door and
+   the end screen already are. */
 #new-run,
-#to-main-menu {
+#to-main-menu,
+#to-settings,
+#abandon-world {
+  display: block;
   width: 100%;
-  margin-top: 4px;
+  max-width: var(--menu-col, 320px);
+  margin: 4px auto 0;
 }
 
 /* ------------------------------------------------------------------ stats */
@@ -812,14 +866,27 @@ button.fame-run[aria-expanded='true'] {
 }
 
 /* 44px is the smallest target a thumb hits reliably; everything here is sized
-   from that up rather than down. */
+   from that up rather than down.
+
+   The ember edge (Marc, 2026-08-26: the menus' flat boxes read as ugly):
+   every button is lit faintly from above — the panel colour warmed with 8%
+   ink-white at the top, settling to the plain panel by two-thirds down — so
+   chrome reads as carved surfaces under the same light the board lives in.
+   Derived from --panel in CSS rather than declared as a new theme colour on
+   purpose: the text still sits on the theme's own panel value the contrast
+   budget was measured against (the mix is gone before the label's midline),
+   and every direction inherits the light without a palette change. */
 button {
   min-height: 44px;
   flex: 1 1 0;
   padding: 0 10px;
   border: 1px solid var(--panel-edge, #3a4150);
-  border-radius: 4px;
-  background: var(--panel, #1e222b);
+  border-radius: 6px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--panel, #1e222b) 92%, #fff),
+    var(--panel, #1e222b) 62%
+  );
   color: var(--ink-dim, #c3c9d6);
   font: inherit;
   font-family: var(--font-label, inherit);
@@ -857,8 +924,11 @@ button:disabled {
 /* #board is a script-only focus sink (tabindex="-1" — BEGIN and the event
    card's close both land focus here). It can never be reached by Tab, so a
    ring around the whole canvas would announce keyboard focus that keyboard
-   users cannot actually have (2026-08-25). */
-#board:focus-visible {
+   users cannot actually have (2026-08-25). #front-door joined 2026-08-26:
+   boot focus lands on the door container (the panels' own pattern), and a
+   ring around the whole first screen would be the same false announcement. */
+#board:focus-visible,
+#front-door:focus-visible {
   outline: none;
 }
 
@@ -1464,10 +1534,15 @@ button.armed {
   margin: 0 0 18px;
 }
 
+/* A 2×2 grid, not a wrapping row (2026-08-26, the placement audit): four
+   labels of very different lengths flex-wrapped into HIGH CONTRAST broken
+   over two lines beside one-word chips, with DAYLIGHT stretched alone and
+   full-width underneath. Equal cells read as one set of four choices. */
 #appearance-options {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
+  max-width: var(--menu-col, 320px);
   margin: 8px 0 6px;
 }
 
@@ -1476,7 +1551,6 @@ button.armed {
   min-height: 44px;
   font-size: 0.875rem;
   padding: 0 8px;
-  border-radius: 3px;
 }
 
 .swatch[aria-pressed='true'] {

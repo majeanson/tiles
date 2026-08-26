@@ -3169,11 +3169,16 @@ export class Game {
       if (book !== undefined) {
         // A headline when it is true; a distance when it is not. Restating
         // "best 480 pts" beside a run that scored 190 answered a question
-        // nobody asked — how far short is the one worth knowing.
-        this.#recordLines.push(
-          book.isNewBest ? 'NEW BEST' : `${Math.max(0, book.best - hud.points)} short of best`,
-        );
-        this.#runNumber = book.runs;
+        // nobody asked — how far short is the one worth knowing. And when
+        // there IS no standing best — a shared `?seed=` replay on a device
+        // that has never finished a home run — say nothing: "0 short of
+        // best" under a score that banked nothing was the line lying twice
+        // (2026-08-26, the placement audit). Same guard on RUN 0: a book
+        // with no runs in it has no number worth printing.
+        if (book.isNewBest) this.#recordLines.push('NEW BEST');
+        else if (book.best > 0)
+          this.#recordLines.push(`${Math.max(0, book.best - hud.points)} short of best`);
+        this.#runNumber = book.runs > 0 ? book.runs : null;
         this.#recordBest = book.previousBest ?? null;
       }
 

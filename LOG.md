@@ -6166,3 +6166,49 @@ looking is Marc's: the fold's picture at diary size, the ghosted card
 in a real share sheet, and the milestone lines' wording.** Still on the
 menu: F3 and F5 (passed over this session, not rejected forever) and
 everything [POST-TAG]. **The one gate is still Session C.**
+
+### Session 51 — the ember edge, and the placement audit that finally LOOKED (2026-08-26)
+
+Marc: "menu buttons arr still ugly … make sure no awkward button
+placements too." Ruled by option set: **ember edge, everywhere** (keep
+the boxes; light them) over solid-fill, hex-cut and rail treatments.
+All CSS and end-screen presentation — sim untouchable by construction.
+
+**The ember edge.** Every button is now lit faintly from above: a
+gradient from the panel colour warmed with 8% white down to the plain
+panel by two-thirds height, radius 4→6px — derived from `--panel` in
+CSS rather than declared as a theme colour, so the label still sits on
+the exact panel value the contrast budget measures and every direction
+inherits the light unchanged. The three accent-edged primaries — BEGIN,
+the event card's action, a collectable bounty — sit in a soft outer
+pool of their own accent (decoration only; no contrast rides on it).
+
+**The placement audit.** For the first time this project pointed a
+browser at itself and READ the screenshots (Playwright walker in the
+scratchpad, 390×844, both colour schemes, twelve surfaces incl. a full
+walked run). Five findings, all fixed:
+
+- **BEGIN wore a permanent focus ring on every boot.** `main()` focused
+  the button; programmatic focus before any interaction matches
+  `:focus-visible` in Chromium — so the door's first impression was a
+  double gold ring. Boot focus moved to the door container
+  (`tabindex="-1"`, ring suppressed like `#board`'s) — the exact
+  pattern every panel already used. First Tab still lands on BEGIN.
+- **MORE was two lonely buttons in the corner of an empty sheet.** The
+  door's two panels now centre their short menus vertically (twin auto
+  margins — the `::after` carries the bottom one because the real last
+  child can be `[hidden]`), in the door's own 320px column.
+- **The APPEARANCE picker wrapped ugly** — HIGH CONTRAST broken over
+  two lines beside one-word chips, DAYLIGHT alone and full-width. A
+  2×2 grid of equal cells now.
+- **The MENU tab's column was three widths again** — SETTINGS
+  shrink-wrapped left beside a full-panel MAIN MENU. All four controls
+  are one centred `--menu-col` column (U3/U8's own rule, two ids short).
+- **A shared run on a virgin device ended under "RUN 0 · 0 short of
+  best"** — both lines lying (a replay banks nothing; there was no
+  best). Both suppressed when the book holds nothing.
+
+**Verified:** 773 tests, 18 e2e, typecheck / lint / format clean;
+before/after screenshots in both schemes re-read after the fix. **Judged
+by looking is Marc's: the ember edge at phone brightness, the primaries'
+glow, MORE's centred menu, and the appearance grid.**
