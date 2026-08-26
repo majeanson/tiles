@@ -5879,3 +5879,26 @@ the tree: the budget is 300s with the reasoning in a comment, and a deploy
 claim is only ever `version.json`'s own answer, never a watcher's exit
 code. (The refactor commits themselves were never the problem: every
 failure was this one test, on runner hardware.)
+
+### Session 47 — A and B close on the phone; the balance freezes (2026-08-26)
+
+Marc's report, on option sets, from the deployed site (`39dc9a1`):
+
+- **The rehearsal's oldest question — can a stranger's first run teach
+  itself? — YES.** Played cold after RESET TEACHING, BEGIN DAILY, then a
+  home run: every card arrived at its moment and no moment needed a thing
+  the screen did not say. The pre-stranger fix list is EMPTY.
+- **Session B, pop-vs-burn-vs-wait: FELT LIKE A DECISION.** The first
+  human datapoint on the standing v1.1 question (D18) is positive —
+  recorded as a datapoint, not an answer; the question still belongs to
+  weeks of real play.
+- **Session B, the relic pace: EARNS. The balance is FROZEN as of this
+  entry.** From here to the tag, changes are copy and crashes only —
+  `PLAYTEST.md`'s standing rule is now the law of the land.
+- **The look-at-its close: all fine as shipped.** The onward-share line's
+  wording, the camera label through its flights, the board-scene unfurl,
+  and Monday's halo/daylight pass — judged by looking, kept as built.
+
+What remains is exactly one thing, and it is not code: **Session C.** One
+person who is not Marc, their phone, "try this" and nothing else. The gate
+is the fourth recorded fact — did they start another run.

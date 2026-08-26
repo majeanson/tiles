@@ -4,7 +4,22 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-25 — the contrast pass, and the two directions it
+Last checkpoint: **2026-08-26 — the balance is FROZEN; only the stranger
+remains.** Sessions A (re-run) and B closed on the phone in one day (LOG
+Session 47): the first run teaches itself with an EMPTY fix list,
+pop-vs-burn-vs-wait registered as a real decision (first positive datapoint
+on the v1.1 question), the relic pace earns, and every open look-at-it was
+judged fine as shipped. From here to the tag: copy and crashes only. The
+same day shipped the crash-report destination (Sentry, one tap, verified
+end to end), the board-scene OG image (D21), the epoch ruling (D20 — it
+stays on 2026-08-25, the tag is dateless), launch hardening (screenshot
+floor, share-card contract tests, onward-share line, two main.ts
+extractions), a cleanup pipeline (760 tests, sim byte-identical), and the
+CI lesson: an e2e budget measured on a dev machine held deploys shut for
+nine commits — 300s now, and deploy claims come only from `version.json`.
+**The one gate is Session C.**
+
+Previous checkpoint: **2026-08-25 — the contrast pass, and the two directions it
 needed.** The board was unreadable on a phone and every test was green; the
 budget that would have caught it is now `contrast.test.ts`, running over four
 directions. See LOG.md Session 40. Not judged by looking yet.

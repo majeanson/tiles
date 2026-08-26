@@ -10,7 +10,11 @@ actively misleading with a launch five days out. This is the live script;
 portrait.** Reload twice first (or tap NEW VERSION) so the build is
 today's.
 
-## Session A — the stranger rehearsal — ✅ PLAYED 2026-08-20
+## Session A — the stranger rehearsal — ✅ PLAYED 2026-08-20, ✅ RE-RUN 2026-08-26
+
+**The re-run's verdict (LOG Session 47): the first run teaches itself.**
+Every card at its moment, no gaps written down. The script below stays for
+the next time a build changes the first minute.
 
 Marc played it and reported as he went; everything he named was built the
 same night (LOG.md Sessions 35–38, and the audit batches after them). Kept
@@ -36,7 +40,11 @@ instead of two screens below it, and the first pop can no longer score zero.
    world: fog, anchors, lens, reborn landmarks, ember, rarity colours,
    pop cascade, wording, shelf count, fame folds, relic pace.
 
-## Session B — the verdict run (~20 min, Day 3)
+## Session B — the verdict run — ✅ PLAYED 2026-08-26
+
+**Both answers in (LOG Session 47): pop-vs-burn-vs-wait FELT LIKE A
+DECISION (first datapoint on the standing v1.1 question), and the relic
+pace EARNS. The balance is FROZEN — copy and crashes only until the tag.**
 
 One long home-world run, two questions:
 
