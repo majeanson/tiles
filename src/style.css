@@ -153,6 +153,10 @@ body {
   overflow-y: auto;
   background: var(--bg, #14161c);
   text-align: center;
+  /* The door speaks at the panels' register, not the board's (2026-08-26,
+     the same "too small by a big margin" verdict): its buttons inherit
+     this instead of the body's 13px chrome size. */
+  font-size: 1rem;
 }
 
 /* The centring spacers: two equal flexible struts instead of auto margins
@@ -209,7 +213,7 @@ body {
 #front-door-tagline {
   margin: 0 0 18px;
   max-width: 26em;
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   color: var(--ink-dim, #8a91a0);
 }
 
@@ -244,10 +248,12 @@ body {
   color: var(--ink, #e8ecf4);
   font-family: var(--font-body, inherit);
   /* The reading voice (Marc, 2026-08-26: "all is too small for explanations").
-     A panel is the one place the game is PROSE — it reads a step above the
-     board's 13px chrome, and every button inside (font: inherit) grows with
-     it, which is most of what "uniform" costs. */
-  font-size: 0.875rem;
+     A panel is the one place the game is PROSE, and the first answer — one
+     step up to 14px — came back from the phone the same hour: "still too
+     small, everything, by a big margin." 17px is iOS's own body default,
+     which is what a phone means by comfortable. Every button inside
+     (font: inherit) grows with it, which is most of what "uniform" costs. */
+  font-size: 1.0625rem;
 }
 
 /* The door's own two open over the door and UNDER what they open in turn:
@@ -317,7 +323,7 @@ body {
   padding: 0 18px;
   border-color: transparent;
   background: none;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -330,7 +336,7 @@ body {
    it needs air above it and none of `.help-title`'s first-child reset. */
 #more-data-title {
   margin: 22px 0 8px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--ink-dim, #8a91a0);
 }
 
@@ -349,13 +355,13 @@ body {
   margin: 14px 0 4px;
   font-family: var(--font-label, inherit);
   letter-spacing: var(--label-tracking, 0.04em);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--ink-dim, #8a91a0);
 }
 
 .fame-row {
   margin: 0 0 4px;
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--ink, #e8ecf4);
 }
@@ -377,7 +383,7 @@ button.fame-chip {
   flex: 0 0 auto;
   min-height: 44px;
   padding: 0 12px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -402,7 +408,7 @@ button.fame-run {
   background: none;
   font-family: var(--font-body, inherit);
   letter-spacing: normal;
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--ink, #e8ecf4);
 }
@@ -541,7 +547,7 @@ button.fame-run[aria-expanded='true'] {
 #settings-panel .help-title {
   margin: 16px 0 6px;
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   letter-spacing: var(--label-tracking, 0.08em);
   color: var(--ink, #e8ecf4);
 }
@@ -568,7 +574,7 @@ button.fame-run[aria-expanded='true'] {
   min-height: 44px;
   min-width: 76px;
   padding: 0 8px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .flag-toggle[aria-pressed='true'] {
@@ -578,12 +584,12 @@ button.fame-run[aria-expanded='true'] {
 
 .flag-label {
   color: var(--ink, #e8ecf4);
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .flag-note {
   margin: 4px 0 0;
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -788,7 +794,7 @@ button.bounty {
    label size every other secondary control speaks. */
 button.quiet {
   min-height: 44px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -1247,14 +1253,14 @@ button.quiet {
 
 .fact-label {
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   letter-spacing: var(--label-tracking, 0.04em);
   color: var(--ink-faint, #767d8d);
 }
 
 .fact-value {
   font-family: var(--font-display, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 1rem;
+  font-size: 1.125rem;
   color: var(--ink, #e8ecf4);
   font-variant-numeric: tabular-nums;
 }
@@ -1302,7 +1308,7 @@ button.quiet {
 .swatch {
   /* The picker row wraps freely, so these grow to the 44px floor outright. */
   min-height: 44px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   padding: 0 8px;
   border-radius: 3px;
 }
@@ -1315,7 +1321,7 @@ button.quiet {
 #stamp {
   flex: 0 0 auto;
   padding: 6px 10px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   letter-spacing: 0.08em;
   color: var(--ink-faint, #4d5462);
   text-align: center;
@@ -1392,7 +1398,7 @@ button.quiet {
    ever — an invitation after the actions, never between them. */
 .end-install {
   margin-top: 14px;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   line-height: 1.5;
   color: var(--ink-faint, #767d8d);
 }
@@ -1405,7 +1411,7 @@ button.quiet {
 
 .unlock {
   margin: 0 0 3px;
-  font-size: 0.6875rem;
+  font-size: 0.9375rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -1771,7 +1777,7 @@ button.help-tab {
      grow for real instead of borrowing an invisible hit area. */
   min-height: 44px;
   padding: 0 6px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -1794,7 +1800,7 @@ button.help-tab[data-on='true'] {
   border-radius: 3px;
   color: var(--ink-dim, #c3c9d6);
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   letter-spacing: var(--label-tracking, 0.08em);
   cursor: pointer;
 }

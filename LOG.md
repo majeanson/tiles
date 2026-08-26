@@ -5928,3 +5928,14 @@ legal under the freeze, all in `style.css`:
 
 Gates green: 760 tests, 18 e2e, build clean. Judged by looking is Marc's,
 on the phone — the sizes are the ask, the cohesion is the claim.
+
+**Addendum 2 — the phone overruled the first answer.** Marc, with a
+screenshot of the MENU tab: "still too small, everything, by a big margin.
+the in-game play is fine, rest is not." The 14px step was a step; the ask
+was a register. The panels and the front door now speak at **17px** —
+iOS's own body default, which is what a phone means by comfortable — with
+every label rescaled in proportion: titles and secondary buttons 14px,
+notes and the unlock ledger 15px, fold summaries and atlas labels 13px,
+atlas values 18px, fame rows 16px, and the front door's buttons inherit
+1rem instead of the body's 13px chrome voice. The board chrome still
+belongs to the board. Same gates, green again.
