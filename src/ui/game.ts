@@ -1,5 +1,5 @@
 import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
-import { distance, key, parse, type HexKey } from '@engine/hex';
+import { key, type HexKey } from '@engine/hex';
 import { newRun, reduce, startingPerk } from '@engine/reduce';
 import {
   cachePaysAt,
@@ -11,8 +11,6 @@ import {
   isRipe,
   placementCostAt,
   reachOf,
-  withinBeaconHorizon,
-  worthOf,
 } from '@engine/rules';
 import type {
   Action,
@@ -22,7 +20,6 @@ import type {
   Rarity,
   Spend,
 } from '@engine/state';
-import { destinationAt, findAt } from '@engine/world';
 import { bakeSurface } from '@render/bake';
 import {
   PERKS,
@@ -45,6 +42,7 @@ import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
 import { closeDialog, openDialog, siblingsOf } from './dialog';
 import {
   colourLesson,
+  describeHexOf,
   harvestNote,
   LAST_GASP_RULE,
   pocketNote,
@@ -1511,139 +1509,20 @@ export class Game {
    * remembers.
    */
   #describe(hex: HexKey): string {
-    const t = this.#state.tuning;
-    const name = (c: Colour): string => this.#theme.terrainNames[c];
-    const cell = this.#state.cells[hex];
-
-    const destination = (
-      reward: LandmarkReward,
-      colour: Colour | null,
-      claimed: boolean,
-    ): string => {
-      if (reward === 'cache') {
-        return claimed
-          ? '+ CACHE — already claimed. It gave its tiles.'
-          : `+ CACHE — build a tile touching it to claim ${cachePaysAt(hex, t, homeOf(this.#state))} tiles on the spot.`;
-      }
-      if (reward === 'site') {
-        return claimed
-          ? '★ SITE — already claimed.'
-          : `★ SITE — claim it for ${t.sitePays} pts × its distance, and it opens a bounty worth ×${t.questBonus}.`;
-      }
-      if (reward === 'shrine') {
-        // A detour has no ledger to narrate (fresh-eyes finding 5): say what
-        // shrines ARE, not what the home world would have unlocked.
-        if (this.#detour) {
-          return claimed
-            ? '◈ SHRINE — woken. On your own world, this switches a system on for good.'
-            : '◈ SHRINE — touch it with a tile. On your own world, waking one switches a system on for good.';
-        }
-        const next = this.#hooks.unlockLabel?.(this.#shrinesClaimed) ?? null;
-        if (claimed) return '◈ SHRINE — woken. It switched a system on for this world.';
-        // Fully awake with the crossing available: the shrine's remaining
-        // gift is the way onward, and its tap explanation says so.
-        if (next === null && this.#hooks.crossing !== undefined) {
-          return `◈ SHRINE — this world is fully awake, so reaching it offers the crossing: a NEW WORLD, with ${this.#hooks.crossing.dowry()} relics carried for what you leave.`;
-        }
-        return `◈ SHRINE — claim it to unlock ${next ?? 'a system'} for this world, permanently.`;
-      }
-      if (reward === 'find') {
-        // Mysterious but honest: what a find gives is the one thing the
-        // board never says out loud.
-        return claimed
-          ? '✦ A hidden find — spent. It gave what it had.'
-          : '✦ Something is here. Touch it with a tile.';
-      }
-      const owns = colour === null ? 'a colour' : name(colour);
-      return claimed
-        ? `◆ TERRITORY — yours. The ground within ${t.territoryRadius} hexes is native to ${owns}.`
-        : `◆ TERRITORY — claim it and the ground within ${t.territoryRadius} hexes becomes native to ${owns}, for good.`;
-    };
-
-    if (cell === undefined) {
-      // Not on the board: a destination glowing through the dark, a find's
-      // shimmer, or ground this world remembers from an earlier run.
-      const { q, r } = parse(hex);
-      const remembered = this.#hooks.memory?.includes(hex) ?? false;
-      // A reborn landmark (2026-08-20): this run rolled a spent shrine or
-      // find into a fresh cache or site, and the tap answers for what
-      // walking there PAYS — the world's memory of what used to stand
-      // here is the diary's business, not the map's.
-      const reborn = this.#state.rearmed[hex];
-      if (reborn !== undefined) {
-        return `${destination(reborn, null, false)} Build your chain out to it.`;
-      }
-      const dest = destinationAt(this.#state.rootSeed, q, r, t);
-      if (dest !== null) {
-        // Named only where the world has actually SHOWN it (Marc,
-        // 2026-08-19: memory shows what it saw): ground this world
-        // remembers, or a beacon inside the live horizon — via the ONE
-        // predicate `beaconsFor` draws by, because the simplify pass caught
-        // this copy already drifted (it still measured from the origin, so
-        // a camp run's tap answers disagreed with its own drawn beacons).
-        if (remembered || withinBeaconHorizon(this.#state, hex)) {
-          const claimed = this.#state.claimed.includes(hex);
-          return claimed
-            ? destination(dest.reward, dest.colour, true)
-            : `${destination(dest.reward, dest.colour, false)} Build your chain out to it.`;
-        }
-      }
-      // Only a hex the shimmer is actually drawing gets this answer — with
-      // no sense, or out of range, a hidden find stays exactly that, and
-      // tap-scanning remembered ground must not become a divining rod.
-      if (
-        t.findSense > 0 &&
-        findAt(this.#state.rootSeed, q, r, t) !== null &&
-        // Not one the board is already drawing (2026-08-21): the render
-        // skips a find that has been revealed, so saying "something
-        // shimmers here" over a hex whose landmark is on screen — possibly
-        // a find already claimed — describes a light nobody can see.
-        this.#state.cells[hex] === undefined
-      ) {
-        const near = Object.keys(this.#state.cells).some(
-          (k) => distance(parse(k), { q, r }) <= t.findSense,
-        );
-        if (near) return 'Something shimmers here. Grow your ground to it.';
-      }
-      return remembered
-        ? 'Remembered from an earlier run — this run has not grown here yet.'
-        : 'Dark ground — nothing any run has seen yet. Grow toward it.';
-    }
-
-    switch (cell.kind) {
-      case 'landmark':
-        return destination(cell.reward, cell.colour ?? null, cell.claimed);
-      case 'wall': {
-        // WALLBREAKER rewrites this sentence while it is worn — a rule the
-        // perk breaks must not go on being stated as a rule.
-        const standing =
-          t.wallBuildCostMult > 0
-            ? `Wall — you can build on it, at ${t.wallBuildCostMult}× the placement cost.`
-            : 'Wall — cannot be built on.';
-        return t.redAshWalls
-          ? `${standing} It surrounds (so it helps things ripen) but never matches, except for ${name('red')}, which counts it as one.`
-          : `${standing} It surrounds (so it helps things ripen) but never matches.`;
-      }
-      case 'stone':
-        return `Spent ground — a popped tile. It surrounds but never matches, except for ${name('red')}, which feeds on it.`;
-      case 'tile': {
-        const worth = worthOf(this.#state.cells, hex, t, homeOf(this.#state));
-        const power = this.#rarityLine(cell.rarity);
-        // The colour's personality rides along (2026-08-19, "the colors are
-        // not explained") — a tapped tile is the cheapest place to learn
-        // what its colour wants, right where it is wanting it.
-        const personality = this.#colourLesson(cell.colour);
-        return (
-          `${name(cell.colour)} tile, worth ${worth}. It ripens when all six sides are covered.` +
-          (personality === null ? '' : `\n${personality}`) +
-          (power === null ? '' : `\n${power}`)
-        );
-      }
-      case 'empty':
-        return cell.native === undefined
-          ? 'Open ground — you can build here once something of yours touches it.'
-          : `Ground native to ${name(cell.native)} — a ${name(cell.native)} tile here is worth one more.`;
-    }
+    return describeHexOf(
+      {
+        state: this.#state,
+        theme: this.#theme,
+        detour: this.#detour,
+        shrinesClaimed: this.#shrinesClaimed,
+        ...(this.#hooks.unlockLabel === undefined ? {} : { unlockLabel: this.#hooks.unlockLabel }),
+        ...(this.#hooks.memory === undefined ? {} : { memory: this.#hooks.memory }),
+        ...(this.#hooks.crossing === undefined
+          ? {}
+          : { crossingDowry: this.#hooks.crossing.dowry }),
+      },
+      hex,
+    );
   }
 
   /**

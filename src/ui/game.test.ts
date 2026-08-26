@@ -6,7 +6,7 @@ import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
 import { destinationAt } from '@engine/world';
-import type { Cell, GameState, Rarity } from '@engine/state';
+import type { Cell, GameState, LandmarkReward, Rarity } from '@engine/state';
 import { EMPTY_PROGRESS, TEACH_IDS, UPGRADES, type Progress } from '@meta/progress';
 import type { BoardView, Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
@@ -3198,6 +3198,120 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
     );
     expect(statText('cost', { ...TUNING, costGrace: 120, costRisesEvery: 25 })).toBe(
       `COST — the next placement's price: 1. It stays 1 for the first 120 placements, then rises +1 every 25 placed, and it never comes back down — the clock that ends every run. ${LAST_GASP}`,
+    );
+  });
+});
+
+/**
+ * Pins for `#describe`'s inner `destination()` closure — the words a tap
+ * gives for each of the five landmark glyphs, claimed and unclaimed, ahead
+ * of the move that turns `#describe` into `describeHexOf(ctx, hex)` in
+ * view.ts. A landmark cell already ON the board reaches `destination()`
+ * directly (`case 'landmark': return destination(...)`, no suffix), which
+ * isolates the closure from the outer function's beacon/memory/shimmer
+ * branches — those are exercised elsewhere ('keeps unseen fog dark on tap,
+ * and names what memory has actually seen').
+ */
+describe('#describe’s destination() closure, pinned ahead of its move to view.ts', () => {
+  const HEX = key(0, 0);
+
+  const tapLandmark = (
+    reward: LandmarkReward,
+    claimed: boolean,
+    colour: Colour | null,
+    hooks: GameHooks = {},
+  ): string => {
+    const base = newRun(1, TUNING);
+    const ctx = build(1, TUNING, {
+      ...hooks,
+      resume: {
+        ...base,
+        cells: {
+          ...base.cells,
+          [HEX]: { kind: 'landmark', reward, claimed, ...(colour !== null ? { colour } : {}) },
+        },
+      },
+    });
+    ctx.game.start();
+    ctx.renderer.nextHit = HEX;
+    tap(ctx.el.board);
+    return ctx.el.toast.textContent ?? '';
+  };
+
+  it('prices a cache, before and after it is claimed', () => {
+    // TUNING.cachePays is 6, and `HEX` sits at distance 0 from home, where
+    // `cachePaysPerRing`'s per-ring bonus is exactly zero.
+    expect(tapLandmark('cache', false, null)).toBe(
+      '+ CACHE — build a tile touching it to claim 6 tiles on the spot.',
+    );
+    expect(tapLandmark('cache', true, null)).toBe('+ CACHE — already claimed. It gave its tiles.');
+  });
+
+  it('prices a site, before and after it is claimed', () => {
+    expect(tapLandmark('site', false, null)).toBe(
+      '★ SITE — claim it for 25 pts × its distance, and it opens a bounty worth ×3.',
+    );
+    expect(tapLandmark('site', true, null)).toBe('★ SITE — already claimed.');
+  });
+
+  it('names a find as mystery, before and after it is spent', () => {
+    expect(tapLandmark('find', false, null)).toBe('✦ Something is here. Touch it with a tile.');
+    expect(tapLandmark('find', true, null)).toBe('✦ A hidden find — spent. It gave what it had.');
+  });
+
+  it('names a territory’s field, with and without a known colour, claimed or not', () => {
+    expect(tapLandmark('territory', false, null)).toBe(
+      '◆ TERRITORY — claim it and the ground within 2 hexes becomes native to a colour, for good.',
+    );
+    expect(tapLandmark('territory', true, null)).toBe(
+      '◆ TERRITORY — yours. The ground within 2 hexes is native to a colour.',
+    );
+    expect(tapLandmark('territory', false, 'green')).toBe(
+      '◆ TERRITORY — claim it and the ground within 2 hexes becomes native to GREEN, for good.',
+    );
+    expect(tapLandmark('territory', true, 'green')).toBe(
+      '◆ TERRITORY — yours. The ground within 2 hexes is native to GREEN.',
+    );
+  });
+
+  it('narrates a shrine plainly on a detour — no ledger, no crossing', () => {
+    const hooks: GameHooks = {
+      replay: true,
+      unlockLabel: () => 'unreachable on a detour',
+      crossing: { dowry: () => 9, cross: () => undefined },
+    };
+    expect(tapLandmark('shrine', false, null, hooks)).toBe(
+      '◈ SHRINE — touch it with a tile. On your own world, waking one switches a system on for good.',
+    );
+    expect(tapLandmark('shrine', true, null, hooks)).toBe(
+      '◈ SHRINE — woken. On your own world, this switches a system on for good.',
+    );
+  });
+
+  it('names the shrine’s unlock, and what a woken one already did', () => {
+    const hooks: GameHooks = { unlockLabel: () => 'A fourth draft card' };
+    expect(tapLandmark('shrine', false, null, hooks)).toBe(
+      '◈ SHRINE — claim it to unlock A fourth draft card for this world, permanently.',
+    );
+    expect(tapLandmark('shrine', true, null, hooks)).toBe(
+      '◈ SHRINE — woken. It switched a system on for this world.',
+    );
+  });
+
+  it('offers the crossing once every ledger rung is gone', () => {
+    const hooks: GameHooks = {
+      unlockLabel: () => null,
+      crossing: { dowry: () => 9, cross: () => undefined },
+    };
+    expect(tapLandmark('shrine', false, null, hooks)).toBe(
+      '◈ SHRINE — this world is fully awake, so reaching it offers the crossing: a NEW WORLD, with 9 relics carried for what you leave.',
+    );
+  });
+
+  it('falls back to “a system” once fully awake with no crossing to offer', () => {
+    const hooks: GameHooks = { unlockLabel: () => null };
+    expect(tapLandmark('shrine', false, null, hooks)).toBe(
+      '◈ SHRINE — claim it to unlock a system for this world, permanently.',
     );
   });
 });
