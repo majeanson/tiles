@@ -5823,3 +5823,59 @@ interface's contract now, stated in `Renderer.ts`.
 **Verified:** 740 tests, 18 e2e, typecheck / lint / format / build green.
 The scene is baked and committed; judging it as a PICTURE — in a real
 unfurl, in a chat — is Marc's, alongside the onward-share line's wording.
+
+### Session 46 — the cleanup pipeline, and the test that held the door shut (2026-08-26)
+
+**Marc's standing order** ("clean code base, refactor, uniform, generalize —
+test so we don't break anything"), run as survey-then-stages on Sonnet
+agents while he plays the rehearsal.
+
+**The survey's headline: the tree is in unusually good hygiene.** Lint and
+typecheck spotless, no orphaned flags or dials, hex math already central in
+`render/layout.ts`, themes pure data as required. The real findings sat in
+two places, and both are now closed:
+
+- **Stage 1 (`c9b9a54`):** seven pure text-builders (`rarityLine`,
+  `pocketNote`, `harvestNote`, `purseLesson`, `statNote`, `colourLesson`,
+  `powerOf`) left the `Game` class for `view.ts` — the selector its own
+  header says such thinking belongs in — and `applyUnlocks` left `main.ts`
+  for `meta/progress.ts`, beside `PERK_DIALS` where it always belonged.
+  Twelve pin tests asserting today's EXACT strings were written and green
+  BEFORE any code moved; `Game` keeps one-line wrappers so no call site
+  changed.
+- **Stage 2 (`f1604bd`):** `#describe(hex)` (~142 lines) became
+  `describeHexOf(ctx, hex)` in `view.ts` under a new `DescribeContext`
+  (session facts, not board-render data — `RenderContext` did not cover
+  it). Nine pin tests on the inner `destination()` closure first.
+- **Stage 3 (`24e70ab`, `c8326e7`):** twelve `Math.min(hi, Math.max(lo, x))`
+  sites in `PixiRenderer` folded into one `clamp()` in `layout.ts` — each
+  site verified individually, and one lookalike in `snapshot()` deliberately
+  left because its inner `max` is a ratio denominator, not a bound. And
+  `watchErrors` stopped being defined verbatim in two spec files
+  (`e2e/helpers.ts`).
+
+**Considered and REJECTED, recorded so nobody re-litigates:** the
+`localStorage` helper for `main.ts`'s ~60 try/catch blocks (highest touch,
+zero unit-test net, genuinely fine post-1.0); `runKeeping()` (~670 lines —
+a stateful orchestrator, and the exact machinery the data-loss cluster was
+hard-won on); `#claimNote` (impure — sound and `markMet` interleaved with
+its text; a side-effect/text split is design work wanting its own written
+question, post-1.0); a button factory (38 sites whose attribute mixes
+genuinely differ); de-exporting 36 internal symbols (churn, no test value).
+
+**760 tests (+20 pins), 18 e2e, sim byte-identical at every stage.** No
+user-facing string moved a character — proven by exact-string pins, which
+is what "uniform without breaking anything" has to mean during a copy
+freeze's approach.
+
+**The incident, told honestly.** Session 44's end-screen e2e — the one that
+plays seed 7 to its real finish — set itself a 60s budget measured on a dev
+machine (~8s). A CI runner pays slower locator round-trips 248 times over,
+timed out on every push, and CI failing meant deploy never ran: NINE
+commits (`86664f5`..`c8326e7`) piled up undeployed while the live site sat
+on `2d7d4c2` — and a mid-day status here claimed a later commit verified
+live on the strength of watching the WRONG run. Two lessons, both now in
+the tree: the budget is 300s with the reasoning in a comment, and a deploy
+claim is only ever `version.json`'s own answer, never a watcher's exit
+code. (The refactor commits themselves were never the problem: every
+failure was this one test, on runner hardware.)

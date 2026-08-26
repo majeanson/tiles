@@ -372,7 +372,13 @@ test('after the FIT⇄HERE camera toggle, the board still draws a picture, not a
  * shaped around that, with headroom rather than a hard-coded count.
  */
 test('the end screen carries a real picture of the run, not a blank capture', async ({ page }) => {
-  test.setTimeout(60_000);
+  // 300s, not 60: the run finishes in ~8s on a dev machine, but a CI runner
+  // pays its slower locator round-trips 248 times over — the 60s budget this
+  // test shipped with timed out up there on every push and silently held the
+  // WHOLE deploy pipeline shut for a day's worth of commits (2026-08-26).
+  // The generosity costs nothing when green; only a genuinely stuck run
+  // spends it.
+  test.setTimeout(300_000);
   const errors = watchErrors(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?seed=7');
