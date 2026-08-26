@@ -27,7 +27,7 @@ import {
   findsWithin,
   terrainAt,
 } from '@engine/world';
-import { brightness, type Light, type Theme } from '@theme/tokens';
+import { brightness, TILE_GLYPH, type Light, type Theme } from '@theme/tokens';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
 
 /** A direction that wants no falloff at all — and every test that has no theme. */
@@ -1413,7 +1413,7 @@ export function purseLesson(t: Tuning): string {
     t.luckToRelics > 0
       ? `And you CAN lose it all: the run's end pays back only ${Math.round(t.luckToRelics * 100)}% of whatever is left, so a full purse you die on is mostly gone. Spend it.`
       : 'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.';
-  return `⬢  LUCK IS FOR SPENDING\n${spends}${tithe}\n\n${lost}`;
+  return `${TILE_GLYPH}  LUCK IS FOR SPENDING\n${spends}${tithe}\n\n${lost}`;
 }
 
 /**
@@ -1577,8 +1577,8 @@ export function describeHexOf(ctx: DescribeContext, hex: HexKey): string {
     }
     const owns = colour === null ? 'a colour' : name(colour);
     return claimed
-      ? `◆ TERRITORY — yours. The ground within ${t.territoryRadius} hexes is native to ${owns}.`
-      : `◆ TERRITORY — claim it and the ground within ${t.territoryRadius} hexes becomes native to ${owns}, for good.`;
+      ? `❖ TERRITORY — yours. The ground within ${t.territoryRadius} hexes is native to ${owns}.`
+      : `❖ TERRITORY — claim it and the ground within ${t.territoryRadius} hexes becomes native to ${owns}, for good.`;
   };
 
   if (cell === undefined) {

@@ -37,7 +37,7 @@ import {
 import type { Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
-import { COLOUR_MARK, depthOf, type Theme } from '@theme/tokens';
+import { COLOUR_MARK, depthOf, TILE_GLYPH, type Theme } from '@theme/tokens';
 import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
 import { closeDialog, openDialog, siblingsOf } from './dialog';
 import {
@@ -484,8 +484,7 @@ const HAND_HEX_SIZE = 24;
  * the ended transition when the first ones only came home in the ending
  * bonus. One string, so the two doors cannot drift apart.
  */
-const RELIC_LESSON =
-  '⬢  RELICS\nRelics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.';
+const RELIC_LESSON = `${TILE_GLYPH}  RELICS\nRelics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.`;
 
 /**
  * The end screen's board portrait: bounds the longest side of the raster
@@ -851,6 +850,7 @@ export class Game {
       if (this.#eventActionArm !== null && !this.#eventActionArmed) {
         event.stopPropagation();
         this.#eventActionArmed = true;
+        act.classList.add('armed');
         act.textContent = this.#eventActionArm;
         return;
       }
@@ -951,7 +951,7 @@ export class Game {
       // was a third idea on a card that already carries two — the RIPE
       // card owns that lesson, at the moment it is true.
       this.#showEventCard(
-        '⬢  THE EXPEDITION\nTap a card in your hand, then tap a glowing hex to place it. (Tap the selected card again to unselect it.) Tiles are the purse and the clock: when they run out, the run ends.',
+        `${TILE_GLYPH}  THE EXPEDITION\nTap a card in your hand, then tap a glowing hex to place it. (Tap the selected card again to unselect it.) Tiles are the purse and the clock: when they run out, the run ends.`,
       );
       return;
     }
@@ -1398,7 +1398,7 @@ export class Game {
             cell.colour === undefined ? 'its colour' : this.#theme.terrainNames[cell.colour];
           notes.push({
             rank: RANK.territory,
-            text: `◆  TERRITORY CLAIMED\nGround within ${t.territoryRadius} hexes is native to ${owns} now — and it stays yours between runs.`,
+            text: `❖  TERRITORY CLAIMED\nGround within ${t.territoryRadius} hexes is native to ${owns} now — and it stays yours between runs.`,
           });
           break;
         }
@@ -1914,7 +1914,7 @@ export class Game {
                 ]
               : []),
             ...(show('territory')
-              ? ['◆ TERRITORY — the ground around it becomes your field, for good.']
+              ? ['❖ TERRITORY — the ground around it becomes your field, for good.']
               : []),
             ...(show('shrine')
               ? ['◈ SHRINE — a system switched on for your world, permanently.']
@@ -2422,7 +2422,7 @@ export class Game {
             ? ' Small-and-often buys LUCK and steers your draws; big-and-late buys tiles and score.'
             : '';
         this.#showEventCard(
-          '⬢  YOUR FIRST POP\nThe pocket turned to STONE — it still surrounds, but never matches, so popped ground grows poorer; the world stays rich farther out.' +
+          `${TILE_GLYPH}  YOUR FIRST POP\nThe pocket turned to STONE — it still surrounds, but never matches, so popped ground grows poorer; the world stays rich farther out.` +
             reinforce +
             `\n\n${popped}${goalLine}`,
         );
@@ -2525,6 +2525,7 @@ export class Game {
     if (this.#eventAction !== null) {
       this.#eventAction.hidden = action === undefined;
       this.#eventAction.textContent = action?.label ?? '';
+      this.#eventAction.classList.remove('armed');
       this.#eventActionRun = action?.run ?? null;
       this.#eventActionArm = action?.arm ?? null;
       this.#eventActionArmed = false;
@@ -2557,7 +2558,10 @@ export class Game {
     if (this.#el.eventCard.hidden) return;
     this.#el.eventCard.hidden = true;
     closeDialog(this.#el.eventCard);
-    if (this.#eventAction !== null) this.#eventAction.hidden = true;
+    if (this.#eventAction !== null) {
+      this.#eventAction.hidden = true;
+      this.#eventAction.classList.remove('armed');
+    }
     this.#eventActionRun = null;
     this.#eventActionArm = null;
     this.#eventActionArmed = false;
@@ -2648,7 +2652,7 @@ export class Game {
         // The colour-bias rule said plainly, not in metaphor (2026-08-21):
         // "the plane sends more of what you pop" is a nice sentence that
         // does not tell a first-time player what actually happens.
-        text: '⬢  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to price its pocket, then choose: POP now (pays sooner, and your next draws lean toward the colour you popped) or keep growing it (a bigger pocket pays more than its pieces).',
+        text: `${TILE_GLYPH}  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to price its pocket, then choose: POP now (pays sooner, and your next draws lean toward the colour you popped) or keep growing it (a bigger pocket pays more than its pieces).`,
       };
     }
 
@@ -2667,14 +2671,14 @@ export class Game {
         return {
           tier: 'card',
           id: 'rareUnique',
-          text: '⬢  UNIQUE\nWild, and heavy: every match it is part of counts DOUBLE, for both sides. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.',
+          text: `${TILE_GLYPH}  UNIQUE\nWild, and heavy: every match it is part of counts DOUBLE, for both sides. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.`,
         };
       }
       if (!met.has('rare') && inHand.some((tile) => tile.rarity === 'magic')) {
         return {
           tier: 'card',
           id: 'rare',
-          text: '⬢  MAGIC\nWild: it matches every neighbouring tile, whatever the colour, and they match it back. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.',
+          text: `${TILE_GLYPH}  MAGIC\nWild: it matches every neighbouring tile, whatever the colour, and they match it back. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.`,
         };
       }
     }
@@ -2683,7 +2687,7 @@ export class Game {
       return {
         tier: 'card',
         id: 'luck',
-        text: '⬢  LUCK\nEvery pop pays a little of it. Luck is a purse, not a score — the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.',
+        text: `${TILE_GLYPH}  LUCK\nEvery pop pays a little of it. Luck is a purse, not a score — the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.`,
       };
     }
 
@@ -2866,7 +2870,7 @@ export class Game {
       // guard, same priming rule — boot never greets anyone with it.
       this.#markMet('glow');
       this.#showEventCard(
-        '⬢  A LIGHT IN THE DARK\nThat glow is a real place, shining through ground you have not reached. Build your chain out and touch it with a tile to claim it — but a thin arm ripens nothing, so build wide as you go. Each kind explains itself when you first arrive.',
+        `${TILE_GLYPH}  A LIGHT IN THE DARK\nThat glow is a real place, shining through ground you have not reached. Build your chain out and touch it with a tile to claim it — but a thin arm ripens nothing, so build wide as you go. Each kind explains itself when you first arrive.`,
       );
     } else if (quietBeat && mayPoint && hud.hint !== this.#lastSignpost) {
       this.#showNote(`${hud.hint}.`);
@@ -3433,7 +3437,7 @@ export class Game {
       // The survey: a world goal met THIS run, named once — the ledger
       // itself (met vs unmet, every goal) lives in SETTINGS' YOUR WORLD.
       if (this.#goalMetThisRun !== null) {
-        carried.append(line('end-facts', `◈ goal met — ${this.#goalMetThisRun}`));
+        carried.append(line('end-facts', `✓ goal met — ${this.#goalMetThisRun}`));
       }
       parts.push(carried);
     }
@@ -3507,14 +3511,24 @@ export class Game {
       open.type = 'button';
       open.id = 'end-settle';
       open.className = 'quiet';
-      open.textContent = 'SETTLE THIS WORLD — keep the seed';
 
       const slots = document.createElement('div');
       slots.id = 'end-settle-slots';
       slots.hidden = true;
 
+      // The same disclosure grammar every other fold speaks (2026-08-26) —
+      // the purse handle and the diary rows both lead with ▸/▾ and say
+      // aria-expanded; this was the one fold with no affordance at all.
+      const paintSettle = (): void => {
+        open.textContent = `${slots.hidden ? '▸' : '▾'} SETTLE THIS WORLD — keep the seed`;
+        open.setAttribute('aria-expanded', String(!slots.hidden));
+      };
+      open.setAttribute('aria-controls', 'end-settle-slots');
+      paintSettle();
+
       open.addEventListener('click', () => {
         slots.hidden = !slots.hidden;
+        paintSettle();
       });
 
       for (const { slot, holds } of settle.slots()) {
@@ -3528,6 +3542,7 @@ export class Game {
         button.addEventListener('click', () => {
           if (!free && !armed) {
             armed = true;
+            button.classList.add('armed');
             button.textContent = `TAP AGAIN — forgets WORLD ${slot}`;
             return;
           }

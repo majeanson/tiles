@@ -2353,7 +2353,7 @@ export class PixiRenderer implements Renderer {
  * attached.
  *
  * Landmark glyphs are deliberately the plainest marks that survive a tiny hex:
- * `✚` pays tiles, `★` pays points, `◈` wakes an unlock, `◆` is a territory to
+ * `✚` pays tiles, `★` pays points, `◈` wakes an unlock, `❖` is a territory to
  * claim, `✦` is a hidden find. Words for them live in the HUD hint, where
  * there is room for words.
  */

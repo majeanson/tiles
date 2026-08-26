@@ -1756,7 +1756,10 @@ function mountSettings(
       const row = document.createElement('p');
       const met = metGoals.has(goal.id);
       row.className = met ? 'unlock found' : 'unlock';
-      row.textContent = `${met ? '◈' : '◇'} ${goal.label}`;
+      // ✓, not ◈ (2026-08-26): the shrine's own glyph was standing in for
+      // "goal met", so one mark meant two earned-things. ◇ stays the shared
+      // "not yet" slot both ledgers speak.
+      row.textContent = `${met ? '✓' : '◇'} ${goal.label}`;
       return row;
     }),
   );
@@ -1779,6 +1782,7 @@ function mountSettings(
   abandon.addEventListener('click', () => {
     if (!armed) {
       armed = true;
+      abandon.classList.add('armed');
       abandon.textContent =
         'TAP AGAIN — the map, territories, shrines and everything you bought here stay behind; your relics and perks travel';
       return;

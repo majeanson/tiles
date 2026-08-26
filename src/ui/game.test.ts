@@ -1589,7 +1589,7 @@ describe('the curtain, and contextual help', () => {
     ctx.renderer.nextHit = key(1, 0);
     tap(ctx.el.board);
     expect(ctx.el.eventCard.hidden).toBe(false);
-    expect(ctx.el.eventCardGlyph.textContent).toBe('◆');
+    expect(ctx.el.eventCardGlyph.textContent).toBe('❖');
     expect(ctx.el.eventCardText.textContent).toMatch(/TERRITORY CLAIMED/);
 
     // While it is up, the board takes no gesture — the same curtain the
@@ -2018,7 +2018,7 @@ describe('the survey, in the shell (2026-08-18)', () => {
     tap(ctx.el.board);
 
     expect(ctx.game.state.phase).toBe('ended');
-    expect(ctx.el.end.textContent).toMatch(/◈ goal met — Reach 20 hexes from home \(\+40 relics\)/);
+    expect(ctx.el.end.textContent).toMatch(/✓ goal met — Reach 20 hexes from home \(\+40 relics\)/);
   });
 });
 
@@ -3265,16 +3265,16 @@ describe('#describe’s destination() closure, pinned ahead of its move to view.
 
   it('names a territory’s field, with and without a known colour, claimed or not', () => {
     expect(tapLandmark('territory', false, null)).toBe(
-      '◆ TERRITORY — claim it and the ground within 2 hexes becomes native to a colour, for good.',
+      '❖ TERRITORY — claim it and the ground within 2 hexes becomes native to a colour, for good.',
     );
     expect(tapLandmark('territory', true, null)).toBe(
-      '◆ TERRITORY — yours. The ground within 2 hexes is native to a colour.',
+      '❖ TERRITORY — yours. The ground within 2 hexes is native to a colour.',
     );
     expect(tapLandmark('territory', false, 'green')).toBe(
-      '◆ TERRITORY — claim it and the ground within 2 hexes becomes native to GREEN, for good.',
+      '❖ TERRITORY — claim it and the ground within 2 hexes becomes native to GREEN, for good.',
     );
     expect(tapLandmark('territory', true, 'green')).toBe(
-      '◆ TERRITORY — yours. The ground within 2 hexes is native to GREEN.',
+      '❖ TERRITORY — yours. The ground within 2 hexes is native to GREEN.',
     );
   });
 

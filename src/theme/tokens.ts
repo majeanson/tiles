@@ -682,12 +682,16 @@ export const COLOUR_MARK: Readonly<Record<Colour, string>> = {
  * 2026-08-26 — Marc, from the phone: "I can clearly see the stars one, the
  * + cache not so much"; a thin typographic plus was the one glyph in the
  * set with hairline strokes, so it vanished at beacon sizes where every
- * filled mark survived), `★` pays points, `◈` wakes an unlock, `◆` is
- * ground to claim, `✦` is a hidden find — a four-pointed spark, distinct
- * from the star and both diamonds at the sizes a phone draws them. Keyed by
- * plain strings so the theme layer needs nothing from the engine. A find
- * only ever wears its glyph once REVEALED: the shimmer draws no glyph at
- * all, by design.
+ * filled mark survived), `★` pays points, `◈` wakes an unlock, `❖` is
+ * ground to claim (a CLUSTER of diamonds since 2026-08-26 — the solid `◆`
+ * was also yellow's colour mark, so one shape meant two things; the cluster
+ * keeps the diamond family the board already taught while reading as what a
+ * territory is, several grounds claimed as one), `✦` is a hidden find — a
+ * four-pointed spark, distinct from the star and both diamonds at the sizes
+ * a phone draws them. Keyed by plain strings so the theme layer needs
+ * nothing from the engine. A find only ever wears its glyph once REVEALED:
+ * the shimmer draws no glyph at all, by design. No glyph may be shared with
+ * `COLOUR_MARK` — pinned by test, because the collision shipped once.
  */
 export const LANDMARK_GLYPH: Readonly<
   Record<'cache' | 'site' | 'shrine' | 'territory' | 'find', string>
@@ -695,9 +699,19 @@ export const LANDMARK_GLYPH: Readonly<
   cache: '✚',
   site: '★',
   shrine: '◈',
-  territory: '◆',
+  territory: '❖',
   find: '✦',
 };
+
+/**
+ * The voice the teaching cards lead with when the lesson is about the game
+ * itself rather than one landmark or colour — a hex, because the game is
+ * hexes. One constant (2026-08-26) instead of the nine prose strings that
+ * each hardcoded it, so the symbol language has one registry: colours in
+ * `COLOUR_MARK`, landmarks in `LANDMARK_GLYPH`, and the game's own voice
+ * here.
+ */
+export const TILE_GLYPH = '⬢';
 
 /**
  * How much one elevation band lifts a hex's light, multiplicatively.

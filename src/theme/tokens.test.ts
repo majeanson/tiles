@@ -8,6 +8,8 @@ import {
   fieldGround,
   fieldOverlayPattern,
   fieldPattern,
+  LANDMARK_GLYPH,
+  TILE_GLYPH,
 } from './tokens';
 
 /**
@@ -21,6 +23,23 @@ describe('one mark per colour', () => {
     const marks = COLOURS.map((c) => COLOUR_MARK[c]);
     expect(marks.every((m) => m.length > 0)).toBe(true);
     expect(new Set(marks).size).toBe(COLOURS.length);
+  });
+});
+
+describe('one symbol language (2026-08-26)', () => {
+  /**
+   * The vocabulary shipped a collision once: `◆` was both yellow's colour
+   * mark and the territory landmark, so one shape meant two things wherever
+   * board and cards met. Every glyph across the three registries — colours,
+   * landmarks, and the teaching cards' own voice — must be its own.
+   */
+  it('never gives two meanings the same glyph, across all three registries', () => {
+    const all = [
+      ...COLOURS.map((c) => COLOUR_MARK[c]),
+      ...Object.values(LANDMARK_GLYPH),
+      TILE_GLYPH,
+    ];
+    expect(new Set(all).size).toBe(all.length);
   });
 });
 
