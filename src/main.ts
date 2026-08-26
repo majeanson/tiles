@@ -3408,6 +3408,11 @@ async function main(): Promise<void> {
 
   const hooks: GameHooks & { savedSeed: number | null } = {
     ...keeper,
+    // Narrower than `detour`, which is also true for the daily: this is
+    // true only for an actual `?seed=` link, so the end screen's
+    // onward-share invitation never talks about a "link" to a daily player
+    // who never followed one.
+    fromLink: dailyDate === null && sharedSeed !== null,
     sound: {
       pop: (count: number): void => {
         if (soundLive) soundReal.pop(count);

@@ -1274,6 +1274,39 @@ describe('a stranger arriving', () => {
     expect(sent!.footerLine).toBe(`SEED ${ended.rootSeed}`);
   });
 
+  // The onward-share invitation (2026-08-26, POLISH.md "Worth doing"): a
+  // recipient of a `?seed=` link got the same SHARE button as everyone, but
+  // nothing ever said the world could travel on again.
+  it('says nothing about a link by default, even with SHARE available', () => {
+    const ctx = build(4, TUNING, {
+      resume: { ...newRun(4, TUNING), phase: 'ended', death: 'spent' },
+      share: () => Promise.resolve('copied' as const),
+    });
+    ctx.game.start();
+    expect(ctx.el.end.querySelector('#end-onward')).toBeNull();
+  });
+
+  it('invites the run onward when this run was itself opened from a link', () => {
+    const ctx = build(4, TUNING, {
+      resume: { ...newRun(4, TUNING), phase: 'ended', death: 'spent' },
+      share: () => Promise.resolve('copied' as const),
+      fromLink: true,
+    });
+    ctx.game.start();
+    const onward = ctx.el.end.querySelector('#end-onward');
+    expect(onward).not.toBeNull();
+    expect(onward!.textContent).toContain('link');
+  });
+
+  it('never invites onward when SHARE itself is unavailable, even from a link', () => {
+    const ctx = build(4, TUNING, {
+      resume: { ...newRun(4, TUNING), phase: 'ended', death: 'spent' },
+      fromLink: true,
+    });
+    ctx.game.start();
+    expect(ctx.el.end.querySelector('#end-onward')).toBeNull();
+  });
+
   it('gives the daily its own ladder line and no seed, on the share card', () => {
     const ended: GameState = { ...newRun(9, TUNING), phase: 'ended', death: 'broke' };
     let sent: ShareCardData | null = null;

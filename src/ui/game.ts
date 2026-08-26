@@ -280,6 +280,15 @@ export type GameHooks = {
    */
   readonly replay?: boolean;
   /**
+   * True exactly when THIS run was opened from a `?seed=` link — a narrower
+   * question than `replay`, which is also true for the daily. A recipient
+   * gets the same SHARE button as everyone (POLISH.md, "no onward-share
+   * invitation"), but nothing said the world could travel on again; the end
+   * screen reads this to add the one quiet line that does. `main.ts` already
+   * computes it (`askedSeed()`), so this only carries the answer across.
+   */
+  readonly fromLink?: boolean;
+  /**
    * Shrines the PREVIOUS run woke, named for the first frame of this one —
    * "the shrine receipt" (2026-08-18). The shell knows the world before and
    * after a run ends; this is what it hands over the moment the receipt
@@ -3558,6 +3567,19 @@ export class Game {
         });
       });
       parts.push(share);
+
+      // The onward-share invitation (2026-08-26, POLISH.md "Worth doing").
+      // A recipient of a `?seed=` link got the same SHARE button as everyone
+      // and the chain propagated, but nothing ever said so — this is the one
+      // quiet line that does, right beside the button that acts on it.
+      if (this.#hooks.fromLink === true) {
+        const onward = line(
+          'end-facts',
+          'This world reached you by a link — it travels the same way out.',
+        );
+        onward.id = 'end-onward';
+        parts.push(onward);
+      }
     }
 
     // The payout breakdown: the score, in the exact three terms the engine
