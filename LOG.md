@@ -6043,3 +6043,70 @@ the new art, typecheck / lint / format clean, `pnpm sim` untouched (no
 change reaches the economy). **Judged by looking is Marc's, on the phone,
 in portrait: the end-screen register, the armed danger voice, the `❖`,
 and — most of all — the lockup and the hero in all three directions.**
+
+### Session 49 — three more bites of the menu: housekeeping, celebration, chrome voice (2026-08-26)
+
+Marc took three more batches off the polish menu (the plan file from
+Session 48); the diary-and-museum batch stays unjudged. All [NOW]-legal:
+copy, visuals, a11y — `pnpm sim` untouched.
+
+**Housekeeping (U8–U14 + C10 + C11, `708edec`).** One `--menu-col` ends
+the three competing column widths (260/280/320 — the end screen's 320
+won, being the one already judged on the phone). `prefers-contrast:
+more` overrides `--ink-faint` ITSELF instead of a hand-kept six-selector
+list every future faint surface would silently miss — with the
+`!important` that `applyTheme`'s inline root vars make load-bearing, and
+the hero's contrast scrim went bg-tinted like the base rule. The failure
+panel reads theme vars with its old hardcoded values as fallbacks: when
+the theme never arrived it degrades to exactly what it was, and when it
+did, the panel of last resort finally wears the art direction (its two
+opacity veils became faint/dim ink at full opacity, the doctrine's last
+holdouts there). Every transient button label speaks on one 2500ms
+clock (`flashLabel`, main.ts) under one rule — an OUTCOME reverts, an
+INVITATION stays — which un-sticks BACKUP SENT and TEACHING RESET and
+deliberately leaves SENT — thank you standing on its disabled button.
+The toast's stylesheet comment stops claiming a glyph contract the
+run-receipts never kept (stated honestly instead of enforced wrongly).
+`.flag-label` uppercases in CSS so the settings rows read one casing
+while screen readers hear the words; the report tails join the
+CAPS — sentence-tail grammar. The arrival curve is declared once
+(`--ease-arrive`) and every chrome animation reads it. And the camera
+toggle's word rises 150ms with the flight it just launched instead of
+swapping silently mid-glide.
+
+**Celebration (C1–C5, `afd170f`).** A stat that ROSE — tiles, points,
+luck, reach — flashes accent for 450ms; routine countdowns never flash
+(TILES falls on every placement; that would be a strobe), and the
+memory resets when placements go backward so run two's opening purse
+never flashes against run one's deathbed. Pinned: the popped TILES
+value wears `rose`, COST never does. NEW BEST arrives on one breath of
+accent glow (1100ms, never a loop) and the epitaph under it is finally
+typeset — the diary's MINIATURE of the end screen styled its copy while
+the real one was a bare 13px paragraph. The purse handle warms into
+`live` over 300ms; relics that actually banked wear the accent on
+CARRIED OUT (zero stays grey). The shop's bought wash became a
+self-fading 900ms glow so it also serves a row that arrives already
+marked — which is how WEAR gets its acknowledgement (`#justWorn`, one
+render). Ledger rows warm into found when they flip on-screen.
+
+**Chrome voice (U6 + C6 + C7 + C12, `0b05706`).** The manual joins its
+four siblings' panel grammar — title left, BACK right — so tapping the
+prose becomes a bonus rather than the secret exit (the tap-to-close
+contract stays, and the two e2e specs that close it by tapping the name
+still pass untouched). The arrival flare stops being torchlit-only: the
+keyframes always read `var(--accent)`, so torchlit-bright — what a
+phone asking for MORE contrast opens — and daylight now flare in their
+own colours; the placeholder keeps its plain rise by contract. The five
+nothing-here-yet rows (diary, daily book ×2, perks, the record) share
+one dressed face via the `fame-row dim` class they already wore — the
+HOLD slot's dashed "a place for something" idiom. And the muted ♪ drops
+the chrome's last opacity veil: faint ink at full opacity, strike kept.
+
+**Verified:** 766 tests (+1, the rose pin), 18 e2e twice (after
+housekeeping and after chrome voice, both against production builds),
+typecheck / lint / format clean throughout, three commits pushed one
+batch at a time. **Judged by looking is Marc's: the gain flashes at
+play speed, the NEW BEST breath, the manual's new header, daylight's
+flare, and whether 320px suits the door.** Still on the menu, unjudged:
+diary & museum (C9, F3, F5–F8) and everything [POST-TAG]. **The one
+gate is still Session C.**
