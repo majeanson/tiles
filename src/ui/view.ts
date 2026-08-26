@@ -17,7 +17,7 @@ import {
   scoreOf,
   worthOf,
 } from '@engine/rules';
-import type { GameState, LandmarkReward, Rarity, Spend } from '@engine/state';
+import type { GameState, HarvestChoice, LandmarkReward, Rarity, Spend } from '@engine/state';
 import {
   destinationAt,
   destinationsWithin,
@@ -25,7 +25,7 @@ import {
   findsWithin,
   terrainAt,
 } from '@engine/world';
-import { brightness, type Light } from '@theme/tokens';
+import { brightness, type Light, type Theme } from '@theme/tokens';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
 
 /** A direction that wants no falloff at all — and every test that has no theme. */
@@ -1224,4 +1224,274 @@ export function rememberedNativeAt(state: GameState, hex: HexKey): Colour | null
     }
   }
   return ground.native;
+}
+
+/**
+ * The last-gasp rule, one clause for its three doors (the toast, the manual,
+ * the COST tap note) — the same cannot-drift contract RELIC_LESSON (in
+ * `game.ts`) and `colourLesson` keep for their own multi-door words.
+ */
+export const LAST_GASP_RULE =
+  'You may place while ANY tiles remain — the difference is forgiven at zero, and it cannot chain: only a pop can lift you back above zero.';
+
+/** A rare tile's power, in one line, or null for an ordinary one. */
+export function rarityLine(rarity: Rarity | undefined): string | null {
+  if (rarity === 'magic') {
+    return 'MAGIC — wild: it matches every neighbouring tile, whatever the colour, and they match it back.';
+  }
+  if (rarity === 'unique') {
+    return 'UNIQUE — wild and heavy: every match it is part of counts DOUBLE, for both sides.';
+  }
+  return null;
+}
+
+/**
+ * The pocket you just tapped, priced and explained — size, worth, what each
+ * button would pay, and any rare tiles inside it. The buttons already carry
+ * the numbers; this says where those numbers come FROM, which is the part a
+ * player has to learn once and then never again.
+ */
+export function pocketNote(state: GameState, at: HexKey): string {
+  const t = state.tuning;
+  const value = harvestValue(state, at);
+  const home = homeOf(state);
+  const worth = value.keys.reduce((n, k) => n + worthOf(state.cells, k, t, home), 0);
+  const multiplier = harvestMultiplier(state, value.keys);
+
+  // Rare tiles inside the pocket, and what each kind does — a ripe rare
+  // tile cannot be tapped for its own explanation, because tapping it
+  // prices the pocket, so the pocket has to carry the explanation.
+  const rarities = new Set<Rarity>();
+  for (const k of value.keys) {
+    const cell = state.cells[k];
+    if (cell?.kind === 'tile' && cell.rarity !== undefined) rarities.add(cell.rarity);
+  }
+  const rares = value.keys.filter((k) => {
+    const cell = state.cells[k];
+    return cell?.kind === 'tile' && cell.rarity !== undefined;
+  }).length;
+
+  // Written for the SINGLE payout (2026-08-21). These lines predate it:
+  // they read "POP for tiles" and "POP for pts" as if the two were a fork
+  // to choose between, and the points button has been hidden since the
+  // payout became one thing. A pop pays both, so the note prices both.
+  const pocketBonus = Math.min(value.count, t.harvestSizeCap > 0 ? t.harvestSizeCap : value.count);
+  const lines = [
+    `POCKET OF ${value.count} — total worth ${worth}.`,
+    `POP pays +${value.tiles} tiles and ${scoreOf(value.points, t)} pts.`,
+    `The score: worth ${worth} × pocket ${pocketBonus} × distance ${multiplier}${value.questPays ? ` × bounty ${t.questBonus}` : ''}.`,
+  ];
+  // The pocket bar (2026-08-18): the priced pocket's count against the size
+  // bonus's cap — "POCKET 14/20" — once it is within reach of mattering.
+  // Always showing "1/20" is noise nobody reads twice; 2+ is the point a
+  // pocket has started becoming a decision rather than a single tile.
+  if (t.harvestSizeCap > 0 && value.count >= 2) {
+    lines.push(`POCKET ${value.count}/${t.harvestSizeCap}`);
+  }
+  if (value.treasure !== null)
+    lines.push(`POP for treasure: a ${value.treasure.toUpperCase()} tile.`);
+  if (value.questPays)
+    // Every pop scores under the single payout, so the bounty rides on any
+    // of them — this rider named a button that no longer exists.
+    lines.push(`★ This pocket collects the bounty: ×${t.questBonus} on its score.`);
+  if (rares > 0) {
+    lines.push(`${rares} rare tile${rares === 1 ? '' : 's'} in here will be spent by popping it.`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * What a harvest just did, with its arithmetic shown.
+ *
+ * The pop is the loudest thing that happens in a run and it used to leave
+ * only a number moving in the stat row. Saying the sum out loud at the
+ * moment it pays is the cheapest teaching in the game: two or three of
+ * these and the formula stops being a thing to read in the manual.
+ */
+export function harvestNote(
+  before: GameState,
+  choice: HarvestChoice,
+  value: ReturnType<typeof harvestValue>,
+): string {
+  const t = before.tuning;
+  const homeBefore = homeOf(before);
+  const worth = value.keys.reduce((n, k) => n + worthOf(before.cells, k, t, homeBefore), 0);
+  const multiplier = harvestMultiplier(before, value.keys);
+  const head = `POPPED ${value.count} — total worth ${worth}`;
+
+  // The bounty answers EVERY pop while it is live (Marc, Day 2: "when we
+  // pop, the ×3 applied or not — success or not — with points or +0"):
+  // collected says so with its number, missed says so with the recipe.
+  // Silent only while no ★ has set one — and on the two pops that score
+  // nothing, TREASURE and BURN, which forfeit the bounty and leave it
+  // standing rather than missing it. The multiplier is read from the
+  // STANDING bounty, never from tuning: the quest carries its own bonus,
+  // and it is the one the engine multiplies by.
+  const bounty =
+    before.quest === null || choice === 'treasure' || choice === 'burn'
+      ? ''
+      : value.questPays
+        ? `\n★ Bounty ×${before.quest.bonus} — COLLECTED.`
+        : `\n★ Bounty ×${before.quest.bonus} — missed (+0). Pop ${before.quest.need}+ tiles within ${before.quest.radius} of the ★.`;
+
+  if (choice === 'tiles') {
+    // The true gain, matching `reduce.ts`'s own arithmetic exactly (flat
+    // per pop plus a little per tile, then rounded and capped) — the old
+    // line here printed the pocket's tile count, which is a different
+    // number that only coincidentally looked plausible.
+    const perPop =
+      t.luckPerPop > 0 || t.luckPerTile !== 1
+        ? t.luckPerPop + value.count * t.luckPerTile
+        : value.count;
+    const gained = Math.min(t.luckCap, Math.round(before.luck + perPop)) - before.luck;
+    // The odds claim is only true when luck actually moves the draft's
+    // rare-tile chances — in the shipped economy it does not, and saying
+    // so anyway was the other half of this line lying.
+    const odds =
+      t.luckMagicPerPop + t.luckUniquePerPop > 0 ? ' Your rare-tile odds just rose.' : '';
+    const luck = `\nLuck +${gained}.${odds}`;
+    // The depth grade, shown only when it actually paid something — the
+    // arithmetic on screen has to sum to the number on screen.
+    const rings = Math.floor(value.count * t.popTilesPerRing * (multiplier - 1));
+    const depth = rings > 0 ? `, +${rings} for the depth` : '';
+    // Under the single payout the pop SCORES too — say the number here
+    // rather than leaving it to the stat row (the bounty line below
+    // needs a points figure to be about).
+    // Through `scoreOf`, not a second copy of the arithmetic (2026-08-21):
+    // this line used to spell `floor(points * pointsPerPop)` itself, and
+    // would have gone on printing the zero the engine stopped banking the
+    // day a scoring pop gained its floor of one.
+    const scored =
+      t.singlePayout && t.pointsPerPop > 0 ? `\n+${scoreOf(value.points, t)} pts.` : '';
+    return `${head}\n+${value.tiles} tiles: ${t.tilesPerPop} per tile, +1 more per ${t.worthPerExtraTile} worth${depth}.${scored}${luck}${bounty}`;
+  }
+  if (choice === 'treasure') {
+    return `${head}\nA ${String(value.treasure).toUpperCase()} tile goes to your stash — no tiles, no points.`;
+  }
+
+  const counted = t.harvestSizeCap > 0 ? Math.min(value.count, t.harvestSizeCap) : value.count;
+  const capped =
+    t.harvestSizeCap > 0 && value.count > t.harvestSizeCap
+      ? ` (the size bonus stops at ${t.harvestSizeCap})`
+      : '';
+  return (
+    `${head}\n+${value.points} pts = worth ${worth} × pocket ${counted}${capped} × distance ${multiplier}` +
+    (value.questPays ? ` × BOUNTY ${t.questBonus}` : '') +
+    bounty
+  );
+}
+
+/**
+ * The purse fold's first-contact card (Marc, 2026-08-20), built from the
+ * LIVE tuning like every explanation in the game: only rows whose dials
+ * are on get named, the rates are the run's own numbers, and the one fact
+ * the fold's prices never say leads the close — luck is use-it-or-lose-it.
+ */
+export function purseLesson(t: Tuning): string {
+  const rows = [
+    ...(t.luckRerollCost > 0 ? ['a fresh hand (REROLL)'] : []),
+    ...(t.luckSteerCost > 0 ? ['a hand drawn toward a colour you name (STEER)'] : []),
+    ...(t.luckForgeCost > 0 ? ['the selected card turned UNIQUE (FORGE)'] : []),
+  ];
+  const spends =
+    rows.length > 0
+      ? `Every row is priced in luck: ${rows.join(', ')}.`
+      : 'Every row is priced in luck.';
+  const tithe =
+    t.titheRate > 0
+      ? ` TITHE is the exit — the WHOLE purse traded for relics at ${Math.round(t.titheRate * 100)}%, better than dying on it.`
+      : '';
+  const lost =
+    t.luckToRelics > 0
+      ? `And you CAN lose it all: the run's end pays back only ${Math.round(t.luckToRelics * 100)}% of whatever is left, so a full purse you die on is mostly gone. Spend it.`
+      : 'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.';
+  return `⬢  LUCK IS FOR SPENDING\n${spends}${tithe}\n\n${lost}`;
+}
+
+/**
+ * One stat, explained in this run's own numbers — the tap-a-symbol
+ * contract, kept by the stat row. Sticky, like every explanation you asked
+ * for by hand: you are reading it deliberately, and a timer would be a
+ * race against your own eyes.
+ */
+export function statNote(id: string, hud: HudView, t: Tuning): string {
+  switch (id) {
+    case 'tiles':
+      return 'TILES — what keeps you alive. Every placement spends them; pops, caches and territories pay them back. At zero with nothing ripe to pop, the run ends.';
+    case 'points':
+      return 'POINTS — the score. A pocket popped for points pays its worth × its size × its distance from home.';
+    case 'luck':
+      return (
+        'LUCK — a purse, not a score. The row under your hand spends it' +
+        (t.luckToRelics > 0
+          ? `; whatever is left when the run ends comes home as relics, at ${Math.round(t.luckToRelics * 100)}%.`
+          : '.')
+      );
+    case 'map':
+      return `REACH — how far from home you have built. Every ${t.distanceStep} hexes out raises the distance multiplier by 1, so the same pocket scores more the deeper it pops.`;
+    case 'cost': {
+      const curve =
+        t.costGrace > 0
+          ? `It stays ${t.baseCost} for the first ${t.costGrace} placements, then rises +1 every ${t.costRisesEvery} placed`
+          : `It rises +1 every ${t.costRisesEvery} placed`;
+      return `COST — the next placement's price: ${hud.cost}. ${curve}, and it never comes back down — the clock that ends every run. ${LAST_GASP_RULE}`;
+    }
+    case 'left':
+      return 'LEFT — placements remaining in the expedition. At zero it ends; anything already ripe can still be popped.';
+    default:
+      return '';
+  }
+}
+
+/**
+ * One colour's personality as a whole sentence, in the theme's own words
+ * and the live tuning's numbers — the text the colour's first-contact
+ * toast, the selected card's second tap and a tapped placed tile all
+ * share, so the three doors cannot drift apart. Null while that colour's
+ * power dial is zeroed: a personality that is off must not be taught.
+ */
+export function colourLesson(colour: Colour, t: Tuning, theme: Theme): string | null {
+  const n = theme.terrainNames[colour];
+  switch (colour) {
+    case 'green':
+      return t.greenCrowdBonus > 0
+        ? `${n} — CROWDS. Wants one big mob of its own colour: +${t.greenCrowdBonus} worth per ${n} neighbour past the first.`
+        : null;
+    case 'yellow':
+      return t.yellowCompanyBonus > 0
+        ? `${n} — COMPANY. Scores in messy mixed ground: +${t.yellowCompanyBonus} worth per ${t.yellowCompanyAll ? 'differently-coloured neighbour' : 'different colour beside it'}.`
+        : null;
+    case 'red':
+      return t.redAshMatches
+        ? `${n} — ASH. Stone${t.redAshWalls ? ' and walls' : ''} count as matches for it: it feeds on the spent ground everyone else abandons.`
+        : null;
+    case 'blue':
+      return t.blueTideEvery > 0
+        ? `${n} — TIDE. Worth little at home, a lot on the frontier: +1 worth per ${t.blueTideEvery} hexes from home.`
+        : null;
+  }
+}
+
+/**
+ * The colour's power, in one clause, with its numbers read from the live
+ * tuning — same no-staleness contract as the manual. Empty string when the
+ * personalities are off (the bounded game), so the tip stays honest there.
+ */
+export function powerOf(colour: Colour, t: Tuning): string {
+  switch (colour) {
+    case 'green':
+      return t.greenCrowdBonus > 0
+        ? ` · crowds: +${t.greenCrowdBonus} worth per green neighbour past the first`
+        : '';
+    case 'yellow':
+      return t.yellowCompanyBonus > 0
+        ? ` · company: +${t.yellowCompanyBonus} worth per ${t.yellowCompanyAll ? 'differently-coloured neighbour' : 'different colour beside it'}`
+        : '';
+    case 'red':
+      return t.redAshMatches
+        ? ` · ash: stone${t.redAshWalls ? ' and walls' : ''} beside red count as matches`
+        : '';
+    case 'blue':
+      return t.blueTideEvery > 0 ? ` · tide: +1 worth per ${t.blueTideEvery} hexes from home` : '';
+  }
 }

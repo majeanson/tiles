@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COLOUR_MARK } from '@theme/tokens';
-import { BARE_TUNING, TUNING, type Tuning } from '@content/tuning';
+import { BARE_TUNING, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
 import { destinationAt } from '@engine/world';
-import type { Cell, GameState } from '@engine/state';
+import type { Cell, GameState, Rarity } from '@engine/state';
 import { EMPTY_PROGRESS, TEACH_IDS, UPGRADES, type Progress } from '@meta/progress';
 import type { BoardView, Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
@@ -3013,5 +3013,191 @@ describe('every shipped concept is written down somewhere', () => {
     expect(text).not.toMatch(/\b1 relics\b/); // burnRelics is 1
     // The points button has been hidden since the payout became single.
     expect(text).not.toContain('POP for pts');
+  });
+});
+
+/**
+ * Pins for the refactor moving `#rarityLine`, `#purseLesson`, `#statNote`,
+ * `#colourLesson` and `#powerOf` out of `Game` into `view.ts` as exported,
+ * explicit-argument functions (`#pocketNote` and `#harvestNote` have their
+ * own pins already, above: 'prices a pocket you tap...' and 'shows the
+ * arithmetic of a pop'). Written against TODAY's private methods, reached
+ * the only way anything private can be reached — through the doors the game
+ * already opens them by — so the exact words are locked down before the
+ * move, not re-derived after it.
+ */
+describe('five more text builders, pinned ahead of their move to view.ts', () => {
+  const LAST_GASP =
+    'You may place while ANY tiles remain — the difference is forgiven at zero, and it cannot chain: only a pop can lift you back above zero.';
+
+  // `#colourLesson` and `#rarityLine` share one door: a second tap on the
+  // already-selected draft card puts it down and explains it (Marc,
+  // 2026-08-20) — the cheapest place both fire from without a canvas.
+  const putDownCard = (colour: Colour, rarity: Rarity, tuning: Tuning): string => {
+    const base = newRun(9, tuning);
+    const ctx = build(1, tuning, {
+      resume: {
+        ...base,
+        draft: [{ ...base.draft[0]!, colour, rarity }, ...base.draft.slice(1)],
+        selected: 0,
+      },
+    });
+    ctx.game.start();
+    (ctx.el.draft.children[0] as HTMLButtonElement).click();
+    return ctx.el.toast.textContent ?? '';
+  };
+
+  it('names a wild tile’s power, and a colour’s personality, exactly', () => {
+    expect(putDownCard('green', 'magic', TUNING)).toBe(
+      'GREEN — CROWDS. Wants one big mob of its own colour: +1 worth per GREEN neighbour past the first.\n' +
+        'MAGIC — wild: it matches every neighbouring tile, whatever the colour, and they match it back.',
+    );
+    expect(putDownCard('yellow', 'unique', TUNING)).toBe(
+      'YELLOW — COMPANY. Scores in messy mixed ground: +1 worth per differently-coloured neighbour.\n' +
+        'UNIQUE — wild and heavy: every match it is part of counts DOUBLE, for both sides.',
+    );
+    expect(putDownCard('blue', 'magic', TUNING)).toBe(
+      'BLUE — TIDE. Worth little at home, a lot on the frontier: +1 worth per 6 hexes from home.\n' +
+        'MAGIC — wild: it matches every neighbouring tile, whatever the colour, and they match it back.',
+    );
+  });
+
+  it('says nothing extra for an ordinary tile of a personality colour', () => {
+    // No second line: `#rarityLine(undefined-ish 'common')` is null, so the
+    // lesson stands alone.
+    expect(putDownCard('red', 'common', TUNING)).toBe(
+      'RED — ASH. Stone and walls count as matches for it: it feeds on the spent ground everyone else abandons.',
+    );
+  });
+
+  it('falls back to the plain sentence once a colour’s power dial is off', () => {
+    const off = { ...TUNING, greenCrowdBonus: 0 };
+    expect(putDownCard('green', 'common', off)).toBe(
+      'GREEN — worth one per matching neighbour when it ripens.',
+    );
+  });
+
+  // `#powerOf` rides the long-pressed draft card's reorientation line — the
+  // fresh board's zero-count phrasing keeps every character deterministic.
+  const spotlightHint = (colour: Colour, tuning: Tuning): string => {
+    const base = newRun(9, tuning);
+    // No pre-existing tile of any colour (the seed's own starting tile can
+    // land on any colour) — `#powerOf`'s "nothing standing yet" branch needs
+    // a genuinely empty board to stay deterministic.
+    const cells = Object.fromEntries(
+      Object.entries(base.cells).filter(([, cell]) => cell.kind !== 'tile'),
+    );
+    const ctx = build(1, tuning, {
+      resume: { ...base, cells, draft: [{ ...base.draft[0]!, colour }, ...base.draft.slice(1)] },
+    });
+    ctx.game.start();
+    const card = ctx.el.draft.children[0] as HTMLButtonElement;
+    card.dispatchEvent(new window.MouseEvent('contextmenu', { cancelable: true }));
+    return ctx.el.hint.textContent ?? '';
+  };
+
+  it('spells out each colour’s power clause on the spotlight line', () => {
+    expect(spotlightHint('green', TUNING)).toBe(
+      'GREEN: nothing standing yet · crowds: +1 worth per green neighbour past the first',
+    );
+    expect(spotlightHint('yellow', TUNING)).toBe(
+      'YELLOW: nothing standing yet · company: +1 worth per differently-coloured neighbour',
+    );
+    expect(spotlightHint('red', TUNING)).toBe(
+      'RED: nothing standing yet · ash: stone and walls beside red count as matches',
+    );
+    expect(spotlightHint('blue', TUNING)).toBe(
+      'BLUE: nothing standing yet · tide: +1 worth per 6 hexes from home',
+    );
+  });
+
+  it('adds nothing to the spotlight line once the power dial is off', () => {
+    const off = { ...TUNING, greenCrowdBonus: 0 };
+    expect(spotlightHint('green', off)).toBe('GREEN: nothing standing yet');
+  });
+
+  // `#purseLesson` is the purse fold's first-contact card — armed only once
+  // a shop hook exists to remember it was met (without one, `#met` answers
+  // vacuously true and the card never fires).
+  const purseLessonText = (tuning: Tuning): string => {
+    const ctx = build(1, tuning, {
+      shop: { read: () => ({ ...EMPTY_PROGRESS, met: [] }), write: () => undefined },
+    });
+    ctx.game.start();
+    ctx.el.purseToggle.click();
+    return ctx.el.eventCardText.textContent ?? '';
+  };
+
+  it('teaches the whole purse on its first fold, live rows and all', () => {
+    expect(purseLessonText(TUNING)).toBe(
+      'LUCK IS FOR SPENDING\n' +
+        'Every row is priced in luck: a fresh hand (REROLL), a hand drawn toward a colour you name (STEER), the selected card turned UNIQUE (FORGE). ' +
+        'TITHE is the exit — the WHOLE purse traded for relics at 15%, better than dying on it.\n\n' +
+        "And you CAN lose it all: the run's end pays back only 5% of whatever is left, so a full purse you die on is mostly gone. Spend it.",
+    );
+  });
+
+  it('keeps the lesson honest with every row and TITHE off', () => {
+    expect(purseLessonText(BARE_TUNING)).toBe(
+      'LUCK IS FOR SPENDING\n' +
+        'Every row is priced in luck.\n\n' +
+        'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.',
+    );
+  });
+
+  it('names just the rows that are actually priced', () => {
+    expect(purseLessonText({ ...BARE_TUNING, luckRerollCost: 12 })).toBe(
+      'LUCK IS FOR SPENDING\n' +
+        'Every row is priced in luck: a fresh hand (REROLL).\n\n' +
+        'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.',
+    );
+  });
+
+  // `#statNote` — the tap-a-symbol contract on the stat row itself.
+  const statText = (id: string, tuning: Tuning): string => {
+    const ctx = build(1, tuning);
+    ctx.game.start();
+    const box = ctx.el.stats.querySelector(`[data-stat="${id}"]`) as HTMLElement;
+    box.click();
+    return ctx.el.toast.textContent ?? '';
+  };
+
+  it('explains the plain stats word for word', () => {
+    expect(statText('tiles', TUNING)).toBe(
+      'TILES — what keeps you alive. Every placement spends them; pops, caches and territories pay them back. At zero with nothing ripe to pop, the run ends.',
+    );
+    expect(statText('points', TUNING)).toBe(
+      'POINTS — the score. A pocket popped for points pays its worth × its size × its distance from home.',
+    );
+    expect(statText('map', TUNING)).toBe(
+      'REACH — how far from home you have built. Every 3 hexes out raises the distance multiplier by 1, so the same pocket scores more the deeper it pops.',
+    );
+  });
+
+  it('explains LEFT, on a run that has a clock to count down', () => {
+    // TUNING (the tiles-only economy) runs with no clock at all — `left` is
+    // null and the stat does not render — so this one needs a run that has
+    // one, same as `runLength` ever did before the pivot.
+    expect(statText('left', { ...TUNING, runLength: 260 })).toBe(
+      'LEFT — placements remaining in the expedition. At zero it ends; anything already ripe can still be popped.',
+    );
+  });
+
+  it('says where unspent luck goes, only when it goes anywhere', () => {
+    expect(statText('luck', TUNING)).toBe(
+      'LUCK — a purse, not a score. The row under your hand spends it; whatever is left when the run ends comes home as relics, at 5%.',
+    );
+    expect(statText('luck', { ...TUNING, luckToRelics: 0 })).toBe(
+      'LUCK — a purse, not a score. The row under your hand spends it.',
+    );
+  });
+
+  it('states the cost curve, with and without a grace period', () => {
+    expect(statText('cost', TUNING)).toBe(
+      `COST — the next placement's price: 1. It rises +1 every 22 placed, and it never comes back down — the clock that ends every run. ${LAST_GASP}`,
+    );
+    expect(statText('cost', { ...TUNING, costGrace: 120, costRisesEvery: 25 })).toBe(
+      `COST — the next placement's price: 1. It stays 1 for the first 120 placements, then rises +1 every 25 placed, and it never comes back down — the clock that ends every run. ${LAST_GASP}`,
+    );
   });
 });
