@@ -14,6 +14,7 @@ import {
   previewWorth,
   reachOf,
   ripeKeys,
+  scoreOf,
   worthOf,
 } from '@engine/rules';
 import type { GameState, LandmarkReward, Rarity, Spend } from '@engine/state';
@@ -793,7 +794,15 @@ export function toHudView(
     ripeCount: ctx.ripe.size,
     pocketsReady: ctx.pocketCount,
     harvestTiles: value.tiles,
-    harvestPoints: value.points,
+    // Through scoreOf, not raw (2026-08-25, Marc with two screenshots: "what
+    // it says as points is not what it does" — the button promised 13974 and
+    // the pop banked 4890). harvestValue's points are PRE-scale; the reducer
+    // banks scoreOf(points), which applies pointsPerPop under the single
+    // payout. The receipt and the manual both went through scoreOf since
+    // 2026-08-21; the button was the one reader left on the raw figure. Under
+    // the old fork economy scoreOf is the identity, so this is one honest
+    // number for both.
+    harvestPoints: scoreOf(value.points, state.tuning),
     harvestDepth: harvestMultiplier(state, value.keys),
     harvestAt: target,
 

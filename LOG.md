@@ -5680,3 +5680,17 @@ turned the same hour:
   field rule wants 60 — ASH rotated another step redder (0xc45a2c), the
   same fix for the same collision at a new ground. Art re-baked, ordering
   guardrail green in all three directions.
+
+**Addendum 2, same day — the button that promised three times the pay.** Marc,
+with two screenshots: "what it says as points is not what it does it seems?
++4890 and 13974." Exactly right, and exactly ×2.857 — the reciprocal of the
+0.35 `pointsPerPop` his world's dial sits at. `harvestValue`'s points are
+PRE-scale; the reducer banks `scoreOf(points)`, which applies the dial under
+the single payout. The receipt and the manual have both gone through `scoreOf`
+since 2026-08-21 — the POP button was the one reader left printing the raw
+figure, so it promised the un-scaled number and the pop paid the scaled one.
+The fix is one word at the source (`view.ts` routes `harvestPoints` through
+`scoreOf`, the identity under the old fork economy), and the regression test
+pins the button's figure to the reducer's bank at a fractional dial where the
+two genuinely differ. 705 tests. No balance number moved: the PAY was always
+right; the promise joins it.

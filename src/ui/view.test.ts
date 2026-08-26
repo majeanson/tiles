@@ -3,7 +3,7 @@ import { decodeRun, encodeRun } from '@meta/save';
 import { TUNING, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
-import { harvestMultiplier, harvestValue, legalPlacements, ripeKeys } from '@engine/rules';
+import { harvestMultiplier, harvestValue, legalPlacements, ripeKeys, scoreOf } from '@engine/rules';
 import type { GameState } from '@engine/state';
 import { destinationsWithin, findAt } from '@engine/world';
 import { toBoardView, toHudView } from './view';
@@ -162,6 +162,33 @@ describe('the hud', () => {
     if (hud.harvestAt === null) return;
     const value = harvestValue(full, hud.harvestAt);
     expect(hud.harvestDepth).toBe(harvestMultiplier(full, value.keys));
+  });
+
+  /**
+   * The button must promise what the reducer will bank (2026-08-25, Marc with
+   * two screenshots: the button said 13974 PTS and the pop paid 4890).
+   * harvestValue's points are PRE-scale; the bank is scoreOf(points), which
+   * applies pointsPerPop under the single payout. The receipt and the manual
+   * both went through scoreOf since 2026-08-21 — this pins the button's own
+   * figure to the same number, at a fractional dial where the raw and the
+   * banked figures genuinely differ.
+   */
+  it('promises on the POP button exactly what the reducer will bank', () => {
+    const scaled = tuned({
+      worldWalls: 0,
+      destinationChance: 0,
+      singlePayout: true,
+      pointsPerPop: 0.35,
+    });
+    const full = fill(newRun(11, scaled));
+    const hud = toHudView(full);
+    expect(hud.harvestAt).not.toBeNull();
+    if (hud.harvestAt === null) return;
+    const value = harvestValue(full, hud.harvestAt);
+    expect(hud.harvestPoints).toBe(scoreOf(value.points, scaled));
+    // And the raw figure is genuinely different here, or this test proves
+    // nothing: 0.35 of any positive worth is not itself.
+    if (value.points > 2) expect(hud.harvestPoints).not.toBe(value.points);
   });
 });
 
