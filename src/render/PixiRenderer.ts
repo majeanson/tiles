@@ -14,7 +14,16 @@ import {
   type Theme,
 } from '@theme/tokens';
 import { AssetBook } from './assets';
-import { corners, fitLayout, hexAt, place, zoomCeiling, zoomLayout, type Layout } from './layout';
+import {
+  clamp,
+  corners,
+  fitLayout,
+  hexAt,
+  place,
+  zoomCeiling,
+  zoomLayout,
+  type Layout,
+} from './layout';
 import type { BoardView, CellView, Renderer } from './Renderer';
 import { BakedCache, SurfaceTextures } from './surfaces';
 
@@ -595,7 +604,7 @@ export class PixiRenderer implements Renderer {
     // it becomes an edge chip (unclaimed) or simply waits for the camera
     // (claimed — a visited destination points at nothing). Everything that is
     // not a beacon is board, and board clips at the edge the way ground does.
-    const inset = Math.min(48, Math.max(14, layout.size * 1.6));
+    const inset = clamp(layout.size * 1.6, 14, 48);
     const chipped = new Set<HexKey>();
     this.#clearEdgeChips();
 
@@ -647,7 +656,7 @@ export class PixiRenderer implements Renderer {
   }
 
   zoomBy(factor: number): void {
-    const next = Math.min(this.#zoomMax(), Math.max(ZOOM_MIN, this.#zoom * factor));
+    const next = clamp(this.#zoom * factor, ZOOM_MIN, this.#zoomMax());
     if (next === this.#zoom) return;
 
     // Anchoring at the screen centre means the pan scales with the zoom —
@@ -816,7 +825,7 @@ export class PixiRenderer implements Renderer {
    * the camera button twice does not play two journeys end to end.
    */
   #flyTo(zoom: number, panX: number, panY: number): void {
-    const toZoom = Math.min(this.#zoomMax(), Math.max(ZOOM_MIN, zoom));
+    const toZoom = clamp(zoom, ZOOM_MIN, this.#zoomMax());
     if (this.#reducedMotion) {
       this.#camera = null;
       this.#zoom = toZoom;
@@ -848,7 +857,7 @@ export class PixiRenderer implements Renderer {
     const app = this.#app;
     const fit = this.#frontierFit ?? this.#layout;
     if (app === null || fit === null) return;
-    const target = Math.min(this.#zoomMax(), Math.max(ZOOM_MIN, zoom));
+    const target = clamp(zoom, ZOOM_MIN, this.#zoomMax());
     const w = app.screen.width;
     const h = app.screen.height;
     const { x, y } = place(parse(hex), zoomLayout(fit, target, w / 2, h / 2));
@@ -933,8 +942,8 @@ export class PixiRenderer implements Renderer {
 
     const maxX = (app.screen.width / 2) * this.#zoom;
     const maxY = (app.screen.height / 2) * this.#zoom;
-    this.#panX = Math.min(maxX, Math.max(-maxX, this.#panX));
-    this.#panY = Math.min(maxY, Math.max(-maxY, this.#panY));
+    this.#panX = clamp(this.#panX, -maxX, maxX);
+    this.#panY = clamp(this.#panY, -maxY, maxY);
 
     // `zoomLayout` centres the board on the screen's middle, so the drawn
     // layout's own centre is at (w/2, h/2) in container space — which makes
@@ -963,11 +972,11 @@ export class PixiRenderer implements Renderer {
     if (this.#edgeChips.length > 0) {
       const w = app.screen.width;
       const h = app.screen.height;
-      const inset = Math.min(48, Math.max(14, (this.#layout?.size ?? 0) * scale * 1.6));
+      const inset = clamp((this.#layout?.size ?? 0) * scale * 1.6, 14, 48);
       for (const { chip, lx, ly } of this.#edgeChips) {
         chip.position.set(
-          Math.min(w - inset, Math.max(inset, x + lx * scale)),
-          Math.min(h - inset, Math.max(inset, y + ly * scale)),
+          clamp(x + lx * scale, inset, w - inset),
+          clamp(y + ly * scale, inset, h - inset),
         );
       }
     }
@@ -1968,16 +1977,13 @@ export class PixiRenderer implements Renderer {
   ): void {
     const theme = this.#theme;
     const chip = new Container();
-    chip.position.set(
-      Math.min(w - inset, Math.max(inset, x)),
-      Math.min(h - inset, Math.max(inset, y)),
-    );
+    chip.position.set(clamp(x, inset, w - inset), clamp(y, inset, h - inset));
     chip.alpha = 0.85;
 
     // The ring speaks the same colour language as the full beacon: the
     // claiming territory's own fill, or the accent where no colour owns it.
     const tint = cell.colour !== null ? theme.terrain[cell.colour].fill : theme.ink.accent;
-    const r = Math.min(14, Math.max(8, layout.size * 0.6));
+    const r = clamp(layout.size * 0.6, 8, 14);
 
     // A small breathing glow first, so it sits under the hex.
     const texture = this.#flashTextureFor();

@@ -54,6 +54,14 @@ export const place = (h: Hex, l: Layout): { x: number; y: number } => {
 };
 
 /**
+ * Confine `x` to `[lo, hi]`. The renderer's camera and edge-chip geometry lean
+ * on this shape — a pinch has a floor and a ceiling, a pan has to leave board
+ * on screen, a chip has to stay inside the safe rect — often enough that the
+ * name is worth having; the arithmetic is exactly `Math.min(hi, Math.max(lo, x))`.
+ */
+export const clamp = (x: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, x));
+
+/**
  * Which hex contains a screen point — the inverse of `place`.
  *
  * Rounding in CUBE space rather than axial is the part that is easy to get
