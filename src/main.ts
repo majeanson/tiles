@@ -42,13 +42,11 @@ import {
   EMPTY_PROGRESS,
   PERKS,
   TEACH_IDS,
-  UPGRADES,
   applyProgress,
   decodeProgress,
   encodeProgress,
   grantFind,
   type Progress,
-  type UpgradeId,
 } from '@meta/progress';
 import {
   buildBackup,
@@ -61,6 +59,8 @@ import {
 import { shareOf } from '@meta/share';
 import { sendCrashReport } from '@meta/report';
 import { decodeRun, encodeRun } from '@meta/save';
+import { SHED_LADDER, type ShedRungId } from '@meta/shedLadder';
+import { inheritShopLevels, parseShopLevels } from '@meta/shopLevels';
 import {
   appendEntry,
   dailiesOf,
@@ -545,21 +545,13 @@ let shopKeys: SlotKeys | null = null;
  * carries every revealed hex, and `readProgress` runs several times per tap,
  * so folding it in would mean decoding the largest thing on the device to
  * answer "how many levels of DEEPER PURSE". Kept tiny, it is free.
+ *
+ * The parsing itself — and the inherit decision `readProgress` builds on it
+ * — is `@meta/shopLevels`, pure and tested; this is only the storage read.
  */
 function readShopLevels(keys: SlotKeys): Progress['bought'] | null {
   try {
-    const raw = localStorage.getItem(keys.shop);
-    if (raw === null) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
-    const clean: Partial<Record<UpgradeId, number>> = {};
-    const known = new Set<string>(UPGRADES.map((u) => u.id));
-    for (const [id, n] of Object.entries(parsed)) {
-      if (known.has(id) && typeof n === 'number' && Number.isFinite(n) && n > 0) {
-        clean[id as UpgradeId] = Math.floor(n);
-      }
-    }
-    return clean;
+    return parseShopLevels(localStorage.getItem(keys.shop));
   } catch {
     return null;
   }
@@ -585,14 +577,13 @@ function readProgress(): Progress {
             return decoded;
           })();
 
-    if (shopKeys === null) return device;
-    // The migration, and it is a one-way generosity: a world that has never
-    // written a shop key predates the split, so it INHERITS the device-wide
-    // levels rather than resetting to nothing. Every world a device already
-    // held keeps exactly the build it had; only worlds settled after today
-    // start bare, which is the point of the split.
-    const levels = readShopLevels(shopKeys) ?? device.bought;
-    return levels === device.bought ? device : { ...device, bought: levels };
+    // The migration, and it is a one-way generosity (`@meta/shopLevels`'s
+    // `inheritShopLevels`): a world that has never written a shop key
+    // predates the split, so it INHERITS the device-wide levels rather than
+    // resetting to nothing. Every world a device already held keeps exactly
+    // the build it had; only worlds settled after today start bare, which
+    // is the point of the split.
+    return shopKeys === null ? device : inheritShopLevels(device, readShopLevels(shopKeys));
   } catch {
     return EMPTY_PROGRESS;
   }
@@ -1106,51 +1097,43 @@ function runKeeping(
         // touches the world being played. Each rung says its OWN sentence,
         // because "some history was cleared" is a fair description of the
         // diary and a lie about a world.
-        const shed: readonly { readonly drop: () => void; readonly note: string }[] = [
-          {
-            // Free, and nobody's memory of anything.
-            drop: () => localStorage.removeItem(ERROR_STORAGE_KEY),
-            note: 'Storage was full — a diagnostic record was cleared so your run could be saved.',
+        //
+        // The ORDER and the wording are `@meta/shedLadder`'s `SHED_LADDER`,
+        // pure and tested; this is only the mechanism each rung id names —
+        // keyed the same way so the two cannot drift apart.
+        const drop: Record<ShedRungId, () => void> = {
+          // Free, and nobody's memory of anything.
+          lastError: () => localStorage.removeItem(ERROR_STORAGE_KEY),
+          // The other slots' receipts: small, and a receipt is a one-shot
+          // toast nobody is waiting for on a world they are not in. Shop
+          // levels regenerate as "inherit", never as zero.
+          otherReceipts: () => {
+            for (const s of SLOTS) {
+              if (s === slot) continue;
+              localStorage.removeItem(slotKeys(s).receipt);
+            }
           },
-          {
-            // The other slots' receipts and shop keys: small, and a receipt
-            // is a one-shot toast nobody is waiting for on a world they are
-            // not in. Shop levels regenerate as "inherit", never as zero.
-            drop: () => {
-              for (const s of SLOTS) {
-                if (s === slot) continue;
-                localStorage.removeItem(slotKeys(s).receipt);
-              }
-            },
-            note: 'Storage was full — some notes from your other worlds were cleared so your run could be saved.',
+          timeline: () => localStorage.removeItem(TIMELINE_STORAGE_KEY),
+          // Only now, and only worlds you are NOT standing in. The active
+          // world is never shed: losing it silently is the worst thing this
+          // game can do, and the run it would corrupt is the very thing the
+          // ladder is trying to save.
+          otherWorlds: () => {
+            for (const s of SLOTS) {
+              if (s === slot) continue;
+              const other = slotKeys(s);
+              localStorage.removeItem(other.world);
+              localStorage.removeItem(other.run);
+              localStorage.removeItem(other.shop);
+            }
           },
-          {
-            drop: () => localStorage.removeItem(TIMELINE_STORAGE_KEY),
-            note: 'Storage was full — your diary was cleared so your run could be saved. Your worlds, relics and perks are untouched.',
-          },
-          {
-            // Only now, and only worlds you are NOT standing in. The active
-            // world is never shed: losing it silently is the worst thing
-            // this game can do, and the run it would corrupt is the very
-            // thing the ladder is trying to save.
-            drop: () => {
-              for (const s of SLOTS) {
-                if (s === slot) continue;
-                const other = slotKeys(s);
-                localStorage.removeItem(other.world);
-                localStorage.removeItem(other.run);
-                localStorage.removeItem(other.shop);
-              }
-            },
-            note: 'Storage was full — your OTHER worlds were forgotten so this run could be saved. The world you are in is untouched.',
-          },
-        ];
-        for (const { drop, note } of shed) {
+        };
+        for (const rung of SHED_LADDER) {
           try {
-            drop();
+            drop[rung.id]();
             localStorage.setItem(keys.run, encodeRun(state));
             askPersistence();
-            showStorageNote(note);
+            showStorageNote(rung.note);
             break;
           } catch {
             // Still full — shed the next thing. (Private mode throws on
