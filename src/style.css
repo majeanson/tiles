@@ -593,7 +593,10 @@ button.fame-run[aria-expanded='true'] {
   color: var(--ink-faint, #767d8d);
 }
 
-#new-run {
+/* MAIN MENU shares RESTART's width — the MENU tab's column read as four
+   buttons at three widths before 2026-08-26. */
+#new-run,
+#to-main-menu {
   width: 100%;
   margin-top: 4px;
 }
@@ -1010,6 +1013,12 @@ button.quiet {
   text-align: center;
   font-family: var(--font-body, inherit);
   color: var(--ink, #e8ecf4);
+  /* The reading voice (2026-08-26): the "too small for explanations" ruling
+     reached the panels and the door, and this — the longest prose surface in
+     the game — was still speaking the body's 13px chrome voice. Same 17px
+     register as `.panel-sheet`; every button inside (font: inherit) grows
+     with it. */
+  font-size: 1.0625rem;
 }
 
 #end p {
@@ -1049,7 +1058,7 @@ button.quiet {
 
 /* RUN N: `book.runs`, printed rather than carried and never shown. */
 .end-run {
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   letter-spacing: var(--label-tracking, 0.04em);
   color: var(--ink-faint, #767d8d);
 }
@@ -1142,7 +1151,7 @@ button.quiet {
 
 .end-best {
   color: var(--accent, #d7b45a);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   letter-spacing: var(--label-tracking, 0.04em);
 }
 
@@ -1164,9 +1173,11 @@ button.quiet {
   object-fit: contain;
 }
 
+/* Quiet explanatory prose — the same role `.flag-note` plays in a panel, at
+   the same 15px (2026-08-26: the two had drifted to 12 vs 15 for one job). */
 .end-facts {
   color: var(--ink-dim, #8a91a0);
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
 }
 
 /* A plain-text control: a real button (44px, tappable, focusable) with none
@@ -1198,7 +1209,7 @@ button.quiet {
 .end-shop-door {
   color: var(--accent, #d7b45a);
   opacity: 1;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-family: var(--font-label, inherit);
   letter-spacing: var(--label-tracking, 0.04em);
 }
@@ -1223,7 +1234,7 @@ button.quiet {
   justify-content: space-between;
   gap: 12px;
   margin: 0 0 4px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--ink-dim, #8a91a0);
   font-variant-numeric: tabular-nums;
 }
@@ -1279,7 +1290,11 @@ button.quiet {
   text-align: left;
 }
 
-#end-new-run {
+/* TRY AGAIN (the daily) rides the same column as NEW RUN — it was the one
+   unclassed button on this screen, shrink-wrapping beside a full-width
+   sibling (2026-08-26). */
+#end-new-run,
+#end-retry {
   margin-top: 6px;
   width: 100%;
   max-width: 320px;
@@ -1574,6 +1589,17 @@ button.quiet {
   display: none;
 }
 
+/* The optional ACT button (the crossing): the one card control that DOES
+   something rather than dismissing. It had no rule at all until 2026-08-26 —
+   a shrink-wrapped default button over a full-width accent GOT IT. Same
+   column as the dismiss; its quiet default border is what keeps GOT IT the
+   affirmative voice, and `.armed` below is the two-tap confirm speaking the
+   same danger the other arming controls do. */
+#event-card-action {
+  width: 100%;
+  margin-top: 14px;
+}
+
 #event-card-dismiss {
   width: 100%;
   margin-top: 14px;
@@ -1611,7 +1637,9 @@ button.quiet {
     animation: surface-in 160ms ease-out;
   }
 
-  .panel-sheet {
+  /* `:not([hidden])` so the rise replays on every open, not once at load —
+     the same idiom every other arrival in this file uses. */
+  .panel-sheet:not([hidden]) {
     animation: event-card-in 180ms ease-out;
   }
 
@@ -2086,15 +2114,11 @@ button:not(:disabled):active {
     transform: translateY(-2px);
   }
 
-  /* Every panel that covers the door, and the end screen, arrive the way
-     the toast does. */
-  .panel-sheet:not([hidden]) {
-    animation: toast-in 160ms ease-out;
-  }
-
-  #end:not([hidden]) {
-    animation: toast-in 180ms ease-out;
-  }
+  /* (The panel sheets' and the end screen's arrivals live with the other
+     surface entrances above — this block once restated both with `toast-in`,
+     and being later in the file it silently won: the end screen's designed
+     10px/260ms full-stop rise never played. Found 2026-08-26; one home each
+     now.) */
 
   /* The purse fold's prices rise into place when opened. */
   #spends:not([hidden]) {
