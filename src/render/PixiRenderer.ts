@@ -885,7 +885,15 @@ export class PixiRenderer implements Renderer {
   }
 
   zoomLevel(): number {
-    return this.#zoom;
+    // The DESTINATION, not the transit frame (2026-08-26). Every caller
+    // asks "where is the camera, settled?" — the toggle's label, the branch
+    // deciding where the next tap goes, the pop's keep-this-zoom pan. The
+    // camera button used to read `#zoom` synchronously in its own click,
+    // before the flight it just started had advanced a frame, so its label
+    // could keep the pre-flight word until an unrelated gesture resynced it
+    // — and a second tap mid-flight would re-fly the SAME leg instead of
+    // the return one.
+    return this.#camera?.toZoom ?? this.#zoom;
   }
 
   zoomMax(): number {

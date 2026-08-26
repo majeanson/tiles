@@ -166,7 +166,12 @@ export interface Renderer {
    */
   flyToHex(hex: HexKey, zoom: number): void;
   flyToFit(): void;
-  /** Current zoom, 1 = fit. For the buttons' disabled states. */
+  /**
+   * The zoom the camera is at — or, mid-flight, the one it is flying to.
+   * The settled answer on purpose: the callers are the toggle's label and
+   * the branch deciding where the next tap goes, and both would lie for
+   * the length of a tween if this read the transit frame instead.
+   */
   zoomLevel(): number;
 
   /**
