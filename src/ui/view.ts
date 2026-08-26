@@ -935,6 +935,24 @@ function summariseRun(state: GameState): NonNullable<HudView['summary']> {
 }
 
 /**
+ * Gate D's question, answered in words (2026-08-26): where the run's biggest
+ * pop landed, as one sentence under the arc — the facts grid has printed
+ * "BIGGEST POP n at 43%" since 2026-08-20, and a percentage is a fact
+ * half-shown. Earned, not constant: null until the run popped at least three
+ * times, because a shape needs more than two points to have one.
+ */
+export function arcNote(summary: NonNullable<HudView['summary']>): string | null {
+  if (summary.harvests < 3 || summary.biggestHarvest <= 0) return null;
+  if (summary.biggestAt >= 2 / 3) {
+    return 'The run built to it — your biggest pop landed in the final stretch.';
+  }
+  if (summary.biggestAt >= 1 / 3) {
+    return 'Your biggest pop came mid-run; the tail never topped it.';
+  }
+  return 'Your biggest pop came early — everything after grew in its shadow.';
+}
+
+/**
  * One colour's holdings, counted in the unit the points formula sums.
  *
  * `worth` is the truthful "potential points by colour": a points harvest
@@ -1181,9 +1199,50 @@ function oddsFor(state: GameState): string | null {
  * Exported since 2026-08-20: the hall of fame's diary stores this sentence
  * FINISHED on each run's tick (`RunDetail.epitaph`), so a reopened row says
  * exactly what the screen said — one source of words, kept, not re-derived.
+ *
+ * A POOL per cause since 2026-08-26: the diary shows every run's last line in
+ * a column, and two sentences were carrying all of them — a museum of runs
+ * reading as one stamp. Every sentence still says WHY, with the same facts
+ * (the placements, the final cost); only the framing varies. The pick is a
+ * pure hash of the run's own facts, never a die roll, because the same ended
+ * run must speak the same sentence every time it is re-rendered.
  */
+const BROKE_EPITAPHS: readonly ((placements: number, cost: number) => string)[] = [
+  (p, cost) =>
+    `Out of tiles on the plane, after ${p} placements. They cost ${cost} each by the end.`,
+  (p, cost) =>
+    `The purse ran dry after ${p} placements — ${cost} a tile at the end, and nothing left to pay it.`,
+  (p, cost) =>
+    `${p} placements, and the last tile went down alone. The next would have cost ${cost}.`,
+  (p, cost) => `The expedition spent itself: ${p} placements, the price risen to ${cost}.`,
+  (p, cost) => `No tiles left after ${p} placements. The plane was charging ${cost} each by then.`,
+  (p, cost) =>
+    `The torch carried ${p} placements out. At ${cost} a tile, the dark had the last one.`,
+  (p, cost) =>
+    `Every tile spent — ${p} placements, with the cost at ${cost} and the purse at nothing.`,
+  (p, cost) =>
+    `${p} placements, then the hand came up empty. Tiles were ${cost} apiece at the end.`,
+];
+
+const WALLED_EPITAPHS: readonly ((placements: number) => string)[] = [
+  (p) => `Walled in after ${p} placements — nowhere left to build, nothing left to pop.`,
+  (p) => `The stone closed in at ${p} placements. Every open hex was spoken for.`,
+  (p) => `${p} placements, and the walls had the last word.`,
+  (p) => `Nowhere left to stand after ${p} placements — the plane walled the run in.`,
+  (p) => `The run built itself into a corner: ${p} placements, and no ground a tile could take.`,
+  (p) => `Stone on every side after ${p} placements. The way out never opened.`,
+];
+
+/** The deterministic pick: the world and the run's length, hashed, never rolled. */
+function epitaphIndex(state: GameState, poolSize: number): number {
+  return (Math.imul(state.rootSeed ^ state.placements, 2654435761) >>> 0) % poolSize;
+}
+
 export function epitaphFor(state: GameState): string {
   if (state.death === 'spent') {
+    // Unreachable in the shipped economy (`runLength: 0`), kept for the day
+    // a clock returns — one sentence is honest cover for a door nobody
+    // walks through.
     const unripe = Object.values(state.cells).filter((c) => c.kind === 'tile').length;
     return (
       `The expedition is over — ${state.placements} placements spent. ` +
@@ -1193,14 +1252,10 @@ export function epitaphFor(state: GameState): string {
     );
   }
   if (state.death === 'walled') {
-    return `Walled in after ${state.placements} placements — nowhere left to build, nothing left to pop.`;
+    return WALLED_EPITAPHS[epitaphIndex(state, WALLED_EPITAPHS.length)]!(state.placements);
   }
   const cost = costOf(state.placements, state.tuning);
-  const where = 'on the plane';
-  return (
-    `Out of tiles ${where}, after ${state.placements} placements. ` +
-    `They cost ${cost} each by the end.`
-  );
+  return BROKE_EPITAPHS[epitaphIndex(state, BROKE_EPITAPHS.length)]!(state.placements, cost);
 }
 
 /**

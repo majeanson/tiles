@@ -342,7 +342,11 @@ describe('the game loop', () => {
 
     expect(ctx.game.state.phase).toBe('ended');
     expect(ctx.el.end.hidden).toBe(false);
-    expect(ctx.el.end.textContent).toMatch(/out of tiles/i);
+    // The epitaph is a pool now (2026-08-26) — whatever framing this run
+    // drew, the screen carries the sentence the view wrote for it.
+    expect(ctx.el.end.querySelector('.end-epitaph')?.textContent).toContain(
+      String(ctx.game.state.placements),
+    );
     expect(ctx.el.harvestTiles.disabled).toBe(true);
 
     // And the board stops accepting taps.

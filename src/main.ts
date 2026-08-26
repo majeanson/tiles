@@ -1378,6 +1378,7 @@ function runKeeping(
               points: state.points,
               placements: state.placements,
               seed: state.rootSeed,
+              arc: arcSparkline(state.log.harvests),
             })
           : shareOf(NAME, {
               kind: 'daily',

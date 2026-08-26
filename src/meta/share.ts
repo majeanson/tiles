@@ -20,6 +20,8 @@ export type ShareSubject =
       readonly points: number;
       readonly placements: number;
       readonly seed: number;
+      /** The sparkline, or '' where the run had no harvests to draw. */
+      readonly arc: string;
     }
   | {
       readonly kind: 'daily';
@@ -60,8 +62,12 @@ export function shareOf(name: string, subject: ShareSubject): Shared {
       params: { daily: subject.date },
     };
   }
+  // The run's shape rides along the way the daily's always has (2026-08-26):
+  // the sparkline was stored on every timeline row and drawn in the daily's
+  // line, while the game's MAIN share string never carried it.
+  const arc = subject.arc === '' ? '' : ` · ${subject.arc}`;
   return {
-    text: `${name}: ${subject.points} pts in ${subject.placements} placements. Beat my run:`,
+    text: `${name}: ${subject.points} pts in ${subject.placements} placements${arc}. Beat my run:`,
     params: { seed: String(subject.seed) },
   };
 }

@@ -6,7 +6,7 @@ import { newRun, reduce } from '@engine/reduce';
 import { harvestMultiplier, harvestValue, legalPlacements, ripeKeys, scoreOf } from '@engine/rules';
 import type { GameState } from '@engine/state';
 import { destinationsWithin, findAt } from '@engine/world';
-import { toBoardView, toHudView } from './view';
+import { arcNote, toBoardView, toHudView } from './view';
 
 /**
  * The selector is where the UI could start disagreeing with the engine — a
@@ -139,8 +139,52 @@ describe('the hud', () => {
     const dead = broke;
     const hud = toHudView(dead);
     expect(hud.ended).toBe(true);
-    expect(hud.epitaph).toMatch(/out of tiles/i);
+    // A pool since 2026-08-26 — whichever framing this run drew, the facts
+    // must be in it: the run's length, and (for a broke death) the final
+    // cost the sentence exists to explain.
     expect(hud.epitaph).toContain(String(dead.placements));
+    expect(hud.epitaph).toMatch(/tile|purse|torch|hand|expedition/i);
+  });
+
+  // The pool's own contract (2026-08-26): the diary stores each epitaph
+  // finished, so the same ended run must always speak the same sentence —
+  // and different runs should not all speak the first one.
+  it('picks the epitaph deterministically, and varies it across runs', () => {
+    const one = fill({ ...newRun(11, TINY), tiles: 2 });
+    expect(toHudView(one).epitaph).toBe(toHudView(one).epitaph);
+    const epitaphs = new Set(
+      [3, 5, 7, 11, 13, 17, 19, 23].map(
+        (seed) => toHudView(fill({ ...newRun(seed, TINY), tiles: 2 })).epitaph,
+      ),
+    );
+    expect(epitaphs.size).toBeGreaterThan(1);
+  });
+
+  // Gate D's banked fact, in words (2026-08-26): the arc drew the shape and
+  // the facts grid printed a percentage; `arcNote` is the sentence between
+  // them — earned only when the run popped enough times to have a shape.
+  describe('the arc note', () => {
+    const summary = (over: { harvests?: number; biggestHarvest?: number; biggestAt: number }) => ({
+      biggestHarvest: 100,
+      claims: 0,
+      quests: 0,
+      luck: 0,
+      harvests: 5,
+      tilesTaken: 5,
+      pointsTaken: 0,
+      ...over,
+    });
+
+    it('stays silent under three pops, or when nothing scored', () => {
+      expect(arcNote(summary({ harvests: 2, biggestAt: 0.9 }))).toBeNull();
+      expect(arcNote(summary({ biggestHarvest: 0, biggestAt: 0.9 }))).toBeNull();
+    });
+
+    it('names the third of the run the big pop landed in', () => {
+      expect(arcNote(summary({ biggestAt: 0.9 }))).toMatch(/final stretch/);
+      expect(arcNote(summary({ biggestAt: 0.5 }))).toMatch(/mid-run/);
+      expect(arcNote(summary({ biggestAt: 0.1 }))).toMatch(/came early/);
+    });
   });
 
   // POP · N READY counts decisions on the board, not tiles — a 12-tile

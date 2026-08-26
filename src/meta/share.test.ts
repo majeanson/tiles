@@ -9,14 +9,15 @@ import { DAILY_EPOCH } from './daily';
  */
 
 describe('a run', () => {
-  it('says the score, the length, and carries only its seed', () => {
+  it('says the score, the length, the shape, and carries only its seed', () => {
     const { text, params } = shareOf('Ashwake', {
       kind: 'run',
       points: 7795,
       placements: 166,
       seed: 1234567,
+      arc: '▁▂▄▃█▅▂',
     });
-    expect(text).toBe('Ashwake: 7795 pts in 166 placements. Beat my run:');
+    expect(text).toBe('Ashwake: 7795 pts in 166 placements · ▁▂▄▃█▅▂. Beat my run:');
     // ONLY the seed. A link built from the sender's full URL drags their own
     // overrides along — `?ff=`, `?theme=`, `?hex=`, `?camp=` — and an
     // arriving `?ff=` is persisted, so a stale override would install itself
@@ -26,14 +27,25 @@ describe('a run', () => {
     expect(params).toEqual({ seed: '1234567' });
   });
 
+  it('omits the arc rather than printing an empty gap', () => {
+    const { text } = shareOf('Ashwake', {
+      kind: 'run',
+      points: 12,
+      placements: 3,
+      seed: 7,
+      arc: '',
+    });
+    expect(text).toBe('Ashwake: 12 pts in 3 placements. Beat my run:');
+  });
+
   it('carries a negative seed intact', () => {
     // A hand-typed seed can be negative, and the settle path was bitten once
     // by a 31-bit mask that quietly changed which world travelled.
-    expect(shareOf('Ashwake', { kind: 'run', points: 1, placements: 1, seed: -42 }).params).toEqual(
-      {
-        seed: '-42',
-      },
-    );
+    expect(
+      shareOf('Ashwake', { kind: 'run', points: 1, placements: 1, seed: -42, arc: '' }).params,
+    ).toEqual({
+      seed: '-42',
+    });
   });
 });
 

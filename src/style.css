@@ -1160,6 +1160,12 @@ button.armed {
   fill: var(--accent, #d7b45a);
 }
 
+/* Gate D's sentence under the arc — quiet prose, not a label. */
+.end-arc-note {
+  color: var(--ink-dim, #8a91a0);
+  font-size: 0.9375rem;
+}
+
 .end-best {
   color: var(--accent, #d7b45a);
   font-size: 0.875rem;

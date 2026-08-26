@@ -41,6 +41,7 @@ import { COLOUR_MARK, depthOf, TILE_GLYPH, type Theme } from '@theme/tokens';
 import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
 import { closeDialog, openDialog, siblingsOf } from './dialog';
 import {
+  arcNote,
   colourLesson,
   describeHexOf,
   harvestNote,
@@ -3231,6 +3232,13 @@ export class Game {
 
     const arc = this.#arcChart();
     if (arc !== null) hero.append(arc);
+    // Gate D's banked fact, finally in words (2026-08-26): the arc drew the
+    // shape and the facts grid printed the percentage; this is the sentence
+    // between them, earned only when the run popped enough to have a shape.
+    if (hud.summary !== null) {
+      const note = arcNote(hud.summary);
+      if (note !== null) hero.append(line('end-arc-note', note));
+    }
     if (!isNewBest && this.#recordLines.length > 0) {
       hero.append(line('end-best', this.#recordLines[0]!));
     }
