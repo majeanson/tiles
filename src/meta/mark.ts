@@ -59,10 +59,18 @@ const HEX_RING_SAFE = 'M32 18 47 26.5v17L32 52 17 43.5v-17z';
  * The ring and the spark alone, no background, sized to a 64×64 box — for
  * embedding at another scale entirely, such as `scripts/social.ts`'s
  * 1200×630 share card. Wrap in `<g transform="translate(x,y) scale(s)">`.
+ *
+ * Parameterised since 2026-08-26: `scripts/artslots.ts` bakes the lockup
+ * once per art direction, and each direction paints the same shape in its
+ * OWN accent and pop colours — the shape is the identity, the colours are
+ * the theme's. `MARK_GROUP` stays the torchlit constant every existing
+ * consumer reads.
  */
-export const MARK_GROUP =
-  `<path d="${HEX_RING}" fill="none" stroke="${RING}" stroke-width="4"/>` +
-  `<path d="${spark(32, 32, 11)}" fill="${SPARK}"/>`;
+export const markGroup = (ring: string, sparkFill: string): string =>
+  `<path d="${HEX_RING}" fill="none" stroke="${ring}" stroke-width="4"/>` +
+  `<path d="${spark(32, 32, 11)}" fill="${sparkFill}"/>`;
+
+export const MARK_GROUP = markGroup(RING, SPARK);
 
 /** The favicon / install mark. `viewBox` only, so it scales to whatever it is dropped into. */
 export const MARK_SVG =

@@ -1094,8 +1094,18 @@ button.armed {
   );
 }
 
+/* The scrim over the art is the THEME'S OWN background, not a hardcoded
+   dark (2026-08-26): it was authored when only torchlit could ever get art,
+   and a dark wash under daylight's dark ink would cost the numbers exactly
+   the contrast the wash exists to buy. Tinting with --bg works in both
+   polarities — a pale theme scrims pale, a dark one dark. */
 .end-hero.art {
-  background-image: linear-gradient(rgba(10, 8, 6, 0.5), rgba(10, 8, 6, 0.74)), var(--run-end-art);
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--bg, #14161c) 55%, transparent),
+      color-mix(in srgb, var(--bg, #14161c) 78%, transparent)
+    ),
+    var(--run-end-art);
   background-size: cover;
   background-position: center;
   border: 1px solid var(--panel-edge, #3a4150);
