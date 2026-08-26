@@ -23,6 +23,52 @@ function watchErrors(page: Page): string[] {
   return errors;
 }
 
+/**
+ * Does this PNG carry the ENTROPY of a picture, or is it a flat rectangle in
+ * disguise (2026-08-21, `the board renders a picture` below)? A WebGL
+ * context that never came up, a layout collapsed to nothing, a draw that
+ * threw halfway, or a snapshot capturing the clear colour and nothing else:
+ * each ends in a flat fill, each compresses to almost nothing, and each
+ * currently reaches production unchallenged. Counting distinct byte-chunks
+ * measures how much VARIETY survived PNG compression — precisely the axis a
+ * flat fill collapses on, whatever colour it happens to be. Measured on a
+ * real board: ~60KB and ~15,000 distinct chunks, against thresholds two
+ * orders of magnitude below that — deliberately NOT pixel-diffing, since a
+ * baseline image would differ between this machine and CI's Linux renderer,
+ * buying flakiness rather than confidence.
+ */
+function assertLooksLikeAPicture(bytes: Buffer, label: string): void {
+  const seen = new Set<string>();
+  for (let i = 0; i + 4 <= bytes.byteLength; i += 4) {
+    seen.add(bytes.subarray(i, i + 4).toString('hex'));
+  }
+  expect(bytes.byteLength, `${label}: suspiciously small`).toBeGreaterThan(8000);
+  expect(seen.size, `${label}: looks like a single flat colour`).toBeGreaterThan(1000);
+}
+
+/**
+ * Taps an expanding ring of points around a centre until the TILES stat
+ * drops — i.e. until one tap actually placed something, rather than merely
+ * explaining a hex or landing on ground already spent. Same technique the
+ * daily-resume test above uses to hunt a legal hex without knowing the
+ * board's layout ahead of time; factored out here because the new tests
+ * below need "place at least one tile" as a precondition, not a whole test
+ * on its own.
+ */
+async function placeOneTile(page: Page, cx: number, cy: number): Promise<void> {
+  const tilesNow = async (): Promise<number> =>
+    Number(await page.locator('[data-stat="tiles"] .stat-value').textContent());
+  const before = await tilesNow();
+  for (const radius of [40, 60, 80, 30, 100, 20, 120, 140]) {
+    for (let i = 0; i < 12; i++) {
+      const angle = (Math.PI / 6) * i;
+      await page.mouse.click(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+      if ((await tilesNow()) < before) return;
+    }
+  }
+  throw new Error('placeOneTile: no legal hex found in the search rings');
+}
+
 test('boots, begins, places, reads the manual, works the camera — no errors', async ({ page }) => {
   const errors = watchErrors(page);
 
@@ -235,16 +281,200 @@ test('the board renders a picture, not a flat rectangle', async ({ page }) => {
   // `preserveDrawingBuffer`, which the renderer does not ask for and should
   // not have to. A screenshot sees what the player sees.
   const shot = await canvas.screenshot();
+  assertLooksLikeAPicture(shot, 'the opening board');
 
-  // The PNG is already compressed, so counting distinct byte-chunks measures
-  // how much VARIETY survived compression — which is precisely the axis a
-  // flat fill collapses on, whatever colour it happens to be.
-  const seen = new Set<string>();
-  for (let i = 0; i + 4 <= shot.byteLength; i += 4) {
-    seen.add(shot.subarray(i, i + 4).toString('hex'));
+  expect(errors).toEqual([]);
+});
+
+/**
+ * The same floor, after a placement (2026-08-26).
+ *
+ * The opening board draws once and sits still; a placement is the first
+ * redraw the camera and the renderer do together — new ground, a fresh
+ * frontier, the placed tile's own pop animation queued. If a redraw after
+ * state actually changes is where a texture cache or an animation frame
+ * goes wrong, the boot-only screenshot above would never see it.
+ */
+test('after a placement, the board still draws a picture, not a flat rectangle', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?seed=7');
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+
+  const canvas = page.locator('#board canvas');
+  await expect(canvas).toBeVisible();
+  const box = (await canvas.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+
+  await placeOneTile(page, cx, cy);
+  const shot = await canvas.screenshot();
+  assertLooksLikeAPicture(shot, 'the board after a placement');
+
+  expect(errors).toEqual([]);
+});
+
+/**
+ * The same floor, either side of the FIT⇄HERE camera toggle (2026-08-26).
+ *
+ * The camera is FLOWN rather than cut (STATUS.md, Day-1 rulings), which
+ * means a tween runs every frame while it moves — `PixiRenderer#zoomLevel`
+ * only reaches the destination once the flight lands, some `CAMERA_MS` (320)
+ * later. That per-frame draw during a zoom is exactly the class of change
+ * POLISH.md called out as unmeasured and silently breakable — this is the
+ * cheap floor under it: toggle, wait for the fly to land, screenshot; toggle
+ * back, wait, screenshot again. Deliberately not asserting on the button's
+ * own label text either side of the tap — `#syncCamera` (`src/ui/game.ts`)
+ * reads the zoom synchronously at click time, before the tween has advanced
+ * a frame, so the label reflects the PRE-click state until some later
+ * gesture happens to call it again; that is a real, separate staleness this
+ * session is not the one to fix (only the render floor is in scope here).
+ */
+test('after the FIT⇄HERE camera toggle, the board still draws a picture, not a flat rectangle', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?seed=7');
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+
+  const canvas = page.locator('#board canvas');
+  await expect(canvas).toBeVisible();
+  const box = (await canvas.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await placeOneTile(page, cx, cy);
+  // A placement can start the camera flying on its own; let that land
+  // before driving the toggle.
+  await page.waitForTimeout(700);
+
+  const toggle = page.locator('#camera-toggle');
+  await toggle.click();
+  await page.waitForTimeout(700);
+  assertLooksLikeAPicture(await canvas.screenshot(), 'the board after the first camera toggle');
+
+  await toggle.click();
+  await page.waitForTimeout(700);
+  assertLooksLikeAPicture(await canvas.screenshot(), 'the board after toggling back');
+
+  expect(errors).toEqual([]);
+});
+
+/**
+ * The same floor, on the end screen (2026-08-26).
+ *
+ * `#renderEnd` takes exactly one snapshot of the board at the ended
+ * transition (`PixiRenderer#snapshot`, `src/ui/game.ts`) and hands it to the
+ * `<img class="end-snapshot">` on the end screen as a PNG data URL — the
+ * player's one lasting picture of the run, and the same asset the share card
+ * builds from. `snapshot()` already has an honest-null contract for a
+ * missing 2D API; what nothing checks is whether a REAL browser's capture
+ * came back as an actual picture rather than the clear colour alone (a
+ * `clearColor` bug or an empty stage would both pass a mere non-null check).
+ *
+ * Reaching "ended" for real means playing an actual run out — no debug
+ * shortcut exists, and content/engine are off-limits to this session. Seed 7
+ * at this exact viewport ends deterministically in 24 placements / 248 taps
+ * (measured by hand before this test was written), so the loop below is
+ * shaped around that, with headroom rather than a hard-coded count.
+ */
+test('the end screen carries a real picture of the run, not a blank capture', async ({ page }) => {
+  test.setTimeout(60_000);
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?seed=7');
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+
+  const canvas = page.locator('#board canvas');
+  await expect(canvas).toBeVisible();
+
+  const tilesNow = async (): Promise<number> =>
+    Number(await page.locator('[data-stat="tiles"] .stat-value').textContent());
+
+  // Any modal in the way of the next tap: the first-contact card, the
+  // crossing card (arms on tap one, confirms on tap two — both fall out of
+  // clicking the one shared dismiss button twice), or the harvest choice
+  // that appears once a pocket ripens. TILES is deliberately last choice: it
+  // refunds tiles, which is the one outcome that would keep this run solvent
+  // forever instead of ending it.
+  async function clearWhatBlocksTheNextTap(): Promise<void> {
+    for (let i = 0; i < 3; i++) {
+      const card = page.locator('#event-card');
+      if (!(await card.isVisible().catch(() => false))) break;
+      await page
+        .locator('#event-card-dismiss')
+        .click({ timeout: 2000 })
+        .catch(() => undefined);
+    }
+    for (const id of ['harvest-points', 'harvest-burn', 'harvest-treasure', 'harvest-tiles']) {
+      const button = page.locator(`#${id}`);
+      if (await button.isVisible().catch(() => false)) {
+        await button.click({ timeout: 2000 }).catch(() => undefined);
+        break;
+      }
+    }
   }
-  expect(shot.byteLength, 'the board screenshot is suspiciously small').toBeGreaterThan(8000);
-  expect(seen.size, 'the board looks like a single flat colour').toBeGreaterThan(1000);
+
+  const radii = [40, 60, 80, 100, 30, 120, 20, 140, 160, 180, 200, 10];
+  const maxTaps = 1000;
+  let taps = 0;
+  let box = (await canvas.boundingBox())!;
+  let cx = box.x + box.width / 2;
+  let cy = box.y + box.height / 2;
+  const ended = async (): Promise<boolean> =>
+    page
+      .locator('#end')
+      .isVisible()
+      .catch(() => false);
+
+  outer: while (taps < maxTaps && !(await ended())) {
+    await clearWhatBlocksTheNextTap();
+    if (await ended()) break;
+
+    let placedThisSweep = false;
+    for (const radius of radii) {
+      for (let i = 0; i < 12; i++) {
+        const angle = (Math.PI / 6) * i;
+        const before = await tilesNow().catch(() => -1);
+        await page.mouse.click(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+        taps++;
+        await clearWhatBlocksTheNextTap();
+        if (await ended()) break outer;
+        if ((await tilesNow().catch(() => before)) < before) placedThisSweep = true;
+        if (taps >= maxTaps) break outer;
+      }
+      if (placedThisSweep) break;
+    }
+    if (!placedThisSweep) {
+      // The structure has grown past what the ring sweep can reach from the
+      // player's own position — fit the camera to the whole thing and
+      // re-centre the sweep on what is now visible.
+      const toggle = page.locator('#camera-toggle');
+      if ((await toggle.textContent())?.trim() !== 'FIT') break;
+      await toggle.click();
+      taps++;
+      await page.waitForTimeout(700);
+      box = (await canvas.boundingBox())!;
+      cx = box.x + box.width / 2;
+      cy = box.y + box.height / 2;
+    }
+  }
+
+  await expect(page.locator('#end')).toBeVisible();
+
+  const snapshot = page.locator('.end-snapshot');
+  await expect(snapshot).toBeVisible();
+  const src = await snapshot.getAttribute('src');
+  expect(src, 'the end screen has no snapshot image at all').not.toBeNull();
+  const match = src?.match(/^data:image\/png;base64,(.+)$/);
+  const base64 = match?.[1];
+  expect(base64, 'the snapshot src is not a PNG data URL').not.toBeUndefined();
+  assertLooksLikeAPicture(Buffer.from(base64 as string, 'base64'), 'the end-screen snapshot');
 
   expect(errors).toEqual([]);
 });
