@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { watchErrors } from './helpers';
 
 /**
  * The stranger's first minute, in a real browser: boot, BEGIN, place tiles,
@@ -10,18 +11,6 @@ import { expect, test, type Page } from '@playwright/test';
  * Deliberately NOT a gameplay test — the engine's rules live in the unit
  * suite. This proves the WIRING survives contact with a real renderer.
  */
-
-/** Every uncaught error and console.error, collected to fail the test with. */
-function watchErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => {
-    errors.push(`pageerror: ${error.message}`);
-  });
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(`console.error: ${message.text()}`);
-  });
-  return errors;
-}
 
 /**
  * Does this PNG carry the ENTROPY of a picture, or is it a flat rectangle in

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { watchErrors } from './helpers';
 
 /**
  * The front door, the wipe and the hall of fame, in a real browser — the
@@ -9,17 +10,6 @@ import { expect, test, type Page } from '@playwright/test';
  * Deliberately NOT gameplay tests — this proves the MENU's wiring: what a
  * stranger sees before the first tile, and what RESET ALL actually forgets.
  */
-
-function watchErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => {
-    errors.push(`pageerror: ${error.message}`);
-  });
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(`console.error: ${message.text()}`);
-  });
-  return errors;
-}
 
 /** BEGIN through the door, dismissing the virgin device's first-contact
  *  card (Session 32) when it fires — every fresh browser context is a
