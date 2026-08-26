@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   appendEntry,
+  capShots,
   dailiesOf,
   decodeTimeline,
   encodeTimeline,
   prehistory,
   runHighlights,
   runsOf,
+  SHOT_CHAR_MAX,
   streamOf,
   worldEventsOf,
   type DailyEntry,
+  type RunDetail,
   type RunEntry,
   type Timeline,
   type WorldEventEntry,
@@ -39,6 +42,18 @@ const daily = (over: Partial<DailyEntry> = {}): DailyEntry => ({
   best: true,
   ...over,
 });
+
+const baseDetail: RunDetail = {
+  placements: 121,
+  harvests: 28,
+  popped: 96,
+  bigPop: 412,
+  bigPopAt: 0.78,
+  claims: 3,
+  quests: 1,
+  relics: 5,
+  epitaph: 'Out of tiles on the plane.',
+};
 
 const crossed = (over: Partial<WorldEventEntry> = {}): WorldEventEntry => ({
   at: 3000,
@@ -119,6 +134,39 @@ describe('decodeTimeline', () => {
     const raw = JSON.stringify([{ ...run(), detail: { placements: 'many' } }]);
     expect(decodeTimeline(raw)).toEqual([run()]);
   });
+
+  it("round-trips the world's own milestones — awake, surveyed, all-finds — and still refuses an unknown event", () => {
+    // F6 (2026-08-26): the diary tells the world's story, not just the runs'.
+    const milestone = (event: WorldEventEntry['event']): WorldEventEntry => ({
+      at: 3000,
+      kind: 'world',
+      event,
+      slot: 1,
+      worldSeed: 42,
+    });
+    const milestones: Timeline = [
+      milestone('awake'),
+      milestone('surveyed'),
+      milestone('all-finds'),
+    ];
+    expect(decodeTimeline(encodeTimeline(milestones))).toEqual(milestones);
+    expect(decodeTimeline(JSON.stringify([{ ...crossed(), event: 'eclipsed' }]))).toEqual([]);
+  });
+
+  it('keeps a board thumbnail only when it is a bounded image data-URL (C9)', () => {
+    const detail = (shot: unknown): string =>
+      JSON.stringify([{ ...run(), detail: { ...baseDetail, shot } }]);
+    const good = 'data:image/jpeg;base64,abc123';
+
+    expect(decodeTimeline(detail(good))).toEqual([run({ detail: { ...baseDetail, shot: good } })]);
+    // A shot that is not an image URL, or is over budget, is dropped ALONE —
+    // the facts it rides on survive, the same leniency the detail itself gets.
+    expect(decodeTimeline(detail('javascript:alert(1)'))).toEqual([run({ detail: baseDetail })]);
+    expect(decodeTimeline(detail(`data:image/png;base64,${'a'.repeat(SHOT_CHAR_MAX)}`))).toEqual([
+      run({ detail: baseDetail }),
+    ]);
+    expect(decodeTimeline(detail(7))).toEqual([run({ detail: baseDetail })]);
+  });
 });
 
 describe('appendEntry', () => {
@@ -128,6 +176,44 @@ describe('appendEntry', () => {
     expect(grown).toHaveLength(2);
     expect(grown[1]).toEqual(daily());
     expect(t).toHaveLength(1);
+  });
+});
+
+describe('capShots', () => {
+  const shotRun = (at: number): RunEntry =>
+    run({ at, detail: { ...baseDetail, shot: `data:image/jpeg;base64,${at}` } });
+
+  it('strips the picture — and only the picture — from rows past the budget, newest kept', () => {
+    const t: Timeline = [shotRun(1), shotRun(2), shotRun(3)];
+    const capped = capShots(t, 2);
+    expect(capped.map((e) => (e as RunEntry).detail?.shot)).toEqual([
+      undefined,
+      'data:image/jpeg;base64,2',
+      'data:image/jpeg;base64,3',
+    ]);
+    // The stripped row keeps every fact it had; only the decoration is gone.
+    expect((capped[0] as RunEntry).detail).toEqual(baseDetail);
+    expect(capped).toHaveLength(3);
+  });
+
+  it('counts pictures across both tabs and skips rows that never had one', () => {
+    const t: Timeline = [
+      shotRun(1),
+      run({ at: 2 }),
+      daily({ at: 3, detail: { ...baseDetail, shot: 'data:image/jpeg;base64,d' } }),
+      crossed({ at: 4 }),
+    ];
+    const capped = capShots(t, 1);
+    expect((capped[0] as RunEntry).detail?.shot).toBeUndefined();
+    expect((capped[2] as DailyEntry).detail?.shot).toBe('data:image/jpeg;base64,d');
+    expect(capped[1]).toEqual(run({ at: 2 }));
+    expect(capped[3]).toEqual(crossed({ at: 4 }));
+  });
+
+  it('returns the same array untouched when nothing is over budget', () => {
+    const t: Timeline = [shotRun(1), run({ at: 2 })];
+    expect(capShots(t, 2)).toBe(t);
+    expect(capShots([], 5)).toEqual([]);
   });
 });
 

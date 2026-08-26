@@ -30,6 +30,11 @@ export type ShareCardData = {
   readonly topLine: string;
   /** `'SEED 123456789'`, or `''` where none is worth sharing (the daily plays a date, not a seed). */
   readonly footerLine: string;
+  /** The board's final frame as a data URL (`Renderer.snapshot`), ghosted
+   *  full-bleed behind everything else (F8, 2026-08-26) — the most-shared
+   *  PNG showing actual gameplay, the same argument that won D21 for the
+   *  og:image. `null`/absent where the renderer had no picture to give. */
+  readonly shot?: string | null;
 };
 
 /** og:image's own aspect ratio — a chat unfurl crops to it, so this never gets clipped by one. */
@@ -67,6 +72,24 @@ export async function renderShareCard(theme: Theme, data: ShareCardData): Promis
 
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+
+  // The board itself, ghosted under everything else: aspect-filled and
+  // centred, at an alpha low enough that every line of text above keeps
+  // its contrast against the opaque background just painted. A picture
+  // that fails to decode costs nothing but the ghost.
+  if (data.shot !== undefined && data.shot !== null) {
+    try {
+      const board = await loadImage(data.shot);
+      const iw = board.width > 0 ? board.width : W;
+      const ih = board.height > 0 ? board.height : H;
+      const scale = Math.max(W / iw, H / ih);
+      ctx.globalAlpha = 0.18;
+      ctx.drawImage(board, (W - iw * scale) / 2, (H - ih * scale) / 2, iw * scale, ih * scale);
+      ctx.globalAlpha = 1;
+    } catch {
+      // No picture this time. The numbers still say what they say.
+    }
+  }
 
   // The warm pool `scripts/social.ts` draws as a radial gradient — the
   // direction's own accent, faded to nothing, so torchlit's card looks like

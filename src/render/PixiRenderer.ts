@@ -1032,7 +1032,7 @@ export class PixiRenderer implements Renderer {
    * stub renderer never reaches this file at all, so the guard is for a real
    * browser missing a piece of the canvas API, not for tests.
    */
-  snapshot(maxPx: number): string | null {
+  snapshot(maxPx: number, format: 'png' | 'jpeg' = 'png'): string | null {
     const app = this.#app;
     if (app === null) return null;
 
@@ -1049,7 +1049,12 @@ export class PixiRenderer implements Renderer {
         clearColor: this.#theme.board.background,
       });
       if (typeof canvas.toDataURL !== 'function') return null;
-      return canvas.toDataURL('image/png');
+      // JPEG has no alpha, but neither does this raster — `clearColor`
+      // above fills every pixel — so the only thing 0.6 costs is fine
+      // detail a diary-sized thumbnail never had room to show.
+      return format === 'jpeg'
+        ? canvas.toDataURL('image/jpeg', 0.6)
+        : canvas.toDataURL('image/png');
     } catch {
       return null;
     }

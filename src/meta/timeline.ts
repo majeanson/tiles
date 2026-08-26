@@ -64,7 +64,16 @@ export type RunDetail = {
   readonly relics: number;
   /** The end screen's own cause-of-death sentence. */
   readonly epitaph: string;
+  /** The board as the run ended, as a small `data:image/…` thumbnail
+   *  (2026-08-26, C9 — "the museum gets pictures"). Optional twice over:
+   *  rows from before it existed have none, and `capShots` strips it from
+   *  older rows so the diary's pictures cannot outgrow their budget. */
+  readonly shot?: string;
 };
+
+/** The most base64 a stored thumbnail may be — ≈ 17KB of image, decode
+ *  refuses anything larger so one oversized write cannot bloat the diary. */
+export const SHOT_CHAR_MAX = 24_000;
 
 /** A finished home-world run: the timeline's tick. */
 export type RunEntry = {
@@ -103,17 +112,29 @@ export type DailyEntry = {
   readonly detail?: RunDetail;
 };
 
-/** A world-scale event that is not a run: leaving, or arriving. */
+/** A world-scale event that is not a run: leaving, arriving, or one of the
+ *  three thresholds a run can push a world past (2026-08-26, F6 — the diary
+ *  starts telling the world's story, not just the runs'): the last shrine
+ *  woken (`awake`), the survey completed (`surveyed`), the last hidden find
+ *  claimed (`all-finds`). */
 export type WorldEventEntry = {
   readonly at: number;
   readonly kind: 'world';
-  readonly event: 'crossed' | 'settled';
+  readonly event: 'crossed' | 'settled' | 'awake' | 'surveyed' | 'all-finds';
   readonly slot: number;
   /** Crossed: the world left behind. Settled: the world gained. */
   readonly worldSeed: number;
   /** Crossed: the dowry in relics. */
   readonly n?: number;
 };
+
+const WORLD_EVENTS: readonly WorldEventEntry['event'][] = [
+  'crossed',
+  'settled',
+  'awake',
+  'surveyed',
+  'all-finds',
+];
 
 export type TimelineEntry = RunEntry | DailyEntry | WorldEventEntry;
 export type Timeline = readonly TimelineEntry[];
@@ -159,7 +180,26 @@ const decodeDetail = (v: unknown): RunDetail | undefined => {
   if (!isCount(placements) || !isCount(harvests) || !isCount(popped)) return undefined;
   if (!isCount(bigPop) || !isCount(bigPopAt) || !isCount(claims)) return undefined;
   if (!isCount(quests) || !isCount(relics) || typeof epitaph !== 'string') return undefined;
-  return { placements, harvests, popped, bigPop, bigPopAt, claims, quests, relics, epitaph };
+  // The thumbnail rides the same leniency the detail itself does: a shot
+  // that is not a bounded image data-URL is dropped alone, never the facts
+  // it rides on. `data:image/` is what an `<img src>` will be handed — the
+  // prefix check is what keeps a corrupted (or hand-planted) string from
+  // becoming a live URL in the diary.
+  const shot = v['shot'];
+  const goodShot =
+    typeof shot === 'string' && shot.startsWith('data:image/') && shot.length <= SHOT_CHAR_MAX;
+  return {
+    placements,
+    harvests,
+    popped,
+    bigPop,
+    bigPopAt,
+    claims,
+    quests,
+    relics,
+    epitaph,
+    ...(goodShot ? { shot } : {}),
+  };
 };
 
 /** One stored entry, refused WHOLE if any field is missing or mistyped —
@@ -211,12 +251,14 @@ const decodeEntry = (v: unknown): TimelineEntry | null => {
   if (v['kind'] === 'world') {
     const { event, slot, worldSeed } = v;
     const n = v['n'];
-    if (event !== 'crossed' && event !== 'settled') return null;
+    if (typeof event !== 'string' || !(WORLD_EVENTS as readonly string[]).includes(event))
+      return null;
     if (!isCount(slot) || !isCount(worldSeed)) return null;
     if (n !== undefined && !isCount(n)) return null;
+    const ev = event as WorldEventEntry['event'];
     return n === undefined
-      ? { at, kind: 'world', event, slot, worldSeed }
-      : { at, kind: 'world', event, slot, worldSeed, n };
+      ? { at, kind: 'world', event: ev, slot, worldSeed }
+      : { at, kind: 'world', event: ev, slot, worldSeed, n };
   }
 
   return null;
@@ -243,6 +285,33 @@ export const encodeTimeline = (t: Timeline): string => JSON.stringify(t);
 
 /** Append-only is the whole contract; the trivial body is the point. */
 export const appendEntry = (t: Timeline, e: TimelineEntry): Timeline => [...t, e];
+
+/**
+ * The pictures' budget (C9): only the newest `keep` rows keep their board
+ * thumbnail — older rows lose the SHOT and nothing else, so the diary's
+ * facts stay append-only forever while its pictures stay a bounded cost
+ * (~10KB each against the storage audit's multi-MB budget). The one
+ * deliberate exception to "never compacted", and it compacts only the
+ * decoration. Identity-preserving when nothing is over budget.
+ */
+export function capShots(t: Timeline, keep: number): Timeline {
+  let kept = 0;
+  let changed = false;
+  const out: TimelineEntry[] = [];
+  for (let i = t.length - 1; i >= 0; i--) {
+    const e = t[i]!;
+    const d = e.kind === 'run' || e.kind === 'daily' ? e.detail : undefined;
+    if (d?.shot !== undefined && ++kept > keep) {
+      const trimmed: { -readonly [K in keyof RunDetail]?: RunDetail[K] } = { ...d };
+      delete trimmed.shot;
+      out.push({ ...e, detail: trimmed as RunDetail } as TimelineEntry);
+      changed = true;
+    } else {
+      out.push(e);
+    }
+  }
+  return changed ? out.reverse() : t;
+}
 
 /**
  * What a run did that is worth a ✦, read as the diff between the world

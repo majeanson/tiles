@@ -179,8 +179,16 @@ export type GameHooks = {
    * It used to carry Gate B's tiles-share tally too; that left with the gate
    * (2026-08-18) — `singlePayout` removed the fork the tally measured, and a
    * line the UI suppressed was evidence nobody could read.
+   *
+   * `shot` (2026-08-26, C9) is the board's diary thumbnail — a small JPEG
+   * data URL of the final frame, `null` where the renderer had no picture
+   * to give. Passed rather than pulled because only the game knows the one
+   * ended transition at which the board still shows the run.
    */
-  readonly finish?: (state: GameState) => {
+  readonly finish?: (
+    state: GameState,
+    shot: string | null,
+  ) => {
     readonly runs: number;
     readonly best: number;
     readonly isNewBest: boolean;
@@ -503,6 +511,15 @@ const CELEBRATED_STATS: ReadonlySet<string> = new Set(['tiles', 'points', 'luck'
  * held in memory for the rest of the session is not a cost worth measuring.
  */
 const SNAPSHOT_MAX_PX = 480;
+
+/**
+ * The diary's stored copy of the same portrait (C9, 2026-08-26): small and
+ * JPEG because this one is KEPT — written into the timeline and re-read on
+ * every hall-of-fame open — where `SNAPSHOT_MAX_PX` above lives only for
+ * this session's end screen and share card. ~220px longest side at 0.6
+ * quality lands well under `SHOT_CHAR_MAX`'s storage ceiling.
+ */
+const FAME_SHOT_PX = 220;
 
 export class Game {
   #state: GameState;
@@ -3141,7 +3158,14 @@ export class Game {
   #renderEnd(hud: HudView): void {
     if (this.#recordLines === null) {
       this.#recordLines = [];
-      const book = this.#hooks.finish?.(this.#state);
+      // The story, drawn: one snapshot, taken exactly once at this same
+      // ended transition — never re-captured on a later render of the same
+      // end screen (opening the shop and coming back, say), which is what
+      // guarding it behind `#recordLines`'s own null-check buys for free.
+      // Captured BEFORE `finish` since 2026-08-26: the diary's own smaller
+      // copy rides the finish call, and both must be the same final frame.
+      this.#snapshot = this.#renderer.snapshot(SNAPSHOT_MAX_PX);
+      const book = this.#hooks.finish?.(this.#state, this.#renderer.snapshot(FAME_SHOT_PX, 'jpeg'));
       if (book !== undefined) {
         // A headline when it is true; a distance when it is not. Restating
         // "best 480 pts" beside a run that scored 190 answered a question
@@ -3152,11 +3176,6 @@ export class Game {
         this.#runNumber = book.runs;
         this.#recordBest = book.previousBest ?? null;
       }
-      // The story, drawn: one snapshot, taken exactly once at this same
-      // ended transition — never re-captured on a later render of the same
-      // end screen (opening the shop and coming back, say), which is what
-      // guarding it behind `#recordLines`'s own null-check buys for free.
-      this.#snapshot = this.#renderer.snapshot(SNAPSHOT_MAX_PX);
 
       // The install nudge is marked shown at the same exactly-once
       // transition everything else on this screen banks on — the LINE keeps
@@ -3356,6 +3375,10 @@ export class Game {
               ? `RUN ${this.#runNumber}`
               : '',
         footerLine: this.#hooks.daily !== undefined ? '' : `SEED ${this.#state.rootSeed}`,
+        // The board's own final frame, ghosted behind the card (F8,
+        // 2026-08-26) — the same picture the end screen shows, so the
+        // card still cannot show anything the screen did not.
+        shot: this.#snapshot,
       };
       share.addEventListener('click', () => {
         void send(this.#state, card).then((outcome) => {

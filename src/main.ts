@@ -63,11 +63,13 @@ import { SHED_LADDER, type ShedRungId } from '@meta/shedLadder';
 import { inheritShopLevels, parseShopLevels } from '@meta/shopLevels';
 import {
   appendEntry,
+  capShots,
   dailiesOf,
   decodeTimeline,
   encodeTimeline,
   prehistory,
   runHighlights,
+  SHOT_CHAR_MAX,
   streamOf,
   type DailyEntry,
   type Highlight,
@@ -363,7 +365,7 @@ function readTimeline(): readonly TimelineEntry[] {
  * `summariseRun` (ui/view.ts) fact for fact — same counting, same epitaph
  * function — so a reopened row says what the screen said that night.
  */
-function runDetailOf(state: GameState): RunDetail {
+function runDetailOf(state: GameState, shot: string | null = null): RunDetail {
   let bigPop = 0;
   let bigAt = 0;
   for (const h of state.log.harvests) {
@@ -376,6 +378,11 @@ function runDetailOf(state: GameState): RunDetail {
   for (const cell of Object.values(state.cells)) {
     if (cell.kind === 'landmark' && cell.claimed) claims++;
   }
+  // The board's thumbnail (C9, 2026-08-26), stored only when it is what the
+  // decoder will accept back — same prefix, same ceiling — so a write can
+  // never plant a shot a reload would then throw away.
+  const goodShot =
+    shot !== null && shot.startsWith('data:image/') && shot.length <= SHOT_CHAR_MAX ? shot : null;
   return {
     placements: state.placements,
     harvests: state.log.harvests.length,
@@ -386,14 +393,23 @@ function runDetailOf(state: GameState): RunDetail {
     quests: state.log.questsDone,
     relics: state.relics,
     epitaph: epitaphFor(state),
+    ...(goodShot === null ? {} : { shot: goodShot }),
   };
 }
+
+/** How many diary rows keep their board picture (C9): the newest twenty —
+ *  ~10KB each, so the museum's whole picture wall stays around 200KB
+ *  against the storage audit's multi-MB budget. */
+const FAME_SHOTS_KEPT = 20;
 
 /** One entry onto the diary's end. A diary that cannot be written is still
  *  a run that happened — never fatal, never blocks the end screen. */
 function appendTimeline(entry: TimelineEntry): void {
   try {
-    localStorage.setItem(TIMELINE_STORAGE_KEY, encodeTimeline(appendEntry(readTimeline(), entry)));
+    localStorage.setItem(
+      TIMELINE_STORAGE_KEY,
+      encodeTimeline(capShots(appendEntry(readTimeline(), entry), FAME_SHOTS_KEPT)),
+    );
   } catch {
     // Storage full or forbidden: this tick goes unkept, the run does not.
   }
@@ -1172,7 +1188,7 @@ function runKeeping(
       }
     },
 
-    finish: (state) => {
+    finish: (state, shot) => {
       // The daily lives on its own ladder (`ideas/daily.md`): tries counted
       // and confessed, best kept per date, and NOTHING of the home economy
       // touched — a daily run can earn relics in play, and banking them
@@ -1199,7 +1215,7 @@ function runKeeping(
           arc: arcSparkline(state.log.harvests),
           try: result.record.tries,
           best: result.isNewBest,
-          detail: runDetailOf(state),
+          detail: runDetailOf(state, shot),
         });
         return {
           runs: result.record.tries,
@@ -1297,8 +1313,33 @@ function runKeeping(
           perksAfter: readProgress().found.length,
           campStart: state.wakeAt !== null,
         }),
-        detail: runDetailOf(state),
+        detail: runDetailOf(state, shot),
       });
+
+      // The world's story, not the run's (F6, 2026-08-26): the thresholds
+      // this run pushed the world past, each its own entry appended AFTER
+      // the run's tick so the stream reads run-then-milestone in stored
+      // order. Same seed guard as the merge above — a foreign run must not
+      // stamp milestones into a world it was never played on. The finds
+      // check reads the device-wide perk pool, credited to the world where
+      // the last one was claimed, which is this one.
+      if (replaySeed === null && state.rootSeed === current.worldSeed) {
+        const milestones: WorldEventEntry['event'][] = [];
+        if (world.shrines.length < UNLOCKS.length && current.shrines.length >= UNLOCKS.length)
+          milestones.push('awake');
+        if (world.goalsMet.length < GOALS.length && current.goalsMet.length >= GOALS.length)
+          milestones.push('surveyed');
+        if (perksAtBoot < PERKS.length && readProgress().found.length >= PERKS.length)
+          milestones.push('all-finds');
+        for (const event of milestones)
+          appendTimeline({
+            at: Date.now(),
+            kind: 'world',
+            event,
+            slot,
+            worldSeed: world.worldSeed,
+          });
+      }
 
       // The finished run leaves storage HERE, not on NEW RUN: an ended run
       // that stayed saved was resumed on every reload, and each resume banked
@@ -2952,6 +2993,20 @@ async function main(): Promise<void> {
       return [row, detail];
     };
 
+    /** The board as that run ended (C9, 2026-08-26): the museum's picture,
+     *  where the diary kept one — `capShots` strips it from older rows, and
+     *  rows from before it existed never had one, so absence is the normal
+     *  case and costs the fold nothing. */
+    const fameShot = (d: RunDetail | undefined): HTMLElement[] => {
+      if (d?.shot === undefined) return [];
+      const img = document.createElement('img');
+      img.className = 'fame-shot';
+      img.src = d.shot;
+      img.alt = 'The board as the run ended';
+      img.loading = 'lazy';
+      return [img];
+    };
+
     /** The end-screen facts a `RunDetail` holds, as fold rows. The relics
      *  clause is the caller's call: a daily banks nothing, and "N relics
      *  carried out" there would be the fold lying (the same rule the real
@@ -2985,6 +3040,7 @@ async function main(): Promise<void> {
       return fameFoldRow(text, [
         fameRow('fame-score', `${e.score} pts`),
         ...(d === undefined ? [] : [fameRow('fame-epitaph', d.epitaph)]),
+        ...fameShot(d),
         fameRow('fame-row', `REACH ${e.reach} · WORLD ${e.slot} · ${fameDate(e.at)}`),
         ...(e.arc === '' ? [] : [fameRow('fame-arc', e.arc)]),
         ...(d === undefined ? [] : foldFacts(d, true)),
@@ -3005,6 +3061,7 @@ async function main(): Promise<void> {
       return fameFoldRow(text, [
         fameRow('fame-score', `${e.score} pts`),
         ...(d === undefined ? [] : [fameRow('fame-epitaph', d.epitaph)]),
+        ...fameShot(d),
         fameRow(
           'fame-row',
           `DAILY ${dailyName(e.date)} · ${ordinal(e.try)} try${e.best ? ' · NEW BEST' : ''} · ${fameDate(e.at)}`,
@@ -3014,14 +3071,25 @@ async function main(): Promise<void> {
       ]);
     };
 
-    /** A world-scale entry: leaving, or arriving. One line, no fold. */
-    const fameWorldRow = (e: WorldEventEntry): HTMLElement =>
-      fameRow(
-        'fame-row',
-        e.event === 'crossed'
-          ? `${fameDate(e.at)} · W${e.slot} · Crossed on — ${e.n ?? 0} relics carried out`
-          : `${fameDate(e.at)} · W${e.slot} · Settled a shared world`,
-      );
+    /** A world-scale entry: leaving, arriving, or one of the thresholds a
+     *  run pushed the world past (F6, 2026-08-26). One line, no fold. */
+    const fameWorldRow = (e: WorldEventEntry): HTMLElement => {
+      const words = (): string => {
+        switch (e.event) {
+          case 'crossed':
+            return `Crossed on — ${e.n ?? 0} relics carried out`;
+          case 'settled':
+            return 'Settled a shared world';
+          case 'awake':
+            return 'The last shrine woken — the world is fully awake';
+          case 'surveyed':
+            return 'The survey completed';
+          case 'all-finds':
+            return 'The last hidden find claimed';
+        }
+      };
+      return fameRow('fame-row', `${fameDate(e.at)} · W${e.slot} · ${words()}`);
+    };
 
     /** The TIMELINE tab: prehistory's one sentence, the world filter
      *  chips, and the stream — newest first, in stored order reversed. */

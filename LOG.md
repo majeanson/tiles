@@ -6110,3 +6110,59 @@ play speed, the NEW BEST breath, the manual's new header, daylight's
 flare, and whether 320px suits the door.** Still on the menu, unjudged:
 diary & museum (C9, F3, F5–F8) and everything [POST-TAG]. **The one
 gate is still Session C.**
+
+### Session 50 — the museum gets pictures, the diary tells the world's story (2026-08-26)
+
+The diary-and-museum batch, re-offered per Session 48's note and picked
+by ID: **yes C9, F8, F6, F7; F3 and F5 passed over.** All [NOW]-legal —
+`pnpm sim` byte-identical, proven by stash-and-rerun, not just claimed.
+
+**C9 — the board's own picture in the hall of fame.** `RunDetail` grew
+an optional `shot`: a small JPEG data-URL of the final frame, captured
+at the same exactly-once ended transition the end screen's own portrait
+already banks on (`Renderer.snapshot` learned a `'jpeg'` format;
+220px longest side at quality 0.6, ~6–10KB each). The trap Session 48
+wrote down was respected twice over: the field is optional so
+`decodeDetail` keeps every existing row, and the decoder takes a shot
+back only when it is a bounded `data:image/` URL (`SHOT_CHAR_MAX`,
+24,000 chars) — the prefix check is what keeps a hand-planted string in
+storage from becoming a live URL in the diary. The budget is a new pure
+`capShots`: only the newest 20 rows across both tabs keep their
+picture, older rows lose the SHOT and nothing else — the one deliberate
+exception to "never compacted", and it compacts only the decoration
+(~200KB worst case against the storage audit's multi-MB budget). Both
+fame folds show it as `.fame-shot`, thumbnail-sized under the epitaph.
+
+**F8 — the share card shows gameplay.** The same end-screen snapshot now
+rides `ShareCardData` and is ghosted full-bleed behind the card —
+aspect-filled, centred, alpha 0.18 over the opaque background, warm pool
+and text drawn over it — the same argument that won D21 for the
+og:image, now on the most-shared PNG the game produces. A shot that
+fails to decode costs nothing but the ghost; the alpha is asserted
+restored so the text after it can never inherit a translucent context.
+
+**F6 — the world's milestones join the timeline.** `WorldEventEntry`
+held exactly two events ever (crossed, settled); it now also speaks
+`awake` (the last shrine woken), `surveyed` (the survey completed) and
+`all-finds` (the last hidden find claimed). Detected at `finish` from
+the same boot-vs-ended diff `runHighlights` reads, behind the same seed
+guard as the merge — a foreign run cannot stamp milestones into a world
+it was never played on — and appended AFTER the run's own tick, so the
+stream reads run-then-milestone in stored order. An older build's
+decoder refuses unknown events by entry, which is the single-device
+trade the timeline's own header already accepted.
+
+**F7 — already there.** The menu said nothing links the gallery; the
+DEVELOPER fold has carried "THE GALLERY — every art direction, side by
+side ▸" since 2026-08-18 (`b50b38d`, beside the theme picker). The
+inventory sweep was wrong; nothing to build. Recorded so the claim
+doesn't resurface.
+
+**Verified:** 773 tests (+7: milestone round-trip, shot decode rules,
+three `capShots` pins, the ghost's draw-count/alpha contract, the
+failing-shot fallback), 18 e2e green, sim byte-identical
+(stash-and-rerun diff), typecheck / lint / format clean. **Judged by
+looking is Marc's: the fold's picture at diary size, the ghosted card
+in a real share sheet, and the milestone lines' wording.** Still on the
+menu: F3 and F5 (passed over this session, not rejected forever) and
+everything [POST-TAG]. **The one gate is still Session C.**

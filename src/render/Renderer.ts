@@ -191,11 +191,14 @@ export interface Renderer {
    * A small portrait of the board, exactly as currently drawn (camera and
    * all), as a PNG data URL — "the map at death is the run's whole story,
    * drawn" (`ideas/endless-world.md`). `maxPx` bounds the longest side of the
-   * raster; the renderer decides how to get there. `null` wherever extraction
-   * is unavailable — nothing mounted, no 2D context to encode into — which a
-   * caller treats as "no picture this time", not an error.
+   * raster; the renderer decides how to get there. `format` defaults to PNG;
+   * `'jpeg'` is for the diary's stored thumbnail (C9, 2026-08-26), where a
+   * lossy board a third the bytes beats a crisp one that blows the storage
+   * budget. `null` wherever extraction is unavailable — nothing mounted, no
+   * 2D context to encode into — which a caller treats as "no picture this
+   * time", not an error.
    */
-  snapshot(maxPx: number): string | null;
+  snapshot(maxPx: number, format?: 'png' | 'jpeg'): string | null;
   /** Release GPU resources and detach. */
   destroy(): void;
 }

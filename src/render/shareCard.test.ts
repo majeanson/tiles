@@ -195,6 +195,46 @@ describe('renderShareCard, with a working canvas context', () => {
     expect(noArcBars).toBe(0);
   });
 
+  it('ghosts the board behind the card when a snapshot rides along, at low alpha, restored after (F8)', async () => {
+    const withShot = await renderWithFakeContext({
+      ...DATA,
+      shot: 'data:image/png;base64,abc',
+    });
+    const without = await renderWithFakeContext(DATA);
+    // One extra drawImage beyond the mark's own, bracketed by the ghost
+    // alpha going down and coming back — the text drawn after it must not
+    // inherit a translucent context.
+    const draws = (calls: RecordedCall[]): number =>
+      calls.filter((c) => c.prop === 'drawImage').length;
+    expect(draws(withShot.calls)).toBe(draws(without.calls) + 1);
+    const alphas = withShot.calls.filter((c) => c.prop === 'set:globalAlpha').map((c) => c.args[0]);
+    expect(alphas).toEqual([0.18, 1]);
+    expect(without.calls.some((c) => c.prop === 'set:globalAlpha')).toBe(false);
+  });
+
+  it('keeps drawing the score even when the board snapshot fails to decode', async () => {
+    const originalImage = globalThis.Image;
+    class FailingImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      set src(_value: string) {
+        queueMicrotask(() => this.onerror?.());
+      }
+    }
+    globalThis.Image = FailingImage as unknown as typeof Image;
+    try {
+      const { blob, calls } = await renderWithFakeContext({
+        ...DATA,
+        shot: 'data:image/png;base64,abc',
+      });
+      expect(blob).not.toBeNull();
+      expect(calls.some((c) => c.prop === 'drawImage')).toBe(false);
+      expect(fillTexts(calls)).toContain(`${DATA.points} pts`);
+    } finally {
+      globalThis.Image = originalImage;
+    }
+  });
+
   it('keeps drawing the score even when the mark image fails to decode', async () => {
     const originalImage = globalThis.Image;
     class FailingImage {

@@ -470,6 +470,17 @@ button.fame-run[aria-expanded='true'] {
   color: var(--ink-faint, #767d8d);
 }
 
+/* The museum's picture (C9, 2026-08-26): the board as that run ended, where
+   the diary still holds one. Thumbnail-sized on purpose — a keepsake in the
+   fold, not a second board — with the same edge treatment the panels wear. */
+.fame-shot {
+  display: block;
+  width: min(45%, 132px);
+  margin: 4px 0 6px;
+  border: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 6px;
+}
+
 .fame-arc {
   margin: 0 0 2px;
   font-size: 1.05rem;
