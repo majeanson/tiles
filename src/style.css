@@ -729,6 +729,23 @@ button.fame-run[aria-expanded='true'] {
   color: var(--danger, #c98a6a);
 }
 
+/* A GAIN flashes accent for a breath, then settles (2026-08-26): a pop
+   refilling the purse or the score moving used to swap as silently as a
+   log line. `game.ts` adds the class only when a celebrated stat rose —
+   routine countdowns never flash. The animation outranks the static
+   colour above for its 450ms, including TILES' danger. */
+@media (prefers-reduced-motion: no-preference) {
+  .stat-value.rose {
+    animation: stat-rose 450ms var(--ease-arrive, ease-out);
+  }
+
+  @keyframes stat-rose {
+    from {
+      color: var(--accent, #d7b45a);
+    }
+  }
+}
+
 /* ------------------------------------------------------------------ hint */
 
 /*
@@ -1164,6 +1181,40 @@ button.armed {
   text-transform: uppercase;
 }
 
+/* The game's biggest moment gets a moment (2026-08-26): one breath of
+   accent glow as NEW BEST arrives, burning off like the toast's ember —
+   never a loop; a headline that keeps glowing is a headline shouting. */
+@media (prefers-reduced-motion: no-preference) {
+  .end-headline {
+    animation: headline-glow 1100ms var(--ease-arrive, ease-out);
+  }
+
+  @keyframes headline-glow {
+    0% {
+      opacity: 0;
+      text-shadow: 0 0 0 transparent;
+    }
+
+    35% {
+      opacity: 1;
+      text-shadow: 0 0 18px color-mix(in srgb, var(--accent, #d7b45a) 70%, transparent);
+    }
+
+    100% {
+      text-shadow: 0 0 0 transparent;
+    }
+  }
+}
+
+/* The last line of the run, finally typeset (2026-08-26): the diary's
+   MINIATURE of this screen styled its copy (.fame-epitaph) while the real
+   one was a bare paragraph. Quiet prose under the headline. */
+.end-epitaph {
+  margin: 0 0 6px;
+  font-size: 0.9375rem;
+  color: var(--ink-dim, #8a91a0);
+}
+
 /* The loudest number on the screen — bumped a step (2026-08-19, screen pass)
    for the same reason the arc grew: this is the picture people screenshot. */
 .end-score {
@@ -1358,6 +1409,12 @@ button.armed {
   text-align: left;
 }
 
+/* Relics that actually arrived wear the accent — the currency the loop
+   exists for was a grey line (2026-08-26). Zero stays grey. */
+.end-carried-relics {
+  color: var(--accent, #d7b45a);
+}
+
 /* TRY AGAIN (the daily) rides the same column as NEW RUN — it was the one
    unclassed button on this screen, shrink-wrapping beside a full-width
    sibling (2026-08-26). */
@@ -1504,6 +1561,16 @@ button.armed {
 
 .unlock.found {
   color: var(--accent, #d7b45a);
+}
+
+/* When a row flips while on screen it warms into the accent instead of
+   snapping (2026-08-26). Most flips happen mid-run behind a closed panel —
+   the event card is that moment's real ceremony — so this only ever fires
+   for a ledger already open, and costs nothing when it cannot. */
+@media (prefers-reduced-motion: no-preference) {
+  .unlock {
+    transition: color 400ms var(--ease-arrive, ease-out);
+  }
 }
 
 /* The atlas grid sits inside a left-aligned settings panel, not the
@@ -1820,12 +1887,24 @@ button.spare {
 }
 
 /* The acknowledgement: a beat of the row wearing the accent right after a
-   purchase, before the screen redraws under it — a bought upgrade used to
-   look identical to one still for sale, same row, price just gone quiet. */
+   purchase — a bought upgrade used to look identical to one still for
+   sale, same row, price just gone quiet. An ANIMATION since 2026-08-26 so
+   it also serves the row that arrives already marked (a perk just WORN,
+   whose tap re-renders the whole list): it glows in and fades out on its
+   own, instead of a wash that would sit forever on a fresh element. */
 @media (prefers-reduced-motion: no-preference) {
   .shop-row.bought {
-    transition: background-color 200ms var(--ease-arrive, ease-out);
-    background-color: color-mix(in srgb, var(--accent, #d7b45a) 18%, transparent);
+    animation: row-glow 900ms var(--ease-arrive, ease-out);
+  }
+
+  @keyframes row-glow {
+    from {
+      background-color: color-mix(in srgb, var(--accent, #d7b45a) 18%, transparent);
+    }
+
+    to {
+      background-color: transparent;
+    }
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2026,6 +2105,16 @@ button.help-tab[data-on='true'] {
 #purse-toggle.live {
   border-top-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
+}
+
+/* "You can afford something now" arrives as a warm-up, not a hard swap
+   (2026-08-26) — the drawer handle is the only signal the purse has. */
+@media (prefers-reduced-motion: no-preference) {
+  #purse-toggle {
+    transition:
+      color 300ms var(--ease-arrive, ease-out),
+      border-top-color 300ms var(--ease-arrive, ease-out);
+  }
 }
 
 #spends {

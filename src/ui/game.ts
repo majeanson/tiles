@@ -488,6 +488,14 @@ const HAND_HEX_SIZE = 24;
 const RELIC_LESSON = `${TILE_GLYPH}  RELICS\nRelics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.`;
 
 /**
+ * The stats whose INCREASE is a reward worth a flash (2026-08-26): a pop
+ * refilling the purse, the score moving, luck landing, the edge pushing
+ * out. COST and LEFT change routinely and never flash; decreases never
+ * flash anywhere — TILES falls on every single placement.
+ */
+const CELEBRATED_STATS: ReadonlySet<string> = new Set(['tiles', 'points', 'luck', 'map']);
+
+/**
  * The end screen's board portrait: bounds the longest side of the raster
  * `Renderer.snapshot` returns. Large enough to read as a picture of the run
  * rather than a smear once CSS frames it at up to 40% of a phone's viewport
@@ -544,6 +552,15 @@ export class Game {
   #noteTimer: ReturnType<typeof setTimeout> | null = null;
   /** Shrines claimed this run, so each one announces the right unlock. */
   #shrinesClaimed = 0;
+  /**
+   * The stat row's previous values, so a GAIN can flash (2026-08-26). The
+   * row is rebuilt wholesale every render — without this memory every
+   * rebuild would either flash everything or nothing.
+   */
+  #lastStatValues: Map<string, string> = new Map();
+  #lastStatPlacements = 0;
+  /** The perk a WEAR tap just equipped, so the re-render can acknowledge it once. */
+  #justWorn: string | null = null;
   /**
    * The name of a perk THIS RUN found, if any — for the end screen's CARRIED
    * OUT strip. Set inside `#claimNote` when `findLabel` grants one; never
@@ -3238,7 +3255,9 @@ export class Game {
       hero.style.setProperty('--run-end-art', `url("${this.#runEndUrl}")`);
     }
     if (isNewBest) hero.append(line('end-headline', 'NEW BEST'));
-    hero.append(line('end-epitaph', hud.epitaph ?? ''));
+    // Only when there is one — this used to render an empty <p> on the
+    // shop view's re-renders (2026-08-26).
+    if (hud.epitaph !== null) hero.append(line('end-epitaph', hud.epitaph));
     hero.append(line('end-score', `${hud.points} pts`));
 
     const arc = this.#arcChart();
@@ -3442,7 +3461,15 @@ export class Game {
       const carried = document.createElement('div');
       carried.className = 'end-carried';
       carried.append(line('shop-purse', 'CARRIED OUT'));
-      carried.append(line('end-facts', `${carriedRelics} relics banked`));
+      // The currency the whole roguelite loop exists for arrives in the
+      // accent when any actually arrived (2026-08-26) — it was a 12px grey
+      // line. Zero stays quiet; nothing to celebrate.
+      carried.append(
+        line(
+          carriedRelics > 0 ? 'end-facts end-carried-relics' : 'end-facts',
+          `${carriedRelics} relics banked`,
+        ),
+      );
       if (this.#foundThisRun !== null) {
         carried.append(line('end-facts', `✦ found — ${this.#foundThisRun}`));
       }
@@ -3713,6 +3740,14 @@ export class Game {
       const row = document.createElement('div');
       row.className = 'shop-row';
       if (worn) row.dataset['worn'] = 'true';
+      // The acknowledgement (2026-08-26): the tap re-renders this whole
+      // list, so without the marker the perk you just put on looked
+      // identical to one worn all along. One beat of the bought-row wash on
+      // the row that JUST became worn, then the marker clears.
+      if (worn && this.#justWorn === perk.id) {
+        row.classList.add('bought');
+        this.#justWorn = null;
+      }
 
       const name = document.createElement('span');
       name.className = 'shop-name';
@@ -3730,6 +3765,7 @@ export class Game {
       button.textContent = worn ? 'WORN' : 'WEAR';
       button.addEventListener('click', () => {
         shop.write(equip(shop.read(), perk.id));
+        this.#justWorn = perk.id;
         this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
       });
       row.append(button);
@@ -3764,6 +3800,16 @@ export class Game {
     // already been taught what luck is (`ideas/teaching.md`: the HUD appears
     // as it matters, paired with the card so the appearance IS the event).
     const luckVisible = this.#luckVisible(hud);
+
+    // A GAIN flashes; a routine spend-down does not (2026-08-26). TILES,
+    // POINTS, LUCK and REACH rising are the run's reward moments, and the
+    // row used to swap those numbers as silently as a log line. TILES and
+    // LEFT fall on every placement — flashing that would be a strobe, not
+    // an acknowledgement, so only increases speak. The map resets when a
+    // new run starts (placements went backward), so run two's opening
+    // purse never flashes against run one's deathbed.
+    if (hud.placements < this.#lastStatPlacements) this.#lastStatValues.clear();
+    this.#lastStatPlacements = hud.placements;
 
     const stats: readonly Stat[] = [
       { id: 'tiles', label: 'TILES', value: String(hud.tiles) },
@@ -3816,6 +3862,14 @@ export class Game {
         const value = document.createElement('span');
         value.className = 'stat-value';
         value.textContent = stat.value;
+        const prev = this.#lastStatValues.get(stat.id);
+        if (prev !== undefined && CELEBRATED_STATS.has(stat.id)) {
+          const before = Number(prev);
+          const after = Number(stat.value);
+          if (Number.isFinite(before) && Number.isFinite(after) && after > before) {
+            value.classList.add('rose');
+          }
+        }
 
         box.append(label, value);
 
@@ -3847,6 +3901,8 @@ export class Game {
         return box;
       }),
     );
+
+    this.#lastStatValues = new Map(stats.map((stat) => [stat.id, stat.value]));
   }
 
   /**

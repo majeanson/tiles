@@ -427,6 +427,20 @@ describe('the endless world, under a thumb', () => {
     expect(ctx.game.state.cells[key(0, 0)]?.kind).toBe('stone');
   });
 
+  // A GAIN flashes (2026-08-26): the pop just paid tiles, so the TILES
+  // value wears `rose` for a breath — and COST, which never celebrates,
+  // does not, whatever it did.
+  it('flashes a stat that rose, and never the routine ones', () => {
+    ripenTheSeed();
+    const before = ctx.game.state.tiles;
+    ctx.el.harvestTiles.click();
+    expect(ctx.game.state.tiles).toBeGreaterThan(before);
+    const tiles = ctx.el.stats.querySelector('[data-stat="tiles"] .stat-value');
+    expect(tiles?.classList.contains('rose')).toBe(true);
+    const cost = ctx.el.stats.querySelector('[data-stat="cost"] .stat-value');
+    expect(cost?.classList.contains('rose')).toBe(false);
+  });
+
   // Pan-to-pocket (Stage 2, 2026-08-18): pressing POP with nothing tapped
   // prices the DEFAULT (biggest) pocket, which could be anywhere on a grown
   // board — the camera has to show what it is about to pop, not leave the
