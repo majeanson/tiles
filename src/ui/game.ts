@@ -1534,7 +1534,18 @@ export class Game {
    */
   #syncCamera(): void {
     const atFit = this.#renderer.zoomLevel() <= 1.001;
-    this.#el.cameraToggle.textContent = atFit ? 'HERE' : 'FIT';
+    const word = atFit ? 'HERE' : 'FIT';
+    // The label acknowledges the flight it just launched (2026-08-26): the
+    // word used to swap silently while the board glided, so the button felt
+    // disconnected from the camera it drives. One short nudge per CHANGE —
+    // guarded, because this runs on every render.
+    if (this.#el.cameraToggle.textContent !== word) {
+      this.#el.cameraToggle.classList.remove('flick');
+      // Reflow so a second change replays the animation from its start.
+      void this.#el.cameraToggle.offsetWidth;
+      this.#el.cameraToggle.classList.add('flick');
+    }
+    this.#el.cameraToggle.textContent = word;
     // The accessible name STARTS with the visible word (2026-08-21). It read
     // "Zoom in on your last placement" over a button whose face says HERE,
     // which is a WCAG 2.5.3 failure with a practical edge: voice control
@@ -3317,9 +3328,11 @@ export class Game {
           // the button says nothing, exactly like a completed share.
           if (outcome === 'shared' || outcome === 'cancelled') return;
           share.textContent = outcome === 'copied' ? 'LINK COPIED' : 'SHARING UNAVAILABLE';
+          // 2500ms — the shell's one transient-label clock (main.ts,
+          // `flashLabel`); this was the lone 2000.
           setTimeout(() => {
             share.textContent = 'SHARE THIS RUN';
-          }, 2000);
+          }, 2500);
         });
       });
       parts.push(share);

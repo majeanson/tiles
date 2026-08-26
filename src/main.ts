@@ -1569,6 +1569,24 @@ function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation
 }
 
 /**
+ * A button label that reports an outcome, then goes back to work — every
+ * transient label in the shell on ONE clock (2026-08-26; they were at 2000,
+ * 2500 and forever). The rule that decides which labels use this: an
+ * OUTCOME reverts, an INVITATION stays — "SENT — thank you" stays on its
+ * disabled button so a completed one-shot cannot invite a second send, and
+ * "NO CONNECTION — try again" stays because it is asking for the tap.
+ * The guard keeps a slow timer from clobbering whatever the button says by
+ * then — an armed label, a newer outcome.
+ */
+const LABEL_MS = 2500;
+function flashLabel(button: HTMLButtonElement, text: string, revertTo: string): void {
+  button.textContent = text;
+  setTimeout(() => {
+    if (button.textContent === text) button.textContent = revertTo;
+  }, LABEL_MS);
+}
+
+/**
  * The switchboard half of the `?` panel: one row per registered feature,
  * written FROM the registry — label, decision note, wired-or-not — so the
  * settings screen is the decision record and can never go stale against it.
@@ -1890,7 +1908,7 @@ function mountSettings(
   resetTeaching.textContent = 'RESET TEACHING';
   resetTeaching.addEventListener('click', () => {
     writeProgress({ ...readProgress(), met: [] });
-    resetTeaching.textContent = 'TEACHING RESET';
+    flashLabel(resetTeaching, 'TEACHING RESET', 'RESET TEACHING');
   });
   const resetTeachingNote = document.createElement('p');
   resetTeachingNote.className = 'flag-note';
@@ -1945,10 +1963,10 @@ function mountSettings(
             detail: text,
           }).then((ok) => {
             if (ok) {
-              errorSend.textContent = 'SENT — THANK YOU';
+              errorSend.textContent = 'SENT — thank you';
             } else {
               errorSend.disabled = false;
-              errorSend.textContent = 'NO CONNECTION — TRY AGAIN';
+              errorSend.textContent = 'NO CONNECTION — try again';
             }
           });
         });
@@ -2502,7 +2520,7 @@ async function main(): Promise<void> {
       entries = {};
     }
     if (Object.keys(entries).length === 0) {
-      moreBackup.textContent = 'NOTHING TO BACK UP';
+      flashLabel(moreBackup, 'NOTHING TO BACK UP', 'BACK UP MY WORLDS');
       return;
     }
     const text = encodeBackup(
@@ -2510,14 +2528,21 @@ async function main(): Promise<void> {
     );
     const file = `ashwake-backup-${localToday()}.json`;
     void saveBackupFile(file, text).then((how) => {
-      moreBackup.textContent =
+      // Outcomes revert to the working label; the failure stays, because it
+      // is an invitation to the fallback, not a report.
+      if (how === 'failed') {
+        moreBackup.textContent = 'COULD NOT SAVE — try RESTORE’s box to copy it';
+        return;
+      }
+      flashLabel(
+        moreBackup,
         how === 'shared'
           ? 'BACKUP SENT'
           : how === 'copied'
             ? 'BACKUP COPIED — paste it somewhere safe'
-            : how === 'downloaded'
-              ? 'BACKUP SAVED'
-              : 'COULD NOT SAVE — try RESTORE’s box to copy it';
+            : 'BACKUP SAVED',
+        'BACK UP MY WORLDS',
+      );
     });
   });
 
@@ -2547,10 +2572,7 @@ async function main(): Promise<void> {
     if (pasted === null || pasted.trim() === '') return;
     const read = decodeBackup(pasted.trim());
     if (read === null) {
-      moreRestore.textContent = 'THAT IS NOT A BACKUP';
-      setTimeout(() => {
-        moreRestore.textContent = 'RESTORE A BACKUP';
-      }, 2500);
+      flashLabel(moreRestore, 'THAT IS NOT A BACKUP', 'RESTORE A BACKUP');
       return;
     }
     pending = read;
@@ -3761,10 +3783,17 @@ function showFailure(error?: unknown): void {
   const panel = document.createElement('div');
   panel.id = 'boot-failure';
   panel.setAttribute('role', 'alert');
+  // Theme vars with the old hardcoded values as their fallbacks
+  // (2026-08-26): this panel fires when the app may be broken — including
+  // before the theme has written a single var — so every var() here
+  // degrades to exactly the look it always had. When the theme IS up, the
+  // one surface that used to ignore the art direction now wears it.
   panel.style.cssText =
     'position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;gap:12px;' +
-    'align-items:center;justify-content:center;background:rgba(16,18,24,0.94);color:#e6e9f0;' +
-    'font-family:system-ui,sans-serif;padding:24px;text-align:center;';
+    'align-items:center;justify-content:center;' +
+    'background:color-mix(in srgb, var(--bg, #101218) 94%, transparent);' +
+    'color:var(--ink, #e6e9f0);' +
+    'font-family:var(--font-body, system-ui, sans-serif);padding:24px;text-align:center;';
   const words = document.createElement('p');
   // The honest split (2026-08-20 launch audit): a browser with no WebGL at
   // all cannot draw the board, will not be fixed by CONTINUE, and loops on
@@ -3778,17 +3807,19 @@ function showFailure(error?: unknown): void {
   const count = document.createElement('p');
   count.id = 'boot-failure-count';
   count.textContent = `seen ×${failureCount}`;
-  count.style.cssText = 'opacity:0.6;font-size:0.75rem;margin:0;';
+  // Faint ink at full opacity, not a veil — the panel doctrine, here too.
+  count.style.cssText = 'color:var(--ink-faint, #767d8d);font-size:0.75rem;margin:0;';
   const shown = document.createElement('p');
   shown.id = 'boot-failure-detail';
   shown.textContent = detail;
   shown.style.cssText =
-    'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.6875rem;opacity:0.8;' +
+    'font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.6875rem;' +
+    'color:var(--ink-dim, #8a91a0);' +
     'max-width:100%;overflow-wrap:anywhere;white-space:pre-wrap;text-align:left;' +
     'user-select:text;-webkit-user-select:text;margin:0;';
   const buttonCss =
     'min-height:44px;padding:0 24px;font:inherit;color:inherit;' +
-    'background:#262b36;border:1px solid #3a4150;border-radius:6px;';
+    'background:var(--panel, #262b36);border:1px solid var(--panel-edge, #3a4150);border-radius:6px;';
   const go = document.createElement('button');
   go.type = 'button';
   go.textContent = 'CONTINUE';
@@ -3824,10 +3855,10 @@ function showFailure(error?: unknown): void {
       detail: shown.textContent ?? '',
     }).then((ok) => {
       if (ok) {
-        send.textContent = 'SENT — THANK YOU';
+        send.textContent = 'SENT — thank you';
       } else {
         send.disabled = false;
-        send.textContent = 'NO CONNECTION — TRY AGAIN OR COPY';
+        send.textContent = 'NO CONNECTION — try again or copy';
       }
     });
   });

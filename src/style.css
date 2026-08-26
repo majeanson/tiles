@@ -49,6 +49,24 @@
   box-sizing: border-box;
 }
 
+/* ------------------------------------------------------- structure tokens
+
+   The two structural constants that were drifting apart by hand
+   (2026-08-26). NOT theme territory — a theme decides colour and type;
+   what is where and how wide is this file's own job, so these live here.
+
+   --menu-col: one width for every column of menu buttons. It was 260px on
+   the door, 280px in the panels and 320px on the end screen — three
+   answers to one question. 320 is the widest of the three, chosen so the
+   end screen (already judged on the phone) does not move.
+
+   --ease-arrive: the curve everything ARRIVING speaks (the board's camera
+   keeps its own ease-in-out — travel and arrival are different words). */
+:root {
+  --menu-col: 320px;
+  --ease-arrive: ease-out;
+}
+
 /* The hidden attribute must always win. The browser's own [hidden] rule loses
    to any id selector that sets display — which is how the luck purse "opened
    but never closed" (Marc, 2026-08-18): #spends { display: grid } silently
@@ -172,10 +190,11 @@ body {
 
 /* One width for every door on the door (Marc, 2026-08-20: "make sure all
    buttons have the same width") — BEGIN keeps its height and accent, the
-   quiet ones keep their voice, but the column reads as one menu. */
+   quiet ones keep their voice, but the column reads as one menu. One width
+   with every OTHER menu column too since 2026-08-26 (--menu-col). */
 #front-door button {
   width: 100%;
-  max-width: 260px;
+  max-width: var(--menu-col, 320px);
 }
 
 /* The global `button { flex: 1 1 0 }` was written for rows of siblings that
@@ -309,7 +328,7 @@ body {
 .panel-menu > * {
   flex: 0 0 auto;
   width: 100%;
-  max-width: 280px;
+  max-width: var(--menu-col, 320px);
 }
 
 /* The wipe: the quietest voice in the panel, a step of air above it so it
@@ -517,6 +536,23 @@ button.fame-run[aria-expanded='true'] {
   font-size: 0.5625rem;
 }
 
+/* The toggle's word acknowledges the flight it launched (2026-08-26): the
+   label used to swap silently while the board glided under it. One short
+   rise per change — the game's own arrival gesture at button scale. The
+   class is (re)set by `#syncCamera` only when the word actually changes. */
+@media (prefers-reduced-motion: no-preference) {
+  #camera-toggle.flick {
+    animation: label-flick 150ms var(--ease-arrive, ease-out);
+  }
+
+  @keyframes label-flick {
+    from {
+      opacity: 0.2;
+      transform: translateY(3px);
+    }
+  }
+}
+
 /* The ♪ (Marc's launch call, 2026-08-20): sound's easy way in, exactly
    where sound happens. Muted is the shipped default — the silent-1.0
    ruling — so the off state reads plainly as "there is sound here, and it
@@ -548,7 +584,7 @@ button.fame-run[aria-expanded='true'] {
   margin: 16px 0 6px;
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
   font-size: 0.875rem;
-  letter-spacing: var(--label-tracking, 0.08em);
+  letter-spacing: var(--label-tracking, 0.04em);
   color: var(--ink, #e8ecf4);
 }
 
@@ -585,6 +621,11 @@ button.fame-run[aria-expanded='true'] {
 .flag-label {
   color: var(--ink, #e8ecf4);
   font-size: 1rem;
+  /* One casing for every settings label (2026-08-26): half were written
+     UPPERCASE in their strings (APPEARANCE, LAST ERROR) and half sentence
+     case (the feature registry's). The transform makes the row uniform
+     while screen readers still hear the original words. */
+  text-transform: uppercase;
 }
 
 .flag-note {
@@ -1011,7 +1052,7 @@ button.armed {
 
 @media (prefers-reduced-motion: no-preference) {
   .tile {
-    transition: transform 80ms ease-out;
+    transition: transform 80ms var(--ease-arrive, ease-out);
   }
 }
 
@@ -1141,7 +1182,7 @@ button.armed {
 .end-arc {
   display: block;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--menu-col, 320px);
   height: auto;
   aspect-ratio: 300 / 72;
   margin: 2px auto 8px;
@@ -1212,7 +1253,7 @@ button.armed {
    like one. SHARE, the shop door and BACK all read as rows or links now. */
 .end-link {
   width: 100%;
-  max-width: 320px;
+  max-width: var(--menu-col, 320px);
   min-height: 44px;
   margin: 0 auto;
   border: none;
@@ -1250,7 +1291,7 @@ button.armed {
    below it, with TOTAL set apart by weight rather than by a rule — the sum
    should read as an answer, not a footer. */
 .end-payout {
-  max-width: 320px;
+  max-width: var(--menu-col, 320px);
   margin: 10px auto;
   padding-top: 8px;
   border-top: 1px solid var(--panel-edge, #3a4150);
@@ -1283,7 +1324,7 @@ button.armed {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px 16px;
-  max-width: 320px;
+  max-width: var(--menu-col, 320px);
   margin: 10px auto;
 }
 
@@ -1312,7 +1353,7 @@ button.armed {
    snapshot. Left-aligned prose, deliberately unlike the grid above it: these
    are not the run's shape, they are what the run left behind. */
 .end-carried {
-  max-width: 320px;
+  max-width: var(--menu-col, 320px);
   margin: 10px auto;
   text-align: left;
 }
@@ -1324,7 +1365,7 @@ button.armed {
 #end-retry {
   margin-top: 6px;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--menu-col, 320px);
 }
 
 #themes {
@@ -1501,8 +1542,12 @@ button.armed {
  * What just happened, said over the board. Loud enough to read at a glance
  * and gone on a tap — it exists because a claim announced in the faint hint
  * line read as "some text appeared" rather than "that star did this".
- * `white-space: pre-line` because every note leads with its glyph on its own
- * line, which is what ties the words to the thing on the board.
+ * `white-space: pre-line` because a note ABOUT a thing on the board leads
+ * with that thing's glyph on its own line — claims, finds, the teach cards.
+ * (This used to claim EVERY note does; the receipts that are about the run
+ * itself — a stat explained, a spend's arithmetic, the signpost — never
+ * carried one, correctly: a glyph ties words to a place, and those notes
+ * are not about a place. Stated honestly 2026-08-26.)
  */
 #toast {
   position: absolute;
@@ -1525,7 +1570,7 @@ button.armed {
 
 @media (prefers-reduced-motion: no-preference) {
   #toast {
-    animation: toast-in 140ms ease-out;
+    animation: toast-in 140ms var(--ease-arrive, ease-out);
   }
 
   @keyframes toast-in {
@@ -1542,7 +1587,7 @@ button.armed {
      `toast-in` exactly as shipped; this is an addition scoped by
      `[data-theme]`, not a change to the control. */
   [data-theme='torchlit'] #toast {
-    animation: toast-in-ember 140ms ease-out;
+    animation: toast-in-ember 140ms var(--ease-arrive, ease-out);
   }
 
   @keyframes toast-in-ember {
@@ -1586,7 +1631,7 @@ button.armed {
    claims that change what the NEXT run starts with. It should look like the
    biggest thing on screen because it is. */
 #event-card-panel {
-  max-width: 320px;
+  max-width: var(--menu-col, 320px);
   padding: 20px;
   border: 2px solid var(--accent, #c79a4b);
   border-radius: 8px;
@@ -1661,20 +1706,20 @@ button.armed {
   }
 
   #event-card {
-    animation: surface-in 160ms ease-out;
+    animation: surface-in 160ms var(--ease-arrive, ease-out);
   }
 
   /* `:not([hidden])` so the rise replays on every open, not once at load —
      the same idiom every other arrival in this file uses. */
   .panel-sheet:not([hidden]) {
-    animation: event-card-in 180ms ease-out;
+    animation: event-card-in 180ms var(--ease-arrive, ease-out);
   }
 
   /* The end screen rises further than the rest — 10px rather than 6 — and
      takes longer. It is the one arrival that is also a full stop, and a beat
      of travel is what separates "the run ended" from "the screen changed". */
   #end:not([hidden]) {
-    animation: end-in 260ms ease-out;
+    animation: end-in 260ms var(--ease-arrive, ease-out);
   }
 
   @keyframes end-in {
@@ -1685,7 +1730,7 @@ button.armed {
   }
 
   #event-card-panel {
-    animation: event-card-in 160ms ease-out;
+    animation: event-card-in 160ms var(--ease-arrive, ease-out);
   }
 
   @keyframes event-card-in {
@@ -1700,7 +1745,7 @@ button.armed {
      territory is the loudest reward in the game, so its arrival earns the
      same light the toast's smaller one does, not a louder effect. */
   [data-theme='torchlit'] #event-card-panel {
-    animation: event-card-in-ember 160ms ease-out;
+    animation: event-card-in-ember 160ms var(--ease-arrive, ease-out);
   }
 
   @keyframes event-card-in-ember {
@@ -1779,7 +1824,7 @@ button.spare {
    look identical to one still for sale, same row, price just gone quiet. */
 @media (prefers-reduced-motion: no-preference) {
   .shop-row.bought {
-    transition: background-color 200ms ease-out;
+    transition: background-color 200ms var(--ease-arrive, ease-out);
     background-color: color-mix(in srgb, var(--accent, #d7b45a) 18%, transparent);
   }
 }
@@ -1860,7 +1905,7 @@ button.help-tab[data-on='true'] {
   color: var(--ink-dim, #c3c9d6);
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
   font-size: 0.8125rem;
-  letter-spacing: var(--label-tracking, 0.08em);
+  letter-spacing: var(--label-tracking, 0.04em);
   cursor: pointer;
 }
 
@@ -2082,21 +2127,32 @@ button.help-tab[data-on='true'] {
    somebody who has explicitly chosen TORCHLIT is asking for the atmosphere and
    should still get the quiet text lifted. */
 @media (prefers-contrast: more) {
-  .stat-label,
-  .flag-note,
-  #hint,
-  .unlock,
-  #stamp,
-  .tile.hold:not([data-colour]) {
-    color: var(--ink-dim, #8a91a0);
+  /* The VARIABLE moves, not a list of selectors (2026-08-26): this block
+     used to re-point six faint-text selectors one by one, which meant every
+     faint surface added later silently missed it. Overriding --ink-faint
+     itself lifts every current and future faint to the dim ink at once. The
+     decorative faints this list once exempted (the arc chart's baseline)
+     all sit behind their own low stroke-opacity, so they stay quiet even
+     with the louder ink underneath. !important is load-bearing, not
+     habit: `applyTheme` writes every var as an INLINE style on the root,
+     which outranks any plain stylesheet rule. */
+  :root {
+    --ink-faint: var(--ink-dim, #8a91a0) !important;
   }
 
   /* `ui.runEnd` art (2026-08-19, screen pass): the hero's own text is set
      against the theme's ink tokens, which already pass — the photo behind
      it is what a "more contrast" reader is asking to be sure of, so the
-     overlay darkens rather than the text changing colour. */
+     overlay thickens rather than the text changing colour. The theme's own
+     --bg since 2026-08-26, like the base rule: a hardcoded dark under
+     daylight's dark ink would cost exactly what this buys. */
   .end-hero.art {
-    background-image: linear-gradient(rgba(6, 5, 4, 0.78), rgba(6, 5, 4, 0.88)), var(--run-end-art);
+    background-image:
+      linear-gradient(
+        color-mix(in srgb, var(--bg, #14161c) 80%, transparent),
+        color-mix(in srgb, var(--bg, #14161c) 90%, transparent)
+      ),
+      var(--run-end-art);
   }
 }
 
@@ -2126,9 +2182,9 @@ button:not(:disabled):active {
 @media (prefers-reduced-motion: no-preference) {
   button {
     transition:
-      transform 80ms ease-out,
-      background-color 140ms ease-out,
-      border-color 140ms ease-out;
+      transform 80ms var(--ease-arrive, ease-out),
+      background-color 140ms var(--ease-arrive, ease-out),
+      border-color 140ms var(--ease-arrive, ease-out);
   }
 
   button:not(:disabled):active {
@@ -2149,13 +2205,13 @@ button:not(:disabled):active {
 
   /* The purse fold's prices rise into place when opened. */
   #spends:not([hidden]) {
-    animation: toast-in 120ms ease-out;
+    animation: toast-in 120ms var(--ease-arrive, ease-out);
   }
 
   /* The front door's menu settles in once per load — the game underneath
      is already booted, so this costs nothing but reads as a curtain. */
   #front-door:not([hidden]) {
-    animation: toast-in 220ms ease-out;
+    animation: toast-in 220ms var(--ease-arrive, ease-out);
   }
 }
 
