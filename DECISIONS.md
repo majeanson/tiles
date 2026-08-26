@@ -143,3 +143,26 @@ Spent shrines and finds re-arm each run as caches/sites (Marc's Day-1
 feature) — they pay their tiles and points, never the claim relic, so
 the 2026-08-20 relic tightening stays intact and relics stay about
 ground never reached before.
+
+---
+
+## G. Past the planned day (2026-08-26 — prompted as option sets, answered)
+
+### D20 — The tag slipped its day; the epoch does not move
+
+2026-08-25 passed untagged — the stranger test, the one gate, has not run.
+Ruled: `DAILY_EPOCH` stays 2026-08-25. Dailies #1 and #2 have already
+fired, and D17's own closing clause — "never after a stranger has shared a
+line" — was written for exactly this. v1.0 tags whenever Session C passes,
+on whatever date that is; nothing renumbers.
+
+### D21 — The OG image is the board, not the brand
+
+For a game whose only distribution is people sharing links, the unfurl IS
+the storefront, and the brand card showed no gameplay. Ruled: a board
+scene — a torchlit pocket of real tiles, fogged memory trailing off,
+beacons in the dark — with no mark on it; the name travels in `og:title`
+directly under the image. Baked by `scripts/social.ts` from the same
+terrain art the live board serves, deterministic like every other bake.
+The same sitting kept the onward-share line (one quiet end-screen
+sentence for a run that arrived by `?seed=`, shipped in Session 44).

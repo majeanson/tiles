@@ -401,12 +401,13 @@ the verdict run, after which balance freezes; C is the stranger test, which
 is the one v1.0 gate. Note that Session A's rehearsal is worth re-running
 first: the first minute it saw no longer exists.
 
-**3. Two art calls.** The OG image is a handsome brand card that shows no
-gameplay — for a game whose only distribution is people sharing links, the
-scroll-past hook could be a board: fog, a lit pocket, beacons in the dark.
-And `fx.pop.png` is 47KB; an audit called it a redundant radial gradient, but
-it is not — it carries rays and speckles the procedural fallback does not
-draw, so deleting it changes the look rather than saving free bytes.
+**3. Two art calls — ✅ BOTH ANSWERED.** The OG image: ruled a board scene
+2026-08-26 (`DECISIONS.md` D21) and rebuilt the same day — `scripts/social.ts`
+now bakes fog, a lit pocket of the board's own terrain art, and beacons in
+the dark; the brand card is gone. And `fx.pop.png` stays: an audit called it
+a redundant radial gradient, but it carries rays and speckles the procedural
+fallback does not draw, so deleting it would change the look, not save free
+bytes.
 
 ## Worth doing, nobody blocked
 

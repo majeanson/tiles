@@ -189,9 +189,12 @@ stranger test — **and the stranger test alone** (Marc's ruling,
 standing v1.1 question answered over weeks of real play, not a tag gate.
 This paragraph used to list both while `DECISIONS.md` disagreed; the
 ruling reconciles them). Tagging without the stranger would be the first
-cut corner in twenty sessions. Planned tag day: **2026-08-25** — the
-daily epoch is pinned to it; if the day moves, `DAILY_EPOCH` moves with
-the tag commit.
+cut corner in twenty sessions. The planned tag day — **2026-08-25** —
+came and went untagged, and the epoch question that raised was ruled
+2026-08-26 (`DECISIONS.md` D20): `DAILY_EPOCH` stays on 2026-08-25,
+because dailies #1 and #2 had already fired and the epoch never moves
+after a stranger has shared a line. The tag follows Session C, dateless
+on purpose.
 
 ## Post-1.0 parking lot
 

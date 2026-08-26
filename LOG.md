@@ -5785,3 +5785,41 @@ salvage and reference-equality behavior.
 **711 → 740 tests (29 new), 15 → 18 e2e (3 new).** Format, lint, typecheck,
 the full unit suite and the full e2e suite (against a real production
 build) all green after every commit, pushed one at a time.
+
+### Session 45 — two rulings land, the unfurl becomes the game, and the camera stops lying (2026-08-26)
+
+**Marc's two option-set answers, recorded as D20 and D21** (`DECISIONS.md`
+grew section G). D20: the planned tag day passed with the stranger test
+unrun, and the epoch does NOT move — dailies #1 and #2 had already fired,
+and D17's own "never after a stranger has shared a line" clause was written
+for exactly this; the tag follows Session C, dateless on purpose
+(`ROADMAP.md` updated in place). D21: the OG image is the board, not the
+brand — for a game distributed only by shared links, the unfurl is the
+storefront, and the old card showed no gameplay.
+
+**The unfurl rebuilt the same hour.** `scripts/social.ts` no longer draws a
+mark and a wordmark; it composes a board scene from torchlit's own tokens
+and the SAME baked terrain PNGs the live board serves, embedded and
+hex-clipped: a lit pocket of all four colours around home's ember ring,
+three tiles wearing the ripe edge, remembered ground fading out of the
+torch pool, and three beacons — cache gold, magic violet, unique flame —
+breathing in the dark, each in its own halo. Flat-top hexes, because
+torchlit's orientation is flat and the scene must wear the board's real
+facing. Deterministic, no randomness; `og:image:alt` now describes the
+scene it captions. The name travels in `og:title`, directly under the
+image in every unfurl.
+
+**The camera toggle's label could lie for the length of a tween** —
+Session 44's e2e work found it and left it on purpose; closed here. The
+button's own click read `#zoom` synchronously, before the flight it had
+just started advanced a frame, so the face could keep the pre-flight word
+until an unrelated gesture resynced it — and a second tap mid-flight
+re-flew the SAME leg instead of the return one. `zoomLevel()` now answers
+with the DESTINATION (`#camera?.toZoom ?? #zoom`): every caller — the
+label, the where-does-a-tap-go branch, the pop's keep-this-zoom pan —
+asks "where is the camera, settled?", so the settled answer is the
+interface's contract now, stated in `Renderer.ts`.
+
+**Verified:** 740 tests, 18 e2e, typecheck / lint / format / build green.
+The scene is baked and committed; judging it as a PICTURE — in a real
+unfurl, in a chat — is Marc's, alongside the onward-share line's wording.
