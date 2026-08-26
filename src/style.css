@@ -243,6 +243,11 @@ body {
   background: var(--panel, #1e222b);
   color: var(--ink, #e8ecf4);
   font-family: var(--font-body, inherit);
+  /* The reading voice (Marc, 2026-08-26: "all is too small for explanations").
+     A panel is the one place the game is PROSE — it reads a step above the
+     board's 13px chrome, and every button inside (font: inherit) grows with
+     it, which is most of what "uniform" costs. */
+  font-size: 0.875rem;
 }
 
 /* The door's own two open over the door and UNDER what they open in turn:
@@ -312,7 +317,7 @@ body {
   padding: 0 18px;
   border-color: transparent;
   background: none;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -325,7 +330,7 @@ body {
    it needs air above it and none of `.help-title`'s first-child reset. */
 #more-data-title {
   margin: 22px 0 8px;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   color: var(--ink-dim, #8a91a0);
 }
 
@@ -350,7 +355,7 @@ body {
 
 .fame-row {
   margin: 0 0 4px;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.5;
   color: var(--ink, #e8ecf4);
 }
@@ -372,7 +377,7 @@ button.fame-chip {
   flex: 0 0 auto;
   min-height: 44px;
   padding: 0 12px;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -397,7 +402,7 @@ button.fame-run {
   background: none;
   font-family: var(--font-body, inherit);
   letter-spacing: normal;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.5;
   color: var(--ink, #e8ecf4);
 }
@@ -536,7 +541,7 @@ button.fame-run[aria-expanded='true'] {
 #settings-panel .help-title {
   margin: 16px 0 6px;
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: var(--label-tracking, 0.08em);
   color: var(--ink, #e8ecf4);
 }
@@ -558,10 +563,12 @@ button.fame-run[aria-expanded='true'] {
 
 .flag-toggle {
   flex: 0 0 auto;
-  min-height: 32px;
+  /* 44px like every other button (2026-08-26) — this was the one control in
+     the settings screen still under the thumb floor the base rule states. */
+  min-height: 44px;
   min-width: 76px;
   padding: 0 8px;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
 }
 
 .flag-toggle[aria-pressed='true'] {
@@ -571,12 +578,12 @@ button.fame-run[aria-expanded='true'] {
 
 .flag-label {
   color: var(--ink, #e8ecf4);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .flag-note {
   margin: 4px 0 0;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -773,12 +780,16 @@ button.bounty {
   color: var(--accent, #d7b45a);
 }
 
-/* Secondary actions: present, not shouting. Quiet is a voice, not a size —
-   44px stays the floor (the rule above), the small type does the stepping back. */
+/* Secondary actions: present, not shouting. Quiet is a voice, not a veil —
+   the same doctrine the tabs and chips learned on 2026-08-25 finally applied
+   to this class too (2026-08-26): it used to step back with 10px type AND an
+   0.85 opacity multiplier, which is two veils on one button. The faint ink
+   at full opacity is the whole message now, and the type only steps to the
+   label size every other secondary control speaks. */
 button.quiet {
   min-height: 44px;
-  font-size: 0.625rem;
-  opacity: 0.85;
+  font-size: 0.75rem;
+  color: var(--ink-faint, #767d8d);
 }
 
 /* SETTLE's slot list (2026-08-20): three worlds and what each would cost,
@@ -1236,7 +1247,7 @@ button.quiet {
 
 .fact-label {
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
   letter-spacing: var(--label-tracking, 0.04em);
   color: var(--ink-faint, #767d8d);
 }
@@ -1291,7 +1302,7 @@ button.quiet {
 .swatch {
   /* The picker row wraps freely, so these grow to the 44px floor outright. */
   min-height: 44px;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   padding: 0 8px;
   border-radius: 3px;
 }
@@ -1304,7 +1315,7 @@ button.quiet {
 #stamp {
   flex: 0 0 auto;
   padding: 6px 10px;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
   color: var(--ink-faint, #4d5462);
   text-align: center;
@@ -1760,7 +1771,7 @@ button.help-tab {
      grow for real instead of borrowing an invisible hit area. */
   min-height: 44px;
   padding: 0 6px;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: var(--ink-faint, #767d8d);
 }
 
@@ -1778,12 +1789,12 @@ button.help-tab[data-on='true'] {
 
 #help-panel .help-more > summary {
   display: inline-block;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border: 1px solid var(--panel-edge, #3a4150);
   border-radius: 3px;
   color: var(--ink-dim, #c3c9d6);
   font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
   letter-spacing: var(--label-tracking, 0.08em);
   cursor: pointer;
 }

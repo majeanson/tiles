@@ -5902,3 +5902,29 @@ Marc's report, on option sets, from the deployed site (`39dc9a1`):
 What remains is exactly one thing, and it is not code: **Session C.** One
 person who is not Marc, their phone, "try this" and nothing else. The gate
 is the fourth recorded fact — did they start another run.
+
+**Addendum, same evening — the menus learn to speak up.** Marc, reporting
+in: "menu cohesion and text size, all is too small for explanations and
+such. buttons are weird too, make them uniform." Copy-and-visual work,
+legal under the freeze, all in `style.css`:
+
+- **The panel sheets gained a reading voice**: `.panel-sheet` sets
+  0.875rem, one step above the board chrome's 13px — a panel is the one
+  place the game is prose — and every button inside (`font: inherit`)
+  grows with it, which is most of what uniform costs.
+- **Every sub-label stepped up one rung**: section titles 10px → 12px, flag
+  notes 11px → 13px, flag labels 12px → 14px, the manual's fold summaries
+  9px → 11px, the atlas's fact labels 9px → 11px, tabs/chips/swatches/
+  stamp/reset all to 12px, fame rows to 14px.
+- **The button deviants fell in line**: `.flag-toggle` was the one control
+  still under the 44px thumb floor the base rule states — it obeys now.
+  And `button.quiet` had TWO veils (10px type × 0.85 opacity) a day after
+  the "quiet is a voice, not a veil" doctrine cleaned everything else; it
+  speaks with `--ink-faint` at full opacity now, at the same 12px every
+  other secondary control wears — which also raises its contrast, not
+  lowers it.
+- **Untouched on purpose**: the in-run board chrome (POP's hierarchy was
+  designed, not accidental) and the transient system notes.
+
+Gates green: 760 tests, 18 e2e, build clean. Judged by looking is Marc's,
+on the phone — the sizes are the ask, the cohesion is the claim.
