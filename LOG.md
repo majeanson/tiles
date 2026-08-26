@@ -5694,3 +5694,32 @@ The fix is one word at the source (`view.ts` routes `harvestPoints` through
 pins the button's figure to the reducer's bank at a fractional dial where the
 two genuinely differ. 705 tests. No balance number moved: the PAY was always
 right; the promise joins it.
+
+### Session 43 — the crash report finds its address (2026-08-26)
+
+POLISH.md's last "Needs Marc" code item, answered by Marc with a URL: the
+destination is his own Sentry (jaffre.sentry.io, project 4511395627008001 —
+the same project his portal reports to, whose DSN is already public in that
+repo by Sentry's own design). `src/meta/report.ts` is the whole integration:
+no SDK, one hand-rolled envelope POST, the same ~80-line pattern the portal's
+`functions/_lib/sentry.ts` proved. `crashEnvelope` is pure and tested — three
+JSON lines, grouped by the error's first line, the full report and UA in
+`extra`, the build sha as `release`, mode and repeat count as tags.
+
+**Nothing is sent except on a tap.** The failure panel grew SEND REPORT
+beside COPY REPORT (SENDING… → SENT — THANK YOU, or NO CONNECTION — TRY
+AGAIN OR COPY, never a second error); SETTINGS ▸ DEVELOPER ▸ LAST ERROR grew
+the same button for an error CONTINUEd past in the moment and reconsidered
+later. No boot hook, no error hook, no timer — which is why the privacy
+sentence survives: it now reads "the one exception is a crash report, and
+only when you tap SEND REPORT yourself", still opening with the e2e-pinned
+"Nothing leaves your phone". The service worker was checked, not assumed:
+its fetch handler returns on non-GET and cross-origin before any cache
+logic, so the POST passes it untouched. No flag: the button is inert until a
+human presses it, which is a stronger off-switch than a feature default —
+and a stranger mid-crash cannot flip a flag.
+
+Not a balance change, not an engine change; `src/meta/` only, plus the two
+buttons. 711 tests (6 new). **What remains of POLISH.md's "Needs Marc" is
+now entirely phone work: the rehearsal re-run, Session B, Session C — and
+the OG-image art call.**

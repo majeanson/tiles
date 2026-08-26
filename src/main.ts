@@ -59,6 +59,7 @@ import {
   restorePlan,
 } from '@meta/backup';
 import { shareOf } from '@meta/share';
+import { sendCrashReport } from '@meta/report';
 import { decodeRun, encodeRun } from '@meta/save';
 import {
   appendEntry,
@@ -1668,7 +1669,10 @@ function mountSettings(
   privacy.textContent =
     'Nothing leaves your phone: no account, no analytics, no server — every ' +
     'run, record and setting lives in this device’s own storage, and ' +
-    'sharing only ever sends what you see in the share sheet.';
+    'sharing only ever sends what you see in the share sheet. The one ' +
+    'exception is a crash report, and only when you tap SEND REPORT ' +
+    'yourself — it carries the error, the build and your browser’s name, ' +
+    'and nothing that says who you are.';
 
   const appearance = buildAppearance(live.theme);
 
@@ -1935,6 +1939,31 @@ function mountSettings(
           `${typeof sha === 'string' ? `build ${sha}` : ''}` +
           `${typeof at === 'string' ? ` · ${at}` : ''}` +
           `${typeof count === 'number' ? ` · seen ×${count}` : ''}\n${text}`;
+        // SEND REPORT (2026-08-26): the same one-tap destination the
+        // failure panel has — for an error that was CONTINUEd past in the
+        // moment and reconsidered here later. Sends only on the tap.
+        const errorSend = document.createElement('button');
+        errorSend.type = 'button';
+        errorSend.className = 'quiet';
+        errorSend.textContent = 'SEND REPORT';
+        errorSend.addEventListener('click', () => {
+          errorSend.disabled = true;
+          errorSend.textContent = 'SENDING…';
+          void sendCrashReport({
+            build: typeof sha === 'string' ? sha : __BUILD_SHA__.slice(0, 7),
+            mode: 'last error (settings)',
+            count: typeof count === 'number' ? count : 1,
+            userAgent: navigator.userAgent,
+            detail: text,
+          }).then((ok) => {
+            if (ok) {
+              errorSend.textContent = 'SENT — THANK YOU';
+            } else {
+              errorSend.disabled = false;
+              errorSend.textContent = 'NO CONNECTION — TRY AGAIN';
+            }
+          });
+        });
         const errorClear = document.createElement('button');
         errorClear.type = 'button';
         errorClear.id = 'clear-last-error';
@@ -1948,9 +1977,10 @@ function mountSettings(
           }
           errorHead.remove();
           errorBody.remove();
+          errorSend.remove();
           errorClear.remove();
         });
-        errorElements.push(errorHead, errorBody, errorClear);
+        errorElements.push(errorHead, errorBody, errorSend, errorClear);
       }
     }
   } catch {
@@ -3780,8 +3810,36 @@ function showFailure(error?: unknown): void {
   reload.addEventListener('click', () => {
     location.reload();
   });
-  // COPY REPORT (2026-08-20): the whole reason the detail is on screen is
-  // so a phone can report it — one tap beats reading a stack trace aloud.
+  const mode = askedDaily() !== null ? 'daily' : askedSeed() !== null ? 'shared seed' : 'own world';
+  // SEND REPORT (2026-08-26): COPY REPORT had nowhere to be pasted — a
+  // stranger could copy the report and had no idea who to give it to
+  // (POLISH.md's last P0, Marc's destination call). One tap posts it to
+  // Marc's Sentry; nothing is sent unless this button is tapped, which is
+  // what keeps SETTINGS' privacy sentence true.
+  const send = document.createElement('button');
+  send.type = 'button';
+  send.textContent = 'SEND REPORT';
+  send.style.cssText = buttonCss;
+  send.addEventListener('click', () => {
+    send.disabled = true;
+    send.textContent = 'SENDING…';
+    void sendCrashReport({
+      build: __BUILD_SHA__.slice(0, 7),
+      mode,
+      count: failureCount,
+      userAgent: navigator.userAgent,
+      detail: shown.textContent ?? '',
+    }).then((ok) => {
+      if (ok) {
+        send.textContent = 'SENT — THANK YOU';
+      } else {
+        send.disabled = false;
+        send.textContent = 'NO CONNECTION — TRY AGAIN OR COPY';
+      }
+    });
+  });
+  // COPY REPORT (2026-08-20): the fallback channel — for the browser that
+  // cannot reach out, or the person who would rather read what leaves.
   const copy = document.createElement('button');
   copy.type = 'button';
   copy.textContent = 'COPY REPORT';
@@ -3793,8 +3851,6 @@ function showFailure(error?: unknown): void {
     // that. Nothing here identifies the player: a UA string and a URL are
     // what the report is ABOUT, and both are already leaving the device by
     // the time somebody chooses to paste it.
-    const mode =
-      askedDaily() !== null ? 'daily' : askedSeed() !== null ? 'shared seed' : 'own world';
     const report =
       `${NAME} ${__BUILD_SHA__.slice(0, 7)} · ${mode} · seen ×${failureCount}\n` +
       `${navigator.userAgent}\n\n${shown.textContent ?? ''}`;
@@ -3821,7 +3877,7 @@ function showFailure(error?: unknown): void {
   // A WebGL-less browser has no game underneath to continue INTO, and
   // nothing useful to report — the message already says everything.
   if (noWebgl) row.append(reload);
-  else row.append(go, reload, copy);
+  else row.append(go, reload, send, copy);
   panel.replaceChildren(words, count, shown, row);
   document.body.appendChild(panel);
 }

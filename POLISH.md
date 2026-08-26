@@ -388,13 +388,13 @@ is what is left, and it is short.
 
 ## Needs Marc, and only Marc
 
-**1. Where a stranger's crash report goes.** The failure panel has a
-prominent COPY REPORT and the report now carries the build, the mode, the
-repeat count and the user-agent — but it has nowhere to be sent. A stranger
-can copy it and has no idea who to give it to. Pick a destination you are
-willing to put on that screen (an email, a form, a GitHub issues link) and it
-is a one-line change. **Before Session C**, which is the first time this code
-meets a phone you do not own.
+**1. Where a stranger's crash report goes — ✅ ANSWERED AND BUILT
+2026-08-26.** Marc picked his own Sentry (jaffre.sentry.io, project
+4511395627008001); the failure panel and LAST ERROR both grew a SEND REPORT
+button that posts the report there in one tap — and only on the tap, which
+is what keeps SETTINGS' "nothing leaves your phone" sentence true (it now
+names this one exception in words). `src/meta/report.ts`, no SDK, tested.
+Full account: LOG.md Session 43.
 
 **2. Session B and Session C themselves.** `PLAYTEST.md` scripts both. B is
 the verdict run, after which balance freezes; C is the stranger test, which
