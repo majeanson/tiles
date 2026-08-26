@@ -1206,13 +1206,32 @@ export class Game {
 
   /** The manual's half of the panel, rebuilt from the live tuning and ledger. */
   #paintManual(tab?: string): void {
+    // The shared panel grammar (2026-08-26): title left, BACK right — the
+    // manual was the one `.panel-sheet` with no header and no visible way
+    // out, so its only exit was knowing to tap the prose. That contract
+    // stays (tapping prose still closes); the header makes it optional
+    // rather than the secret.
+    const head = document.createElement('div');
+    head.className = 'panel-head';
     const title = document.createElement('p');
     title.id = 'help-name';
     title.textContent = NAME;
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'panel-back';
+    back.textContent = 'BACK';
+    back.addEventListener('click', (event) => {
+      // Stopped so the close is the button's own act, not the bubbling
+      // tap's — the panel's tap-to-close would fire regardless, but a
+      // control that works by accident is a control that breaks silently.
+      event.stopPropagation();
+      this.#closeHelp();
+    });
+    head.append(title, back);
     const tagline = document.createElement('p');
     tagline.className = 'flag-note';
     tagline.textContent = TAGLINE;
-    this.#el.helpManual.replaceChildren(title, tagline, ...this.#buildManual(tab));
+    this.#el.helpManual.replaceChildren(head, tagline, ...this.#buildManual(tab));
   }
 
   #closeHelp(): void {

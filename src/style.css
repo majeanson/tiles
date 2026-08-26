@@ -385,7 +385,15 @@ body {
   color: var(--ink, #e8ecf4);
 }
 
+/* Nothing-here-YET gets one face (2026-08-26): the HOLD slot's own dashed
+   "a place for something" idiom, so every empty ledger reads as an
+   invitation rather than a missing row. All five empty states (the diary,
+   the daily book twice, perks, the record) already share this class, so
+   one rule dresses them all — and the next one for free. */
 .fame-row.dim {
+  padding: 8px 12px;
+  border: 1px dashed var(--panel-edge, #3a4150);
+  border-radius: 6px;
   color: var(--ink-dim, #8a91a0);
 }
 
@@ -556,9 +564,12 @@ button.fame-run[aria-expanded='true'] {
 /* The ♪ (Marc's launch call, 2026-08-20): sound's easy way in, exactly
    where sound happens. Muted is the shipped default — the silent-1.0
    ruling — so the off state reads plainly as "there is sound here, and it
-   is off" rather than as broken chrome. */
+   is off" rather than as broken chrome. The strike says off; the faint
+   ink at FULL opacity says quiet (2026-08-26) — this was the last control
+   still speaking quiet through an opacity veil, the exact pattern the
+   contrast doctrine abolished everywhere else. */
 #sound-toggle.muted {
-  opacity: 0.7;
+  color: var(--ink-faint, #767d8d);
   text-decoration: line-through;
 }
 
@@ -1647,13 +1658,18 @@ button.armed {
     }
   }
 
-  /* Torchlit's own register on the same rise (WORKPLAN Stage 4, 2026-08-20):
-     a claim is a small reward, and this direction answers a reward in light —
-     the accent flares in with the toast and burns off over the same 140ms
-     the plain rise already takes, never a second's more. Placeholder keeps
-     `toast-in` exactly as shipped; this is an addition scoped by
-     `[data-theme]`, not a change to the control. */
-  [data-theme='torchlit'] #toast {
+  /* The direction's own register on the same rise (WORKPLAN Stage 4,
+     2026-08-20; EVERY real direction since 2026-08-26): a claim is a small
+     reward answered in light — the accent flares in with the toast and
+     burns off over the same 140ms the plain rise already takes. The
+     keyframes read var(--accent), so each direction flares in its own
+     voice: torchlit's ember, bright's hotter gold, daylight's warm ink.
+     It was torchlit-only, which left torchlit-bright — what a phone asking
+     for MORE contrast opens — and daylight with the plain rise. The
+     placeholder keeps `toast-in` exactly as shipped. */
+  [data-theme='torchlit'] #toast,
+  [data-theme='torchlit-bright'] #toast,
+  [data-theme='daylight'] #toast {
     animation: toast-in-ember 140ms var(--ease-arrive, ease-out);
   }
 
@@ -1810,8 +1826,11 @@ button.armed {
   /* The rarer claim gets the same register the toast's receipt does, at its
      own size (WORKPLAN Stage 4, 2026-08-20) — a find, a shrine or a
      territory is the loudest reward in the game, so its arrival earns the
-     same light the toast's smaller one does, not a louder effect. */
-  [data-theme='torchlit'] #event-card-panel {
+     same light the toast's smaller one does, not a louder effect. Every
+     real direction since 2026-08-26, same reasoning as the toast above. */
+  [data-theme='torchlit'] #event-card-panel,
+  [data-theme='torchlit-bright'] #event-card-panel,
+  [data-theme='daylight'] #event-card-panel {
     animation: event-card-in-ember 160ms var(--ease-arrive, ease-out);
   }
 
