@@ -5968,3 +5968,78 @@ Marc, two screenshots into the evening:
   permits), and three pins moved with the deliberate change.
 
 760 tests, 18 e2e, green. Judged by looking is Marc's, next run.
+
+### Session 48 — the polish menu, and its first four bites (2026-08-26)
+
+**Question (Marc):** "plan next steps to continue polishing — fresh ideas
+that go along with what we have, ui/ux uniformity, a cuter pass. don't
+restrict yourself; I judge yes or no."
+
+**The menu first.** Two full sweeps — a UI-surface inventory (every panel's
+box, register, motion, and where they disagree) and a systems map (every
+socket a small thing clicks into, plus the parked/killed ledger so nothing
+rejected got re-proposed) — became a 40-item menu in three lanes: U1–U14
+uniformity, C1–C12 cuter, F1–F14 fresh-idea sockets, each tagged [NOW]
+(legal under the freeze: copy, visuals, a11y) or [POST-TAG] (flag or
+zeroed dial, after Session C). Marc took all four recommended first bites.
+The rest of the menu is unjudged and lives in the plan file
+(`~/.claude/plans/plan-next-steps-to-melodic-fog.md`) for a later session.
+
+**Bite 1 — the end screen catches up with the menus pass (U1+U2+U3,
+`ac21d17`).** `#end` set no font-size, so the longest prose surface in the
+game ran at the body's 13px chrome voice a day after the panels went to
+17px — it speaks the panel register now, its facts/payout/run/best lines
+rescaled in proportion. Its designed entrance NEVER PLAYED: the 10px/260ms
+`end-in` rise (and `.panel-sheet`'s own `event-card-in`) was silently
+shadowed by later identical-selector `toast-in` rules from the older feel
+pass — the shadowing rules are gone. And the three unclassed buttons (TRY
+AGAIN, MAIN MENU, the crossing's ACT — which had NO css rule at all) join
+their columns at full width.
+
+**Bite 2 — one interaction grammar (U4+U5+U7, `d30374d`).** One
+`button.armed` rule turns every two-tap confirm danger-coloured on its
+first tap — RESTORE A BACKUP had been adding a class no CSS matched, so
+its armed state was invisible, and NEW WORLD / SETTLE / the crossing card
+armed in words alone. SETTLE THIS WORLD speaks the ▸/▾ + aria-expanded
+fold grammar the purse and diary rows already speak (it had no affordance
+at all). And the symbol language lost its collisions: territory is `❖`
+now (the solid `◆` was ALSO yellow's colour mark — one shape, two
+meanings, since the landmark map was written), a met survey goal is `✓`
+(it was borrowing the shrine's own `◈`), the teaching cards' `⬢` lives in
+tokens as `TILE_GLYPH` instead of nine hardcoded strings, and a
+distinctness test holds all three registries apart so a collision cannot
+ship a second time.
+
+**Bite 3 — the copy trio (F1+F2+F4, `74375d8`).** The epitaph is a POOL:
+eight framings for a broke death, six for walled, every one still carrying
+the placements and the final cost, picked by a pure hash of the run's own
+facts (the diary stores the sentence finished, so a re-render must agree —
+determinism is the contract, pinned). The home share line carries the
+sparkline the daily's always had — the most-pasted string the game makes
+finally shows the run's shape. And Gate D's banked fact speaks: one earned
+sentence under the arc names which third of the run the biggest pop landed
+in, silent until a run has popped three times.
+
+**Bite 4 — the empty art slots finally hold art (C8, `a7506ab`).**
+`ui.logo` and `ui.runEnd` were wired 2026-08-19 and empty in every theme —
+every player saw the fallbacks. `scripts/artslots.ts` (the terrain baker's
+contract: deterministic, offline, regenerable) bakes both for all three
+directions: the lockup is the mark in each direction's own accent over
+ASHWAKE in real Cinzel — `scripts/fonts/cinzel.ttf` is the shipped woff2
+decompressed once, because the SVG rasteriser ignores @font-face and Pango
+cannot read woff2, and the first two bake attempts proved it by rendering
+a geometric sans — on transparent ground so it lands on its own door. The
+hero is a board scene in each direction's own tokens and terrain art (lit
+pocket, fog trail, three beacons — the og-image's composition at panel
+shape; daylight gets a page, not a night: no pool, no vignette).
+`mark.ts` grew a parameterised `markGroup`; the hero's scrim became the
+theme's own `--bg` instead of a hardcoded dark that would have sat under
+daylight's dark ink.
+
+**Verified:** 765 tests (+5: the glyph-registry distinctness pin, the
+epitaph determinism/variety pair, the arc-note pair; the changed pins
+moved in the same commits), 18 e2e against a production build carrying
+the new art, typecheck / lint / format clean, `pnpm sim` untouched (no
+change reaches the economy). **Judged by looking is Marc's, on the phone,
+in portrait: the end-screen register, the armed danger voice, the `❖`,
+and — most of all — the lockup and the hero in all three directions.**
