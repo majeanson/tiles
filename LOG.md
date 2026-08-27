@@ -6297,3 +6297,53 @@ was touched, comment-only); typecheck / lint / format clean.
 the daily's manual with every relic word gone, the front door's SHOP, and
 whether `departTo`'s 140ms reads as acknowledgement or as lag. **The one gate
 is still Session C.**
+
+### Session 53 — the drawer names its own buttons, and a colour teaches on sight (2026-08-27)
+
+Marc: "first luck drawer expand we should explain all actions, first time we
+explain tiles we should explain all types too. or one by color we see." Then,
+mid-session: "i didnt see any luck pop when i pressed expand."
+
+**The purse card was explaining the drawer in words that matched no button on
+it.** It has existed since 2026-08-20 — his own near-identical request — and it
+named "a fresh hand (REROLL)" over a button reading **REDRAW**, and "a hand
+drawn toward a colour you name (STEER)" over four buttons wearing the ground's
+own names, with the word STEER nowhere on screen. Four of the six rows were
+described by a noun the player could not find. Every row now quotes its own
+button face, and a new test walks the rendered buttons and asserts the card
+contains each one — which is the assertion that would have caught this: the
+three existing prose pins all passed on the wrong text, because they pinned the
+sentence rather than the correspondence.
+
+**"I didn't see any luck pop" had a second cause, and it was the detour
+guard.** The card was suppressed outright on a daily or a shared run, on the
+2026-08-20 reasoning that its words describe an economy those modes do not
+have. True when written; false since yesterday, when the detour dials went to
+zero — the lesson is built from LIVE tuning, so on a daily it now names no
+TITHE and no run's-end conversion and is honest as it stands. What stays true
+is that a daily's telling is a SHORTER telling, so letting it write the ledger
+would cost the player the two sentences the home economy has. Split: said once
+per run on a detour (a new per-run latch), said once for good at home. A
+drawer that works and explains nothing was the worst of the three options.
+
+**A colour teaches itself on SIGHT now, not on placement** — his own option
+set, second choice, ruled by him. The old trigger fired at the first placement
+of that colour, which taught the personality one beat AFTER the choice the
+personality exists to inform, and never at all for a colour the player kept
+declining. On a four-colour hand that is an easy colour to never play.
+
+The catch, found by a test rather than by reasoning: **a placement redraws the
+WHOLE hand**, so a colour looked at and declined is already gone from `next`
+by the time the moment is picked. Reading only the post-action hand would have
+taught every colour except the ones actually being turned down — precisely
+inverting the point. The scan reads `before` first, then `next`.
+
+**Verified:** 789 tests (+1 net: the button-correspondence pin, three prose
+pins rewritten, the colour test rebuilt around a blue card that is seen and
+never placed), 19 e2e green against a freshly built `dist/` — per Session 52's
+lesson, the build came first — sim byte-identical, typecheck / lint / format
+clean.
+
+**Judged by looking is Marc's:** the drawer card at phone width (it grew a
+clause), and whether one colour per action reads as a drip or as a queue.
+**The one gate is still Session C.**

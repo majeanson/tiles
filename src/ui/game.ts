@@ -579,6 +579,13 @@ export class Game {
    *  `shopParts` builder (ui/shop.ts) holds it across repaints. */
   readonly #justWorn: { id: PerkId | null } = { id: null };
   /**
+   * Whether the purse fold has already explained itself THIS RUN. The device
+   * ledger (`met`) is the durable answer and the only one at home; this is
+   * what stops a detour — which deliberately does not write that ledger —
+   * from re-carding every single time the drawer is opened.
+   */
+  #purseTold = false;
+  /**
    * The name of a perk THIS RUN found, if any — for the end screen's CARRIED
    * OUT strip. Set inside `#claimNote` when `findLabel` grants one; never
    * cleared mid-run, because a run finds at most a handful and the strip
@@ -918,13 +925,21 @@ export class Game {
       // carries the two facts a price cannot — what each row IS, and that
       // a purse you die on is mostly lost. Once, at the first deliberate
       // opening, which is exactly when someone is asking what this is.
-      // Never on a detour (fresh-eyes, 2026-08-20): the card's own words —
-      // relics at the tithe, the run's-end conversion — describe an economy
-      // a daily does not have, and marking it met there would burn the
-      // lesson before the home world could teach it truly. The same guard
-      // RELIC_LESSON keeps, for the same reason.
-      if (!open && !this.#detour && !this.#met('purse')) {
-        this.#markMet('purse');
+      // A detour gets the card too, and does NOT remember it (2026-08-27).
+      // The old guard silenced it outright, on the 2026-08-20 reasoning that
+      // the words describe an economy a daily does not have — true then,
+      // false since the detour dials went to zero: the lesson is built from
+      // the LIVE tuning, so on a daily it names no TITHE and no run's-end
+      // conversion, and is honest as it stands. What stays true is that a
+      // daily's telling is a SHORTER telling, so letting it mark the ledger
+      // would cost the player the two sentences the home economy has. So:
+      // said once per run on a detour, said once for good at home. The
+      // symptom this fixes is Marc's — "i didnt see any luck pop when i
+      // pressed expand" — on a daily, where the drawer works and nothing
+      // explained it.
+      if (!open && !this.#purseTold && !this.#met('purse')) {
+        this.#purseTold = true;
+        if (!this.#detour) this.#markMet('purse');
         this.#showEventCard(this.#purseLesson());
       }
       this.render();
@@ -2817,17 +2832,31 @@ export class Game {
       };
     }
 
-    // A colour teaches itself at its FIRST placement — after the cards
-    // above (a personality can wait one action; a first ripe tile cannot)
-    // and before the other toasts, so tap one is usually a colour lesson.
-    if (action.type === 'PLACE') {
-      const placed = next.cells[action.hex];
-      if (placed?.kind === 'tile') {
-        const id = COLOUR_TEACH[placed.colour];
-        if (!met.has(id)) {
-          const lesson = this.#colourLesson(placed.colour);
-          if (lesson !== null) return { tier: 'toast', id, text: lesson };
-        }
+    // A colour teaches itself the first time it is SEEN — in the hand, not
+    // under it (Marc, 2026-08-27, from his own option set: "one by color we
+    // see"). It used to wait for the first PLACEMENT of that colour, which
+    // taught the personality one beat AFTER the choice the personality
+    // exists to inform, and never at all for a colour the player kept
+    // declining. The hand is where the decision is made, so the hand is
+    // where the words belong.
+    //
+    // BEFORE as well as after, and before FIRST: a placement redraws the
+    // whole hand, so a colour the player looked at and DECLINED is gone
+    // from `next` by the time this runs. Reading only `next` would teach
+    // every colour except the ones actually being turned down — the exact
+    // case the move to first-sight exists to cover. The hand they were
+    // looking at when they chose leads, then the one they are looking at now.
+    // Still after the cards above (a personality can wait one action; a
+    // first ripe tile cannot) and before the other toasts. One per action,
+    // so a first hand of three colours teaches across three actions rather
+    // than burying two of them.
+    {
+      const seen = [...before.draft, ...before.held, ...next.draft, ...next.held];
+      for (const tile of seen) {
+        const id = COLOUR_TEACH[tile.colour];
+        if (met.has(id)) continue;
+        const lesson = this.#colourLesson(tile.colour);
+        if (lesson !== null) return { tier: 'toast', id, text: lesson };
       }
     }
 
@@ -2874,7 +2903,7 @@ export class Game {
    * the fold's prices never say leads the close — luck is use-it-or-lose-it.
    */
   #purseLesson(): string {
-    return purseLesson(this.#state.tuning);
+    return purseLesson(this.#state.tuning, this.#theme);
   }
 
   #renderHud(hud: HudView): void {

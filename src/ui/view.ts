@@ -1455,16 +1455,29 @@ export function harvestNote(
  * are on get named, the rates are the run's own numbers, and the one fact
  * the fold's prices never say leads the close — luck is use-it-or-lose-it.
  */
-export function purseLesson(t: Tuning): string {
+export function purseLesson(t: Tuning, theme: Theme): string {
+  // Named as the BUTTONS are named (2026-08-27, Marc: "first luck drawer
+  // expand we should explain all actions" — a second time, because the
+  // first answer did not land). The card used to say "a fresh hand
+  // (REROLL)" over a button reading REDRAW, and "a hand drawn toward a
+  // colour you name (STEER)" over four buttons wearing the ground's own
+  // names, with the word STEER nowhere on screen. It explained all the
+  // actions in a vocabulary that matched none of them, which is the same
+  // as explaining none. Every row below now quotes its own button face.
+  const n = theme.terrainNames;
   const rows = [
-    ...(t.luckRerollCost > 0 ? ['a fresh hand (REROLL)'] : []),
-    ...(t.luckSteerCost > 0 ? ['a hand drawn toward a colour you name (STEER)'] : []),
-    ...(t.luckForgeCost > 0 ? ['the selected card turned UNIQUE (FORGE)'] : []),
+    ...(t.luckRerollCost > 0 ? ['REDRAW buys a fresh hand'] : []),
+    ...(t.luckSteerCost > 0
+      ? [
+          `the four ground names (${n.green}, ${n.yellow}, ${n.red}, ${n.blue}) each buy a hand that leans that colour, and keep it leaning for the next few draws`,
+        ]
+      : []),
+    ...(t.luckForgeCost > 0 ? ['FORGE turns the card you have selected UNIQUE'] : []),
   ];
   const spends =
     rows.length > 0
-      ? `Every row is priced in luck: ${rows.join(', ')}.`
-      : 'Every row is priced in luck.';
+      ? `Every button here is priced in luck: ${rows.join('; ')}.`
+      : 'Every button here is priced in luck.';
   const tithe =
     t.titheRate > 0
       ? ` TITHE is the exit — the WHOLE purse traded for relics at ${Math.round(t.titheRate * 100)}%, better than dying on it.`

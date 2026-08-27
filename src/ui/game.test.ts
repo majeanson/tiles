@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COLOUR_MARK } from '@theme/tokens';
+import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { BARE_TUNING, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
@@ -2574,21 +2575,41 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     expect(ctx.el.eventCard.hidden).toBe(true);
   });
 
-  it('teaches a colour’s personality at its first placement — once, per colour', () => {
-    // Biomes off so a native field cannot take the toast; a pinned all-green
-    // draft so the placed colour is the test's, not the seed's.
+  /**
+   * A colour teaches itself the first time it is SEEN, not the first time it
+   * is placed (Marc, 2026-08-27, from his own option set: "one by color we
+   * see"). The old trigger taught the personality one beat AFTER the choice
+   * it exists to inform — and never at all for a colour the player kept
+   * declining, which on a four-colour hand is an easy colour to never play.
+   *
+   * The setup makes the distinction the whole point: BLUE is in hand and a
+   * GREEN is the card actually placed. Under the old rule this test could
+   * not pass at all.
+   */
+  it('teaches a colour the first time it is SEEN in hand, never having placed it', () => {
     const T2: Tuning = { ...T, biomeEvery: 0 };
-    const dev = device();
-    const greens = ['a', 'b', 'c'].map((id) => ({
-      id,
-      colour: 'green' as const,
-      rarity: 'common' as const,
-    }));
-    const place = () => {
+    // Every colour met but blue, so the one toast in question owns the beat
+    // and a redrawn card of any other colour cannot steal it.
+    const dev = device({
+      ...EMPTY_PROGRESS,
+      met: TEACH_IDS.filter((id) => id !== 'colourBlue'),
+    });
+    const seeBlue = () => {
       const base = newRun(7, T2);
       const ctx = build(1, T2, {
         shop: dev.shop,
-        resume: { ...base, draft: greens, selected: 0 },
+        // A world already deeper than this placement, so NEW GROUND — which
+        // outranks every teaching moment and shares the one toast slot —
+        // cannot take the beat being measured.
+        worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 99 }),
+        resume: {
+          ...base,
+          draft: [
+            { id: 'g', colour: 'green' as const, rarity: 'common' as const },
+            { id: 'b', colour: 'blue' as const, rarity: 'common' as const },
+          ],
+          selected: 0,
+        },
       });
       ctx.game.start();
       ctx.renderer.nextHit = key(1, 0);
@@ -2596,14 +2617,16 @@ describe('teaching, drop by drop (2026-08-19)', () => {
       return ctx;
     };
 
-    const first = place();
+    const first = seeBlue();
     expect(first.el.toast.hidden).toBe(false);
-    expect(first.el.toast.textContent).toMatch(/CROWDS/);
-    expect(dev.current().met).toContain('colourGreen');
+    // BLUE's personality, taught by a blue tile that was never put down.
+    expect(first.el.toast.textContent).toMatch(/TIDE/);
+    expect(first.game.state.cells[key(1, 0)]).toMatchObject({ colour: 'green' });
+    expect(dev.current().met).toContain('colourBlue');
 
-    // The same colour on a taught device teaches nothing more.
-    const second = place();
-    expect(second.el.toast.textContent ?? '').not.toMatch(/CROWDS/);
+    // Seen is seen: a second sighting on a taught device says nothing.
+    const second = seeBlue();
+    expect(second.el.toast.textContent ?? '').not.toMatch(/TIDE/);
   });
 
   it('puts the selected card down on a second tap, explaining it as it goes', () => {
@@ -3150,19 +3173,58 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
     return ctx.el.eventCardText.textContent ?? '';
   };
 
-  it('teaches the whole purse on its first fold, live rows and all', () => {
+  /**
+   * Every row names the BUTTON it is about (2026-08-27). The card used to
+   * teach a REROLL and a STEER, and the drawer has never had either — the
+   * buttons read REDRAW and the four ground names. A card that explains
+   * every action in words matching no action explains none of them, which
+   * is why this asserts the literal button faces rather than a paraphrase.
+   */
+  it('teaches the whole purse on its first fold, naming each button as it reads', () => {
+    const n = PLACEHOLDER.terrainNames;
     expect(purseLessonText(TUNING)).toBe(
       'LUCK IS FOR SPENDING\n' +
-        'Every row is priced in luck: a fresh hand (REROLL), a hand drawn toward a colour you name (STEER), the selected card turned UNIQUE (FORGE). ' +
+        'Every button here is priced in luck: REDRAW buys a fresh hand; ' +
+        `the four ground names (${n.green}, ${n.yellow}, ${n.red}, ${n.blue}) each buy a hand that leans that colour, and keep it leaning for the next few draws; ` +
+        'FORGE turns the card you have selected UNIQUE. ' +
         'TITHE is the exit — the WHOLE purse traded for relics at 15%, better than dying on it.\n\n' +
         "And you CAN lose it all: the run's end pays back only 5% of whatever is left, so a full purse you die on is mostly gone. Spend it.",
     );
   });
 
+  /**
+   * The card names every button the drawer actually shows, and invents none.
+   * This is the assertion that would have caught the original defect: the
+   * old text passed every prose pin above while naming a REROLL and a STEER
+   * that no button has ever worn.
+   */
+  it('names every drawer button and invents none', () => {
+    const base = newRun(1, TUNING);
+    const ctx = build(1, TUNING, {
+      shop: { read: () => ({ ...EMPTY_PROGRESS, met: [] }), write: () => undefined },
+      // The fold arrives with the purse; without luck there is nothing to
+      // open and nothing to name.
+      resume: { ...base, luck: 500 },
+    });
+    ctx.game.start();
+    // One click: the fold opens AND the card fires, which is the single
+    // state where both the words and the buttons exist together.
+    ctx.el.purseToggle.click();
+    const card = ctx.el.eventCardText.textContent ?? '';
+    const faces = [...ctx.el.spends.querySelectorAll('button')].map(
+      (b) => (b.textContent ?? '').trim().split(' ')[0] ?? '',
+    );
+    expect(faces.length).toBeGreaterThan(0);
+    for (const face of faces) expect(card).toContain(face);
+    // And the two words the card used to invent are gone for good.
+    expect(card).not.toContain('REROLL');
+    expect(card).not.toContain('STEER');
+  });
+
   it('keeps the lesson honest with every row and TITHE off', () => {
     expect(purseLessonText(BARE_TUNING)).toBe(
       'LUCK IS FOR SPENDING\n' +
-        'Every row is priced in luck.\n\n' +
+        'Every button here is priced in luck.\n\n' +
         'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.',
     );
   });
@@ -3170,7 +3232,7 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
   it('names just the rows that are actually priced', () => {
     expect(purseLessonText({ ...BARE_TUNING, luckRerollCost: 12 })).toBe(
       'LUCK IS FOR SPENDING\n' +
-        'Every row is priced in luck: a fresh hand (REROLL).\n\n' +
+        'Every button here is priced in luck: REDRAW buys a fresh hand.\n\n' +
         'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.',
     );
   });
