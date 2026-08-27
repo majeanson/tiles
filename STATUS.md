@@ -4,7 +4,43 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-27 — the page stops reloading; one page, many
+Last checkpoint: **2026-08-27, later — the screen comes back, and the three
+owed audits are run.** Marc, from the phone: "we lost too much game space
+(screen with tiles) — one bottom bar of action and nothing more + tiles on
+top." The bottom was five stacked rows taking more height than the board; it
+is **one wrapping hand and one action bar**, and the board went from ~53% to
+**69–73%** (64% worst case). `display: contents` on the four inner containers
+is what merges them without moving anything in the document; `--hand-cols`
+sizes the hand per render (one row while cards stay thumbable, Marc's own 2×3
+at six, held cards as the last COLUMN one per row). Also his: the purse card
+and the manual teach sets as marked lists (`TipRow`/`tipRows`, shared by cards
+and manual), **TITHE became SACRIFICE LUCK in the pocket-sacrifice red** (it
+was invented vocabulary for a word the game already had), and a ✕ above `?`
+drops the colour lens. Two z-index bugs found by screenshot: the camera pill
+painted through the front door AND through held event cards — `[inert] #camera`,
+because `inert` says nothing about paint but is the right condition.
+
+**The three sweeps `POLISH.md` recorded as died-on-a-session-limit are done.**
+Performance: per-frame cost does NOT grow with the board — a grown board (reach 9) held vsync at 16.7ms, unchanged, and 16.8ms under 6× CPU throttling;
+deliberately not added to CI (Session 45's lesson). Accessibility: five items
+were already fixed and the file had not been told; the real ones — two-line
+buttons with a browser-computed name that WebKit read as "POP5 tiles · 6 pts",
+`#lens-clear` dropping focus, shop buttons naming no row, a missing
+`aria-controls`, one target under 44px — are fixed, with two tests holding the
+RULES. Cut-corners: a fresh-eyes pass over both days found six, including two
+windows the refactor opened — **a door tap during the first boot could build a
+second session** (guarded for `popstate`, not for doors), and **a swap that
+threw left no session at all**. Both closed. `?theme=` was the one rig param
+that never persisted on arrival, which in-place routing would have turned into
+"a `?theme=` link stops meaning anything after one tap".
+**Caveat found and fixed: `#actions`' `min-height` went dead under
+`display: contents`, and the board jumped 81px the moment a pocket ripened —
+if a CSS rule's box disappears, its promise goes with it.**
+818 tests, 27 e2e, all deployed and verified live. **NOT played on a phone,
+which is the real gate; the first minute changed again, so `PLAYTEST.md`
+Session A is owed before Session C. The one gate is still Session C.**
+
+Previous checkpoint: **2026-08-27 — the page stops reloading; one page, many
 sessions.** Marc: "remove all window reloads and use routing... can we survive
 on vanilla SPA and be 2026 ready still?" — and "all for a clean game". No
 framework added; `pixi.js` is still the only runtime dependency. Every scene

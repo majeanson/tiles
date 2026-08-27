@@ -1,10 +1,18 @@
 # CLAUDE.md
 
 Read `STATUS.md` first — the checkpoint ledger of what is done **and verified**,
-so shipped ground doesn't get re-audited. `LOG.md` holds the gates and the
-per-session record. `DESIGN.md` records only what play has actually proven.
-`ROADMAP.md` is the finish line — the milestones to 1.0 and the definition of
-done Marc set on 2026-08-15; new work should serve the current milestone.
+so shipped ground doesn't get re-audited. `NEXT.md` is the short answer to
+"what now": what is left, sorted by whether it needs Marc or not. `LOG.md`
+holds the gates and the per-session record. `DESIGN.md` records only what play
+has actually proven. `ROADMAP.md` is the finish line — the milestones to 1.0
+and the definition of done Marc set on 2026-08-15; new work should serve the
+current milestone.
+
+**Check a ledger against the code before acting on it.** On 2026-08-27
+`POLISH.md`'s open list was stale in six places — it called export/import "the
+one thing missing entirely" four days after it shipped under the name
+backup/restore. A stale open-list is worse than none: it sends a session
+hunting for work that is already done.
 
 `ideas/v1-archive/` is the unbuilt v1 design (Hearthfall). It is **reference,
 not spec** — its economy was never run through a spreadsheet and breaks around

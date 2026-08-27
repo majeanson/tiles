@@ -6574,5 +6574,114 @@ matter: five theme flips mid-run with sound still working after; a crossing
 with the app backgrounded DURING the fade, reopened, confirming no
 resurrected world; RESET ALL; and a PWA swipe-back out of the daily.
 
+---
+
+### Session 57 — the screen comes back, and the audits that were owed (2026-08-27)
+
+Marc, from the phone, in four messages across the day, and then: "do all you
+can do without my help from what you identified, rest will be in a follow-up
+polish."
+
+**The board took back a fifth of the screen.** "We lost too much game space
+(screen with tiles) — make sure we do a revamp so its one bottom bar of
+action and nothing more + tiles on top." The bottom had grown to five stacked
+rows — hand, stash, POP, the variations, the purse handle — and measured, they
+took MORE height than the board did: ~53% board against ~48% chrome. It is two
+rows now, and the board is 69–73% (64% in the worst hand the game can deal).
+`display: contents` on `#draft`/`#stash`/`#actions`/`#actions-more` is what
+does it: each keeps its own element, so the render passes, the tests and the
+hidden-when-empty rules all still address them, while their CHILDREN join one
+wrapping row above.
+
+The hand sizes itself, because he asked for every shape ("4 tiles, 5, 6, 1
+hold, 2 hold we can use 2x3 too"): one row while cards stay thumbable, since a
+second row costs 79px of board; six is his own 2×3, because six across is 56px
+a card, which fits a thumb but not the ground's NAME. And the held cards are
+the last COLUMN, one per row — a first reading put them at both ends of the
+bottom row and he corrected it with a drawing (`c c h / c c h`). Flex `order`
+does it, so nothing moves in the document and the tab order still walks the
+hand first.
+
+**Three smaller asks, each with a reason behind it.** The purse card taught
+seven buttons as one sentence containing a semicolon list containing a
+parenthetical; it is a list on screen so it is a list on the card, sharing the
+four-grounds card's rows — promoted to `TipRow`/`tipRows` and given to the
+manual too, so a set is drawn one way wherever the game explains one. TITHE
+became **SACRIFICE LUCK**, in the same red as the pocket sacrifice: it was
+invented vocabulary for a thing the game already had a word for, which is
+what `CLAUDE.md`'s plain-words rule exists to prevent. And the colour lens got
+a ✕ above `?`, because the lens is released by REPEATING whatever lit it and
+with a full hand that card is the fiddly thing to find.
+
+**Two bugs the screenshots found rather than the tests.** `#camera` was raised
+to z-index 3 on 2026-08-27 (Session 54) to clear the toast — which TIES the
+front door's own 3, and a tie is broken by document order, where `#game-shell`
+comes last. The ?/♪/FIT pill painted straight through the door, and through
+held event cards too. `inert` was never going to help: it takes a control out
+of the tab order and out of hit-testing and says nothing about paint. It is
+still the right CONDITION, so `[inert] #camera` — any inert ancestor, which
+catches the door, the panels and the event card's own siblings.
+
+**Then the three audit sweeps `POLISH.md` records as died-on-a-session-limit.**
+
+_Performance_ — measured, and it scales. Panning a grown board (reach 9, ~140
+placements) held vsync at 16.7ms median, identical to an opening board, and
+16.8ms under 6× CPU throttling. Per-frame cost does not grow with the board,
+which was the question. **Not added to CI**: a timing assertion measured on a
+dev machine held deploys shut for nine commits once already (Session 45). The
+feel of it on a real mid-range phone is still Marc's.
+
+_Accessibility, second pass_ — five of its items were already fixed between
+2026-08-20 and 08-21 and the file had not been told. What was real: the new
+two-line action buttons stated no name, and WebKit concatenates the two spans,
+so VoiceOver read the bar as "POP5 tiles · 6 pts" on the one platform this
+game is tested on; `#lens-clear` dropped focus when it hid itself; the shop's
+BUY/WEAR buttons named no row (a screen reader heard a column of prices with
+nothing saying what was for sale); `#purse-toggle` lacked `aria-controls` for
+a drawer that opens above it; and the manual's NUMBERS `<summary>` was the
+last interactive control under 44px. Two tests hold the RULES rather than the
+fixes — WCAG 2.5.3, and the two-line naming that would have caught the first.
+
+_Cut corners in the source_ — a fresh-eyes pass over both days as one body.
+Six findings, all fixed, and the two that mattered are windows this refactor
+opened by replacing navigations with in-place swaps. A door tap during the
+first boot could build a SECOND session (every door listener is wired before
+`startSession`'s one await, while `live` is still null, so `restart` tore down
+nothing) — `main.ts` had guarded exactly this for `popstate` and said so; the
+doors were the other half. And a swap that THREW left no session at all: the
+door up over an empty shell, BEGIN throwing on a `game` never built, and a
+panel offering CONTINUE into nothing — while `router.ts`'s own comment claimed
+it always left something tappable. It falls back to a real navigation now.
+Third: `?theme=` was silently dropped on the first scene change, because it
+was the one rig param that never persisted on arrival — invisible until scene
+changes stopped carrying the URL along, and it would have made a `?theme=`
+link stop meaning anything after one tap, on the phone that is the only place
+a direction can be judged.
+
+**The board also stopped jumping.** `#actions` carried `min-height: 44px` for
+"so the board above never resizes because a pocket ripened", and
+`display: contents` generates no box, so the rule went quietly dead and took
+its promise with it: 81px of board movement at the precise moment a thumb is
+reaching for a ripe tile. The reserve is on `#action-bar` now; the jump is
+14px, which is the hint line growing a second line and has been variable since
+it was written.
+
+**And the paper.** `POLISH.md`'s open list had gone stale in six places — the
+"one thing missing entirely", export/import, shipped 2026-08-21 as BACK UP /
+RESTORE and was searched for under the wrong name — so it was re-audited
+against the code, because a stale open-list sends the next session hunting for
+work that shipped days ago. `FOLLOWUP.md`, `PLAYTEST.md` and `ROADMAP.md`
+gained today's by-looking items and lost schedules that had already happened.
+
+**Verified:** 818 tests (+4: two a11y rules, the hand grid, the lens's way
+out), 27 e2e (+2: the bar holding its empty row, the slot switch), typecheck /
+lint / format clean, build clean, and every commit deployed and confirmed live
+by `verify-deploy`.
+
+**Still Marc's, and unchanged by any of this:** Session C. Behind it, one
+rehearsal pass — 2026-08-27 changed the first minute a third time, and the
+2026-08-26 re-run that passed with an empty fix list was measuring a screen
+that no longer exists.
+
 **Judged by looking is Marc's:** the swatches at phone brightness, and whether
 half-of-FIT is the right amount of "a bit". **The one gate is still Session C.**
