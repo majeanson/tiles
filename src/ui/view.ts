@@ -27,7 +27,7 @@ import {
   findsWithin,
   terrainAt,
 } from '@engine/world';
-import { brightness, TILE_GLYPH, type Light, type Theme } from '@theme/tokens';
+import { brightness, COLOUR_MARK, TILE_GLYPH, type Light, type Theme } from '@theme/tokens';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
 
 /** A direction that wants no falloff at all — and every test that has no theme. */
@@ -1450,12 +1450,46 @@ export function harvestNote(
 }
 
 /**
+ * One line of a set: a mark, and the sentence beside it.
+ *
+ * The four-grounds card (2026-08-27) proved the shape — a swatch in the
+ * ground's own fill, the ground's own sentence beside it — and this is that
+ * shape given a name so the manual and the other set-teaching cards can wear
+ * it too. A row carries EITHER a `colour` (drawn as the swatch) or a `glyph`
+ * from the game's own registry, or neither, in which case the mark column is
+ * still reserved so the sentences line up.
+ *
+ * No row invents a symbol. `COLOUR_MARK` and `LANDMARK_GLYPH` are the whole
+ * vocabulary (`theme/tokens.ts` states the rule), and a spend like REDRAW has
+ * never had a mark in this game — so it gets none here rather than a new one.
+ */
+export type TipRow = {
+  readonly text: string;
+  /** A ground, drawn as its own swatch. */
+  readonly colour?: Colour;
+  /** A glyph from the registry, for a row that is not a ground. */
+  readonly glyph?: string;
+};
+
+/** A card that teaches a set: the lead, and the rows under it. */
+export type SetLesson = { readonly text: string; readonly rows: readonly TipRow[] };
+
+/**
  * The purse fold's first-contact card (Marc, 2026-08-20), built from the
  * LIVE tuning like every explanation in the game: only rows whose dials
  * are on get named, the rates are the run's own numbers, and the one fact
  * the fold's prices never say leads the close — luck is use-it-or-lose-it.
+ *
+ * ROWS since 2026-08-27 (Marc: "make sure the luck is for spending card is
+ * explained with new lines, not a whole paragraph — similar to the 4 tiles
+ * explained"). It was one sentence with the four ground names parenthesised
+ * inside a semicolon list inside a clause: every spend the fold offers,
+ * collapsed into prose you had to parse to use. The buttons are a LIST, so
+ * the card is a list — one row per button, each quoting its own button face
+ * and its own price, and the four steers wearing the ground colours the
+ * buttons are bordered with.
  */
-export function purseLesson(t: Tuning, theme: Theme): string {
+export function purseLesson(t: Tuning, theme: Theme): SetLesson {
   // Named as the BUTTONS are named (2026-08-27, Marc: "first luck drawer
   // expand we should explain all actions" — a second time, because the
   // first answer did not land). The card used to say "a fresh hand
@@ -1465,28 +1499,52 @@ export function purseLesson(t: Tuning, theme: Theme): string {
   // actions in a vocabulary that matched none of them, which is the same
   // as explaining none. Every row below now quotes its own button face.
   const n = theme.terrainNames;
-  const rows = [
-    ...(t.luckRerollCost > 0 ? ['REDRAW buys a fresh hand'] : []),
+  const rows: TipRow[] = [
+    ...(t.luckRerollCost > 0
+      ? [{ text: `REDRAW · ${t.luckRerollCost} — throw this hand away for a new one.` }]
+      : []),
+    // One row per BUTTON, in the order the fold draws them (`spendsFor`):
+    // redraw, the four grounds, forge, tithe. The steers were a parenthesised
+    // list inside somebody else's sentence; they are four buttons on screen,
+    // so they are four lines here, each wearing its ground's own colour.
     ...(t.luckSteerCost > 0
+      ? COLOURS.map((colour): TipRow => ({
+          colour,
+          text:
+            `${COLOUR_MARK[colour]} ${n[colour]} · ${t.luckSteerCost} — a hand leaning ` +
+            `${n[colour]}, and the next ${t.colourBiasDraws} draws with it.`,
+        }))
+      : []),
+    ...(t.luckForgeCost > 0
+      ? [{ text: `FORGE · ${t.luckForgeCost} — turn the card you have selected UNIQUE.` }]
+      : []),
+    ...(t.titheRate > 0
       ? [
-          `the four ground names (${n.green}, ${n.yellow}, ${n.red}, ${n.blue}) each buy a hand that leans that colour, and keep it leaning for the next few draws`,
+          {
+            text:
+              `TITHE — the WHOLE purse traded for relics at ` +
+              `${Math.round(t.titheRate * 100)}%, better than dying on it.`,
+          },
         ]
       : []),
-    ...(t.luckForgeCost > 0 ? ['FORGE turns the card you have selected UNIQUE'] : []),
   ];
-  const spends =
-    rows.length > 0
-      ? `Every button here is priced in luck: ${rows.join('; ')}.`
-      : 'Every button here is priced in luck.';
-  const tithe =
-    t.titheRate > 0
-      ? ` TITHE is the exit — the WHOLE purse traded for relics at ${Math.round(t.titheRate * 100)}%, better than dying on it.`
-      : '';
+  // One paragraph, then the list — the use-it-or-lose-it fact is the REASON
+  // to read the rows, so it goes above them rather than below (2026-08-27:
+  // as its own trailing paragraph it sat between the intro and the list and
+  // read like a footer that had slid up the card).
+  // "You CAN lose it all" is Marc's own phrasing (2026-08-20: "explain all
+  // and that you can lose it all too") and is pinned by name — the rows
+  // print their prices, and this is the one thing a price cannot say.
   const lost =
     t.luckToRelics > 0
-      ? `And you CAN lose it all: the run's end pays back only ${Math.round(t.luckToRelics * 100)}% of whatever is left, so a full purse you die on is mostly gone. Spend it.`
-      : 'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.';
-  return `${TILE_GLYPH}  LUCK IS FOR SPENDING\n${spends}${tithe}\n\n${lost}`;
+      ? `the run's end pays back only ${Math.round(t.luckToRelics * 100)}% of whatever is left, so a full purse you die on is mostly gone`
+      : 'whatever is left when the run ends is lost outright';
+  return {
+    text:
+      `${TILE_GLYPH}  LUCK IS FOR SPENDING\n` +
+      `Every button under your hand is priced in luck — and you CAN lose it all: ${lost}. Spend it.`,
+    rows,
+  };
 }
 
 /**

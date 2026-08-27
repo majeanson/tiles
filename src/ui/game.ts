@@ -35,7 +35,7 @@ import { shopParts } from './shop';
 import type { Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
-import { COLOUR_MARK, depthOf, TILE_GLYPH, type Theme } from '@theme/tokens';
+import { COLOUR_MARK, depthOf, LANDMARK_GLYPH, TILE_GLYPH, type Theme } from '@theme/tokens';
 import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
 import { closeDialog, openDialog, siblingsOf } from './dialog';
 import {
@@ -54,6 +54,8 @@ import {
   toBoardView,
   toHudView,
   type HudView,
+  type SetLesson,
+  type TipRow,
 } from './view';
 
 /**
@@ -78,6 +80,13 @@ import {
 type HelpSection = {
   readonly title: string;
   readonly lines: readonly string[];
+  /**
+   * A set this section lists — the four grounds, the destinations — drawn as
+   * marked lines under the prose rather than buried in it (2026-08-27). Same
+   * rows the teaching cards use, so the manual and the card that taught you
+   * the thing look like each other.
+   */
+  readonly rows?: readonly TipRow[];
   readonly detail?: readonly string[];
 };
 
@@ -440,6 +449,59 @@ function rarityInked(text: string): (Node | string)[] {
   }
   if (last < text.length) parts.push(text.slice(last));
   return parts;
+}
+
+/**
+ * Each ground's one-clause personality for the manual, keyed by colour so the
+ * section can be built by mapping `COLOURS` rather than by writing the four
+ * out in an order nothing enforces. The name is passed in because a direction
+ * names its own grounds (`theme.terrainNames`).
+ */
+const COLOUR_HELP: Readonly<Record<Colour, (name: string) => string>> = {
+  green: (n) => `${n} — crowds. Wants to be one big mob of its own colour.`,
+  yellow: (n) => `${n} — company. Scores in messy mixed ground where nothing else matches.`,
+  red: (n) => `${n} — ash. Builds along the spent, popped land everyone else abandons.`,
+  blue: (n) => `${n} — tide. Worth little at home, a lot on the frontier.`,
+};
+
+/**
+ * A set, drawn as lines rather than as a paragraph.
+ *
+ * Born on the four-grounds card (2026-08-27) and shared with the manual the
+ * same day (Marc: "use colors and symbols from the game in all help"), so a
+ * set is drawn ONE way wherever the game explains one — the swatch is a MARK
+ * and never the surface any text sits on, which is what keeps the reading
+ * budget in `contrast.test.ts` untouched by it and lets every direction
+ * inherit these unchanged.
+ *
+ * The mark column is reserved even for a row that has no mark, because the
+ * point of a list is that the sentences start in the same place.
+ */
+function tipRows(rows: readonly TipRow[] | undefined): HTMLElement[] {
+  return (rows ?? []).map((row) => {
+    const line = document.createElement('p');
+    line.className = 'tip-row';
+
+    const mark = document.createElement('span');
+    // Decoration in every case: the words beside it already name the thing,
+    // so a screen reader gains nothing but noise from the square or the glyph.
+    mark.setAttribute('aria-hidden', 'true');
+    if (row.colour !== undefined) {
+      mark.className = 'tip-swatch';
+      mark.dataset['colour'] = row.colour;
+    } else if (row.glyph !== undefined) {
+      mark.className = 'tip-glyph';
+      mark.textContent = row.glyph;
+    } else {
+      mark.className = 'tip-swatch tip-blank';
+    }
+
+    const words = document.createElement('span');
+    words.className = 'tip-words';
+    words.replaceChildren(...rarityInked(row.text));
+    line.append(mark, words);
+    return line;
+  });
 }
 
 /**
@@ -990,7 +1052,8 @@ export class Game {
       if (!open && !this.#purseTold && !this.#met('purse')) {
         this.#purseTold = true;
         if (!this.#detour) this.#markMet('purse');
-        this.#showEventCard(this.#purseLesson());
+        const lesson = this.#purseLesson();
+        this.#showEventCard(lesson.text, undefined, lesson.rows);
       }
       this.render();
     });
@@ -1765,8 +1828,11 @@ export class Game {
       return p;
     });
 
+    // The set, if this section lists one — same rows the cards use.
+    const rows = tipRows(section.rows);
+
     if (section.detail === undefined || section.detail.length === 0) {
-      return [heading, ...lines];
+      return [heading, ...lines, ...rows];
     }
 
     const fold = document.createElement('details');
@@ -1790,7 +1856,7 @@ export class Game {
       }),
     );
 
-    return [heading, ...lines, fold];
+    return [heading, ...lines, ...rows, fold];
   }
 
   #helpSections(): HelpTab[] {
@@ -2003,12 +2069,16 @@ export class Game {
           ? [
               {
                 title: 'THE COLOURS',
-                lines: [
-                  `${name('green')} — crowds. Wants to be one big mob of its own colour.`,
-                  `${name('yellow')} — company. Scores in messy mixed ground where nothing else matches.`,
-                  `${name('red')} — ash. Builds along the spent, popped land everyone else abandons.`,
-                  `${name('blue')} — tide. Worth little at home, a lot on the frontier.`,
-                ],
+                lines: ['Every card is one of these four, and each one scores its own way.'],
+                // The manual's counterpart to the four-grounds card, wearing
+                // the same rows since 2026-08-27 — it was four bare sentences
+                // about colour with no colour anywhere on them. Name, hue AND
+                // symbol, the draft card's own three channels, so no single
+                // one of them has to carry the fact.
+                rows: COLOURS.map((colour) => ({
+                  colour,
+                  text: `${COLOUR_MARK[colour]} ${COLOUR_HELP[colour](name(colour))}`,
+                })),
                 detail: [
                   `${name('green')}: +${t.greenCrowdBonus} worth per neighbour of its own colour past the first.`,
                   t.yellowCompanyAll
@@ -2053,11 +2123,27 @@ export class Game {
                   'The near world is deliberately sparse. The deeper you push, the thicker the lights — and the richer the caches.',
                 ]
               : []),
+            ...(t.findEvery > 0 && t.findChance > 0
+              ? [
+                  'And something else is hidden out there, deep and unmarked. It never glows. You stumble onto it, or you never know it was there.',
+                ]
+              : []),
+          ],
+          // The destinations as a marked LIST (2026-08-27), each wearing the
+          // glyph the board actually draws for it — read from `LANDMARK_GLYPH`
+          // rather than typed in as literals, which is how `✚` came to need a
+          // hand-edit when the cache mark changed on 2026-08-26. One registry,
+          // one place to change it.
+          rows: [
             ...(show('cache')
               ? [
-                  t.cachePaysPerRing > 0
-                    ? `✚ CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} more per ring out. Caches and sites re-arm every run, so ground you know stays worth walking.`
-                    : `✚ CACHE — ${t.cachePays} tiles on the spot. Caches and sites re-arm every run, so ground you know stays worth walking.`,
+                  {
+                    glyph: LANDMARK_GLYPH.cache,
+                    text:
+                      t.cachePaysPerRing > 0
+                        ? `CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} more per ring out. Caches and sites re-arm every run, so ground you know stays worth walking.`
+                        : `CACHE — ${t.cachePays} tiles on the spot. Caches and sites re-arm every run, so ground you know stays worth walking.`,
+                  },
                 ]
               : []),
             // The bounty's RULE, not just its name (2026-08-21). It lived
@@ -2066,18 +2152,26 @@ export class Game {
             // player who looked away never learned what a bounty asks for.
             ...(show('site')
               ? [
-                  `★ SITE — points on the spot, and it opens a BOUNTY: pop a pocket of ${t.questNeed}+ tiles within ${t.questRadius} hexes of that star and the pop scores ×${t.questBonus}. One at a time; a new site replaces it.`,
+                  {
+                    glyph: LANDMARK_GLYPH.site,
+                    text: `SITE — points on the spot, and it opens a BOUNTY: pop a pocket of ${t.questNeed}+ tiles within ${t.questRadius} hexes of that star and the pop scores ×${t.questBonus}. One at a time; a new site replaces it.`,
+                  },
                 ]
               : []),
             ...(show('territory')
-              ? ['❖ TERRITORY — the ground around it becomes your field, for good.']
+              ? [
+                  {
+                    glyph: LANDMARK_GLYPH.territory,
+                    text: 'TERRITORY — the ground around it becomes your field, for good.',
+                  },
+                ]
               : []),
             ...(show('shrine')
-              ? ['◈ SHRINE — a system switched on for your world, permanently.']
-              : []),
-            ...(t.findEvery > 0 && t.findChance > 0
               ? [
-                  'And something else is hidden out there, deep and unmarked. It never glows. You stumble onto it, or you never know it was there.',
+                  {
+                    glyph: LANDMARK_GLYPH.shrine,
+                    text: 'SHRINE — a system switched on for your world, permanently.',
+                  },
                 ]
               : []),
           ],
@@ -2693,33 +2787,13 @@ export class Game {
   #showEventCard(
     text: string,
     action?: { readonly label: string; readonly run: () => void; readonly arm?: string },
-    rows?: readonly { readonly colour: Colour; readonly text: string }[],
+    rows?: readonly TipRow[],
   ): void {
     this.#showNote(null);
     const match = EVENT_GLYPH.exec(text);
     this.#el.eventCardGlyph.textContent = match?.[1] ?? '';
     this.#el.eventCardText.replaceChildren(...rarityInked(match?.[2] ?? text));
-    // The rows (2026-08-27), for a card that teaches a SET. Each is a swatch
-    // in the ground's own fill and the ground's own sentence — the swatch is
-    // a MARK, never the surface any text sits on, so the reading budget is
-    // untouched by it and every direction inherits the card unchanged.
-    this.#el.eventCardRows.replaceChildren(
-      ...(rows ?? []).map((row) => {
-        const line = document.createElement('p');
-        line.className = 'tip-row';
-        const swatch = document.createElement('span');
-        swatch.className = 'tip-swatch';
-        swatch.dataset['colour'] = row.colour;
-        // Decoration: the words beside it already name the ground, so a
-        // screen reader gains nothing but noise from the square.
-        swatch.setAttribute('aria-hidden', 'true');
-        const words = document.createElement('span');
-        words.className = 'tip-words';
-        words.replaceChildren(...rarityInked(row.text));
-        line.append(swatch, words);
-        return line;
-      }),
-    );
+    this.#el.eventCardRows.replaceChildren(...tipRows(rows));
     // A card with a choice grows its second button; GOT IT reads as staying.
     if (this.#eventAction !== null) {
       this.#eventAction.hidden = action === undefined;
@@ -2841,7 +2915,7 @@ export class Game {
     readonly id: TeachId;
     readonly text: string;
     /** A set-teaching card's rows (the four grounds). Absent for the rest. */
-    readonly rows?: readonly { readonly colour: Colour; readonly text: string }[];
+    readonly rows?: readonly TipRow[];
   } | null {
     const t = next.tuning;
     const met = this.#metSet();
@@ -3000,7 +3074,7 @@ export class Game {
    * are on get named, the rates are the run's own numbers, and the one fact
    * the fold's prices never say leads the close — luck is use-it-or-lose-it.
    */
-  #purseLesson(): string {
+  #purseLesson(): SetLesson {
     return purseLesson(this.#state.tuning, this.#theme);
   }
 
@@ -4154,11 +4228,14 @@ export class Game {
    * personality dial is off is simply not a row, the same honesty
    * `#colourLesson` already keeps for the single-colour case.
    */
-  #groundRows(): { readonly colour: Colour; readonly text: string }[] {
-    const rows: { colour: Colour; text: string }[] = [];
+  #groundRows(): TipRow[] {
+    const rows: TipRow[] = [];
     for (const colour of COLOURS) {
       const text = this.#colourLesson(colour);
-      if (text !== null) rows.push({ colour, text });
+      // Name, hue AND symbol — the draft card's own three channels (2026-08-27),
+      // so the one that survives colour blindness and a glance is present here
+      // too rather than the square being the only non-word cue.
+      if (text !== null) rows.push({ colour, text: `${COLOUR_MARK[colour]} ${text}` });
     }
     return rows;
   }

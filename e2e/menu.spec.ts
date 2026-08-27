@@ -516,6 +516,23 @@ test('the board’s camera chrome stays off the front door', async ({ page }) =>
   await expect(page.locator('#camera-toggle')).toBeVisible();
   await expect(page.locator('#sound-toggle')).toBeVisible();
 
+  // A held card covers the board too — and it is INSIDE the shell, so it
+  // inerts `#board` rather than `#game-shell`. The camera was painting over
+  // the card for the same z-index reason it painted over the door.
+  await page.locator('#board').click({ position: { x: 180, y: 240 } });
+  const card = page.locator('#event-card');
+  if (await card.isVisible()) {
+    await expect(camera).toBeHidden();
+    await page.locator('#event-card-dismiss').click();
+    await expect(card).toBeHidden();
+    await expect(camera).toBeVisible();
+  }
+
+  // So does the manual, which inerts the shell from outside it.
+  await page.locator('#help').click();
+  await expect(page.locator('#help-panel')).toBeVisible();
+  await expect(camera).toBeHidden();
+
   expect(errors).toEqual([]);
 });
 

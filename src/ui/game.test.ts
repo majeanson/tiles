@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { COLOUR_MARK } from '@theme/tokens';
+import { COLOUR_MARK, LANDMARK_GLYPH } from '@theme/tokens';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
-import { BARE_TUNING, TUNING, type Colour, type Tuning } from '@content/tuning';
+import { BARE_TUNING, COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
@@ -2393,7 +2393,10 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     expect(grown).toContain('RARE TILES');
     expect(grown).toContain('LUCK IS A PURSE');
     expect(grown).toContain('RELICS AND THE SHOP');
-    expect(grown).toContain('✚ CACHE');
+    // The destination rows wear the glyph the BOARD draws, read from the
+    // registry rather than typed in (2026-08-27): the mark is its own
+    // element now, so `textContent` runs them together.
+    expect(grown).toContain(`${LANDMARK_GLYPH.cache}CACHE`);
     expect(grown).not.toContain('More appears here as you meet it.');
   });
 
@@ -2633,6 +2636,9 @@ describe('teaching, drop by drop (2026-08-19)', () => {
         ctx.el.eventCardRows.querySelector(`.tip-swatch[data-colour="${colour}"]`),
       ).not.toBeNull();
     }
+    // Name, hue AND symbol — the draft card's own three channels (2026-08-27),
+    // so the channel that survives colour blindness is present here too.
+    for (const colour of COLOURS) expect(all).toContain(COLOUR_MARK[colour]);
     expect(dev.current().met).toContain('colours');
   });
 
@@ -3190,13 +3196,18 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
   // `#purseLesson` is the purse fold's first-contact card — armed only once
   // a shop hook exists to remember it was met (without one, `#met` answers
   // vacuously true and the card never fires).
-  const purseLessonText = (tuning: Tuning): string => {
+  const purseCard = (tuning: Tuning): { readonly lead: string; readonly rows: string[] } => {
     const ctx = build(1, tuning, {
       shop: { read: () => ({ ...EMPTY_PROGRESS, met: [] }), write: () => undefined },
     });
     ctx.game.start();
     ctx.el.purseToggle.click();
-    return ctx.el.eventCardText.textContent ?? '';
+    return {
+      lead: ctx.el.eventCardText.textContent ?? '',
+      rows: [...ctx.el.eventCardRows.querySelectorAll('.tip-row')].map(
+        (row) => row.textContent ?? '',
+      ),
+    };
   };
 
   /**
@@ -3208,14 +3219,35 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
    */
   it('teaches the whole purse on its first fold, naming each button as it reads', () => {
     const n = PLACEHOLDER.terrainNames;
-    expect(purseLessonText(TUNING)).toBe(
+    const t = TUNING;
+    const card = purseCard(t);
+
+    // The lead says the one thing every row shares, and the one thing no
+    // price on screen ever says: luck is use-it-or-lose-it.
+    expect(card.lead).toBe(
       'LUCK IS FOR SPENDING\n' +
-        'Every button here is priced in luck: REDRAW buys a fresh hand; ' +
-        `the four ground names (${n.green}, ${n.yellow}, ${n.red}, ${n.blue}) each buy a hand that leans that colour, and keep it leaning for the next few draws; ` +
-        'FORGE turns the card you have selected UNIQUE. ' +
-        'TITHE is the exit — the WHOLE purse traded for relics at 15%, better than dying on it.\n\n' +
-        "And you CAN lose it all: the run's end pays back only 5% of whatever is left, so a full purse you die on is mostly gone. Spend it.",
+        'Every button under your hand is priced in luck — and you CAN lose it all: ' +
+        "the run's end pays back only 5% of whatever is left, so a full purse you die " +
+        'on is mostly gone. Spend it.',
     );
+
+    /**
+     * One row per BUTTON, in the order the drawer draws them (2026-08-27,
+     * Marc: "make sure the luck is for spending card is explained with new
+     * lines, not a whole paragraph"). The four steers were a parenthesised
+     * list inside a semicolon list inside a clause; they are four buttons on
+     * screen, so they are four lines here — each wearing its ground's mark.
+     */
+    expect(card.rows).toEqual([
+      `REDRAW · ${t.luckRerollCost} — throw this hand away for a new one.`,
+      ...COLOURS.map(
+        (c) =>
+          `${COLOUR_MARK[c]} ${n[c]} · ${t.luckSteerCost} — a hand leaning ${n[c]}, ` +
+          `and the next ${t.colourBiasDraws} draws with it.`,
+      ),
+      `FORGE · ${t.luckForgeCost} — turn the card you have selected UNIQUE.`,
+      `TITHE — the WHOLE purse traded for relics at ${Math.round(t.titheRate * 100)}%, better than dying on it.`,
+    ]);
   });
 
   /**
@@ -3236,7 +3268,12 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
     // One click: the fold opens AND the card fires, which is the single
     // state where both the words and the buttons exist together.
     ctx.el.purseToggle.click();
-    const card = ctx.el.eventCardText.textContent ?? '';
+    // The rows are where the buttons are named now, so the card is both
+    // halves read together — the lead carries no button face at all.
+    const card = [
+      ctx.el.eventCardText.textContent ?? '',
+      ...[...ctx.el.eventCardRows.querySelectorAll('.tip-row')].map((r) => r.textContent ?? ''),
+    ].join('\n');
     const faces = [...ctx.el.spends.querySelectorAll('button')].map(
       (b) => (b.textContent ?? '').trim().split(' ')[0] ?? '',
     );
@@ -3248,19 +3285,19 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
   });
 
   it('keeps the lesson honest with every row and TITHE off', () => {
-    expect(purseLessonText(BARE_TUNING)).toBe(
+    const card = purseCard(BARE_TUNING);
+    expect(card.lead).toBe(
       'LUCK IS FOR SPENDING\n' +
-        'Every button here is priced in luck.\n\n' +
-        'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.',
+        'Every button under your hand is priced in luck — and you CAN lose it all: ' +
+        'whatever is left when the run ends is lost outright. Spend it.',
     );
+    // No priced button, no rows: a list of nothing is worse than no list.
+    expect(card.rows).toEqual([]);
   });
 
   it('names just the rows that are actually priced', () => {
-    expect(purseLessonText({ ...BARE_TUNING, luckRerollCost: 12 })).toBe(
-      'LUCK IS FOR SPENDING\n' +
-        'Every button here is priced in luck: REDRAW buys a fresh hand.\n\n' +
-        'And you CAN lose it all: whatever is left when the run ends is lost outright. Spend it.',
-    );
+    const card = purseCard({ ...BARE_TUNING, luckRerollCost: 12 });
+    expect(card.rows).toEqual(['REDRAW · 12 — throw this hand away for a new one.']);
   });
 
   // `#statNote` — the tap-a-symbol contract on the stat row itself.

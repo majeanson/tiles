@@ -623,9 +623,15 @@ button.fame-run[aria-expanded='true'] {
    `inert` was no help and was never going to be: it takes a control out of
    the tab order and out of hit-testing, and says nothing at all about paint.
    It is still the right CONDITION though — it is precisely the attribute
-   that means "this shell is not the thing you are looking at", worn while
-   the door is up and again whenever a panel covers the board. */
-#game-shell[inert] #camera {
+   that means "this is not the thing you are looking at", worn while the door
+   is up and again whenever anything covers the board.
+
+   ANY inert ancestor, not one named element: the front door and the door's
+   panels inert `#game-shell`, but an event card lives INSIDE the shell and
+   inerts its own siblings instead — so it is `#board` that goes inert there,
+   and the camera was painting over the held card too. A descendant selector
+   catches both, and whatever the next surface decides to cover. */
+[inert] #camera {
   display: none;
 }
 
@@ -1998,6 +2004,31 @@ button.armed {
 
 .tip-swatch[data-colour='blue'] {
   background: var(--tile-blue, #3f6f96);
+}
+
+/* The same column, for a row that is a DESTINATION rather than a ground
+   (2026-08-27): the glyph the board itself draws, at the size the words are
+   read at. In `--ink` rather than any accent, because a mark answers to the
+   same reading budget everything else on a panel does — and because the
+   glyph IS the information here, where the swatch's hue is a third channel
+   on top of a name that already says it. */
+.tip-glyph {
+  flex: none;
+  width: 16px;
+  margin-top: 1px;
+  color: var(--ink, #e6e9f0);
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* A row with no mark of its own — REDRAW, FORGE, TITHE. The column is still
+   reserved: the point of a list is that the sentences start in one place,
+   and the three spends that are actions rather than grounds get no invented
+   symbol to make them look like the four that are. */
+.tip-blank {
+  border-color: transparent;
+  background: none;
 }
 
 .tip-words {
