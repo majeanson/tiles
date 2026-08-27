@@ -4200,8 +4200,8 @@ export class Game {
   #renderDraft(hud: HudView): void {
     // Rebuilt rather than diffed: three buttons, redrawn a few hundred times a
     // run. A diffing scheme here would be more code than the thing it speeds up.
-    this.#el.draft.replaceChildren(
-      ...hud.draft.map((tile, index) => {
+    const cards: HTMLElement[] = Array.from(
+      hud.draft.map((tile, index) => {
         const button = document.createElement('button');
         button.className = 'tile';
         button.dataset['colour'] = tile.colour;
@@ -4295,6 +4295,31 @@ export class Game {
       }),
     );
 
+    /**
+     * The dealt-but-missing card keeps its place (Marc, 2026-08-27: "if we
+     * start with 4 cards, 2 empty hold, and we hold one, it changes the cards
+     * back to only 4 for a few moment").
+     *
+     * Stashing into an EMPTY slot is the one move that shortens the hand:
+     * `hold` filters the selected tile out of the draft and nothing refills it
+     * until the next placement. The stash was never the unstable half — it has
+     * always drawn one card per SLOT, empty ones included — but the hand was
+     * being laid out from how many cards it currently HELD, so 4 dealt + 2
+     * slots (six, a 3-wide grid of two rows) became five for those two taps,
+     * which is one row of five, which moves every card and the shelf with it.
+     *
+     * A spacer holds the gap open instead: same width, same height, no paint,
+     * out of the tab order and out of the accessibility tree. Nothing on
+     * screen moves between putting a tile away and putting the next one down.
+     */
+    for (let i = cards.length; i < hud.draftWidth; i++) {
+      const gap = document.createElement('div');
+      gap.className = 'tile gap';
+      gap.setAttribute('aria-hidden', 'true');
+      cards.push(gap);
+    }
+    this.#el.draft.replaceChildren(...cards);
+
     // The stash draws BESIDE the hand since 2026-08-27, not under it — see
     // index.html. Rendered here rather than in its own pass so the hand and
     // the shelf can never disagree about which frame they belong to.
@@ -4312,8 +4337,12 @@ export class Game {
      * the name is one of the three channels a card says its colour in.
      * Seven and eight fall back to four across, which is the widest row
      * that still leaves a card readable.
+     *
+     * Counted from `cards`, not from `hud.draft` — the spacers above are part
+     * of the shape on purpose, so a hand one card short is still the same
+     * grid.
      */
-    const total = hud.draft.length + held.length;
+    const total = cards.length + held.length;
     const cols = total <= 5 ? Math.max(1, total) : total === 6 ? 3 : 4;
     this.#el.hand.style.setProperty('--hand-cols', String(cols));
 

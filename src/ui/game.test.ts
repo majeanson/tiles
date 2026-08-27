@@ -3291,6 +3291,70 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
   });
 
   /**
+   * The hand does not change shape when you stash (Marc, 2026-08-27, from the
+   * phone: "if we start with 4 cards, 2 empty hold, and we hold one, it
+   * changes the cards back to only 4 for a few moment").
+   *
+   * `hold` into an EMPTY slot is the one move that shortens the draft — the
+   * tile leaves the hand and nothing refills it until the next placement — so
+   * a hand laid out from `draft.length` went from six items to five for those
+   * two taps. Five is one row of five, not a 3-wide grid of two, which moves
+   * every card on screen and takes the shelf out of its column with them.
+   *
+   * The fix is the shape being read from what the hand DEALS, with a spacer
+   * holding the gap. This test is the pin: same columns, same orders, same
+   * child count, before and after.
+   */
+  it('keeps the hand the same shape when a card goes to an empty stash slot', () => {
+    const T: Tuning = { ...TUNING, draftWidth: 4, holdSlots: 2 };
+    const base = newRun(9, T);
+    // Both slots EMPTY, a card in hand — the exact state he was in.
+    const ctx = build(1, T, { resume: { ...base, held: [], selected: 0 } });
+    ctx.game.start();
+
+    const shape = (): {
+      cols: string;
+      children: number;
+      cards: number;
+      draft: string[];
+      stash: string[];
+    } => {
+      const draft = [...ctx.el.draft.children] as HTMLElement[];
+      return {
+        cols: ctx.el.hand.style.getPropertyValue('--hand-cols'),
+        children: draft.length,
+        // The dealt cards only: a spacer is not a card and must never be one.
+        cards: draft.filter((c) => c.tagName === 'BUTTON').length,
+        draft: draft.map((c) => c.style.order),
+        stash: ([...ctx.el.stash.children] as HTMLElement[]).map((c) => c.style.order),
+      };
+    };
+
+    const before = shape();
+    expect(before).toEqual({
+      cols: '3',
+      children: 4,
+      cards: 4,
+      draft: ['0', '1', '3', '4'],
+      stash: ['2', '5'],
+    });
+
+    // Tap the first (empty) HOLD card: the selected tile goes to the shelf.
+    (ctx.el.stash.children[0] as HTMLButtonElement).click();
+
+    const after = shape();
+    // One fewer real card — the draft genuinely IS short here...
+    expect(after.cards).toBe(3);
+    // ...and everything a thumb can see is exactly where it was.
+    expect({ ...after, cards: 4 }).toEqual(before);
+    // The spacer is out of the accessibility tree and out of the tab order:
+    // it is a hole being held open, not a control that does nothing.
+    const gap = ctx.el.draft.querySelector('.gap');
+    expect(gap?.tagName).toBe('DIV');
+    expect(gap?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  /**
    * The lens's way out (Marc, 2026-08-27: "when the lens is on, make sure we
    * add a button on top of ? to clear the lens easily, sometimes its hard
    * with tiles in hand").

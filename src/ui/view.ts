@@ -648,6 +648,15 @@ export type HudView = {
     readonly selected: boolean;
   }[];
 
+  /**
+   * How many cards the hand DEALS, which is not always how many it is
+   * holding: stashing into an empty slot takes the card out of the draft and
+   * nothing puts one back until the next placement. The hand is laid out from
+   * this rather than from `draft.length`, so its shape does not change under
+   * a thumb for the two taps in between (Marc, 2026-08-27).
+   */
+  readonly draftWidth: number;
+
   /** Whether the stash exists at all (`tuning.holdSlots > 0`). */
   readonly canHold: boolean;
   /** How many slots the stash has — 1, or 2 once that shrine is woken. */
@@ -785,6 +794,7 @@ export function toHudView(
       rarity: tile.rarity,
       selected: i === state.selected,
     })),
+    draftWidth: Math.max(0, state.tuning.draftWidth),
 
     canHold: state.tuning.holdSlots > 0,
     holdSlots: Math.max(0, state.tuning.holdSlots),

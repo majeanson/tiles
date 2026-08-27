@@ -968,6 +968,19 @@ button.fame-run[aria-expanded='true'] {
   display: none;
 }
 
+/* The gap a stashed card leaves behind (2026-08-27). Not a card and not a
+   slot to tap: it exists so the grid keeps its shape for the two taps
+   between putting a tile away and putting the next one down. It is a `div`,
+   so it carries none of the button block's border, background or 44px, and
+   `visibility` rather than `display` because occupying the space IS the job.
+
+   The same doctrine as `#action-bar`'s min-height, one screen up: a bar that
+   holds its place whether or not anything is in it. Reserving room costs
+   nothing; a board that resizes under a reaching thumb costs the tap. */
+.tile.gap {
+  visibility: hidden;
+}
+
 /* 44px is the smallest target a thumb hits reliably; everything here is sized
    from that up rather than down.
 
