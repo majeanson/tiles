@@ -4306,22 +4306,32 @@ export class Game {
     this.#el.hand.style.setProperty('--hand-cols', String(cols));
 
     /**
-     * The held cards go to the ENDS of the row they land on (Marc,
-     * 2026-08-27: "in a 3 column 2 row situation, put them 1 at each end of
-     * the row").
+     * The held cards take the LAST COLUMN, one per row (Marc, 2026-08-27,
+     * correcting a first reading of "1 at each end of the row" that put both
+     * on the bottom row, one at either side):
      *
-     * DOM order is the whole draft and then the whole stash, so merging the
-     * two rows clumped both held cards into the bottom-right corner — which
-     * reads as a leftover rather than as a shelf. `order` moves them without
-     * moving them in the document, so the tab order still walks the hand
-     * first and every test that indexes `#draft`/`#stash` is untouched.
+     *     c c h
+     *     c c h
      *
-     * With two held and six cards this is exactly the layout he described:
-     * three dealt across the top, and the bottom row held-dealt-held.
+     * The stash is a column down the right edge, so the hand reads
+     * left-to-right as dealt cards and the shelf stands beside it — rather
+     * than the two held cards clumping into the bottom-right corner, which
+     * is where plain DOM order puts them (the whole draft, then the whole
+     * stash) and which reads as a leftover.
+     *
+     * `order` moves them without moving them in the document, so the tab
+     * order still walks the hand first and every test that indexes
+     * `#draft`/`#stash` is untouched.
+     *
+     * One per row only when there is exactly one per row to give; any other
+     * count (two held on a single row, one held on two rows) simply takes
+     * the end, because a column of one is not a column.
      */
-    const lastRowStart = cols * Math.floor(Math.max(0, total - 1) / cols);
+    const rows = Math.max(1, Math.ceil(total / cols));
     const heldSlots =
-      held.length === 2 ? [lastRowStart, total - 1] : held.length === 1 ? [total - 1] : [];
+      held.length === rows
+        ? Array.from({ length: rows }, (_, r) => Math.min((r + 1) * cols - 1, total - 1))
+        : Array.from({ length: held.length }, (_, i) => total - held.length + i);
     held.forEach((card, i) => {
       card.style.order = String(heldSlots[i] ?? total);
     });

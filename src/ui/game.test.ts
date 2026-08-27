@@ -3211,6 +3211,40 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
   });
 
   /**
+   * The hand's grid, pinned as Marc drew it (2026-08-27):
+   *
+   *     c c h
+   *     c c h
+   *
+   * The held cards are the last COLUMN, one per row — not both on the bottom
+   * row at either side, which is what "1 at each end of the row" was first
+   * read as. Asserted through flex `order`, since that is what positions
+   * them: DOM order is the whole draft then the whole stash, and moving them
+   * in the document would cost the tab order its shape.
+   */
+  it('lays the hand out as dealt cards with the stash down the right edge', () => {
+    // Four dealt and two held is the shape he drew: the widened draft (the
+    // first shrine's unlock) and both stash slots (the second's).
+    const T: Tuning = { ...TUNING, draftWidth: 4, holdSlots: 2 };
+    const base = newRun(9, T);
+    const ctx = build(1, T, {
+      resume: { ...base, held: [base.draft[0]!, base.draft[1]!] },
+    });
+    ctx.game.start();
+
+    const draft = [...ctx.el.draft.children] as HTMLElement[];
+    const stash = [...ctx.el.stash.children] as HTMLElement[];
+    expect(draft).toHaveLength(4);
+    expect(stash).toHaveLength(2);
+
+    expect(ctx.el.hand.style.getPropertyValue('--hand-cols')).toBe('3');
+    // Row 1 ends on a held card, and so does row 2.
+    expect(stash.map((c) => c.style.order)).toEqual(['2', '5']);
+    // The dealt cards fill everything else, in the order they were dealt.
+    expect(draft.map((c) => c.style.order)).toEqual(['0', '1', '3', '4']);
+  });
+
+  /**
    * The lens's way out (Marc, 2026-08-27: "when the lens is on, make sure we
    * add a button on top of ? to clear the lens easily, sometimes its hard
    * with tiles in hand").
