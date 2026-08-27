@@ -613,6 +613,22 @@ button.fame-run[aria-expanded='true'] {
   overflow: hidden;
 }
 
+/* The board's chrome belongs to the board (Marc, on the phone, 2026-08-27:
+   "i can see the ♪ sound, here/fit inside the home screen"). The z-index
+   above clears the toast, but it also TIES the front door's own 3 — and a
+   tie is broken by document order, where #game-shell comes last. So the ?,
+   ♪ and FIT buttons painted straight through the door they were meant to be
+   behind.
+
+   `inert` was no help and was never going to be: it takes a control out of
+   the tab order and out of hit-testing, and says nothing at all about paint.
+   It is still the right CONDITION though — it is precisely the attribute
+   that means "this shell is not the thing you are looking at", worn while
+   the door is up and again whenever a panel covers the board. */
+#game-shell[inert] #camera {
+  display: none;
+}
+
 #camera button {
   flex: 0 0 auto;
   min-height: 40px;

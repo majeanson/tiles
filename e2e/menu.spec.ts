@@ -477,6 +477,49 @@ test('a backup survives a wipe and puts the same world back', async ({ page }) =
 });
 
 /**
+ * The board's chrome belongs to the board (Marc, on the phone, 2026-08-27:
+ * "i can see the ♪ sound, here/fit inside the home screen (not in play mode
+ * only anymore)").
+ *
+ * `#camera` was raised to z-index 3 to clear the toast, which TIES it with
+ * the front door — and a tie is broken by document order, where #game-shell
+ * comes last. So the ?, ♪ and FIT buttons painted straight through the door
+ * they were supposed to be behind. `inert` was no help: it takes a control
+ * out of the tab order and out of hit-testing, and does nothing whatsoever
+ * about paint.
+ *
+ * Pinned by what a THUMB would find, not only by the style: the point where
+ * the camera sits has to belong to the door.
+ */
+test('the board’s camera chrome stays off the front door', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  const camera = page.locator('#camera');
+  await expect(camera).toBeHidden();
+
+  // Whatever is under that corner is the door's, not the board's.
+  const owner = await page.evaluate(() => {
+    const box = document.getElementById('board')?.getBoundingClientRect();
+    if (box === undefined) return 'no board';
+    // The camera's own corner: 8px in from bottom-right of #board.
+    const el = document.elementFromPoint(box.right - 30, box.bottom - 30);
+    return el?.closest('#camera') !== null && el?.closest('#camera') !== undefined
+      ? 'camera'
+      : 'not camera';
+  });
+  expect(owner).toBe('not camera');
+
+  // And it comes back the moment the board is actually in play.
+  await begin(page);
+  await expect(camera).toBeVisible();
+  await expect(page.locator('#camera-toggle')).toBeVisible();
+  await expect(page.locator('#sound-toggle')).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+/**
  * A panel that covers the game actually covers it (2026-08-21).
  *
  * "Modal" was a paint job: `inert` appeared once in the whole codebase and
