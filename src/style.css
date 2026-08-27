@@ -906,12 +906,41 @@ button.fame-run[aria-expanded='true'] {
   padding: 8px 10px;
 }
 
+/* The hand and the bar: two wrapping rows, and the whole of the bottom
+   (2026-08-27, Marc from the phone: "we lost too much game space ... one
+   bottom bar of action and nothing more + tiles on top").
+
+   `display: contents` on the four inner containers is what makes this one
+   row each. Each keeps its own element — `#draft`, `#stash`, `#actions` and
+   `#actions-more` are rendered by separate passes and the tests, the teaching
+   ledger and the hidden-when-empty rules all address them by id — but their
+   CHILDREN become items of the row above, so a held tile sits beside the hand
+   and SACRIFICE beside POP, instead of each costing a row of board.
+
+   Both wrap on purpose. The hand is 3-6 cards plus 0-2 held slots and the bar
+   is 1-4 buttons, and every combination has to land somewhere sensible
+   without a media query guessing at it. */
+#hand,
+#action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* How many cards a row takes. Written by `#renderDraft` from the hand's own
+   size, because CSS cannot count the children of two containers it has
+   flattened with `display: contents`. The declaration here is the floor a
+   card falls back to if script never runs. */
+#hand {
+  --hand-cols: 4;
+}
+
 #draft,
 #stash,
-#actions {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
+#actions,
+#actions-more {
+  display: contents;
 }
 
 /* The stash reads as a shelf, not a second hand: narrower cards, held in
@@ -1045,12 +1074,22 @@ button.armed {
  * it survive a change of palette that puts two of them closer together.
  */
 .tile {
-  /* 68px, up from 56 (2026-08-26, "make sure bottom space is used
-     properly"): the hint row left the column and the empty POP row stopped
-     spending gaps, and the hand — the thing a thumb actually aims at — is
-     what earns the reclaimed height. */
-  max-width: 120px;
-  min-height: 68px;
+  /* FOUR to a row, then wrap (2026-08-27). A card was `flex: 1 1 0` and grew
+     to fill whatever row it was on, which is why merging the stash in would
+     have drawn two held tiles at half the screen each. A quarter of the row
+     is the width instead, so four deal as four, five and six wrap under
+     them at the SAME size, and a lone held card never inflates.
+     `min-width` keeps the fourth card thumbable on the narrowest phone. */
+  flex: 0 0 auto;
+  width: calc((100% - (var(--hand-cols, 4) - 1) * 6px) / var(--hand-cols, 4));
+  /* The thumb floor, and the wrap trigger with it: a row that would draw
+     cards under this wraps instead of shrinking past what a finger can hit. */
+  min-width: 44px;
+  max-width: 108px;
+  /* 62px, down from 68 (2026-08-27): the stash's whole row came off the
+     column, so the hand can pay 6px back to the board and still clear the
+     44px a thumb needs by a wide margin. */
+  min-height: 62px;
   border-width: 2px;
   color: var(--ink, #e8ecf4);
   font-size: 0.625rem;
@@ -2369,34 +2408,56 @@ button.help-tab[data-on='true'] {
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
 }
 
-/* POP owns its row and reads as the primary action. */
-#actions button {
+/* Every action shares the one bar and splits it evenly (2026-08-27). POP
+   still LEADS — it is first in the row and the only one at full ink — but it
+   no longer owns a row of its own, which is where a third of the reclaimed
+   height came from. */
+#action-bar button {
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 52px;
-  font-size: 1.02em;
-  letter-spacing: 0.06em;
+  padding: 0 6px;
+  letter-spacing: 0.04em;
 }
 
-/* The variations: present, priced, and visibly secondary. */
-#actions-more {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
+/* The variations: present, priced, and visibly secondary — by ink now
+   rather than by sitting on a lower row, since there is only one row. */
+#actions-more button {
+  opacity: 0.85;
 }
 
+/* An empty container still collects a gap, and both of these are empty for
+   most of a run. `display: none` beats the `display: contents` above by
+   specificity, which is what makes these keep working after the merge. */
+#actions:not(:has(button:not([hidden]))),
 #actions-more:not(:has(button:not([hidden]))) {
   display: none;
 }
 
-/* The POP row too (2026-08-26): with every harvest button hidden the empty
-   div still sat in the flex flow collecting gaps — part of the dead band
-   Marc's screenshot showed between the stash and the purse line. */
-#actions:not(:has(button:not([hidden]))) {
-  display: none;
+/* What it does, and what it pays (Marc, 2026-08-27: "make sure we know how
+   much we sacrifice for, same for luck"). A third of a phone row cannot hold
+   "SACRIFICE · 1 relics for the shop" on one line, and dropping the number
+   to make it fit would have removed the only reason to read the button. So
+   the number gets its own quieter line under the verb. */
+.act-label {
+  display: block;
+  font-size: 0.84em;
+  line-height: 1.2;
 }
 
-#actions-more button {
-  min-height: 40px;
-  font-size: 0.86em;
+.act-value {
+  display: block;
+  font-size: 0.72em;
+  line-height: 1.25;
+  color: var(--ink-dim, #8a91a0);
+}
+
+/* The value inherits the button's own voice wherever the button has one —
+   the bounty's accent, SACRIFICE's danger red — rather than staying dim and
+   reading as a different control's number. */
+#harvest-burn .act-value,
+.bounty .act-value {
+  color: inherit;
   opacity: 0.85;
 }
 
@@ -2419,26 +2480,36 @@ button.help-tab[data-on='true'] {
   gap: 8px;
 }
 
-/* A drawer handle, not another button (Marc, 2026-08-26: "make sure it has
-   different visuals for other buttons"). Every other control in this column
-   is a boxed action; this one is a door. It reads as a full-width bar over
-   a single hairline — no box, no fill — and since the spends grid sits
-   BEFORE it in the column, opening unfolds the shop UPWARD while this
-   handle keeps its exact place at the bottom of the screen. */
+/* What a draw is currently worth, over the prices that answer to it
+   (2026-08-27). Spans the grid so it reads as a heading for the shop rather
+   than as a fourth thing for sale. */
+.spend-odds {
+  grid-column: 1 / -1;
+  margin: 0;
+  text-align: center;
+  font-size: 0.72em;
+  letter-spacing: var(--label-tracking, 0.04em);
+  color: var(--ink-faint, #767d8d);
+}
+
+/* The purse door, now a button IN the bar (Marc, 2026-08-27, choosing where
+   it should go: "a button in the bar").
+
+   It was a full-width hairline handle on a row of its own — a door rather
+   than an action, which was the right distinction while it had a row to
+   spend on saying so. With one bar there is no row to spend, and a door
+   nobody can find is worse than one that looks like its neighbours. It keeps
+   the quieter ink and no fill, so it still reads as the odd one out in the
+   row; the spend grid still unfolds ABOVE the bar, so the door does not move
+   when it opens. */
 #purse-toggle {
-  min-height: 44px;
-  flex: 1 1 auto;
-  font-size: 0.84em;
   color: var(--ink-faint, #767d8d);
   background: none;
-  border: 0;
-  border-top: 1px solid var(--panel-edge, #3a4150);
-  border-radius: 0;
 }
 
 /* Affordable: the fold advertises itself at the moment it can be used. */
 #purse-toggle.live {
-  border-top-color: var(--accent, #d7b45a);
+  border-color: var(--accent, #d7b45a);
   color: var(--accent, #d7b45a);
 }
 

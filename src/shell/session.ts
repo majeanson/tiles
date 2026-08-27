@@ -1231,6 +1231,7 @@ export async function startSession(route: Route): Promise<Session> {
     board: required('board'),
     stats: required('stats'),
     hint: required('hint'),
+    hand: required('hand'),
     draft: required('draft'),
     stash: required('stash'),
     harvestTiles: required<HTMLButtonElement>('harvest-tiles'),

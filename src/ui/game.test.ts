@@ -130,8 +130,8 @@ function build(
       </div>
     </div>
     <p id="hint" hidden></p>
-    <div id="controls"><div id="draft"></div>
-      <div id="stash"></div></div>
+    <div id="controls"><div id="hand"><div id="draft"></div>
+      <div id="stash"></div></div></div>
     <button id="harvest-tiles"></button>
     <button id="harvest-points"></button>
     <button id="harvest-treasure" hidden></button>
@@ -150,6 +150,7 @@ function build(
     board: pick('board'),
     stats: pick('stats'),
     hint: pick('hint'),
+    hand: pick('hand'),
     draft: pick('draft'),
     stash: pick('stash'),
     spends: pick('spends'),
@@ -1821,14 +1822,28 @@ describe('the purse, folded', () => {
     expect(toggle.textContent).toContain(String(cheapest));
   });
 
-  // The odds moved here from the hint line (Stage 2, 2026-08-18) — closed
-  // only, since open already shows the priced spends themselves.
-  it('carries the rare-tile odds when closed, and steps aside when open', () => {
+  /**
+   * The odds have moved twice, both times because the surface under them ran
+   * out of room. Off the hint line onto the closed toggle (Stage 2,
+   * 2026-08-18); off the toggle into the OPEN drawer (2026-08-27), when the
+   * toggle became one button in a shared bar and "0 LUCK MAGIC 7% · UNIQUE
+   * 1.5% · NEXT 12 ▸" stopped fitting on a quarter of a phone row.
+   *
+   * The drawer is where they were always most useful: FORGE is priced right
+   * under them, and the odds are exactly the number that says whether buying
+   * a rare beats waiting to be dealt one.
+   */
+  it('shows the rare-tile odds in the drawer, beside the prices they inform', () => {
     const { ctx, toggle } = shop();
-    expect(toggle.textContent).toMatch(/magic .+ unique/);
+    // Closed, the bar's button carries the purse and the next price only.
+    expect(toggle.textContent).not.toMatch(/magic/i);
+    expect(toggle.textContent).toMatch(/LUCK/);
+
     toggle.click();
-    expect(toggle.textContent).not.toMatch(/magic/);
     expect(ctx.el.spends.hidden).toBe(false);
+    const odds = ctx.el.spends.querySelector('.spend-odds');
+    expect(odds).not.toBeNull();
+    expect(odds?.textContent ?? '').toMatch(/magic .+ unique/i);
   });
 });
 

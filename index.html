@@ -427,40 +427,51 @@
 
         <!-- Both payouts sit on screen with their real numbers at all times. The
            harvest is only a decision if you can see what you are giving up. -->
+        <!-- ONE hand, ONE bar (Marc, 2026-08-27, from the phone: "we lost too
+             much game space — make sure we do a revamp so its one bottom bar
+             of action and nothing more + tiles on top").
+
+             The bottom had grown to five stacked rows — hand, stash, POP,
+             the variations, the purse handle — and on a full screen they
+             took more height than the board did. There are two rows now:
+             every card in one wrapping hand, and every action in one bar.
+             Both WRAP rather than assuming a count, because the hand is 3-6
+             cards plus 0-2 held slots and the bar is 1-4 buttons depending
+             on what this pocket and this world actually offer. -->
         <div id="controls">
-          <div id="draft"></div>
-
-          <!-- The stash, on its own row under the hand (Marc, 2026-08-21).
-               It rode at the end of the draft row while there was one slot;
-               with two, a second card crowded a phone row that already
-               carries three or four. Its own row, centre-justified like the
-               hand above it, so whatever the counts are the cards stay under
-               the thumb rather than drifting to an edge. -->
-          <div id="stash"></div>
-
-          <!-- POP is the decision; everything else is a variation on it. So POP
-             gets the row, and the variations get a quieter one underneath —
-             five equal buttons wrapping their own labels was the crammed thing
-             Marc was looking at. -->
-          <div id="actions">
-            <button id="harvest-tiles" type="button"></button>
-            <button id="harvest-points" type="button" hidden></button>
-          </div>
-          <div id="actions-more">
-            <button id="harvest-treasure" type="button" hidden></button>
-            <button id="harvest-burn" type="button" hidden></button>
+          <!-- The hand: the draft and the stash as one wrapping row. The two
+               keep their own containers (each is rendered by its own pass,
+               and the stash reads as a shelf) but `display: contents` puts
+               their cards in one flow, so a held tile sits beside the hand
+               instead of costing a whole row of screen. -->
+          <div id="hand">
+            <div id="draft"></div>
+            <div id="stash"></div>
           </div>
 
-          <!-- The luck purse, folded. Open it and it is a shop; closed it is one
-             line that says what you are carrying — and lights up when there is
-             something you can actually afford. The spends sit BEFORE the
-             toggle on purpose (Marc, 2026-08-26: "make sure it stays at the
-             same place — opens up"): the toggle is the bottom-most control,
-             so the shop has to unfold ABOVE it, and with the grid first in
-             the column the toggle never moves when it opens. -->
+          <!-- The spend grid unfolds ABOVE the bar (Marc, 2026-08-26: "make
+               sure it stays at the same place — opens up"), so the bar keeps
+               its exact place at the bottom of the screen when it opens. -->
           <div id="purse" hidden>
             <div id="spends" hidden></div>
-            <button id="purse-toggle" type="button" aria-expanded="false"></button>
+          </div>
+
+          <!-- The one bar. POP is the decision and leads; the variations and
+               the purse door sit beside it rather than under it. Every button
+               says what it PAYS as well as what it does (Marc: "make sure we
+               know how much we sacrifice for, same for luck") — a second,
+               quieter line, because a third of a phone row has no space for
+               "SACRIFICE · 1 relics for the shop" on one. -->
+          <div id="action-bar">
+            <div id="actions">
+              <button id="harvest-tiles" type="button"></button>
+              <button id="harvest-points" type="button" hidden></button>
+            </div>
+            <div id="actions-more">
+              <button id="harvest-treasure" type="button" hidden></button>
+              <button id="harvest-burn" type="button" hidden></button>
+            </div>
+            <button id="purse-toggle" type="button" aria-expanded="false" hidden></button>
           </div>
         </div>
 

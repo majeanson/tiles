@@ -108,9 +108,14 @@ export type Elements = {
   readonly board: HTMLElement;
   readonly stats: HTMLElement;
   readonly hint: HTMLElement;
+  /** The hand as one wrapping row: the draft and the stash together
+   *  (2026-08-27). It carries `--hand-cols`, which is how many cards a row
+   *  takes — see `#renderDraft`. */
+  readonly hand: HTMLElement;
   readonly draft: HTMLElement;
-  /** The stash row, under the hand. Empty (and collapsed) where there is no
-   *  stash — a tiles-only game, or OPEN HAND worn. */
+  /** The held cards. Empty (and collapsed) where there is no stash — a
+   *  tiles-only game, or OPEN HAND worn. Drawn inside `hand`, beside the
+   *  draft rather than on a row of its own. */
   readonly stash: HTMLElement;
   readonly harvestTiles: HTMLButtonElement;
   readonly harvestPoints: HTMLButtonElement;
@@ -449,6 +454,29 @@ function rarityInked(text: string): (Node | string)[] {
   }
   if (last < text.length) parts.push(text.slice(last));
   return parts;
+}
+
+/**
+ * An action button: what it does, and what it pays.
+ *
+ * Two lines since 2026-08-27 (Marc: "make sure we know how much we sacrifice
+ * for, same for luck"). Every harvest button used to own a full-width row and
+ * could say "SACRIFICE · 1 relics for the shop" on one line; sharing one bar
+ * they get a third of a phone, and the honest way to lose the width is to
+ * lose the FILLER — the verb on top, the number under it, and the words that
+ * were neither dropped.
+ *
+ * `rarityInked` on the value so TAKE's MAGIC and UNIQUE keep their colours
+ * here as everywhere else.
+ */
+function actButton(button: HTMLButtonElement, label: string, value: string): void {
+  const verb = document.createElement('span');
+  verb.className = 'act-label';
+  verb.textContent = label;
+  const paid = document.createElement('span');
+  paid.className = 'act-value';
+  paid.replaceChildren(...rarityInked(value));
+  button.replaceChildren(verb, paid);
 }
 
 /**
@@ -2484,13 +2512,27 @@ export class Game {
     return hud.luck > 0 || this.#met('luck');
   }
 
+  /** What a draw is currently worth, above the prices it informs. */
+  #oddsLine(odds: string): HTMLElement {
+    const line = document.createElement('p');
+    line.className = 'spend-odds';
+    line.replaceChildren(...rarityInked(odds));
+    return line;
+  }
+
   #renderSpends(hud: HudView): void {
     // The purse fold arrives WITH the purse: until this device has earned
     // its first luck — or been taught what luck is — a row of prices for a
     // currency that does not exist yet is chrome explaining itself to nobody.
     const luckVisible = this.#luckVisible(hud);
-    this.#el.purse.hidden = hud.spends.length === 0 || !luckVisible;
-    if (hud.spends.length === 0 || !luckVisible) {
+    // The door and the drawer are separate elements since 2026-08-27 — the
+    // door moved into the action bar and the drawer stayed above it — so the
+    // one gate has to be written to both rather than to the box that used to
+    // contain them.
+    const noPurse = hud.spends.length === 0 || !luckVisible;
+    this.#el.purse.hidden = noPurse;
+    this.#el.purseToggle.hidden = noPurse;
+    if (noPurse) {
       this.#el.spends.replaceChildren();
       return;
     }
@@ -2514,13 +2556,15 @@ export class Game {
     // 2026-08-18): they are what luck buys, and this is the one place luck
     // is already the subject. Closed-state only — open already shows the
     // priced spends, which is the shop's own answer to "what does luck do".
-    const odds = hud.odds === null || open ? '' : `  ${hud.odds}`;
-    this.#el.purseToggle.replaceChildren(
-      ...rarityInked(
-        open
-          ? `${hud.luck} LUCK  ▾`
-          : `${hud.luck} LUCK${odds}  ${canBuy ? '· SPEND' : `· next ${cheapest}`}  ▸`,
-      ),
+    // The odds left this button on 2026-08-27: they were the tail of a
+    // full-width line ("0 LUCK MAGIC 7% · UNIQUE 1.5% · NEXT 12 ▸") that no
+    // longer exists, and a quarter of a phone row cannot carry them. They
+    // are still one tap away — the drawer itself prices every spend, and
+    // the LUCK stat explains the purse where it sits.
+    actButton(
+      this.#el.purseToggle,
+      open ? 'LUCK ▾' : 'LUCK ▸',
+      open ? String(hud.luck) : `${hud.luck} · ${canBuy ? 'SPEND' : `next ${cheapest}`}`,
     );
     // Written rather than merely read, so the control states its own state
     // even on the first frame — a screen reader should not have to infer it.
@@ -2538,6 +2582,14 @@ export class Game {
     }
 
     this.#el.spends.replaceChildren(
+      // The rare-tile odds, on the OPEN drawer since 2026-08-27. They moved
+      // to the closed toggle on 2026-08-18 (off the hint line), and moved
+      // again for the same reason they moved then: the surface they sat on
+      // stopped having room. A quarter of one bar cannot hold "MAGIC 7% ·
+      // UNIQUE 1.5%", and this is where the number is actually USED — FORGE
+      // is priced two lines below it, and it is the odds that say whether
+      // buying a rare beats waiting to be dealt one.
+      ...(hud.odds === null ? [] : [this.#oddsLine(hud.odds)]),
       ...hud.spends.map((spend) => {
         const button = document.createElement('button');
         button.type = 'button';
@@ -3187,9 +3239,11 @@ export class Game {
     // A tiles-harvest that buys nothing says so on the button itself, because
     // a dead option that looks exactly like a live one is how a player wastes
     // the back half of a run.
-    this.#el.harvestTiles.textContent = hud.tilesSpare
-      ? `POP ${hud.harvestTiles} tiles · SPARE`
-      : `POP ${hud.harvestTiles} tiles`;
+    actButton(
+      this.#el.harvestTiles,
+      'POP',
+      hud.tilesSpare ? `${hud.harvestTiles} tiles · SPARE` : `${hud.harvestTiles} tiles`,
+    );
     this.#el.harvestTiles.classList.toggle('spare', hud.tilesSpare);
     // Under the single payout there is nothing to choose between: one POP
     // button that pays tiles and scores, and the points button stops
@@ -3202,9 +3256,11 @@ export class Game {
     // the points themselves are learned, once the run is over.
     if (hud.singlePayout) {
       const worth = hud.showPoints ? `${hud.harvestPoints} pts` : `×${hud.harvestDepth} deep`;
-      this.#el.harvestTiles.textContent = hud.questPays
-        ? `★ POP  ${hud.harvestTiles} tiles · ${worth}`
-        : `POP  ${hud.harvestTiles} tiles · ${worth}`;
+      actButton(
+        this.#el.harvestTiles,
+        hud.questPays ? '★ POP' : 'POP',
+        `${hud.harvestTiles} tiles · ${worth}`,
+      );
       this.#el.harvestTiles.classList.toggle('bounty', hud.questPays);
       this.#el.harvestTiles.classList.remove('spare');
       this.#el.harvestPoints.hidden = true;
@@ -3212,9 +3268,11 @@ export class Game {
     } else {
       // The bounty rides on the button that collects it, with its multiplier
       // shown — the reason to press a button belongs on the button.
-      this.#el.harvestPoints.textContent = hud.questPays
-        ? `POP ${hud.harvestPoints} pts ★`
-        : `POP ${hud.harvestPoints} pts`;
+      actButton(
+        this.#el.harvestPoints,
+        hud.questPays ? '★ POP' : 'POP',
+        `${hud.harvestPoints} pts`,
+      );
       this.#el.harvestPoints.classList.toggle('bounty', hud.questPays);
     }
 
@@ -3239,9 +3297,14 @@ export class Game {
       // the shop, and the word was otherwise doing the same job as SACRIFICE
       // itself: naming that something is given up, not what it is given up
       // for.
-      this.#el.harvestBurn.textContent = hud.burnPaysRelics
-        ? `SACRIFICE · ${burn} relics for the shop`
-        : `SACRIFICE · +${burn} luck`;
+      // "for the shop" was the words naming what relics are FOR, and it is
+      // the one clause the bar has no room for — the manual and the shop
+      // door both say it, and the number is what a thumb is reading here.
+      actButton(
+        this.#el.harvestBurn,
+        'SACRIFICE',
+        hud.burnPaysRelics ? `${burn} ${burn === 1 ? 'relic' : 'relics'}` : `+${burn} luck`,
+      );
     }
     this.#el.harvestTiles.hidden = !hud.canHarvest;
     this.#el.harvestTiles.disabled = !hud.canHarvest;
@@ -3258,7 +3321,7 @@ export class Game {
     this.#el.harvestTreasure.hidden = treasure === null;
     this.#el.harvestTreasure.disabled = treasure === null;
     if (treasure !== null) {
-      this.#el.harvestTreasure.textContent = `TAKE  1 ${treasure.toUpperCase()}`;
+      actButton(this.#el.harvestTreasure, 'TAKE', `1 ${treasure.toUpperCase()}`);
     }
 
     // A finished run has no hand to play and no luck to spend, and leaving
@@ -4187,10 +4250,27 @@ export class Game {
       }),
     );
 
-    // The stash draws into its OWN row (2026-08-21) — see index.html for
-    // why. Rendered here rather than in its own pass so the hand and the
-    // shelf can never disagree about which frame they belong to.
-    this.#el.stash.replaceChildren(...this.#renderHold(hud));
+    // The stash draws BESIDE the hand since 2026-08-27, not under it — see
+    // index.html. Rendered here rather than in its own pass so the hand and
+    // the shelf can never disagree about which frame they belong to.
+    const held = this.#renderHold(hud);
+    this.#el.stash.replaceChildren(...held);
+
+    /**
+     * How many cards a row takes.
+     *
+     * One row for as long as the cards stay comfortably thumbable, because
+     * a second row costs 79px of board and the board is the game (Marc,
+     * 2026-08-27: "we lost too much game space"). Six is the exception and
+     * it is his own: "we can use 2x3 too" — six across would be 56px a card
+     * on a 390px phone, which fits a thumb but not the ground's NAME, and
+     * the name is one of the three channels a card says its colour in.
+     * Seven and eight fall back to four across, which is the widest row
+     * that still leaves a card readable.
+     */
+    const total = hud.draft.length + held.length;
+    const cols = total <= 5 ? Math.max(1, total) : total === 6 ? 3 : 4;
+    this.#el.hand.style.setProperty('--hand-cols', String(cols));
   }
 
   /**
