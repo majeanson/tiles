@@ -379,12 +379,30 @@ performance one matters most — the camera tween added today calls `draw()`
 per frame while zooming, and nobody has measured that on a mid-range phone.
 **Re-run those three before treating this list as complete.**
 
+> **Two of the three were run on 2026-08-27** (LOG Session 57). Performance:
+> measured and it scales — see STILL OPEN below. Cut-corners-in-source: run
+> over the whole two-day refactor as a fresh-eyes pass; findings fixed the
+> same day. The **first-60-seconds design review is the one still open**, and
+> it is open in the only way that matters — it is a by-looking judgement on a
+> phone, which is `PLAYTEST.md` Session A, not a sweep code can finish.
+
 ---
 
-# STILL OPEN — as it stands 2026-08-21, small hours
+# STILL OPEN — as it stands 2026-08-27
 
 Everything above this line is done, shipped and verified live. What follows
 is what is left, and it is short.
+
+> **Re-audited 2026-08-27 against the code**, because this list had gone
+> stale in six places and a stale open-list is worse than none — it sends the
+> next session hunting for work that shipped days ago. Corrections are marked
+> ✅ STALE below, at the item they belong to. The short version: **export/
+> import shipped as BACK UP / RESTORE on 2026-08-21**, the reduced-motion
+> `change` listener exists, `inert` is implemented as a dialog stack, the
+> `#camera-toggle` 2.5.3 failure was fixed on 2026-08-21, and three of the
+> four documentation-debt bullets had already been corrected in place. What
+> was genuinely still open — the accessibility second pass and the
+> performance sweep — was done on 2026-08-27 (LOG Session 57).
 
 ## Needs Marc, and only Marc
 
@@ -396,10 +414,26 @@ is what keeps SETTINGS' "nothing leaves your phone" sentence true (it now
 names this one exception in words). `src/meta/report.ts`, no SDK, tested.
 Full account: LOG.md Session 43.
 
-**2. Session B and Session C themselves.** `PLAYTEST.md` scripts both. B is
-the verdict run, after which balance freezes; C is the stranger test, which
-is the one v1.0 gate. Note that Session A's rehearsal is worth re-running
-first: the first minute it saw no longer exists.
+**2. Session B — ✅ PLAYED 2026-08-26. Session C is the one that remains.**
+`PLAYTEST.md` scripts both. B returned both answers (pop-vs-burn-vs-wait felt
+like a decision; the relic pace earns) and **froze the balance — copy and
+crashes only until the tag**. C is the stranger test and the one v1.0 gate.
+
+Session A's rehearsal was re-run 2026-08-26 with an empty fix list, and is
+**owed once more**: 2026-08-27 rebuilt the bottom of the screen (one hand,
+one action bar), moved the held cards into the hand, turned the teaching
+cards into marked lists and renamed TITHE. The first minute is not the one
+that last passed the script.
+
+**4. The 2026-08-27 batch has never been seen on a phone.** Two days of work
+— the reload removal, History routing, the screen revamp, the help rewrite —
+verified by 818 tests, 27 e2e and desktop screenshots at 390×844, and by
+nothing else. `FOLLOWUP.md` §2 lists the by-looking items it created. The
+specific risks worth a deliberate check are in `LOG.md` Session 56's closing
+paragraph: a crossing backgrounded DURING the departure fade (the exact shape
+of the 2026-08-19 relic farm, on the platform that found it), five theme
+flips mid-run with sound still working after, and a PWA swipe-back out of the
+daily.
 
 **3. Two art calls — ✅ BOTH ANSWERED.** The OG image: ruled a board scene
 2026-08-26 (`DECISIONS.md` D21) and rebuilt the same day — `scripts/social.ts`
@@ -426,6 +460,39 @@ bytes.
 - **No onward-share invitation — ✅ DONE 2026-08-26.** The end screen now
   prints one quiet line beside SHARE when this run was itself opened from a
   `?seed=` link (`GameHooks.fromLink`, `src/ui/game.ts`).
+- **Export/import (cluster G above) — ✅ STALE; it shipped 2026-08-21.** The
+  audit's "one thing missing entirely" is BACK UP MY WORLDS / RESTORE A
+  BACKUP, behind MORE ▸ THIS DEVICE: `src/meta/backup.ts` (pure, tested)
+  through the same share-sheet/clipboard/download ladder the run share uses,
+  with an e2e proving a backup survives a wipe and restores the same world.
+  It was searched for as "export/import" and is named "backup/restore".
+- **Accessibility, second pass — ✅ DONE 2026-08-27** (LOG Session 57). Of the
+  section above, items 6, 7, 9, 11 and 12 and the `#camera-toggle` 2.5.3
+  failure were all **already fixed** between 2026-08-20 and 2026-08-21 (the
+  `inert` dialog stack in `src/ui/dialog.ts`, `#hint` written only on change,
+  `aria-labelledby` on the flag toggles, all three notes inserted empty then
+  filled with `role="status"`, `.stat::after` at -6px). What was real and is
+  now fixed: the two-line action buttons stated no name and WebKit read them
+  as "POP5 tiles · 6 pts"; `#lens-clear` dropped focus when it hid itself;
+  the shop's BUY/WEAR buttons named no row; `#purse-toggle` lacked
+  `aria-controls` for a drawer that opens above it; and the manual's NUMBERS
+  `<summary>` was the last interactive control under 44px. Two tests now hold
+  the rules (WCAG 2.5.3, and the two-line button naming).
+- **Reduced motion "sampled once at boot, no `change` listener" — ✅ STALE.**
+  `followReducedMotion` has listened since 2026-08-21; it is wired per
+  session in `src/shell/session.ts` and severed with the session's signal.
+- **Render performance — ✅ MEASURED 2026-08-27, and it scales.** Panning a
+  grown board (reach 9, ~140 placements) held vsync at 16.7ms median,
+  identical to an opening board, and 16.8ms under 6× CPU throttling. Per-frame
+  cost does not grow with the board, which was the question. Deliberately not
+  added to CI: a timing assertion measured on a dev machine held deploys shut
+  for nine commits once already. **The feel of it on a real mid-range phone is
+  still unmeasured** and belongs to Marc.
+- **Documentation debt — ✅ MOSTLY STALE, remainder done 2026-08-27.**
+  `ideas/persistent-world.md` already carried its "the deferral is over" row,
+  `DESIGN.md` already carried its 2026-08-21 reading note, and `prompt.md` was
+  already marked CLOSED at the top. `ROADMAP.md`'s dated header, `FOLLOWUP.md`
+  and `PLAYTEST.md`'s stale schedules were corrected 2026-08-27.
 
 ## Deferred by ruling — do not reopen
 

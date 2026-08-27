@@ -38,7 +38,7 @@ import {
 } from '@meta/progress';
 import { decodeRecords, EMPTY as EMPTY_RECORDS, ONLY_WORLD } from '@meta/records';
 import { sendCrashReport } from '@meta/report';
-import { HOME, parseRoute, type Route } from '@meta/route';
+import { HOME, parseRoute, searchFor, type Route } from '@meta/route';
 import {
   dailiesOf,
   prehistory,
@@ -61,11 +61,11 @@ import { Sound } from '@ui/audio';
 import { closeDialog, openDialog, resetDialogs, siblingsOf } from '@ui/dialog';
 import { Game, type Elements, type GameHooks } from '@ui/game';
 import { shopParts } from '@ui/shop';
-import { markRendererAlive } from '@shell/failure';
+import { markRendererAlive, recordFailure } from '@shell/failure';
 import { promptInstall } from '@shell/install';
 import { runKeeping } from '@shell/keeper';
 import { showInAppNote } from '@shell/notes';
-import { setRoute, transition } from '@shell/router';
+import { departTo, setRoute, transition } from '@shell/router';
 import {
   activeSlot,
   appendTimeline,
@@ -119,6 +119,16 @@ export type Session = {
 
 /** The session on screen, or null before the first one has been built. */
 let live: Session | null = null;
+
+/**
+ * A session currently being BUILT, or null.
+ *
+ * `live` is only assigned once `startSession` returns, and it contains one
+ * await — mounting the renderer. Between those two moments a session exists
+ * on screen (the door is wired) and is invisible to `restart`, which is how
+ * a single tap could start a second one. This is that window, made visible.
+ */
+let booting: Promise<Session> | null = null;
 
 /**
  * Which game is on screen right now.
@@ -284,6 +294,22 @@ function resetShell(): void {
   relabel('more-restore', 'RESTORE A BACKUP');
   relabel('more-backup', 'BACK UP MY WORLDS');
   relabel('front-door-begin', 'BEGIN');
+
+  // The `ui.logo` swap, undone (2026-08-27). A theme that ships a lockup
+  // replaces the mark with it, hides the name beside it and adds `.lockup`;
+  // the next session only rewrites `src` and the name's TEXT, so switching
+  // FROM such a theme to one without would have left the door wearing
+  // lockup layout with the game's own name still hidden. Unreachable today —
+  // every art slot is empty — but it is a per-page mutation that survived
+  // into a per-session path, which is exactly the class this refactor has to
+  // stop shipping.
+  const logo = el('front-door-logo');
+  if (logo !== null) {
+    logo.classList.remove('lockup');
+    logo.setAttribute('alt', '');
+  }
+  const doorName = el('front-door-name');
+  if (doorName !== null) doorName.hidden = false;
 }
 
 /**
@@ -327,10 +353,37 @@ export async function restart(
   between?: () => void,
 ): Promise<void> {
   await transition(async () => {
+    // A session still being BUILT is not yet `live`, and tearing down `null`
+    // tears down nothing (2026-08-27). `startSession` has exactly one await
+    // in it — `renderer.mount` — and every door listener is wired before it,
+    // so on a slow cold boot a tap on DAILY or a WORLDS row would have run a
+    // second `startSession` alongside the first: two renderers, two Games on
+    // the same board, two keepers writing one run key, and whichever
+    // finished last owning `live` while the other became unreachable and
+    // unkillable. `main.ts` guards this for `popstate`; the doors are the
+    // other half. Waiting is right rather than dropping the tap — the boot
+    // is about to finish, and the player asked for somewhere else.
+    if (booting !== null) await booting.catch(() => undefined);
     if (live !== null) endSession(live);
     between?.();
     if (how !== 'none') setRoute(route, how);
-    await startSession(route);
+    try {
+      await startSession(route);
+    } catch (error) {
+      // The in-place rebuild is what failed — the realistic cause is a phone
+      // refusing a second WebGL context — so the fallback is the navigation
+      // this refactor replaced. It cannot fail the same way, and it is what
+      // every one of these doors did before 2026-08-27.
+      //
+      // Without this the app is left with no session at all: the door up
+      // over an empty shell, BEGIN throwing on a `game` that was never
+      // built, and a failure panel offering CONTINUE into nothing. The
+      // error is recorded first so SETTINGS ▸ DEVELOPER still has it.
+      recordFailure(error);
+      departTo(() => {
+        location.href = `${location.pathname}${searchFor(route)}`;
+      });
+    }
   });
 }
 
@@ -502,10 +555,11 @@ function mountSettings(
 ): void {
   let features = initial;
 
-  // The rows are interactive: their taps must not close the panel around them.
-  on(host, 'click', (event) => {
-    event.stopPropagation();
-  });
+  // (The panel's own "a tap on a row must not close it" listener is wired
+  // once per SESSION, beside `paintSettings` — see `startSession`. It used to
+  // be here, and `host` is `#settings-body`, persistent markup this function
+  // only ever `replaceChildren`s: it was the one listener in this function
+  // that outlived the nodes around it, accumulating one copy per panel open.)
 
   // Player things first (2026-08-18: "settings reordered"); the two
   // developer switches are testing tools, not something a run is asking a
@@ -1085,7 +1139,26 @@ function applyUnlocks(base: Tuning, unlocked: readonly string[]): Tuning {
   return t;
 }
 
-export async function startSession(route: Route): Promise<Session> {
+/**
+ * Open a session, and be visible while doing it.
+ *
+ * A thin wrapper so `booting` is set the moment the build starts rather than
+ * somewhere inside it — an async function cannot hand its own promise to a
+ * module variable from within its own body, and the window this closes is
+ * exactly the one between the first line and the first await.
+ */
+export function startSession(route: Route): Promise<Session> {
+  const opening = buildSession(route);
+  booting = opening;
+  void opening
+    .catch(() => undefined)
+    .then(() => {
+      if (booting === opening) booting = null;
+    });
+  return opening;
+}
+
+async function buildSession(route: Route): Promise<Session> {
   // A session's own listeners hang off this, and nothing else does: the
   // previous one has already been aborted by `endSession` before we arrive.
   sessionAbort = new AbortController();
@@ -2208,6 +2281,14 @@ export async function startSession(route: Route): Promise<Session> {
   // snapshot. Its own screen since 2026-08-25; one call still writes both
   // halves, because the MENU tab is built from the same live facts.
   const settingsHost = required('settings-body');
+  // The rows are interactive: their taps must not close the panel around
+  // them. Wired once per SESSION rather than inside `mountSettings`, which
+  // repaints on every `?` and MORE ▸ SETTINGS tap — this is `#settings-body`,
+  // markup that outlives every repaint, so wiring it there added one copy
+  // per open (2026-08-27).
+  on(settingsHost, 'click', (event) => {
+    event.stopPropagation();
+  });
   const paintSettings = (): void =>
     mountSettings(
       settingsHost,

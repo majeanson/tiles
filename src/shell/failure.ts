@@ -46,6 +46,20 @@ function rememberError(text: string): void {
 }
 
 /**
+ * Keep an error for SETTINGS ▸ DEVELOPER without raising the panel over it.
+ *
+ * For the failures that RECOVER (2026-08-27): a session rebuild that throws
+ * falls back to a real navigation, and the panel it would otherwise show
+ * would flash for 140ms and leave with the page — so the report is kept and
+ * the alarm is not. Everything else still goes through `showFailure`.
+ */
+export function recordFailure(error: unknown): void {
+  failureCount++;
+  const detail = describeError(error);
+  if (detail !== '') rememberError(detail);
+}
+
+/**
  * The failure panel: plain DOM, no Pixi, no framework — because it exists for
  * exactly the moments those things are broken (a WebGL context that will not
  * come up, a bundle half-loaded on a bad connection, a bug in the loop).

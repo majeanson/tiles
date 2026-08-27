@@ -355,6 +355,16 @@ export function resolveFacing(): Orientation | null {
  */
 export function resolveThemeId(): string {
   const asked = parseThemeId(location.search);
+  // An arriving `?theme=` STICKS, exactly as `?ff=` and `?hex=` do
+  // (2026-08-27). It did not, and that was invisible until scene changes
+  // stopped being navigations: `setRoute` rebuilds the URL from the route
+  // alone, so the first door tap dropped `?theme=` from the bar and the next
+  // session resolved from storage — the direction under test reverting
+  // mid-test, on the phone that is the only place it can be judged. The
+  // other two rig params were already persisted on arrival; this one was the
+  // odd one out, and `router.ts`'s comment claiming all three stick was
+  // wrong about it.
+  if (asked !== null) rememberTheme(asked);
   // `?theme=auto` means auto, not "an id nobody has". Without this it would fall
   // through `resolveTheme`'s unknown-id guard to torchlit, so the one spelling a
   // person is most likely to type by hand would be the one that silently did

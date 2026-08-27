@@ -2546,7 +2546,12 @@ button.help-tab[data-on='true'] {
   #purse-toggle {
     transition:
       color 300ms var(--ease-arrive, ease-out),
-      border-top-color 300ms var(--ease-arrive, ease-out);
+      /* All four edges (2026-08-27). This said `border-top-color`, written
+         when the toggle was a hairline handle with only a top border; since
+         it became a button in the bar, `.live` sets `border-color` on every
+         side, so the top edge faded in over 300ms while the other three
+         snapped. */
+        border-color 300ms var(--ease-arrive, ease-out);
   }
 }
 
