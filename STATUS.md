@@ -4,7 +4,30 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-26, later — the three games are told apart, and
+Last checkpoint: **2026-08-27 — the page stops reloading; one page, many
+sessions.** Marc: "remove all window reloads and use routing... can we survive
+on vanilla SPA and be 2026 ready still?" — and "all for a clean game". No
+framework added; `pixi.js` is still the only runtime dependency. Every scene
+change (theme, slot, crossing, NEW RUN, both SETTLEs, NEW WORLD, HOME, menu,
+midnight, daily retry, RESET ALL, RESTORE) now swaps a SESSION in place, and
+`?seed=`/`?daily=`/`?camp=` became real History-API navigation with a working
+BACK. **Exactly two reloads remain, both because a navigation is what they
+genuinely need: the service worker's NEW VERSION, and the boot-failure
+RELOAD.** `main.ts` went from 4,161 lines to ~90; the body is `src/shell/`
+(`store` · `keeper` · `session` · `router` · `failure` · `notes` · `install`)
+plus a pure `src/meta/route.ts` whose `Route` type CANNOT express `?ff=`,
+`?theme=` or `?hex=` — so the share-link invariant both launch audits caught
+by hand is now true by construction. `Game`, `Sound` and the keeper learned to
+die: 36 listeners behind one AbortController, `Sound.close()` (iOS caps live
+AudioContexts at ~4), and `dropped`/`alive` guards that close a pre-existing
+140ms hole at the crossing — the relic-farm fix of 2026-08-19 shut the flush
+and nothing else. 814 tests, 25 e2e, sim untouched (no engine or content
+change). **Caveat for the next session: a test that asserted on a reload's
+side effects now needs an explicit wait for the new session — one existing
+spec was passing while asserting nothing.** **NOT yet played on the phone,
+which per CLAUDE.md is the real gate. The one gate is still Session C.**
+
+Previous checkpoint: **2026-08-26, later — the three games are told apart, and
 the perk shelf belongs to the world.** Marc: "make sure going in to a daily,
 sharing, etc is explicit for dailies only and world is world only ... make
 sure its clear which one is which and which one is the current world."

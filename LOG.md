@@ -6475,5 +6475,104 @@ clean. Read at 390×844 in torchlit: the four swatches now stand as squares,
 and a pulled-back opening board shows its star and three beacons where FIT
 showed one.
 
+---
+
+### Session 56 — the page stops reloading, and the URL starts meaning something (2026-08-27)
+
+**Question:** can every scene change happen in place, without a page load, and
+can the address bar become real navigation — on vanilla TypeScript, with no
+framework?
+
+**Answer: yes, and the two reloads left are the two that genuinely need a
+navigation.** Marc: "plan a way to remove all window reloads and use react
+capabilities and routing", then, on being told the app has no React and never
+did: "can we survive on vanilla SPA and be 2026 ready still? i think
+minimal-deps is no longer a requirement for me" — and, on scope, "all for a
+clean game". So: no framework added, every reload removed, History API in.
+
+**What was actually wrong.** Twelve sites called `location.href` or
+`location.reload`, all through `departTo` — theme changes, the slot switch,
+the crossing, NEW RUN, RESET ALL, RESTORE, both SETTLEs, NEW WORLD, HOME, the
+menu, the midnight re-date, the daily's TRY AGAIN. Each one threw away the
+Pixi WebGL context, every texture cache, the ticker and the whole DOM wiring,
+then rebuilt them from a cold bundle. The 140ms fade (Session 51's answer to
+"buttons are long to switch scenes") acknowledged the tap but could not make
+the rebuild faster. The deeper problem was structural: `main.ts` was 4,161
+lines in which "boot" and "the page" were the same thing, so nothing could
+start a second time.
+
+**The shape.** One page load hosts the app; the app hosts a sequence of
+SESSIONS. A session is everything a load used to do exactly once — resolve the
+slot, world, theme and mode, wire the door and panels, mount the renderer,
+build the Game. A scene change is `endSession` then `startSession`, with the
+existing fade over the seam. `main.ts` is 90 lines now: error plumbing, the
+service worker, and the first call in.
+
+`src/meta/route.ts` is the interesting piece. `?seed=`/`?daily=`/`?camp=` are
+data now, and a `Route` **cannot express** `?ff=`, `?theme=` or `?hex=` — so a
+URL built from one can never carry the sender's own test rig onto somebody
+else's phone. Both launch audits (2026-08-20) caught that by hand in
+`share()`; it is a property test now.
+
+**The guard that mattered most.** `dropWorld` has cleared `worldDirty` since
+the fresh-eyes review of 2026-08-19, which found `pagehide` re-saving a
+crossed world after its own funeral — un-crossing every crossing and paying
+the dowry again, an infinite relic farm. That fix closed the flush **and
+nothing else**: every other writer stayed live for the 140ms of the fade, and
+only the page dying stopped a queued tap from putting the world back. In place
+that window is real, so `dropped` latches and every write hook checks it. The
+in-place refactor did not just preserve the old fix, it closed the hole beside
+it. `keeper.test.ts` pins it, and it bites: remove the `onChange` guard and
+two of its five fail.
+
+**What had to learn to die.** `Game` had no teardown and wired ~15 listeners
+onto markup `index.html` declares ONCE — a second session would have fired
+every tap twice. All 36 now go through one signalled `#on`, severed by one
+`abort()`. `Sound` gained `close()` (iOS holds ~4 AudioContexts before `new`
+throws — one per theme change, never closed, is a game that goes permanently
+silent on the fifth). `PixiRenderer.destroy()` already existed and was
+already complete, and `applyTheme` was already idempotent with a comment
+saying it was built for live switching: the theme layer had been ready for
+this since Session 14.
+
+**History.** The daily and camp doors PUSH; everything else REPLACES — the
+first two are places a player walks into and expects to come back out of, the
+rest change what the current entry MEANS. `popstate` restarts on the parsed
+route, with no dispatch table: the URL names a game and `startSession` is the
+one thing that opens one, so replaying an entry is the same act as opening the
+link. BACK out of a daily lands on the home door offering the board back,
+which is what HOME already promised.
+
+**The test that had to change, and why it is worth writing down.** The backup
+spec waited for the front door to reappear as its proxy for "the wipe
+reloaded". In place the door never leaves, so it passed instantly and read
+`localStorage` mid-swap — a green test asserting nothing. It now waits for the
+mode line to say "A fresh world", a state only the post-wipe session can
+produce. **Any test that asserted on a reload's side effects needs an explicit
+wait for the new session now**; that is the migration hazard, and it is the
+one thing that would have shipped silently.
+
+**Deliberately not done:** no feature flag. `CLAUDE.md`'s flag rule targets
+game systems, and a navigation rewrite cannot dual-path — twelve sites would
+each need both branches, and the off path would still carry untested teardown.
+The mitigation is the phasing: four commits, each green on `main`, the first
+two behaviour-identical. Real reloads remain a fully supported entry (a
+relaunched PWA is one every time) and `menu.spec.ts`'s `page.reload()` specs
+are what guard it.
+
+**Verified:** 814 tests (+12 route, +5 keeper), 25 e2e (+6: a swatch changing
+the theme with the document object identity intact, a run surviving the swap
+and resuming, the daily door's push/BACK/forward, BACK out of a played daily,
+a slot switch landing on the other world, and five theme swaps in a row
+leaving exactly ONE canvas and no errors — past the iOS context cap and past
+where a missed AbortController would show). Typecheck / lint / format clean,
+build clean.
+
+**Not yet done — the phone.** Per `CLAUDE.md` the real gate is the deployed
+site in portrait, and none of this has been played there. The checks that
+matter: five theme flips mid-run with sound still working after; a crossing
+with the app backgrounded DURING the fade, reopened, confirming no
+resurrected world; RESET ALL; and a PWA swipe-back out of the daily.
+
 **Judged by looking is Marc's:** the swatches at phone brightness, and whether
 half-of-FIT is the right amount of "a bit". **The one gate is still Session C.**

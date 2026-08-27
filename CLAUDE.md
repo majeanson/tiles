@@ -44,3 +44,15 @@ Hard rules:
 - **No PR gate**: land on `main`; CI's checks plus `verify-deploy` gate prod.
 - **Testing happens on the deployed site**, on a phone, in portrait. Not
   localhost, not a desktop browser window resized to look like a phone.
+- **One page, many sessions** (2026-08-27). A scene change is
+  `endSession` → `startSession`, never a reload; `src/shell/session.ts` owns
+  both and `src/shell/router.ts` owns the fade and the History API. Only two
+  reloads are allowed to exist — the service-worker update and the
+  boot-failure panel — and both are in `departTo` for that reason. Three rules
+  follow. Anything a session wires must be severable: every `addEventListener`
+  goes through the signalled `on`/`#on` helpers, because ~50 of them sit on
+  markup `index.html` declares once. Anything that WRITES must refuse to once
+  its session is over — the keeper's `alive`/`dropped` guards, pinned by
+  `keeper.test.ts`, are what stop a crossing being un-crossed. And a test may
+  no longer treat "the door came back" as proof a scene changed: wait for a
+  state only the NEW session can produce.

@@ -67,12 +67,16 @@ function registerServiceWorker(): void {
   }
 }
 
-// BACK and FORWARD, before the first session: a page restored from the
-// browser's back/forward cache can fire `popstate` at any point after this.
-followHistory();
-
 void startSession(parseRoute(location.search))
   .then(() => {
+    // BACK and FORWARD, wired only once the first session is actually up.
+    // `restart` serialises swaps through the router's own busy flag, but the
+    // FIRST session is started directly rather than through it — so a
+    // `popstate` arriving mid-boot would build a second session alongside
+    // the one still mounting, and two live renderers is the one state this
+    // refactor must never reach. Nothing can be navigated from before the
+    // first paint anyway.
+    followHistory();
     registerServiceWorker();
   })
   .catch((error: unknown) => {

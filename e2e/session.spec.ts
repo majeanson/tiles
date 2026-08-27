@@ -179,6 +179,65 @@ test('BACK out of a daily in progress offers the board back', async ({ page }) =
 });
 
 /**
+ * Switching slot without leaving the page.
+ *
+ * The module that owns which world the shop reads and writes was set ONCE
+ * per page load, under a comment that said the active slot could not change
+ * without a reload (`shopKeys`, 2026-08-20). It is set per session now, and
+ * this is the spec that would catch it pointing at the wrong world.
+ */
+test('a slot switch starts a new session on the other world', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  // World 1 with some history on it, so the two slots say visibly different
+  // things — an untouched slot 2 gets the virgin sentence, and that
+  // difference is what proves the session was rebuilt against the new slot.
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'tiles.world.v1',
+      JSON.stringify({ worldSeed: 4242, revealed: ['0,0'], territories: [], runs: 3 }),
+    );
+  });
+  await page.reload();
+  await expect(page.locator('#front-door-mode')).toContainText('World 1 of 3');
+
+  await page.evaluate(() => {
+    (window as unknown as { __sameDocument: boolean }).__sameDocument = true;
+  });
+
+  await page.locator('#front-door-worlds').click();
+  await expect(page.locator('#worlds-panel')).toBeVisible();
+  await page.locator('#worlds-list button', { hasText: 'WORLD 2' }).click();
+
+  // The door comes back describing a world that is NOT world 1 — and the
+  // panel it was chosen from is closed, which is `resetShell` putting the
+  // markup back the way index.html declares it.
+  await expect(page.locator('#front-door-mode')).toContainText('A fresh world', {
+    timeout: 10000,
+  });
+  await expect(page.locator('#worlds-panel')).toBeHidden();
+  await expect(page.locator('#front-door')).toBeVisible();
+
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __sameDocument?: boolean }).__sameDocument === true,
+    ),
+  ).toBe(true);
+
+  // The active slot really moved, and the shop is pointed at the new world.
+  expect(await page.evaluate(() => localStorage.getItem('tiles.slot.v1'))).toBe('2');
+
+  // The list agrees: world 2 is NOW, and world 1 is still there with its
+  // three runs — the switch moved which world is played, not what is kept.
+  await page.locator('#front-door-worlds').click();
+  await expect(page.locator('#worlds-list button').first()).toContainText('3 runs');
+  await expect(page.locator('#worlds-list button').nth(1)).toContainText('NOW');
+
+  expect(errors).toEqual([]);
+});
+
+/**
  * The listener-accumulation canary, and the WebGL-context one.
  *
  * Five swaps is well past the ~4 live contexts iOS will hold, and each one
