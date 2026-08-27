@@ -104,6 +104,39 @@ body {
   -webkit-touch-callout: none;
 }
 
+/* Leaving the page (2026-08-26, Marc: "buttons are long to switch scenes —
+   it seems to be working in the background"): every scene switch is a full
+   reload, and the old screen used to sit frozen until the next build's
+   first paint. `departTo` (main.ts) stamps the class the instant the tap
+   lands: the whole page dips out and further taps are swallowed, so the
+   tap visibly TOOK even when the network makes the next scene slow. The
+   transition lives outside the class so the fade animates from the very
+   frame the class arrives; reduced motion snaps instead — the beat is
+   main.ts's, not this rule's. */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition: opacity 140ms var(--ease-arrive, ease-out);
+  }
+}
+
+html.departing body {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Which game the board IS (2026-08-26): one quiet line under the stats —
+   WORLD N, THE DAILY, or A SHARED RUN — so a mode is never something you
+   have to open the ? panel to find out. */
+#mode-chip {
+  margin: 0;
+  padding: 0 10px 4px;
+  font-family: var(--font-label, inherit);
+  font-size: 0.625rem;
+  letter-spacing: var(--label-tracking, 0.04em);
+  text-align: center;
+  color: var(--ink-faint, #767d8d);
+}
+
 #app {
   display: flex;
   flex-direction: column;
@@ -970,7 +1003,12 @@ button.armed {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 0 0 10px;
+  /* Centred on the same column as the fold that opens it (2026-08-26) —
+     it used to hang full-width off the screen's left edge under a centred
+     button, which is half of what "the bottom is messy" meant. */
+  width: 100%;
+  max-width: var(--menu-col, 320px);
+  margin: 4px auto 10px;
   padding-left: 12px;
   border-left: 2px solid var(--panel-edge, #3a4150);
   text-align: left;
@@ -1509,10 +1547,19 @@ button.armed {
 
 /* TRY AGAIN (the daily) rides the same column as NEW RUN — it was the one
    unclassed button on this screen, shrink-wrapping beside a full-width
-   sibling (2026-08-26). */
+   sibling (2026-08-26). Later the same day, AIR: Marc's screenshot showed
+   the retry, the settle fold and the relics row packed flush at the
+   screen's bottom — the exits now stand clear of the facts above them and
+   of each other, so the last thing the screen says is not a pile-up. */
 #end-new-run,
 #end-retry {
-  margin-top: 6px;
+  margin-top: 16px;
+  width: 100%;
+  max-width: var(--menu-col, 320px);
+}
+
+#end-settle {
+  margin-top: 12px;
   width: 100%;
   max-width: var(--menu-col, 320px);
 }

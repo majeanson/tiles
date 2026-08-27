@@ -151,6 +151,12 @@
              device, and the wipe. Always offered, because HOW TO PLAY is
              behind it and that is the only tutorial door a stranger ever
              sees. -->
+        <!-- The shop, reachable without playing a run (Marc, 2026-08-26:
+             "make sure we have a way to access our relic and shop outside
+             the main game"). Home door only — a daily or shared door must
+             not offer a shop whose currency that mode never banks. Hidden
+             until relics exist to spend; main.ts writes the label. -->
+        <button id="front-door-shop" type="button" class="quiet" hidden>SHOP</button>
         <button id="front-door-more" type="button" class="quiet">MORE</button>
       </div>
 
@@ -235,6 +241,26 @@
                whether this device has anything worth wiping and unhides it. -->
           <button id="more-reset" type="button" hidden>RESET ALL</button>
         </div>
+      </div>
+
+      <!-- THE SHOP as its own screen (2026-08-26): the same shelf the end
+           screen shows, hosted by the door so relics can be spent without
+           finishing a run. One builder draws both (src/ui/shop.ts). -->
+      <div
+        id="shop-panel"
+        class="panel-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shop-title"
+        tabindex="-1"
+        hidden
+      >
+        <div class="panel-head">
+          <p id="shop-title" class="panel-title">THE SHOP</p>
+          <button id="shop-back" type="button" class="panel-back">BACK</button>
+        </div>
+        <p id="shop-purse-line" class="shop-purse"></p>
+        <div id="shop-body"></div>
       </div>
 
       <!-- SETTINGS, its own screen since 2026-08-25. It was the bottom half of
@@ -324,6 +350,11 @@
              scored, how deep you are, and what the next tile costs. The cost is
              here because it is the thing that eventually kills you. -->
         <header id="stats"></header>
+        <!-- Which game this board IS (Marc, 2026-08-26: "make sure its clear
+             which one is which and which one is the current world") — one
+             quiet line, always on, so a daily can never be mistaken for the
+             world it is not. main.ts writes it once at boot. -->
+        <p id="mode-chip" hidden></p>
 
         <!-- `tabindex="-1"` so focus can be GIVEN to the board without
              putting it in the tab order (2026-08-20): closing an event card

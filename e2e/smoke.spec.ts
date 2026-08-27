@@ -131,6 +131,28 @@ test('boots, begins, places, reads the manual, works the camera — no errors', 
   expect(errors).toEqual([]);
 });
 
+/**
+ * The home board says WHICH world it is (2026-08-26). The daily's half of
+ * this contract is asserted in the test below; both sides are needed, or a
+ * chip that had simply stopped rendering would pass the daily's `not`.
+ */
+test('the home board names the world it is, on the board itself', async ({ page }) => {
+  const errors = watchErrors(page);
+
+  await page.goto('/');
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+  await expect(page.locator('#board canvas')).toBeVisible();
+
+  const chip = page.locator('#mode-chip');
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText(/WORLD \d OF 3/);
+  await expect(chip).not.toContainText('THE DAILY');
+  await expect(chip).not.toContainText('SHARED RUN');
+
+  expect(errors).toEqual([]);
+});
+
 test('the daily door opens its own world, plainly, with no errors', async ({ page }) => {
   const errors = watchErrors(page);
 
@@ -150,6 +172,17 @@ test('the daily door opens its own world, plainly, with no errors', async ({ pag
   await page.locator('#front-door-begin').click();
   await expect(page.locator('#front-door')).toBeHidden();
   await expect(page.locator('#board canvas')).toBeVisible();
+
+  // Which game the board IS, said on the board (Marc, 2026-08-26: "make sure
+  // its clear which one is which and which one is the current world"). Before
+  // the chip, a daily and a home run were told apart only by opening the ?
+  // panel and reading the MENU tab — the board itself said nothing.
+  const chip = page.locator('#mode-chip');
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText('THE DAILY');
+  await expect(chip).toContainText('nothing banks');
+  // And it never claims to be the other thing at the same time.
+  await expect(chip).not.toContainText('WORLD');
 
   expect(errors).toEqual([]);
 });

@@ -46,6 +46,8 @@ import {
   decodeProgress,
   encodeProgress,
   grantFind,
+  withWorldPerks,
+  type PerkId,
   type Progress,
 } from '@meta/progress';
 import {
@@ -108,6 +110,7 @@ import type { Orientation, Theme } from '@theme/tokens';
 import type { GameState, LandmarkReward } from '@engine/state';
 import { closeDialog, openDialog, siblingsOf } from '@ui/dialog';
 import { Game, type Elements, type GameHooks } from '@ui/game';
+import { shopParts } from '@ui/shop';
 import { epitaphFor } from '@ui/view';
 import { Sound } from '@ui/audio';
 
@@ -831,9 +834,10 @@ function runKeeping(
   // used to construct fresh URLSearchParams three times per action across
   // the hooks below.
   const replaySeed = askedSeed();
-  // The perk shelf as this page booted, for the timeline's ✦ diff at finish
-  // — perks are device-wide (`Progress`), so the world diff cannot see them.
-  const perksAtBoot = readProgress().found.length;
+  // The perk shelf as this page booted, for the timeline's ✦ diff at finish.
+  // PER-WORLD since 2026-08-26 — the shelf is the world's own now, so this
+  // reads the world the page booted with, like every other diff input.
+  const perksAtBoot = world.perks.length;
   // A detour: somebody else's seed, or the daily. Neither is this device's
   // world — nothing banks, nothing merges, nothing overwrites the home run.
   const detour = replaySeed !== null || dailyDate !== null;
@@ -940,9 +944,30 @@ function runKeeping(
     // detour is not this device's world, in either direction.
     memory: detour ? [] : world.revealed,
 
+    // The shop hook speaks the COMPOSITE (2026-08-26, the per-world perk
+    // split): the device's purse and levels with THIS world's shelf folded
+    // in, so the shelf UI, `applyProgress` and `grantFind` all keep their
+    // shapes. The write splits it back apart — `encodeProgress` strips the
+    // perk fields from the device blob, and the world takes them, saved
+    // immediately (a shelf change is as rare and as precious as a claim).
+    // A detour never writes the world's shelf: its shop door is gone, and
+    // the only composite writes it can produce are teaching marks.
     shop: {
-      read: readProgress,
-      write: writeProgress,
+      read: () => withWorldPerks(readProgress(), current.perks, current.worn),
+      write: (next) => {
+        writeProgress(next);
+        if (detour) return;
+        const worn = next.equipped[0] ?? null;
+        const sameShelf =
+          worn === current.worn &&
+          next.found.length === current.perks.length &&
+          next.found.every((p, i) => p === current.perks[i]);
+        if (sameShelf) return;
+        current = { ...current, perks: [...next.found], worn };
+        worldDirty = false;
+        actionsSinceWrite = 0;
+        saveWorld(keys, current);
+      },
     },
     debug: debugOn,
     // The manual's own no-staleness contract: moving the stamp behind
@@ -971,9 +996,23 @@ function runKeeping(
     findLabel: (hex) => {
       if (detour) return null;
       if (current.finds.includes(hex)) return null;
-      const granted = grantFind(readProgress(), world.worldSeed, hex);
+      const granted = grantFind(
+        withWorldPerks(readProgress(), current.perks, current.worn),
+        world.worldSeed,
+        hex,
+      );
       if (granted === null) return null;
-      writeProgress(granted.progress);
+      // The grant is the world's now (2026-08-26): shelf and worn slot land
+      // on the world, saved immediately — a perk is the least replaceable
+      // thing a world holds, and the device blob no longer carries it.
+      current = {
+        ...current,
+        perks: [...granted.progress.found],
+        worn: granted.progress.equipped[0] ?? null,
+      };
+      worldDirty = false;
+      actionsSinceWrite = 0;
+      saveWorld(keys, current);
       return granted.perk.name;
     },
 
@@ -984,7 +1023,7 @@ function runKeeping(
     // somebody else's world and must neither pay nor mark anything met.
     checkGoals: () => {
       if (detour) return null;
-      const progress = readProgress();
+      const progress = withWorldPerks(readProgress(), current.perks, current.worn);
       const newly = newlyMetGoals(current, progress);
       if (newly.length === 0) return null;
 
@@ -1062,7 +1101,9 @@ function runKeeping(
                   relics: progress.relics + dowry + Math.max(0, carried),
                 });
                 dropWorld();
-                location.href = new URL(location.pathname, location.href).toString();
+                departTo(() => {
+                  location.href = new URL(location.pathname, location.href).toString();
+                });
               },
             };
           })(),
@@ -1310,7 +1351,7 @@ function runKeeping(
         highlights: runHighlights(world, current, {
           points: state.points,
           perksBefore: perksAtBoot,
-          perksAfter: readProgress().found.length,
+          perksAfter: current.perks.length,
           campStart: state.wakeAt !== null,
         }),
         detail: runDetailOf(state, shot),
@@ -1329,7 +1370,7 @@ function runKeeping(
           milestones.push('awake');
         if (world.goalsMet.length < GOALS.length && current.goalsMet.length >= GOALS.length)
           milestones.push('surveyed');
-        if (perksAtBoot < PERKS.length && readProgress().found.length >= PERKS.length)
+        if (perksAtBoot < PERKS.length && current.perks.length >= PERKS.length)
           milestones.push('all-finds');
         for (const event of milestones)
           appendTimeline({
@@ -1380,7 +1421,9 @@ function runKeeping(
       url.searchParams.delete('ff');
       url.searchParams.delete('daily');
       url.searchParams.delete('camp');
-      location.href = url.toString();
+      departTo(() => {
+        location.href = url.toString();
+      });
     },
 
     /**
@@ -1555,6 +1598,22 @@ function required<T extends HTMLElement>(id: string): T {
 }
 
 /**
+ * Leave the page with an immediate, visible acknowledgement (Marc,
+ * 2026-08-26: "sometimes buttons are long to switch scenes — it seems to be
+ * working in the background"). Every scene switch here is a full reload,
+ * and between the tap and the next build's first paint the old screen just
+ * SAT there, frozen, looking ignored. One class starts the whole page
+ * fading and swallows further taps; the short beat gives the fade time to
+ * be seen before navigation tears the page down. Reduced motion keeps the
+ * beat (the departure still needs acknowledging) with the fade snapped by
+ * CSS.
+ */
+function departTo(go: () => void): void {
+  document.documentElement.classList.add('departing');
+  window.setTimeout(go, 140);
+}
+
+/**
  * The picker: one button per direction, reloading into it.
  *
  * A reload rather than a live swap, deliberately. Switching theme changes the
@@ -1569,7 +1628,9 @@ function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation
   const reloadWith = (mutate: (url: URL) => void): void => {
     const url = new URL(location.href);
     mutate(url);
-    location.href = url.toString();
+    departTo(() => {
+      location.href = url.toString();
+    });
   };
 
   const themeButtons = THEMES.map((theme) => {
@@ -1777,11 +1838,10 @@ function mountSettings(
 
   // Perks are FOUND, never bought (2026-08-18) — a count, never a name: an
   // unfound perk stays a mystery even here, so this line never says which
-  // ones are left. Progress carries across every world, unlike the shrine
-  // ledger above, so it is read fresh rather than off `live.world`.
+  // ones are left. PER-WORLD since 2026-08-26, like the shrine ledger above.
   const perksLine = document.createElement('p');
   perksLine.className = 'flag-note';
-  perksLine.textContent = `${readProgress().found.length} of ${PERKS.length} perks found.`;
+  perksLine.textContent = `${w.perks.length} of ${PERKS.length} perks found in this world.`;
 
   // The survey (2026-08-18): five world-scale goals, legible from run one —
   // met vs unmet, facts rather than places (never a find's location, never a
@@ -1796,7 +1856,7 @@ function mountSettings(
     w.shrines.length > 0 ||
     w.goalsMet.length > 0 ||
     w.revealed.length > 0 ||
-    readProgress().found.length > 0;
+    w.perks.length > 0;
   const surveyHeading = document.createElement('p');
   surveyHeading.className = 'help-title';
   surveyHeading.textContent = 'THE SURVEY';
@@ -1808,7 +1868,7 @@ function mountSettings(
   // forever, because world 2 had never been paid for a fact that was true
   // the day it was settled. A survey reports the world; the ledger is an
   // accounting detail underneath it.
-  const metGoals = new Set(metGoalIds(w, readProgress()));
+  const metGoals = new Set(metGoalIds(w, withWorldPerks(readProgress(), w.perks, w.worn)));
   const survey = document.createElement('div');
   survey.id = 'survey';
   survey.append(
@@ -2101,7 +2161,7 @@ function mountSettings(
   if (live.mode.kind === 'world') {
     menuTitle.textContent = `YOUR WORLD · ${live.slot} OF 3`;
     menuNote.textContent =
-      'Your own map, kept between runs. Relics travel to every world; what you buy with them stays here.';
+      'Your own map, kept between runs. Relics travel to every world; what you buy with them — and every perk you find — stays here.';
     menuParts.push(
       menuTitle,
       menuNote,
@@ -2227,7 +2287,9 @@ function buildAppearance(current: Theme): HTMLElement {
         // over from an old shared link cannot override the tap that just
         // happened.
         url.searchParams.delete('theme');
-        location.href = url.toString();
+        departTo(() => {
+          location.href = url.toString();
+        });
       });
       return button;
     }),
@@ -2499,7 +2561,7 @@ async function main(): Promise<void> {
     SLOTS.every((s) => s === slot || peekSlot(s) === null) &&
     Object.keys(readDailyBook()).length === 0 &&
     readProgress().relics === 0 &&
-    readProgress().found.length === 0 &&
+    world.perks.length === 0 &&
     // A settled shared world writes a diary tick before any run finishes
     // (fresh-eyes, 2026-08-20) — a device holding one is not virgin.
     readTimeline().length === 0;
@@ -2530,7 +2592,9 @@ async function main(): Promise<void> {
     } catch {
       // Storage refused the wipe; the reload below still starts clean-ish.
     }
-    location.href = '/';
+    departTo(() => {
+      location.href = '/';
+    });
   });
 
   // BACK UP MY WORLDS / RESTORE A BACKUP (2026-08-21). See `meta/backup.ts`
@@ -2604,7 +2668,9 @@ async function main(): Promise<void> {
         moreRestore.textContent = 'RESTORE FAILED — storage refused';
         return;
       }
-      location.href = '/';
+      departTo(() => {
+        location.href = '/';
+      });
       return;
     }
     const pasted = window.prompt(
@@ -2641,15 +2707,66 @@ async function main(): Promise<void> {
   const worldsList = required('worlds-list');
   const frontDoorSettle = required<HTMLButtonElement>('front-door-settle');
   const goHome = (): void => {
-    location.href = new URL(location.pathname, location.href).toString();
+    departTo(() => {
+      location.href = new URL(location.pathname, location.href).toString();
+    });
   };
   /** Navigate home with one param set — the daily and camp doors' shape. */
   const goWith = (param: string, value: string): void => {
     const url = new URL(location.pathname, location.href);
     url.searchParams.set(param, value);
-    location.href = url.toString();
+    departTo(() => {
+      location.href = url.toString();
+    });
   };
   frontDoorHome.addEventListener('click', goHome);
+
+  // Which game the board IS, said on the board itself (Marc, 2026-08-26:
+  // "make sure its clear which one is which and which one is the current
+  // world"). One quiet line under the stats, on from the first frame — a
+  // daily and a home run used to be told apart only by what the ? panel
+  // said when asked.
+  const modeChip = required('mode-chip');
+  modeChip.hidden = false;
+  modeChip.textContent =
+    dailyDate !== null
+      ? `THE DAILY · ${dailyName(dailyDate)} — points only, nothing banks`
+      : sharedSeed !== null
+        ? 'A SHARED RUN — nothing banks'
+        : `WORLD ${slot} OF 3`;
+
+  // THE SHOP, from the door (Marc, 2026-08-26: "a way to access our relic
+  // and shop outside the main game") — the same shelf the end screen shows,
+  // drawn by the same builder (ui/shop.ts), for the ACTIVE world. Home door
+  // only: a daily or shared door must not offer a shop whose currency that
+  // mode never banks. Hidden until relics exist to spend or have been met,
+  // the end-screen door's own teaching gate.
+  const frontDoorShop = required<HTMLButtonElement>('front-door-shop');
+  if (dailyDate === null && sharedSeed === null && keeper.shop !== undefined) {
+    const shopHook = keeper.shop;
+    const shopSheet = panelDoor('shop-panel', 'shop-back');
+    const shopTitle = required('shop-title');
+    const shopPurse = required('shop-purse-line');
+    const shopBody = required('shop-body');
+    const doorJustWorn: { id: PerkId | null } = { id: null };
+    const paintShopDoor = (): void => {
+      const p = shopHook.read();
+      frontDoorShop.hidden = !(p.relics > 0 || p.found.length > 0 || p.met.includes('relic'));
+      frontDoorShop.textContent = `SHOP — ${p.relics} ${p.relics === 1 ? 'RELIC' : 'RELICS'}`;
+    };
+    const paintShopPanel = (): void => {
+      const p = shopHook.read();
+      shopTitle.textContent = `THE SHOP · WORLD ${slot}`;
+      shopPurse.textContent = `${p.relics} RELICS`;
+      shopBody.replaceChildren(...shopParts(shopHook, paintShopPanel, doorJustWorn));
+      paintShopDoor();
+    };
+    frontDoorShop.addEventListener('click', () => {
+      paintShopPanel();
+      shopSheet.open(frontDoorShop);
+    });
+    paintShopDoor();
+  }
 
   // A daily game left open across midnight — the installed PWA's NORMAL
   // state — used to go on offering YESTERDAY (launch audit, 2026-08-20):
@@ -2868,7 +2985,7 @@ async function main(): Promise<void> {
       world.runs === 0 &&
       SLOTS.every((s) => s === slot || peekSlot(s) === null) &&
       Object.keys(readDailyBook()).length === 0 &&
-      readProgress().found.length === 0;
+      world.perks.length === 0;
 
     /** The original flat ledger — the TOTALS tab. */
     const fameTotalsRows = (): HTMLElement[] => {
@@ -2903,19 +3020,23 @@ async function main(): Promise<void> {
         );
       }
 
-      const progress = readProgress();
+      // PER-WORLD since 2026-08-26: each world's own shelf, under the world
+      // that found it — a device-wide list here would be the exact confusion
+      // the split exists to end.
       rows.push(fameRow('fame-h', 'PERKS FOUND'));
-      if (progress.found.length === 0) {
-        rows.push(fameRow('fame-row dim', 'None yet — hidden finds are out there.'));
-      } else {
-        for (const perk of PERKS.filter((p) => progress.found.includes(p.id))) {
+      let anyPerks = false;
+      for (const s of SLOTS) {
+        const w = s === slot ? world : peekSlot(s);
+        if (w === null || w.perks.length === 0) continue;
+        anyPerks = true;
+        for (const perk of PERKS.filter((p) => w.perks.includes(p.id))) {
           rows.push(
-            fameRow(
-              'fame-row',
-              `✦ ${perk.name}${progress.equipped.includes(perk.id) ? ' — worn' : ''}`,
-            ),
+            fameRow('fame-row', `✦ W${s} · ${perk.name}${w.worn === perk.id ? ' — worn' : ''}`),
           );
         }
+      }
+      if (!anyPerks) {
+        rows.push(fameRow('fame-row dim', 'None yet — hidden finds are out there.'));
       }
       return rows;
     };
@@ -3357,7 +3478,12 @@ async function main(): Promise<void> {
               : { kind: 'world' },
         syncSound,
       },
-      keeper.newRun ?? (() => location.reload()),
+      keeper.newRun ??
+        (() => {
+          departTo(() => {
+            location.reload();
+          });
+        }),
     );
   paintSettings();
   required('help').addEventListener('click', paintSettings);
@@ -3399,12 +3525,20 @@ async function main(): Promise<void> {
   // `destinationAt`, deterministically per hex, so every phone's daily
   // still agrees. Shared `?seed=` replays keep their shrines — a replay
   // shows the sender's world as it was.
+  // A detour banks nothing, so it speaks no relics AT ALL (Marc, 2026-08-26:
+  // "completely remove anything relic related or sacrifice related" from the
+  // daily — you only optimise points there). Every relic faucet zeroes, which
+  // is the dial-form contract: SACRIFICE disappears (it paid only relics —
+  // `burnLuck` ships 0), claims stop announcing a currency that never lands,
+  // and TITHE has no rate to offer. No points path moves — relics never were
+  // one — so a daily score stays comparable phone to phone.
+  const noRelics = { burnRelics: 0, claimRelics: 0, luckToRelics: 0, titheRate: 0 };
   const tuning =
     sharedSeed === null && dailyDate === null
-      ? applyProgress(unlocked, readProgress())
+      ? applyProgress(unlocked, withWorldPerks(readProgress(), world.perks, world.worn))
       : dailyDate !== null
-        ? { ...unlocked, shrinesReborn: true }
-        : unlocked;
+        ? { ...unlocked, shrinesReborn: true, ...noRelics }
+        : { ...unlocked, ...noRelics };
   // Territories (and, since 2026-08-18, finds) the world already holds
   // arrive as plain data — the engine still knows nothing about storage, and
   // a replay is reproducible from seed + tuning + these two lists.
@@ -3513,7 +3647,9 @@ async function main(): Promise<void> {
           daily: {
             label: (): string => dailyBadge(readDailyBook(), dailyDate),
             retry: (): void => {
-              location.reload();
+              departTo(() => {
+                location.reload();
+              });
             },
           },
         }),
@@ -3712,7 +3848,9 @@ function showUpdateNote(): void {
   reload.id = 'update-reload';
   reload.textContent = 'NEW VERSION — TAP TO RELOAD';
   reload.addEventListener('click', () => {
-    location.reload();
+    departTo(() => {
+      location.reload();
+    });
   });
   const later = document.createElement('button');
   later.type = 'button';

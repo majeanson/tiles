@@ -24,16 +24,14 @@ import { bakeSurface } from '@render/bake';
 import {
   PERKS,
   UPGRADES,
-  buy,
   canAfford,
-  equip,
   hasMet,
-  levelOf,
   meet,
-  priceOf,
+  type PerkId,
   type Progress,
   type TeachId,
 } from '@meta/progress';
+import { shopParts } from './shop';
 import type { Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
@@ -576,8 +574,10 @@ export class Game {
    */
   #lastStatValues: Map<string, string> = new Map();
   #lastStatPlacements = 0;
-  /** The perk a WEAR tap just equipped, so the re-render can acknowledge it once. */
-  #justWorn: string | null = null;
+  /** The perk a WEAR tap just equipped, so the re-render can acknowledge it
+   *  once — a box rather than a field since 2026-08-26, because the shared
+   *  `shopParts` builder (ui/shop.ts) holds it across repaints. */
+  readonly #justWorn: { id: PerkId | null } = { id: null };
   /**
    * The name of a perk THIS RUN found, if any — for the end screen's CARRIED
    * OUT strip. Set inside `#claimNote` when `findLabel` grants one; never
@@ -1539,7 +1539,7 @@ export class Game {
                   (perk === undefined ? '' : `${perk.note}\n`) +
                   (worn
                     ? 'Already worn — it works from here on. WHAT YOU CARRY, in the ? panel, keeps the words; THE SHOP, on the end screen, is where it changes.'
-                    : 'Yours for good, on every world. WEAR it in THE SHOP, on the end screen.'),
+                    : 'Yours for good, in THIS world. WEAR it in THE SHOP, on the end screen.'),
           });
           break;
         }
@@ -1782,13 +1782,35 @@ export class Game {
           title: 'WHY',
           lines: [
             'The goal is DEPTH. The same pocket scores far more the farther from home you pop it — your score is how deep you dared to build.',
-            'Runs end. That is normal: what you carry out buys permanent upgrades, so every run makes the next one start stronger.',
-            'Your world remembers — ground stays revealed, territories stay yours. You are not playing a run; you are playing the climb.',
+            // The climb belongs to the HOME world and only to it (2026-08-26,
+            // Marc: "make sure ... world is world only"). On a detour these
+            // two lines described a game the player is not in — and START is
+            // exactly where a shared link's recipient begins reading, which
+            // made them the most-read false sentences the game had.
+            ...(this.#detour
+              ? [
+                  'Runs end. Here that is the whole shape: this run is a visit. Nothing it earns is banked, nothing it reveals is kept, and your own world is untouched by it.',
+                  'What you are chasing is the SCORE — one board, one sitting, on the plain economy everybody else gets.',
+                ]
+              : [
+                  'Runs end. That is normal: what you carry out buys permanent upgrades, so every run makes the next one start stronger.',
+                  'Your world remembers — ground stays revealed, territories stay yours. You are not playing a run; you are playing the climb.',
+                ]),
           ],
         },
         {
-          title: 'YOUR WORLD VS A SHARED RUN',
+          title: 'WHICH GAME THIS IS',
           lines: [
+            // Which of the three you are in RIGHT NOW, first (Marc,
+            // 2026-08-26: "make sure its clear which one is which and which
+            // one is the current world"). The section described all three
+            // modes and named none of them as the one on the screen, so the
+            // one question it could not answer was the one being asked.
+            this.#detour
+              ? this.#hooks.daily !== undefined
+                ? 'RIGHT NOW you are playing THE DAILY — not your own world. Nothing below about keeping, buying or remembering applies here.'
+                : 'RIGHT NOW you are playing A SHARED RUN — not your own world. Nothing below about keeping, buying or remembering applies here.'
+              : 'RIGHT NOW you are playing YOUR OWN WORLD — everything below applies to the run you are in.',
             // THREE worlds, not one (2026-08-21): slots shipped 2026-08-19 and
             // this sentence never followed. The front door says "WORLD 1 OF
             // 3" three lines from where a stranger reads this.
@@ -1895,7 +1917,11 @@ export class Game {
         ...(t.treasureNeed > 0 && t.holdSlots > 0
           ? [
               {
-                title: 'TREASURE, AND SACRIFICE',
+                // The second half of the title only where SACRIFICE exists —
+                // a detour's tuning zeroes `burnRelics` (2026-08-26), and a
+                // heading naming a button the mode does not have is the
+                // manual describing an economy it is not playing.
+                title: t.burnRelics > 0 && show('relic') ? 'TREASURE, AND SACRIFICE' : 'TREASURE',
                 lines: [
                   `A pocket of ${t.treasureNeed}+ can be taken as TREASURE instead: a MAGIC tile straight into your stash, or a UNIQUE one from ${t.treasureUnique}+.`,
                   'You give up the tiles and the score for it — that is the price of choosing a rare tile instead of waiting for one to be dealt.',
@@ -2106,7 +2132,7 @@ export class Game {
                 title: 'WHAT YOU CARRY',
                 lines: [
                   `${wornPerk.name} — ${wornPerk.note}`,
-                  'Found out in the world, yours for good. One perk is worn at a time; THE SHOP, on the end screen, is where it changes.',
+                  'Found out in THIS world, and it stays with this world — a perk belongs to the map that hid it, not to the device. One is worn at a time; THE SHOP, on the end screen, is where it changes.',
                 ],
               },
             ]
@@ -2130,8 +2156,8 @@ export class Game {
                 lines: [
                   'Relics are not points. Points are what a run is worth; relics buy the NEXT run — and both come out of the same pockets, so every ripe pocket asks which game you are playing.',
                   'SACRIFICE a pocket and it pays relics and nothing else — no tiles to live on, no score.',
-                  'Spend them in the SHOP, behind its own button on the end screen. Relics themselves are yours on every world; what you BUY with them belongs to the world you bought it in.',
-                  'PERKS are not for sale. They are FOUND — hidden somewhere out in the world — and you may wear one at a time.',
+                  'Spend them in the SHOP — behind its own button on the end screen, or from the front door between runs. Relics themselves are yours on every world; what you BUY with them belongs to the world you bought it in.',
+                  'PERKS are not for sale. They are FOUND — hidden somewhere out in the world — and they belong to THAT world, exactly like what you buy. You may wear one at a time.',
                 ],
                 detail: [
                   // Split, de-jargoned and pluralised (2026-08-21). It was one ~50
@@ -2167,13 +2193,19 @@ export class Game {
             // "don't repeat this info in other help tabs"). Three lines that
             // used to restate it from memory are gone; the pointer is not a
             // restatement, and it is what makes the tab findable.
-            'Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
+            ...(this.#detour
+              ? [
+                  'Nothing here is remembered: the ground you reveal and the territories you claim last exactly as long as this run does.',
+                ]
+              : [
+                  'Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
+                ]),
             // THE SURVEY had no manual presence at all (2026-08-21): five
             // goals render in the MENU tab with nothing saying what they are
             // or that they pay. Gated on the same ledger the shrine line
             // uses, so a stranger who has met nothing is not shown a list of
             // locked things.
-            ...(show('shrine') || show('territory')
+            ...(!this.#detour && (show('shrine') || show('territory'))
               ? [
                   'THE SURVEY is five standing goals for the world itself — reach, ground known, territories held. Each pays relics once, and the MENU tab lists which are met.',
                 ]
@@ -2186,7 +2218,9 @@ export class Game {
                   'A woken CAMP shrine adds a way to begin: later runs can start at your farthest territory instead of at the beginning. The climb restarts from there — reach is measured from wherever you wake.',
                 ]
               : []),
-            'The MENU tab, at the top of this panel, holds your world’s own numbers and every way out of a run.',
+            this.#detour
+              ? 'The MENU tab, at the top of this panel, says which game this is and holds every way out of it — including the way back to your own world.'
+              : 'The MENU tab, at the top of this panel, holds your world’s own numbers and every way out of a run.',
           ],
           detail: [
             ...(t.territoryTiles > 0
@@ -2223,8 +2257,10 @@ export class Game {
     // The survey has no dial that zeroes it — five world-scale goals exist
     // wherever GOALS does, which is always. Named here so THIS BUILD's own
     // "what this game is" cannot leave out the one system it has no way to
-    // turn off.
-    systems.push('the survey');
+    // turn off. Except on a DETOUR (2026-08-26): the shell withholds
+    // `checkGoals` there, so the survey is not a system this run HAS, and
+    // listing it is the same leak the relic dials close by going to zero.
+    if (!this.#detour) systems.push('the survey');
 
     // THIS BUILD rides at the end of AFTER rather than owning a tab: one
     // section did not earn a sixth of the tab bar.
@@ -3544,7 +3580,11 @@ export class Game {
     // this device has relics to spend or has met them (`ideas/teaching.md`) —
     // a door to a shop priced in a currency you have never seen is the exact
     // kind of unexplained chrome the drip exists to remove.
+    // Never on a detour (2026-08-26, Marc's daily verdict: "completely
+    // remove anything relic related") — a daily's end screen offering the
+    // home shop was the loudest relic surface a mode that banks nothing had.
     if (
+      !this.#detour &&
       this.#hooks.shop !== undefined &&
       (this.#met('relic') || this.#hooks.shop.read().relics > 0 || carriedRelics > 0)
     ) {
@@ -3703,131 +3743,17 @@ export class Game {
   #shopParts(): HTMLElement[] {
     const shop = this.#hooks.shop;
     if (shop === undefined) return [];
-    const progress = shop.read();
-
-    // What travels and what does not (Marc, 2026-08-20: "purse global, levels
-    // per-world"). Said once, here, at the moment money is about to be spent —
-    // without it, opening a second world and finding DEEPER PURSE back at zero
-    // reads as lost progress rather than as the deal. Absent where the hook
-    // cannot tell us there is more than one world to travel between.
-    const scope = document.createElement('p');
-    scope.className = 'end-facts';
-    scope.textContent =
-      'Relics are yours on every world. What you buy with them belongs to THIS world — a new world is a fresh build as well as a fresh map.';
-
-    const rows = UPGRADES.map((upgrade) => {
-      const level = levelOf(progress, upgrade.id);
-      const price = priceOf(progress, upgrade);
-      const owned = level > 0;
-
-      const row = document.createElement('div');
-      row.className = 'shop-row';
-
-      const name = document.createElement('span');
-      name.className = 'shop-name';
-      name.textContent =
-        upgrade.levels > 1 && owned ? `${upgrade.name} ${level}/${upgrade.levels}` : upgrade.name;
-
-      const note = document.createElement('span');
-      note.className = 'shop-note';
-      note.textContent = upgrade.note;
-
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'shop-buy';
-
-      if (price === null) {
-        button.textContent = 'DONE';
-        button.disabled = true;
-      } else {
-        button.textContent = `BUY ${price}`;
-        button.disabled = progress.relics < price;
-        button.addEventListener('click', () => {
-          shop.write(buy(shop.read(), upgrade));
-          // The acknowledgement: a beat of the row wearing the accent, and
-          // the button saying so, before the whole screen redraws under it.
-          // A bought upgrade used to look identical to one that was still
-          // for sale — same row, same price gone quiet — and the only sign
-          // anything happened was a purse number one had to already know to
-          // check.
-          row.classList.add('bought');
-          button.textContent = 'BOUGHT';
-          setTimeout(() => {
-            this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
-          }, 260);
-        });
-      }
-
-      row.append(name, note, button);
-      return row;
-    });
-
-    // THE SHELF (2026-08-18): perks are found in the world, never bought.
-    // An owned perk shows its name, its sentence and the one toggle it has.
-    // Undiscovered ones used to be four identical UNDISCOVERED rows with a
-    // dash — the mystery was the point, but four blank rows read as a
-    // loading state rather than a promise. One line names the count instead —
-    // and since 2026-08-20 the HEADER carries it as N/5 FOUND (Marc: "the
-    // shelf is unclear that they are unique items you can find, show 0 / 5
-    // or similar"): a fresh device's empty shelf now reads as a collection
-    // with a size, not a shop section that failed to load.
-    const owned = PERKS.filter((perk) => progress.found.includes(perk.id));
-
-    const shelfHead = document.createElement('p');
-    shelfHead.className = 'shop-purse';
-    shelfHead.textContent = `THE SHELF · ${owned.length}/${PERKS.length} FOUND`;
-
-    const shelfNote = document.createElement('p');
-    shelfNote.className = 'end-facts';
-    shelfNote.textContent =
-      'Unique perks, found out in the world — never sold here. One perk may be worn at a time.';
-    const shelf = owned.map((perk) => {
-      const worn = progress.equipped.includes(perk.id);
-
-      const row = document.createElement('div');
-      row.className = 'shop-row';
-      if (worn) row.dataset['worn'] = 'true';
-      // The acknowledgement (2026-08-26): the tap re-renders this whole
-      // list, so without the marker the perk you just put on looked
-      // identical to one worn all along. One beat of the bought-row wash on
-      // the row that JUST became worn, then the marker clears.
-      if (worn && this.#justWorn === perk.id) {
-        row.classList.add('bought');
-        this.#justWorn = null;
-      }
-
-      const name = document.createElement('span');
-      name.className = 'shop-name';
-      name.textContent = perk.name;
-
-      const note = document.createElement('span');
-      note.className = 'shop-note';
-      note.textContent = perk.note;
-
-      row.append(name, note);
-
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'shop-buy';
-      button.textContent = worn ? 'WORN' : 'WEAR';
-      button.addEventListener('click', () => {
-        shop.write(equip(shop.read(), perk.id));
-        this.#justWorn = perk.id;
+    // One builder, two hosts (2026-08-26): the front door's shop panel and
+    // this end screen both call `shopParts` (ui/shop.ts), so the shelves
+    // cannot drift apart. This wrapper only supplies the end screen's own
+    // repaint and its cross-render justWorn memory.
+    return shopParts(
+      shop,
+      () => {
         this.#renderEnd(toHudView(this.#state, this.#harvestAt, this.#spotlight));
-      });
-      row.append(button);
-      return row;
-    });
-
-    const undiscovered = PERKS.length - owned.length;
-    const mystery = document.createElement('p');
-    mystery.className = 'end-facts';
-    mystery.textContent =
-      undiscovered > 0
-        ? `${undiscovered} more ${undiscovered === 1 ? 'is' : 'are'} still out there, unnamed.`
-        : 'Every perk in the pool has been found.';
-
-    return [scope, ...rows, shelfHead, shelfNote, ...shelf, mystery];
+      },
+      this.#justWorn,
+    );
   }
 
   /**

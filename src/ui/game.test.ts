@@ -3337,3 +3337,148 @@ describe('#describe’s destination() closure, pinned ahead of its move to view.
     );
   });
 });
+
+describe('which game this is — your world, the daily, a shared run (2026-08-26)', () => {
+  /**
+   * Marc: "make sure going in to a daily, sharing, etc is explicit for
+   * dailies only and world is world only, make sure its clear which one is
+   * which and which one is the current world."
+   *
+   * The manual was where the two leaked into each other. Every promise it
+   * makes — banking, remembering, the survey, the shop, SACRIFICE — belongs
+   * to the HOME world, and a detour read all of them anyway, because the
+   * only gates were the DEVICE's teaching ledger (which says nothing about
+   * which mode is running) and tuning dials nobody had zeroed yet. START is
+   * the first tab, so a shared link's recipient met those sentences before
+   * their first placement: the most-read false copy the game had.
+   *
+   * The contract is stated from BOTH sides on purpose. An absence test
+   * alone passes just as well when the words disappear from every mode, so
+   * each one also proves the words are still there at home.
+   */
+  const VETERAN: Progress = { ...EMPTY_PROGRESS, met: [...TEACH_IDS], relics: 30 };
+
+  /** Exactly the dials main.ts zeroes for a detour: no relic faucet at all. */
+  const DETOUR_TUNING: Tuning = {
+    ...TUNING,
+    burnRelics: 0,
+    claimRelics: 0,
+    luckToRelics: 0,
+    titheRate: 0,
+  };
+
+  const manualOf = (tuning: Tuning, hooks: GameHooks): string => {
+    const ctx = build(4, tuning, {
+      shop: {
+        read: () => VETERAN,
+        write: () => undefined,
+      },
+      ...hooks,
+    });
+    ctx.game.start();
+    ctx.game.openHelp();
+    return ctx.el.helpManual.textContent ?? '';
+  };
+
+  const home = (): string => manualOf(TUNING, {});
+  const daily = (): string =>
+    manualOf(DETOUR_TUNING, {
+      replay: true,
+      daily: { label: () => 'DAILY 1 · 1st try', retry: () => undefined },
+    });
+  const shared = (): string => manualOf(DETOUR_TUNING, { replay: true, fromLink: true });
+
+  it('names the mode on the screen, and never a second one beside it', () => {
+    expect(home()).toContain('RIGHT NOW you are playing YOUR OWN WORLD');
+    expect(daily()).toContain('RIGHT NOW you are playing THE DAILY');
+    expect(shared()).toContain('RIGHT NOW you are playing A SHARED RUN');
+
+    // Exactly ONE of the three is ever claimed. A screen naming two is the
+    // confusion this whole split exists to end.
+    for (const text of [home(), daily(), shared()]) {
+      const named = ['YOUR OWN WORLD', 'THE DAILY', 'A SHARED RUN'].filter((mode) =>
+        text.includes(`RIGHT NOW you are playing ${mode}`),
+      );
+      expect(named).toHaveLength(1);
+    }
+  });
+
+  it('promises the climb at home, and an honest visit on a detour', () => {
+    expect(home()).toContain('Your world remembers');
+    expect(home()).toContain('playing the climb');
+    for (const text of [daily(), shared()]) {
+      expect(text).not.toContain('Your world remembers');
+      expect(text).not.toContain('playing the climb');
+      expect(text).toContain('this run is a visit');
+    }
+  });
+
+  it('keeps remembered ground a promise only the home world makes', () => {
+    expect(home()).toContain('stays drawn faint on later runs');
+    for (const text of [daily(), shared()]) {
+      expect(text).not.toContain('stays drawn faint on later runs');
+      expect(text).toContain('Nothing here is remembered');
+    }
+  });
+
+  it('never speaks a relic, a sacrifice, the survey or a tithe on a detour', () => {
+    // Marc's daily verdict: "completely remove anything relic related or
+    // sacrifice related" — on a daily you optimise POINTS, and every relic
+    // word is a system that mode does not have. The four zeroed dials do
+    // most of this by construction; the survey and the shop door needed
+    // their own guards, because neither has a dial.
+    for (const text of [daily(), shared()]) {
+      expect(text).not.toMatch(/relic/i);
+      expect(text).not.toMatch(/sacrifice/i);
+      expect(text).not.toMatch(/tithe/i);
+      expect(text).not.toContain('THE SURVEY');
+    }
+
+    // And every one of them is still at home, or the absences above would
+    // pass on a manual that had simply lost the words.
+    const at = home();
+    expect(at).toMatch(/relic/i);
+    expect(at).toMatch(/sacrifice/i);
+    expect(at).toMatch(/tithe/i);
+    expect(at).toContain('THE SURVEY');
+  });
+
+  it('takes SACRIFICE off the screen on a detour, not just out of the manual', () => {
+    // The dial does this without a guard: `harvestBurn` is zero when both
+    // `burnRelics` and `burnLuck` are, and a zero burn hides the button.
+    // Pinned because it is the one relic surface a THUMB reaches for.
+    const detour = build(4, DETOUR_TUNING, { replay: true });
+    detour.game.start();
+    expect(detour.el.harvestBurn.hidden).toBe(true);
+  });
+
+  it('points at the MENU tab for what that tab actually holds here', () => {
+    expect(home()).toContain('holds your world’s own numbers');
+    for (const text of [daily(), shared()]) {
+      expect(text).not.toContain('holds your world’s own numbers');
+      expect(text).toContain('says which game this is');
+    }
+  });
+
+  it('says a found perk belongs to THIS world, never to the device', () => {
+    // The per-world split's copy (2026-08-26). The manual said "yours for
+    // good" on every world while the shelf had already moved onto the world
+    // — the exact promise the split was made to stop making.
+    const worn: Progress = {
+      ...EMPTY_PROGRESS,
+      found: ['stonewalker'],
+      equipped: ['stonewalker'],
+      met: [...TEACH_IDS],
+    };
+    const ctx = build(4, TUNING, {
+      shop: { read: () => worn, write: () => undefined },
+    });
+    ctx.game.start();
+    ctx.game.openHelp();
+    const text = ctx.el.helpManual.textContent ?? '';
+    expect(text).toContain('WHAT YOU CARRY');
+    expect(text).toContain('Found out in THIS world');
+    expect(text).not.toContain('yours for good. One perk');
+    expect(text).not.toContain('on every world. WEAR it');
+  });
+});

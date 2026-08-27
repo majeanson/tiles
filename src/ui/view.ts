@@ -1176,7 +1176,12 @@ export function whatGlows(state: GameState, reach: number): string | null {
   if (best === null) return null;
   const { reward, dist, at } = best;
   const beyond = Math.max(0, dist - reach);
-  return `${capitalize(nameDestination(reward, at, state.tuning, homeOf(state)))} still glows ${beyond} past your edge.`;
+  // "0 past your edge" is a sentence only a computer would say (Marc's
+  // phone, 2026-08-26) — a destination the run drew level with but never
+  // touched gets its own words.
+  const name = capitalize(nameDestination(reward, at, state.tuning, homeOf(state)));
+  if (beyond === 0) return `${name} still glows right at your edge.`;
+  return `${name} still glows ${beyond} past your edge.`;
 }
 
 /** "magic 6% · unique 1.2%", or null while the rarity system is off. */
