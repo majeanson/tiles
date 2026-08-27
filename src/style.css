@@ -1943,30 +1943,45 @@ button.armed {
    the reading budget (contrast.test.ts) is untouched by it and every
    direction inherits this card unchanged. The border is what guarantees the
    square stays visible even where a fill sits close to the panel. */
+/* The ground's own colour, as a swatch — and the one part of this card that
+   had to be measured rather than eyeballed (2026-08-27, Marc: "make sure
+   torchlit is good contrast and visual wise").
+
+   Terrain fills are tuned to sit on the BOARD, as large stroked areas whose
+   separation is governed by the greyscale ladder in `theme.test.ts`. None of
+   that transfers to a 14px square on a PANEL, and the numbers say so: against
+   its own panel, torchlit MOSS runs 1.93:1 at its light end and 1.26:1 at its
+   dark one, and it is not a torchlit problem — daylight's EMBER is 1.20 and
+   its TIDE 1.07. Every direction has at least one ground that vanishes here.
+
+   So the swatch does not ask the fill to carry it. Two changes: the outline
+   is `--ink-faint`, which `contrast.test.ts` already holds at 4.5:1 against
+   the panel in EVERY direction, so the SHAPE is guaranteed wherever the hue
+   is not; and the fill is the light end flat rather than a gradient running
+   into the dark one, which was throwing away the better half of the only
+   contrast it had. The terrain colours themselves are untouched — they answer
+   to the board and to the ladder, and bending them to suit a legend would be
+   the tail wagging the dog. */
 .tip-swatch {
   flex: none;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   margin-top: 3px;
-  border: 1px solid var(--panel-edge, #3a4150);
+  border: 1px solid var(--ink-faint, #767d8d);
   border-radius: 3px;
   background: var(--tile-green, #4a7c59);
 }
 
-.tip-swatch[data-colour='green'] {
-  background: linear-gradient(var(--tile-green, #4a7c59), var(--tile-green-to, #4a7c59));
-}
-
 .tip-swatch[data-colour='yellow'] {
-  background: linear-gradient(var(--tile-yellow, #b8983f), var(--tile-yellow-to, #b8983f));
+  background: var(--tile-yellow, #b8983f);
 }
 
 .tip-swatch[data-colour='red'] {
-  background: linear-gradient(var(--tile-red, #a4503c), var(--tile-red-to, #a4503c));
+  background: var(--tile-red, #a4503c);
 }
 
 .tip-swatch[data-colour='blue'] {
-  background: linear-gradient(var(--tile-blue, #3f6f96), var(--tile-blue-to, #3f6f96));
+  background: var(--tile-blue, #3f6f96);
 }
 
 .tip-words {

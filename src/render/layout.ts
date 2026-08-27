@@ -209,3 +209,27 @@ export function zoomCeiling(fitSize: number, floor: number, maxHexPx: number): n
   if (!(fitSize > 0)) return floor;
   return Math.max(floor, maxHexPx / fitSize);
 }
+
+/**
+ * How far OUT the camera may go — the floor, stated the same way the ceiling
+ * above is, in pixels of hex rather than as a multiple of anything.
+ *
+ * Marc, 2026-08-27, on a fresh run framed at FIT: "allow zoom out a bit at
+ * this stage". The floor was a flat 1 — FIT exactly, never a pixel wider —
+ * so on an opening board there was no way to see the space you were about to
+ * build into. But a flat multiple below 1 would be wrong at the other end:
+ * once a run is deep, FIT already shows the whole structure and everything
+ * past it is void, so "out" would buy nothing but a smaller picture.
+ *
+ * Stating it in pixels makes it self-limiting, and does it with the ceiling's
+ * own logic run backwards. Early, FIT is capped at `HEX_PX_MAX` and a hex is
+ * big, so there is room to pull back before hexes reach `minHexPx` — a real
+ * zoom-out. Late, FIT is already only a few pixels a hex, `minHexPx / fitSize`
+ * exceeds 1, and `ceiling` clamps the floor back to FIT: no zoom-out at all,
+ * because there is none worth having. One number, one meaning: as small as a
+ * hex is ever worth drawing.
+ */
+export function zoomFloor(fitSize: number, ceiling: number, minHexPx: number): number {
+  if (!(fitSize > 0)) return ceiling;
+  return Math.min(ceiling, minHexPx / fitSize);
+}

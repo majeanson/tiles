@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { disc, type Hex } from '@engine/hex';
 import type { Orientation } from '@theme/tokens';
-import { corners, fitLayout, hexAt, place, zoomLayout, type Layout, zoomCeiling } from './layout';
+import {
+  corners,
+  fitLayout,
+  hexAt,
+  place,
+  zoomLayout,
+  type Layout,
+  zoomCeiling,
+  zoomFloor,
+} from './layout';
 
 /**
  * The geometry, both ways up.
@@ -308,5 +317,61 @@ describe('the zoom ceiling', () => {
     expect(zoomCeiling(0, FLOOR, MAX_PX)).toBe(FLOOR);
     expect(zoomCeiling(-1, FLOOR, MAX_PX)).toBe(FLOOR);
     expect(zoomCeiling(Number.NaN, FLOOR, MAX_PX)).toBe(FLOOR);
+  });
+});
+
+describe('the zoom floor', () => {
+  /**
+   * Marc, 2026-08-27, looking at a fresh run framed at FIT: "allow zoom out a
+   * bit at this stage."
+   *
+   * The floor was a flat 1 — FIT exactly, never a pixel wider — so on an
+   * opening board there was no way to see the space you were about to build
+   * into. A flat multiple below 1 would have been wrong at the other end: a
+   * deep run already fits its whole structure, and "out" from there is void.
+   *
+   * So the floor is stated in pixels a hex, which is the ceiling's own logic
+   * run backwards, and it self-limits: real zoom-out early, none at all late.
+   */
+  const CEILING = 1;
+  const MIN_PX = 18;
+
+  it('opens a real pull-back on a small board, which is the ask', () => {
+    // An opening board fits at the 34px cap; 18px a hex is about half of it.
+    const floor = zoomFloor(34, CEILING, MIN_PX);
+    expect(floor).toBeLessThan(CEILING);
+    expect(floor).toBeCloseTo(18 / 34);
+  });
+
+  it('CLOSES as the board grows, which is why it is not a flat multiple', () => {
+    const small = zoomFloor(34, CEILING, MIN_PX);
+    const grown = zoomFloor(12, CEILING, MIN_PX);
+    const deep = zoomFloor(5, CEILING, MIN_PX);
+    expect(grown).toBeGreaterThan(small);
+    // Past the point where FIT itself is under the floor, there is no
+    // zoom-out left to give: the camera may never be forced wider than FIT.
+    expect(deep).toBe(CEILING);
+  });
+
+  it('never lets a hex be pulled below the size it stops being readable at', () => {
+    for (const fitSize of [40, 34, 20, 18, 12, 5, 0.5]) {
+      const reached = fitSize * zoomFloor(fitSize, CEILING, MIN_PX);
+      // Either the pull-back stops at MIN_PX, or FIT was already smaller and
+      // the floor stayed at FIT — never smaller than the board's own fit.
+      expect(reached).toBeGreaterThanOrEqual(Math.min(MIN_PX, fitSize) - 1e-9);
+    }
+  });
+
+  it('is never above the ceiling it is handed', () => {
+    // The invariant the clamp depends on: min <= max, at every board size.
+    for (const fitSize of [40, 34, 20, 12, 5, 1]) {
+      expect(zoomFloor(fitSize, CEILING, MIN_PX)).toBeLessThanOrEqual(CEILING);
+    }
+  });
+
+  it('states a ceiling rather than dividing by zero on an empty board', () => {
+    expect(zoomFloor(0, CEILING, MIN_PX)).toBe(CEILING);
+    expect(zoomFloor(-1, CEILING, MIN_PX)).toBe(CEILING);
+    expect(zoomFloor(Number.NaN, CEILING, MIN_PX)).toBe(CEILING);
   });
 });

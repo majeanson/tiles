@@ -6414,3 +6414,66 @@ read at 390×844 in both schemes, before and after.
 **Judged by looking is Marc's:** the grounds card at phone brightness, the
 swatches (torchlit's green is dark against the panel), and whether a toast
 that waits forever is restful or nagging. **The one gate is still Session C.**
+
+### Session 55 — the swatch that no direction could show, and a floor for the camera (2026-08-27)
+
+Marc, on the two findings left open from Session 54: "2. make sure torchlit is
+good contrast and visual wise. 3. allow zoom out a bit at this stage."
+
+**The swatch was measured, and it failed in every direction — not just
+torchlit.** Yesterday's grounds card paints each row's square in that ground's
+own terrain fill. Terrain fills are tuned to sit on the BOARD: large stroked
+areas whose separation is governed by the greyscale ladder in `theme.test.ts`,
+which they pass (moss 0.233 · ash 0.361 · tide 0.451 · ember 0.648). None of
+that transfers to a 14px square on a PANEL, and the numbers say so — against
+its own panel, torchlit MOSS runs **1.93:1** at its light end and **1.26:1**
+at its dark one. Marc saw torchlit; the sweep found daylight's EMBER at
+**1.20** and its TIDE at **1.07**, and placeholder's BLUE at 1.77. Every
+direction has at least one ground that vanishes on its own legend. The border
+was no rescue either: `panelEdge` is 1.56:1 against `panel`.
+
+The fix does not touch a terrain colour. Those answer to the board and to the
+ladder, and bending them to suit a legend would be the tail wagging the dog —
+which is the same instinct `CLAUDE.md` states as "do not relax a threshold to
+make a palette pass". Instead the swatch stops asking the fill to carry it:
+the outline is `--ink-faint`, which `contrast.test.ts` already holds at 4.5:1
+against the panel in EVERY direction, so the SHAPE is guaranteed wherever the
+hue is not; and the fill is the light end flat rather than a gradient running
+down into the dark one, which had been throwing away the better half of the
+only contrast it had. 16px rather than 14, for a little more hue to read.
+
+The board itself was checked and left alone. Terrain-vs-background runs under
+3:1 in several places (torchlit MOSS 2.12, daylight EMBER 1.06), but a tile is
+not a small mark: it is a large area with its own edge stroke and seam, and
+the ladder is what separates the four. Reporting that as a defect would have
+been a number applied to the wrong thing.
+
+**The camera got a floor, built as the twin of the ceiling it already had.**
+`ZOOM_MIN` was a flat 1 — FIT exactly, never a pixel wider — so on an opening
+board there was no way to see the ground you were about to build toward. A
+flat multiple below 1 would have been wrong at the other end: a deep run
+already fits its whole structure, and "out" from there is void.
+
+So `zoomFloor` states it in pixels a hex, exactly as `zoomCeiling` (2026-08-15,
+the same phone, the opposite complaint) states the other end, and it
+self-limits by construction. Early, FIT is capped at `HEX_PX_MAX` = 34, so
+there is room to pull back to `HEX_PX_MIN` = 18 — about half, and enough to
+bring the beacons into frame. Late, FIT is already a few pixels a hex,
+`minHexPx / fitSize` exceeds 1, and the ceiling clamps the floor back to FIT:
+no zoom-out at all, because there is none worth having. `ZOOM_MIN` survives as
+the CEILING of the floor — the camera may never be forced wider than FIT.
+
+18px is the size a hex still carries its worth number comfortably. Nothing
+switches off down there (the 12px glyph gate went on 2026-08-19); this is
+about the board staying READ, not merely drawn.
+
+**Verified:** 797 tests (+5: the floor opens on a small board, CLOSES as it
+grows, never pulls a hex under readable, never exceeds the ceiling the clamp
+depends on, and states a ceiling rather than dividing by zero), 19 e2e green
+against a freshly built `dist/`, sim byte-identical, typecheck / lint / format
+clean. Read at 390×844 in torchlit: the four swatches now stand as squares,
+and a pulled-back opening board shows its star and three beacons where FIT
+showed one.
+
+**Judged by looking is Marc's:** the swatches at phone brightness, and whether
+half-of-FIT is the right amount of "a bit". **The one gate is still Session C.**

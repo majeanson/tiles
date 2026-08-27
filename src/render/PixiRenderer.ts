@@ -21,6 +21,7 @@ import {
   hexAt,
   place,
   zoomCeiling,
+  zoomFloor,
   zoomLayout,
   type Layout,
 } from './layout';
@@ -93,6 +94,20 @@ const REFIT_SLOP = 0.01;
  * ever worth drawing.
  */
 const HEX_PX_MAX = 34;
+
+/**
+ * The floor twin of `HEX_PX_MAX`: how small a hex may be got to by pulling
+ * back, and therefore how far out of FIT the camera goes (Marc, 2026-08-27:
+ * "allow zoom out a bit at this stage").
+ *
+ * 18px of radius is a hex still comfortably carrying its worth number — the
+ * 12px gate that used to silence glyphs and numbers went on 2026-08-19, so
+ * nothing switches off down here; this is about the board staying READ, not
+ * merely drawn. On an opening board, where FIT is capped at 34, it buys a
+ * pull-back to about half: enough to see the ground you are building toward.
+ * On a deep one it buys nothing, by construction — see `zoomFloor`.
+ */
+const HEX_PX_MIN = 18;
 
 /**
  * How long the reduced-motion pop glow stays before it is removed. Long
@@ -639,6 +654,16 @@ export class PixiRenderer implements Renderer {
   }
 
   /**
+   * How far out this board may be pulled, right now. `ZOOM_MIN` is the
+   * CEILING of the floor rather than the floor itself: the camera may never
+   * be forced further out than FIT, and on a grown board that is exactly
+   * where it stays.
+   */
+  #zoomMin(): number {
+    return zoomFloor(this.#fitSize, ZOOM_MIN, HEX_PX_MIN);
+  }
+
+  /**
    * The OS setting can change WHILE the game is open (2026-08-21). It was
    * read once at construction and never again, so a player who turned
    * reduced motion ON mid-run kept every animation until they reloaded —
@@ -656,7 +681,7 @@ export class PixiRenderer implements Renderer {
   }
 
   zoomBy(factor: number): void {
-    const next = clamp(this.#zoom * factor, ZOOM_MIN, this.#zoomMax());
+    const next = clamp(this.#zoom * factor, this.#zoomMin(), this.#zoomMax());
     if (next === this.#zoom) return;
 
     // Anchoring at the screen centre means the pan scales with the zoom —
@@ -825,7 +850,7 @@ export class PixiRenderer implements Renderer {
    * the camera button twice does not play two journeys end to end.
    */
   #flyTo(zoom: number, panX: number, panY: number): void {
-    const toZoom = clamp(zoom, ZOOM_MIN, this.#zoomMax());
+    const toZoom = clamp(zoom, this.#zoomMin(), this.#zoomMax());
     if (this.#reducedMotion) {
       this.#camera = null;
       this.#zoom = toZoom;
@@ -857,7 +882,7 @@ export class PixiRenderer implements Renderer {
     const app = this.#app;
     const fit = this.#frontierFit ?? this.#layout;
     if (app === null || fit === null) return;
-    const target = clamp(zoom, ZOOM_MIN, this.#zoomMax());
+    const target = clamp(zoom, this.#zoomMin(), this.#zoomMax());
     const w = app.screen.width;
     const h = app.screen.height;
     const { x, y } = place(parse(hex), zoomLayout(fit, target, w / 2, h / 2));
