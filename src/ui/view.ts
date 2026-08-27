@@ -1533,22 +1533,31 @@ export function statNote(id: string, hud: HudView, t: Tuning): string {
  */
 export function colourLesson(colour: Colour, t: Tuning, theme: Theme): string | null {
   const n = theme.terrainNames[colour];
+  /**
+   * "NAME — PERSONALITY", except where a direction has already named the
+   * ground after its personality — torchlit calls red ASH and blue TIDE,
+   * so the line read "ASH — ASH." and "TIDE — TIDE." (2026-08-27). Invisible
+   * for three days because each colour was taught alone; the moment all four
+   * stood on one card, two of them stuttered. A direction is free to name
+   * its ground anything, so this is a rule rather than a rewording.
+   */
+  const head = (word: string): string => (n === word ? `${n}.` : `${n} — ${word}.`);
   switch (colour) {
     case 'green':
       return t.greenCrowdBonus > 0
-        ? `${n} — CROWDS. Wants one big mob of its own colour: +${t.greenCrowdBonus} worth per ${n} neighbour past the first.`
+        ? `${head('CROWDS')} Wants one big mob of its own colour: +${t.greenCrowdBonus} worth per ${n} neighbour past the first.`
         : null;
     case 'yellow':
       return t.yellowCompanyBonus > 0
-        ? `${n} — COMPANY. Scores in messy mixed ground: +${t.yellowCompanyBonus} worth per ${t.yellowCompanyAll ? 'differently-coloured neighbour' : 'different colour beside it'}.`
+        ? `${head('COMPANY')} Scores in messy mixed ground: +${t.yellowCompanyBonus} worth per ${t.yellowCompanyAll ? 'differently-coloured neighbour' : 'different colour beside it'}.`
         : null;
     case 'red':
       return t.redAshMatches
-        ? `${n} — ASH. Stone${t.redAshWalls ? ' and walls' : ''} count as matches for it: it feeds on the spent ground everyone else abandons.`
+        ? `${head('ASH')} Stone${t.redAshWalls ? ' and walls' : ''} count as matches for it: it feeds on the spent ground everyone else abandons.`
         : null;
     case 'blue':
       return t.blueTideEvery > 0
-        ? `${n} — TIDE. Worth little at home, a lot on the frontier: +1 worth per ${t.blueTideEvery} hexes from home.`
+        ? `${head('TIDE')} Worth little at home, a lot on the frontier: +1 worth per ${t.blueTideEvery} hexes from home.`
         : null;
   }
 }

@@ -2482,6 +2482,7 @@ async function main(): Promise<void> {
     eventCard: required('event-card'),
     eventCardGlyph: required('event-card-glyph'),
     eventCardText: required('event-card-text'),
+    eventCardRows: required('event-card-rows'),
     eventCardDismiss: required<HTMLButtonElement>('event-card-dismiss'),
   };
 

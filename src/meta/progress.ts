@@ -192,15 +192,19 @@ export const TEACH_IDS = [
   // card exactly once: words nobody had been shown, at the right cost.
   'purse',
   'relic',
-  // The four colour personalities (2026-08-19, same day — Marc: "the colors
-  // are not explained"): each teaches itself once, at the FIRST placement of
-  // that colour. Added after the first deploy, so a ledger seeded full that
-  // morning re-arms exactly these four — one toast each, once, which is the
-  // right cost for words nobody had been shown.
-  'colourGreen',
-  'colourYellow',
-  'colourRed',
-  'colourBlue',
+  // The four grounds, taught TOGETHER (2026-08-27, Marc: "teach all tiles at
+  // one in a beautiful tip"). History, because the shape changed twice in
+  // three days and the reasons are worth keeping: 2026-08-19 gave each colour
+  // its own toast at the first PLACEMENT of that colour; 2026-08-27 moved the
+  // trigger to first SIGHT, since a personality taught after the choice it
+  // informs is taught late, and a colour you keep declining is never taught
+  // at all; the same day it became ONE card for all four, because four
+  // separate toasts across four actions read as a queue rather than a drip,
+  // and the four only mean anything against each other — you are choosing
+  // BETWEEN them every hand. One id, one card, once per device. The four
+  // `colour*` ids that stood here are gone; `decodeProgress` drops unknown
+  // ids by contract, so a stored ledger holding them costs nothing.
+  'colours',
   // The last-gasp rule (2026-08-19, Marc: "1 tile left but cost is 6, I can
   // still play — is that normal?"): deliberate since DESIGN.md, illegible
   // until taught at the moment it first happens.

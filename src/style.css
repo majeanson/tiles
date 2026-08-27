@@ -604,7 +604,9 @@ button.fame-run[aria-expanded='true'] {
   display: flex;
   flex-direction: column;
   gap: 0;
-  z-index: 1;
+  /* Above the toast (2026-08-27), belt to the toast’s braces: the way to
+     re-orient a board must never be something another surface can bury. */
+  z-index: 3;
   border: 1px solid var(--panel-edge, #3a4150);
   border-radius: 8px;
   background: color-mix(in srgb, var(--panel, #1e222b) 85%, transparent);
@@ -1762,7 +1764,15 @@ button.armed {
 #toast {
   position: absolute;
   left: 8px;
-  right: 8px;
+  /* Clear of the camera column (2026-08-27). The toast is full-width and
+     the camera cluster — ?, sound, FIT/HERE — is 44px of buttons at the
+     board’s bottom-right, so the two have always overlapped; while tips
+     expired after 5.2s that was a flicker nobody could act on. With tips
+     waiting for a tap it became permanent, and an e2e caught the real
+     consequence: the toast intercepted the pointer, so the ? button could
+     not be pressed at all while any tip was up. 60px = the 44px column,
+     its 8px inset and a hair of air. */
+  right: 60px;
   bottom: 8px;
   z-index: 2;
   padding: 12px 14px;
@@ -1772,10 +1782,35 @@ button.armed {
   background: var(--panel, #1e222b);
   color: var(--ink, #e8ecf4);
   font-family: var(--font-body, inherit);
-  font-size: 0.8125rem;
-  line-height: 1.45;
+  /* The reading voice, finally applied here too (2026-08-27). Marc's
+     2026-08-26 ruling — "all is too small for explanations", then "still too
+     small, everything, by a big margin" — moved the panels to 17px and left
+     the toast at 13, which is the surface that does the most explaining
+     per day. 1rem is the compromise the position earns: it floats OVER the
+     board rather than owning a screen, so it stops short of the panels'
+     17px while clearing the "by a big margin" complaint. */
+  font-size: 1rem;
+  line-height: 1.5;
   white-space: pre-line;
+  cursor: pointer;
   box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
+}
+
+/* A tip that waits FOREVER has to look like it is waiting for you
+   (2026-08-27, with the timeout's removal). The toast has always been
+   tappable and never said so — for 5.2 seconds that cost nothing, because
+   it left on its own; now it is the only way out, so the affordance is not
+   decoration. `::after` rather than markup so every call site gains it
+   without knowing, and the foot is dim ink at label size — present when
+   looked for, silent when not. */
+#toast::after {
+  content: 'TAP TO DISMISS';
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-label, inherit);
+  font-size: 0.625rem;
+  letter-spacing: var(--label-tracking, 0.04em);
+  color: var(--ink-faint, #767d8d);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1853,17 +1888,104 @@ button.armed {
   background: var(--panel, #1e222b);
   color: var(--ink, #e8ecf4);
   font-family: var(--font-body, inherit);
-  font-size: 0.875rem;
+  /* The panels' own reading voice (2026-08-27) — 14px was the size Marc
+     called too small "by a big margin" the day before, and this card is the
+     most-read prose in the game after the manual. */
+  font-size: 1.0625rem;
   line-height: 1.5;
   text-align: center;
-  white-space: pre-line;
+  /* NOT `pre-line` (2026-08-27). It sat here from the card's first day, so
+     the newlines BETWEEN elements in index.html — indentation, and any HTML
+     comment — rendered as visible blank lines: 49px between the glyph and
+     the lead and 82px between the lead and the rows, on a card that then
+     stood 747px tall on an 844px phone. The property belongs on the one
+     child whose own \n characters carry meaning, which is the text. */
+  white-space: normal;
+  /* A card that teaches a SET is four rows taller than one that teaches a
+     fact, and a 4.7in phone in portrait is the target device. Bounded and
+     scrollable rather than clipped: the GOT IT that dismisses it must be
+     reachable no matter how many rows arrive. */
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: 0 12px 32px rgb(0 0 0 / 55%);
+}
+
+/* The rows of a set-teaching card: the four grounds (2026-08-27, Marc:
+   "teach all tiles at one in a beautiful tip"). Left-aligned under the
+   centred lead, because four sentences centred is four ragged blocks and
+   the eye loses the start of each line. */
+#event-card-rows:empty {
+  display: none;
+}
+
+#event-card-rows {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--panel-edge, #3a4150);
+  text-align: left;
+}
+
+.tip-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 0 10px;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.tip-row:last-child {
+  margin-bottom: 0;
+}
+
+/* The ground's own fill, as a MARK — never a surface any text sits on, so
+   the reading budget (contrast.test.ts) is untouched by it and every
+   direction inherits this card unchanged. The border is what guarantees the
+   square stays visible even where a fill sits close to the panel. */
+.tip-swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 3px;
+  background: var(--tile-green, #4a7c59);
+}
+
+.tip-swatch[data-colour='green'] {
+  background: linear-gradient(var(--tile-green, #4a7c59), var(--tile-green-to, #4a7c59));
+}
+
+.tip-swatch[data-colour='yellow'] {
+  background: linear-gradient(var(--tile-yellow, #b8983f), var(--tile-yellow-to, #b8983f));
+}
+
+.tip-swatch[data-colour='red'] {
+  background: linear-gradient(var(--tile-red, #a4503c), var(--tile-red-to, #a4503c));
+}
+
+.tip-swatch[data-colour='blue'] {
+  background: linear-gradient(var(--tile-blue, #3f6f96), var(--tile-blue-to, #3f6f96));
+}
+
+.tip-words {
+  flex: 1;
+  /* The rows are authored as one sentence each; `pre-line` on the panel
+     would honour any stray newline in a lesson string and break the row. */
+  white-space: normal;
 }
 
 /* The leading claim's own glyph (2026-08-19), pulled out of the words and
    set large above them — `#showEventCard` does the splitting. Empty and
    collapsed (`:empty` has no text node even for whitespace) for the rare
    text that arrives without the "glyph, two spaces" shape it expects. */
+/* The lead's own \n characters are the paragraph breaks a lesson writes
+   (`purseLesson` uses \n\n); nothing else on the card wants them. */
+#event-card-text {
+  white-space: pre-line;
+}
+
 #event-card-glyph {
   margin: 0 0 6px;
   font-family: var(--font-display, inherit);

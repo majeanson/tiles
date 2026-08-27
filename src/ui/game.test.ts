@@ -8,7 +8,7 @@ import { newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
 import { destinationAt } from '@engine/world';
 import type { Cell, GameState, LandmarkReward, Rarity } from '@engine/state';
-import { EMPTY_PROGRESS, TEACH_IDS, UPGRADES, type Progress } from '@meta/progress';
+import { EMPTY_PROGRESS, TEACH_IDS, UPGRADES, type Progress, type TeachId } from '@meta/progress';
 import type { BoardView, Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { Game, type Elements, type GameHooks } from './game';
@@ -120,6 +120,7 @@ function build(
         <div id="event-card-panel">
           <p id="event-card-glyph"></p>
           <p id="event-card-text"></p>
+          <div id="event-card-rows"></div>
           <button id="event-card-dismiss">GOT IT</button>
         </div>
       </div>
@@ -170,6 +171,7 @@ function build(
     eventCard: pick('event-card'),
     eventCardGlyph: pick('event-card-glyph'),
     eventCardText: pick('event-card-text'),
+    eventCardRows: pick('event-card-rows'),
     eventCardDismiss: pick<HTMLButtonElement>('event-card-dismiss'),
   };
 
@@ -1864,8 +1866,9 @@ describe('the moments pack (2026-08-18)', () => {
   });
 
   it('explains UNIQUE once, the moment one first enters the hand', () => {
-    vi.useFakeTimers();
-    try {
+    // No fake timers any more (2026-08-27): no tip times out, so "once" is
+    // proved by dismissing the toast BY TAP and watching it stay gone.
+    {
       const T = { ...TUNING, magicChance: 0, uniqueChance: 0 };
       const base = newRun(7, T);
       const withUnique: GameState = {
@@ -1884,17 +1887,17 @@ describe('the moments pack (2026-08-18)', () => {
       (cards[1] as HTMLButtonElement).click();
       expect(ctx.el.toast.textContent).toBe('UNIQUE — every match counts double, both ways.');
 
-      // Once only: it does not fire again once the toast has cleared. The
-      // row is rebuilt on every render, so the card is re-queried — a tap
-      // on a NOT-selected card, since tapping the selected one is the
-      // colour question now (2026-08-19), not a re-select.
-      vi.advanceTimersByTime(6000);
+      // The tap that dismisses it — the only way out a tip has now.
+      ctx.el.toast.click();
       expect(ctx.el.toast.hidden).toBe(true);
+
+      // Once only: it does not fire again. The row is rebuilt on every
+      // render, so the card is re-queried — a tap on a NOT-selected card,
+      // since tapping the selected one is the colour question now
+      // (2026-08-19), not a re-select.
       const fresh = [...ctx.el.draft.children].filter((c) => !c.classList.contains('hold'));
       (fresh[0] as HTMLButtonElement).click();
       expect(ctx.el.toast.hidden).toBe(true);
-    } finally {
-      vi.useRealTimers();
     }
   });
 
@@ -2275,6 +2278,12 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     return { state: { ...base, cells }, lastSide, spare };
   };
 
+  /** The same ledger, plus ids this test is not the subject of. */
+  const taughtAlso = (progress: Progress, ...ids: TeachId[]): Progress => ({
+    ...progress,
+    met: [...new Set([...progress.met, ...ids])],
+  });
+
   const setup = (progress?: Progress, extraHooks: GameHooks = {}) => {
     const fixture = nearlyRipe();
     const dev = device(progress);
@@ -2295,7 +2304,11 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     // The same moment on a taught device says nothing of the sort — and the
     // quiet beat goes back to the moments that were always there (this board
     // out-reaches a fresh world, so NEW GROUND rightly takes the slot).
-    const again = setup(s.dev.current());
+    // `colours` too (2026-08-27): the four grounds are a CARD on a virgin
+    // ledger, and they would rightly take this beat. What is under test is
+    // that RIPE does not repeat, so everything else this run would teach is
+    // marked taught first.
+    const again = setup(taughtAlso(s.dev.current(), 'colours'));
     again.renderer.nextHit = again.lastSide;
     tap(again.el.board);
     expect(again.el.eventCard.hidden).toBe(true);
@@ -2316,8 +2329,9 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     expect(text).toMatch(/POPPED/);
     expect(s.dev.current().met).toContain('pop');
 
-    // A second pop, taught, is the ordinary receipt toast.
-    const later = setup(s.dev.current());
+    // A second pop, taught, is the ordinary receipt toast. `colours` too —
+    // see the RIPE test above for why.
+    const later = setup(taughtAlso(s.dev.current(), 'colours'));
     later.renderer.nextHit = later.lastSide;
     tap(later.el.board);
     later.el.harvestTiles.click();
@@ -2576,57 +2590,69 @@ describe('teaching, drop by drop (2026-08-19)', () => {
   });
 
   /**
-   * A colour teaches itself the first time it is SEEN, not the first time it
-   * is placed (Marc, 2026-08-27, from his own option set: "one by color we
-   * see"). The old trigger taught the personality one beat AFTER the choice
-   * it exists to inform — and never at all for a colour the player kept
-   * declining, which on a four-colour hand is an easy colour to never play.
-   *
-   * The setup makes the distinction the whole point: BLUE is in hand and a
-   * GREEN is the card actually placed. Under the old rule this test could
-   * not pass at all.
+   * THE FOUR GROUNDS, taught together, the first time any of them is seen
+   * (Marc, 2026-08-27: "teach all tiles at one in a beautiful tip"). The
+   * shape changed twice in three days — first-placement, then first-sight
+   * per colour, then all four on one card — and the reason the last one wins
+   * is that the four only mean anything AGAINST each other: every hand is a
+   * choice between them, and a player told about one on action 1 and another
+   * on action 4 never holds the comparison the choice needs.
    */
-  it('teaches a colour the first time it is SEEN in hand, never having placed it', () => {
+  it('teaches all four grounds on one card, the first time any is in hand', () => {
     const T2: Tuning = { ...T, biomeEvery: 0 };
-    // Every colour met but blue, so the one toast in question owns the beat
-    // and a redrawn card of any other colour cannot steal it.
-    const dev = device({
-      ...EMPTY_PROGRESS,
-      met: TEACH_IDS.filter((id) => id !== 'colourBlue'),
+    const dev = device();
+    const base = newRun(7, T2);
+    const ctx = build(1, T2, {
+      shop: dev.shop,
+      // Everything already met but the grounds, so the card under test owns
+      // the beat rather than queueing behind RIPE or the first-placement card.
+      resume: { ...base, selected: 0 },
+      worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 99 }),
     });
-    const seeBlue = () => {
-      const base = newRun(7, T2);
-      const ctx = build(1, T2, {
-        shop: dev.shop,
-        // A world already deeper than this placement, so NEW GROUND — which
-        // outranks every teaching moment and shares the one toast slot —
-        // cannot take the beat being measured.
-        worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 99 }),
-        resume: {
-          ...base,
-          draft: [
-            { id: 'g', colour: 'green' as const, rarity: 'common' as const },
-            { id: 'b', colour: 'blue' as const, rarity: 'common' as const },
-          ],
-          selected: 0,
-        },
-      });
-      ctx.game.start();
-      ctx.renderer.nextHit = key(1, 0);
-      tap(ctx.el.board);
-      return ctx;
+    ctx.game.start();
+    // A virgin ledger opens on THE EXPEDITION; clear it so the next action's
+    // moment is the one being measured.
+    ctx.el.eventCard.click();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+
+    expect(ctx.el.eventCard.hidden).toBe(false);
+    expect(ctx.el.eventCardText.textContent).toMatch(/THE FOUR GROUNDS|four/i);
+
+    // One row per colour whose personality is actually live, each carrying
+    // that ground's own sentence and its own swatch.
+    const rows = [...ctx.el.eventCardRows.querySelectorAll('.tip-row')];
+    expect(rows).toHaveLength(4);
+    const all = rows.map((r) => r.textContent ?? '').join(' | ');
+    expect(all).toMatch(/CROWDS/);
+    expect(all).toMatch(/COMPANY/);
+    expect(all).toMatch(/ASH/);
+    expect(all).toMatch(/TIDE/);
+    for (const colour of ['green', 'yellow', 'red', 'blue']) {
+      expect(
+        ctx.el.eventCardRows.querySelector(`.tip-swatch[data-colour="${colour}"]`),
+      ).not.toBeNull();
+    }
+    expect(dev.current().met).toContain('colours');
+  });
+
+  it('leaves the grounds card out where no personality is switched on', () => {
+    // The bare game: four names and no reasons is not a lesson.
+    const dev = device();
+    const bare: Tuning = {
+      ...BARE_TUNING,
+      greenCrowdBonus: 0,
+      yellowCompanyBonus: 0,
+      redAshMatches: false,
+      blueTideEvery: 0,
     };
-
-    const first = seeBlue();
-    expect(first.el.toast.hidden).toBe(false);
-    // BLUE's personality, taught by a blue tile that was never put down.
-    expect(first.el.toast.textContent).toMatch(/TIDE/);
-    expect(first.game.state.cells[key(1, 0)]).toMatchObject({ colour: 'green' });
-    expect(dev.current().met).toContain('colourBlue');
-
-    // Seen is seen: a second sighting on a taught device says nothing.
-    const second = seeBlue();
-    expect(second.el.toast.textContent ?? '').not.toMatch(/TIDE/);
+    const ctx = build(1, bare, { shop: dev.shop, resume: newRun(7, bare) });
+    ctx.game.start();
+    ctx.el.eventCard.click();
+    ctx.renderer.nextHit = key(1, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.eventCardRows.children).toHaveLength(0);
+    expect(dev.current().met).not.toContain('colours');
   });
 
   it('puts the selected card down on a second tap, explaining it as it goes', () => {
@@ -3542,5 +3568,84 @@ describe('which game this is — your world, the daily, a shared run (2026-08-26
     expect(text).toContain('Found out in THIS world');
     expect(text).not.toContain('yours for good. One perk');
     expect(text).not.toContain('on every world. WEAR it');
+  });
+});
+
+describe('a tip waits for you (2026-08-27)', () => {
+  /**
+   * Marc: "make sure all tips are tapped on to exit, no autoexit on any so
+   * people have time to read."
+   *
+   * Every tip used to hold for 5.2 seconds — one number, guessed once, applied
+   * equally to a six-word claim and a forty-word explanation. Now nothing
+   * expires: a card leaves by GOT IT, a toast by a tap on it. The cost of that
+   * is the second test below, which is the bug the change would otherwise
+   * have introduced.
+   */
+  const T2: Tuning = { ...TUNING, destinationChance: 0, magicChance: 0, uniqueChance: 0 };
+
+  it('never takes a tip away on a timer, however long it is left', () => {
+    vi.useFakeTimers();
+    try {
+      const base = newRun(7, T2);
+      const ctx = build(1, T2, {
+        resume: {
+          ...base,
+          cells: { ...base.cells, [key(2, 0)]: { kind: 'tile', colour: 'blue' } },
+        },
+      });
+      ctx.game.start();
+      ctx.renderer.nextHit = key(2, 0);
+      tap(ctx.el.board);
+      expect(ctx.el.toast.hidden).toBe(false);
+
+      // Far past the 5.2s the game used to allow itself, and past any
+      // plausible replacement for it.
+      vi.advanceTimersByTime(120_000);
+      expect(ctx.el.toast.hidden).toBe(false);
+
+      // The one way out, and it works.
+      ctx.el.toast.click();
+      expect(ctx.el.toast.hidden).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the last tip when an action happens, so none can pile up', () => {
+    // The regression the timeout used to hide: with nothing expiring, a
+    // toast from one placement would still be over the board many
+    // placements later, because a quiet action has nothing to say and so
+    // never wrote the toast at all. An action supersedes what the last one
+    // said — including a sticky explanation the player tapped for.
+    const base = newRun(7, T2);
+    const ctx = build(1, T2, {
+      resume: {
+        ...base,
+        cells: { ...base.cells, [key(2, 0)]: { kind: 'tile', colour: 'blue' } },
+      },
+      // A veteran ledger: no teaching moment is armed, so the placement
+      // below is genuinely a QUIET action with nothing of its own to say.
+      shop: {
+        read: () => ({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] }),
+        write: () => undefined,
+      },
+      // And no NEW GROUND, which would legitimately speak on this beat.
+      worldStats: () => ({ territories: 0, knownPct: 0, farthestReach: 99 }),
+    });
+    ctx.game.start();
+
+    ctx.renderer.nextHit = key(2, 0);
+    tap(ctx.el.board);
+    expect(ctx.el.toast.hidden).toBe(false);
+
+    // A placement that claims nothing, pops nothing and teaches nothing.
+    const empty = Object.keys(ctx.game.state.cells).find(
+      (k) => ctx.game.state.cells[k]?.kind === 'empty',
+    );
+    expect(empty).toBeDefined();
+    ctx.renderer.nextHit = empty ?? null;
+    tap(ctx.el.board);
+    expect(ctx.el.toast.hidden).toBe(true);
   });
 });

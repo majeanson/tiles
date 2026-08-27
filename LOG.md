@@ -6347,3 +6347,70 @@ clean.
 **Judged by looking is Marc's:** the drawer card at phone width (it grew a
 clause), and whether one colour per action reads as a drip or as a queue.
 **The one gate is still Session C.**
+
+### Session 54 — one card for the four grounds, and no tip leaves on its own (2026-08-27)
+
+Marc: "teach all tiles at one in a beautiful tip. make sure all tips are
+tapped on to exit, no autoexit on any so people have time to read. make sure
+its ui/ux is perfect and revised and improved."
+
+**THE FOUR GROUNDS, on one card.** The colour lesson has changed shape three
+times in three days — first placement (08-19), first sight (08-27 morning),
+now all four together — and the last one wins for a reason the first two
+missed: the four only mean anything AGAINST each other. Every hand is a
+choice between them, and a player told about MOSS on action one and TIDE on
+action four never holds the comparison the choice actually needs. The four
+`colour*` teach ids collapse to one, `colours`; the card carries a row per
+ground, each with a swatch in that ground's own fill and its sentence in the
+run's live numbers. A ground whose personality dial is off is not a row.
+
+**Nothing times out any more.** `NOTE_MS` — 5.2 seconds, one number guessed
+once and applied equally to a six-word claim and a forty-word explanation —
+is deleted, along with the `sticky` parameter that existed to opt out of it.
+A card leaves by GOT IT; a toast leaves by a tap, and now says TAP TO DISMISS
+in its own foot, because a thing that waits forever has to look like it is
+waiting for you.
+
+**Three defects the change exposed, two of them old.**
+
+- **Phantom blank lines on every event card, since its first day.**
+  `white-space: pre-line` sat on the card PANEL, so the newlines BETWEEN
+  elements in `index.html` — indentation, and any HTML comment — rendered as
+  visible blank lines: 49px between the glyph and the lead, 82px between the
+  lead and the rows. The grounds card stood 747px tall on an 844px phone.
+  Moved to `#event-card-text`, the one child whose own `\n` characters mean
+  anything: 747px → 527px, with nothing removed but the gaps.
+- **"ASH — ASH." and "TIDE — TIDE."** Torchlit names red ASH and blue TIDE,
+  and the lesson template is "NAME — PERSONALITY" — so two of four stuttered.
+  Invisible for eight days because each colour was taught alone; the moment
+  all four stood together it was the first thing the eye caught. A rule, not
+  a reword: a direction may name its ground anything.
+- **The toast buried the camera controls.** Full-width at the board's bottom,
+  over a 44px cluster holding `?`, sound and FIT/HERE. While tips expired
+  that was a 5-second flicker; permanent, it meant the `?` could not be
+  pressed at all while any tip was up. Caught by an e2e that timed out
+  clicking it — "`#toast` intercepts pointer events". The toast now stops
+  60px short of the right edge, and `#camera` outranks it as well.
+
+**And one regression this session created, caught by its own test.** With
+nothing expiring, a quiet action — one that claims nothing, pops nothing and
+teaches nothing — never writes the toast, so the previous one simply stayed.
+A tip from placement 3 would still be over the board at placement 30. Every
+action now starts from silence.
+
+**The reading voice reaches the tips.** Marc's 2026-08-26 ruling ("all is too
+small for explanations", then "still too small, by a big margin") moved the
+panels to 17px and left the toast at 13 and the event card at 14 — the two
+surfaces that do the most explaining per day. Card to 17px, toast to 16px,
+and the card is bounded at `100dvh - 48px` with its own scroll so GOT IT is
+reachable however many rows arrive.
+
+**Verified:** 792 tests (+2 net: the timer's absence and the no-pile-up rule,
+the grounds card's four rows and swatches, its silence in a bare game; the
+UNIQUE test now dismisses by tap), 19 e2e green against a freshly built
+`dist/`, sim byte-identical, typecheck / lint / format clean. Screenshots
+read at 390×844 in both schemes, before and after.
+
+**Judged by looking is Marc's:** the grounds card at phone brightness, the
+swatches (torchlit's green is dark against the panel), and whether a toast
+that waits forever is restful or nagging. **The one gate is still Session C.**

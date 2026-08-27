@@ -374,6 +374,17 @@ test('after the FIT⇄HERE camera toggle, the board still draws a picture, not a
   // before driving the toggle.
   await page.waitForTimeout(700);
 
+  // A virgin device meets THE FOUR GROUNDS on its first placement
+  // (2026-08-27) — a modal card, which correctly swallows every tap meant
+  // for the board beneath it, this toggle included. Dismissed rather than
+  // avoided: the card is a real part of the first minute now, and a walker
+  // that pretends otherwise is testing a screen no new player ever sees.
+  const firstCard = page.locator('#event-card');
+  if (await firstCard.isVisible().catch(() => false)) {
+    await page.locator('#event-card-dismiss').click();
+    await expect(firstCard).toBeHidden();
+  }
+
   const toggle = page.locator('#camera-toggle');
   await toggle.click();
   await page.waitForTimeout(700);

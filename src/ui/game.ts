@@ -157,6 +157,8 @@ export type Elements = {
    */
   readonly eventCardGlyph: HTMLElement;
   readonly eventCardText: HTMLElement;
+  /** Where a set-teaching card draws its rows. Empty for every other card. */
+  readonly eventCardRows: HTMLElement;
   readonly eventCardDismiss: HTMLButtonElement;
 };
 
@@ -440,13 +442,6 @@ function rarityInked(text: string): (Node | string)[] {
   return parts;
 }
 
-const COLOUR_TEACH: Record<Colour, TeachId> = {
-  green: 'colourGreen',
-  yellow: 'colourYellow',
-  red: 'colourRed',
-  blue: 'colourBlue',
-};
-
 /**
  * HERE's jump-in zoom, from FIT (always 1). Close enough to read worth
  * numbers on a phone without a second tap; a real board can still clamp
@@ -472,7 +467,6 @@ const EDGE_SWIPE_PX = 28;
 type Stat = { readonly id: string; readonly label: string; readonly value: string };
 
 /** How long a claim announcement stays up before it fades on its own. */
-const NOTE_MS = 5200;
 
 /**
  * Every `#claimNote` line leads with its glyph, then two spaces, then the
@@ -564,7 +558,6 @@ export class Game {
    * The popup's text, and the timer that clears it. UI state: the engine
    * neither knows nor cares that anything was announced.
    */
-  #noteTimer: ReturnType<typeof setTimeout> | null = null;
   /** Shrines claimed this run, so each one announces the right unlock. */
   #shrinesClaimed = 0;
   /**
@@ -1014,7 +1007,6 @@ export class Game {
       this.#markMet('lens');
       this.#showNote(
         'The fog remembers. Tap remembered ground to light every known patch of its colour.',
-        true,
       );
     }
   }
@@ -1288,7 +1280,7 @@ export class Game {
       this.#harvestAt = hex;
       // Tapping a pocket is a question; this is the whole answer, including
       // where the numbers on the buttons come from.
-      this.#showNote(this.#pocketNote(hex), true);
+      this.#showNote(this.#pocketNote(hex));
       this.render();
       return;
     }
@@ -1316,20 +1308,19 @@ export class Game {
           this.#spotlight = known;
           this.#showNote(
             `Remembered ${this.#theme.terrainNames[known]} ground — every known patch of it is lit. Tap the fog again to let go.`,
-            true,
           );
           this.render();
           return;
         }
         if (this.#spotlight !== null) {
           this.#spotlight = null;
-          this.#showNote('The lens is off.', true);
+          this.#showNote('The lens is off.');
           this.render();
           return;
         }
       }
       // Sticky: you asked for this one, so it waits for you to be done.
-      this.#showNote(this.#describe(hex), true);
+      this.#showNote(this.#describe(hex));
       return;
     }
 
@@ -1338,7 +1329,7 @@ export class Game {
     // a tap on one used to be the silent no-op this very file's comment
     // above condemns. Say what is missing instead.
     if (this.#state.draft[this.#state.selected] === undefined) {
-      this.#showNote('Your hand is empty — tap a card below to pick one up.', true);
+      this.#showNote('Your hand is empty — tap a card below to pick one up.');
       return;
     }
 
@@ -2481,6 +2472,15 @@ export class Game {
     // the "that did nothing" check — no need to ask permission before acting.
     if (next === this.#state) return;
 
+    // Every action starts from silence (2026-08-27, with the timeout's
+    // removal). Nothing below is obliged to speak — a quiet placement that
+    // claims nothing, pops nothing and teaches nothing says nothing — and
+    // while tips expired on their own that was fine. Now they do not, so
+    // without this the toast from placement 3 would still be sitting over
+    // the board at placement 30. An ACTION supersedes whatever the last one
+    // said, including a sticky explanation the player tapped for.
+    this.#showNote(null);
+
     // Reaching a destination is the biggest thing that can happen in a
     // placement, and until now the only sign was a number moving somewhere
     // else on the screen. A shrine was worse than that: its whole payoff
@@ -2556,7 +2556,7 @@ export class Game {
       const lesson = this.#teachCheck(before, next, action);
       if (lesson !== null) {
         this.#markMet(lesson.id);
-        if (lesson.tier === 'card') this.#showEventCard(lesson.text);
+        if (lesson.tier === 'card') this.#showEventCard(lesson.text, undefined, lesson.rows);
         else this.#showNote(lesson.text);
       } else if (!this.#uniqueExplained && next.draft.some((tile) => tile.rarity === 'unique')) {
         this.#uniqueExplained = true;
@@ -2599,26 +2599,21 @@ export class Game {
   }
 
   /**
-   * Say something over the board, and take it away again.
+   * Say something over the board. It stays until it is tapped away.
    *
-   * Claims announce themselves for `NOTE_MS`; an explanation you asked for by
-   * tapping a glyph stays until you tap it away, because you are reading it
-   * deliberately and a timer would be a race against your own eyes.
+   * NOTHING here times out any more (Marc, 2026-08-27: "make sure all tips
+   * are tapped on to exit, no autoexit on any so people have time to read").
+   * Claims used to hold for `NOTE_MS` — 5.2 seconds, which is a reading
+   * speed the game was guessing at, and it guessed the same number for a
+   * six-word claim and a forty-word explanation. A timer is a race against
+   * the player's own eyes, and the two tiers now agree: a card is dismissed
+   * with GOT IT, a toast with a tap anywhere on it. The toast says so in
+   * its own foot, because a thing that waits forever must look like it is
+   * waiting for you.
    */
-  #showNote(text: string | null, sticky = false): void {
-    if (this.#noteTimer !== null) {
-      clearTimeout(this.#noteTimer);
-      this.#noteTimer = null;
-    }
+  #showNote(text: string | null): void {
     this.#el.toast.replaceChildren(...rarityInked(text ?? ''));
     this.#el.toast.hidden = text === null;
-
-    if (text !== null && !sticky) {
-      this.#noteTimer = setTimeout(() => {
-        this.#el.toast.hidden = true;
-        this.#noteTimer = null;
-      }, NOTE_MS);
-    }
   }
 
   /**
@@ -2632,11 +2627,33 @@ export class Game {
   #showEventCard(
     text: string,
     action?: { readonly label: string; readonly run: () => void; readonly arm?: string },
+    rows?: readonly { readonly colour: Colour; readonly text: string }[],
   ): void {
     this.#showNote(null);
     const match = EVENT_GLYPH.exec(text);
     this.#el.eventCardGlyph.textContent = match?.[1] ?? '';
     this.#el.eventCardText.replaceChildren(...rarityInked(match?.[2] ?? text));
+    // The rows (2026-08-27), for a card that teaches a SET. Each is a swatch
+    // in the ground's own fill and the ground's own sentence — the swatch is
+    // a MARK, never the surface any text sits on, so the reading budget is
+    // untouched by it and every direction inherits the card unchanged.
+    this.#el.eventCardRows.replaceChildren(
+      ...(rows ?? []).map((row) => {
+        const line = document.createElement('p');
+        line.className = 'tip-row';
+        const swatch = document.createElement('span');
+        swatch.className = 'tip-swatch';
+        swatch.dataset['colour'] = row.colour;
+        // Decoration: the words beside it already name the ground, so a
+        // screen reader gains nothing but noise from the square.
+        swatch.setAttribute('aria-hidden', 'true');
+        const words = document.createElement('span');
+        words.className = 'tip-words';
+        words.replaceChildren(...rarityInked(row.text));
+        line.append(swatch, words);
+        return line;
+      }),
+    );
     // A card with a choice grows its second button; GOT IT reads as staying.
     if (this.#eventAction !== null) {
       this.#eventAction.hidden = action === undefined;
@@ -2753,7 +2770,13 @@ export class Game {
     before: GameState,
     next: GameState,
     action: Action,
-  ): { readonly tier: 'card' | 'toast'; readonly id: TeachId; readonly text: string } | null {
+  ): {
+    readonly tier: 'card' | 'toast';
+    readonly id: TeachId;
+    readonly text: string;
+    /** A set-teaching card's rows (the four grounds). Absent for the rest. */
+    readonly rows?: readonly { readonly colour: Colour; readonly text: string }[];
+  } | null {
     const t = next.tuning;
     const met = this.#metSet();
     if (met === null) return null;
@@ -2840,23 +2863,32 @@ export class Game {
     // declining. The hand is where the decision is made, so the hand is
     // where the words belong.
     //
-    // BEFORE as well as after, and before FIRST: a placement redraws the
-    // whole hand, so a colour the player looked at and DECLINED is gone
-    // from `next` by the time this runs. Reading only `next` would teach
-    // every colour except the ones actually being turned down — the exact
-    // case the move to first-sight exists to cover. The hand they were
-    // looking at when they chose leads, then the one they are looking at now.
-    // Still after the cards above (a personality can wait one action; a
-    // first ripe tile cannot) and before the other toasts. One per action,
-    // so a first hand of three colours teaches across three actions rather
-    // than burying two of them.
-    {
+    // THE FOUR GROUNDS, taught together, the first time any of them is seen
+    // in the hand (Marc, 2026-08-27: "teach all tiles at one in a beautiful
+    // tip"). One card rather than four toasts because the four only mean
+    // anything AGAINST each other — every hand is a choice between them, and
+    // a player told about MOSS on action one and TIDE on action four never
+    // holds the comparison the choice actually needs. It is a card, not a
+    // toast, for the same reason: this is the game's central read, and it
+    // earns being stopped for.
+    //
+    // `before` as well as `next`, and `before` first: a placement redraws
+    // the WHOLE hand, so the tiles the player was looking at when they chose
+    // are already gone from `next` by the time this runs.
+    if (!met.has('colours')) {
       const seen = [...before.draft, ...before.held, ...next.draft, ...next.held];
-      for (const tile of seen) {
-        const id = COLOUR_TEACH[tile.colour];
-        if (met.has(id)) continue;
-        const lesson = this.#colourLesson(tile.colour);
-        if (lesson !== null) return { tier: 'toast', id, text: lesson };
+      if (seen.length > 0) {
+        const rows = this.#groundRows();
+        // Nothing to say where every personality dial is off (the bare
+        // game): the card would be four names and no reasons.
+        if (rows.length > 0) {
+          return {
+            tier: 'card',
+            id: 'colours',
+            text: `${TILE_GLYPH}  THE FOUR GROUNDS\nEvery card is one of these four, and each one scores its own way.`,
+            rows,
+          };
+        }
       }
     }
 
@@ -3884,7 +3916,7 @@ export class Game {
         box.setAttribute('role', 'button');
         box.tabIndex = 0;
         const explain = (): void => {
-          this.#showNote(this.#statNote(stat.id, hud), true);
+          this.#showNote(this.#statNote(stat.id, hud));
         };
         box.addEventListener('click', (event) => {
           explain();
@@ -3997,7 +4029,7 @@ export class Game {
             const lesson =
               this.#colourLesson(tile.colour) ??
               `${name} — worth one per matching neighbour when it ripens.`;
-            this.#showNote(rare === null ? lesson : `${lesson}\n${rare}`, true);
+            this.#showNote(rare === null ? lesson : `${lesson}\n${rare}`);
           }
         });
         // Long-press (touch), right-click (mouse), or the keyboard's own
@@ -4051,6 +4083,20 @@ export class Game {
    * share, so the three doors cannot drift apart. Null while that colour's
    * power dial is zeroed: a personality that is off must not be taught.
    */
+  /**
+   * The four grounds as rows, in the run's own live numbers — a colour whose
+   * personality dial is off is simply not a row, the same honesty
+   * `#colourLesson` already keeps for the single-colour case.
+   */
+  #groundRows(): { readonly colour: Colour; readonly text: string }[] {
+    const rows: { colour: Colour; text: string }[] = [];
+    for (const colour of COLOURS) {
+      const text = this.#colourLesson(colour);
+      if (text !== null) rows.push({ colour, text });
+    }
+    return rows;
+  }
+
   #colourLesson(colour: Colour): string | null {
     return colourLesson(colour, this.#state.tuning, this.#theme);
   }
@@ -4092,11 +4138,11 @@ export class Game {
       // card selected and nothing stashed, HOLD has nothing to swap and
       // used to say nothing about it.
       if (held === null && this.#state.draft[this.#state.selected] === undefined) {
-        this.#showNote('Nothing in hand to stash — tap a card first.', true);
+        this.#showNote('Nothing in hand to stash — tap a card first.');
         return;
       }
       if (held !== null && this.#state.draft[this.#state.selected] === undefined) {
-        this.#showNote('Tap a card in your hand first — the stash trades, it does not deal.', true);
+        this.#showNote('Tap a card in your hand first — the stash trades, it does not deal.');
         return;
       }
       // The index travels: tapping THIS card trades with THIS slot.
