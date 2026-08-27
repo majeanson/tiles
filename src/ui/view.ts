@@ -1522,7 +1522,7 @@ export function purseLesson(t: Tuning, theme: Theme): SetLesson {
       ? [
           {
             text:
-              `TITHE — the WHOLE purse traded for relics at ` +
+              `SACRIFICE LUCK — the WHOLE purse traded for relics at ` +
               `${Math.round(t.titheRate * 100)}%, better than dying on it.`,
           },
         ]

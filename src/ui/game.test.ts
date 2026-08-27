@@ -112,6 +112,7 @@ function build(
     <header id="stats"></header>
     <div id="board">
       <div id="camera">
+        <button id="lens-clear" hidden>✕</button>
         <button id="help">?</button>
         <button id="camera-toggle">FIT</button>
       </div>
@@ -164,6 +165,7 @@ function build(
     harvestBurn: pick<HTMLButtonElement>('harvest-burn'),
     end: pick('end'),
     cameraToggle: pick<HTMLButtonElement>('camera-toggle'),
+    lensClear: pick<HTMLButtonElement>('lens-clear'),
     help: pick<HTMLButtonElement>('help'),
     helpPanel: pick('help-panel'),
     helpManual: pick('help-manual'),
@@ -672,7 +674,7 @@ describe('the camera, and staying oriented', () => {
     // twice); what the test pins is unchanged — the LIVE rate and the LIVE
     // floor, so the sentence cannot drift from the dials it describes.
     expect(text).toContain(
-      `TITHE — turn your whole purse into relics now, at ${Math.round(t.titheRate * 100)}%`,
+      `SACRIFICE LUCK — turn your whole purse into relics now, at ${Math.round(t.titheRate * 100)}%`,
     );
     expect(text).toContain(`Needs ${t.titheMin} luck`);
   });
@@ -1994,13 +1996,13 @@ describe('TITHE (2026-08-18)', () => {
     );
     expect(button).not.toBeUndefined();
     const expected = Math.floor(100 * TUNING.titheRate);
-    expect(button!.textContent).toBe(`TITHE — all luck → ${expected} relics`);
+    expect(button!.textContent).toBe(`SACRIFICE LUCK — all → ${expected} relics`);
     expect(button!.disabled).toBe(false);
 
     button!.click();
     expect(ctx.game.state.luck).toBe(0);
     expect(ctx.game.state.relics).toBe(expected);
-    expect(ctx.el.toast.textContent).toBe(`Tithed 100 luck for ${expected} relics.`);
+    expect(ctx.el.toast.textContent).toBe(`Sacrificed 100 luck for ${expected} relics.`);
   });
 
   it('disables the row under titheMin, the same "goal not a trap" floor the engine keeps', () => {
@@ -3208,6 +3210,46 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
     expect(spotlightHint('green', off)).toBe('GREEN: nothing standing yet');
   });
 
+  /**
+   * The lens's way out (Marc, 2026-08-27: "when the lens is on, make sure we
+   * add a button on top of ? to clear the lens easily, sometimes its hard
+   * with tiles in hand").
+   *
+   * The lens is released by REPEATING whatever lit it — a long-press on the
+   * same card — and with a full hand that card is the fiddly thing to find
+   * again. This button is the exit that does not require remembering the
+   * entrance, so it has to appear exactly while there is something to exit.
+   */
+  it('offers a way out of the lens, only while the lens is on', () => {
+    const base = newRun(9, TUNING);
+    const ctx = build(1, TUNING, {
+      resume: { ...base, draft: [{ ...base.draft[0]!, colour: 'green' }, ...base.draft.slice(1)] },
+    });
+    ctx.game.start();
+
+    // Nothing lit: no way out on screen.
+    expect(ctx.el.lensClear.hidden).toBe(true);
+
+    const card = ctx.el.draft.children[0] as HTMLButtonElement;
+    card.dispatchEvent(new window.MouseEvent('contextmenu', { cancelable: true }));
+    expect(ctx.el.lensClear.hidden).toBe(false);
+    // It names the ground it would let go of, not a generic dismissal.
+    expect(ctx.el.lensClear.getAttribute('aria-label')).toContain(PLACEHOLDER.terrainNames.green);
+
+    // The lens is really ON: the board is drawn with cells stepped back, or
+    // lit, by it. (Asserted through the VIEW rather than the button, so the
+    // test cannot pass on a button that toggles and does nothing.)
+    const lit = ctx.renderer.views[ctx.renderer.views.length - 1]!;
+    expect(Object.values(lit.cells).some((c) => c.dimmed || c.lensed)).toBe(true);
+
+    ctx.el.lensClear.click();
+    expect(ctx.el.lensClear.hidden).toBe(true);
+    expect(ctx.el.toast.textContent).toBe('The lens is off.');
+    // And the board is redrawn without it, which is the whole point.
+    const off = ctx.renderer.views[ctx.renderer.views.length - 1]!;
+    expect(Object.values(off.cells).some((c) => c.dimmed || c.lensed)).toBe(false);
+  });
+
   // `#purseLesson` is the purse fold's first-contact card — armed only once
   // a shop hook exists to remember it was met (without one, `#met` answers
   // vacuously true and the card never fires).
@@ -3261,7 +3303,7 @@ describe('five more text builders, pinned ahead of their move to view.ts', () =>
           `and the next ${t.colourBiasDraws} draws with it.`,
       ),
       `FORGE · ${t.luckForgeCost} — turn the card you have selected UNIQUE.`,
-      `TITHE — the WHOLE purse traded for relics at ${Math.round(t.titheRate * 100)}%, better than dying on it.`,
+      `SACRIFICE LUCK — the WHOLE purse traded for relics at ${Math.round(t.titheRate * 100)}%, better than dying on it.`,
     ]);
   });
 
@@ -3570,7 +3612,11 @@ describe('which game this is — your world, the daily, a shared run (2026-08-26
     for (const text of [daily(), shared()]) {
       expect(text).not.toMatch(/relic/i);
       expect(text).not.toMatch(/sacrifice/i);
-      expect(text).not.toMatch(/tithe/i);
+      // Named in full (2026-08-27): TITHE was renamed SACRIFICE LUCK, so
+      // `/sacrifice/i` above would now pass for the pocket burn alone and
+      // this one would pass on a word the game no longer says. The phrase
+      // is what keeps the two apart.
+      expect(text).not.toContain('SACRIFICE LUCK');
       expect(text).not.toContain('THE SURVEY');
     }
 
@@ -3579,7 +3625,7 @@ describe('which game this is — your world, the daily, a shared run (2026-08-26
     const at = home();
     expect(at).toMatch(/relic/i);
     expect(at).toMatch(/sacrifice/i);
-    expect(at).toMatch(/tithe/i);
+    expect(at).toContain('SACRIFICE LUCK');
     expect(at).toContain('THE SURVEY');
   });
 

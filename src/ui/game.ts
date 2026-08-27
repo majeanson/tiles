@@ -138,6 +138,8 @@ export type Elements = {
    * back to seeing everything.
    */
   readonly cameraToggle: HTMLButtonElement;
+  /** Lets the colour lens go. Shown only while one is lit. */
+  readonly lensClear: HTMLButtonElement;
   readonly help: HTMLButtonElement;
   readonly helpPanel: HTMLElement;
   /** The manual's half of the panel. The settings half belongs to main.ts. */
@@ -976,6 +978,19 @@ export class Game {
         this.#renderer.flyToFit();
       }
       this.#syncCamera();
+    });
+
+    // Let the lens go, from the board rather than from the hand (Marc,
+    // 2026-08-27: "sometimes its hard with tiles in hand"). The lens is
+    // released by REPEATING whatever lit it — a long-press on the same card,
+    // a second tap on the same fog — and with a full hand, finding that one
+    // card again is the fiddly part. This is the way out that does not
+    // require remembering the way in.
+    this.#on(this.#el.lensClear, 'click', () => {
+      if (this.#spotlight === null) return;
+      this.#spotlight = null;
+      this.#showNote('The lens is off.');
+      this.render();
     });
 
     // The help panel is the manual: every system in play, in the order a run
@@ -2301,7 +2316,7 @@ export class Game {
                     ? [
                         // Cut from ~44 words to two clauses (2026-08-21): the middle one
                         // said the same thing twice, and "a trap" was doing no work.
-                        `TITHE — turn your whole purse into relics now, at ${Math.round(t.titheRate * 100)}%. Three times what unspent luck banks if you die on it. Needs ${t.titheMin} luck.`,
+                        `SACRIFICE LUCK — turn your whole purse into relics now, at ${Math.round(t.titheRate * 100)}%. Three times what unspent luck banks if you die on it. Needs ${t.titheMin} luck.`,
                       ]
                     : []),
                 ],
@@ -2440,7 +2455,7 @@ export class Game {
     if (t.holdSlots > 0) systems.push('the stash');
     if (t.findEvery > 0 && t.findChance > 0) systems.push('hidden finds');
     if (t.findSense > 0) systems.push('a keen nose');
-    if (t.titheRate > 0 && t.titheMin > 0) systems.push('TITHE');
+    if (t.titheRate > 0 && t.titheMin > 0) systems.push('SACRIFICE LUCK');
     // The survey has no dial that zeroes it — five world-scale goals exist
     // wherever GOALS does, which is always. Named here so THIS BUILD's own
     // "what this game is" cannot leave out the one system it has no way to
@@ -2599,9 +2614,15 @@ export class Game {
         if (spend.colour !== null) button.dataset['colour'] = spend.colour;
 
         if (spend.on === 'tithe') {
-          button.textContent = `TITHE — all luck → ${spend.relics ?? 0} relics`;
+          // SACRIFICE LUCK, not TITHE (Marc, 2026-08-27: "rename to SACRIFICE
+          // luck so its clearer maybe"). TITHE was invented vocabulary for a
+          // thing the game already had a word for — the pocket SACRIFICE
+          // destroys something you own to buy relics, and so does this. Two
+          // names for one idea is the thing `CLAUDE.md` warns about; the
+          // second word is what tells them apart.
+          button.textContent = `SACRIFICE LUCK — all → ${spend.relics ?? 0} relics`;
           button.title =
-            'Convert your whole luck purse to relics, on the spot — a better rate than what ' +
+            'Give up your whole luck purse for relics, on the spot — a better rate than what ' +
             'unspent luck banks when the run ends, spent now instead of banked at the end.';
           return button;
         }
@@ -2661,7 +2682,7 @@ export class Game {
         : on === 'steer'
           ? `${word} runs hot: a new hand drawn under it, and the next ${this.#state.tuning.colourBiasDraws} draws lean its way. ${paid} luck.`
           : on === 'tithe'
-            ? `Tithed ${paid} luck for ${this.#state.relics - beforeRelics} relics.`
+            ? `Sacrificed ${paid} luck for ${this.#state.relics - beforeRelics} relics.`
             : `Forged UNIQUE — wild, and every match it makes counts double, both ways. ${paid} luck.`,
     );
   }
@@ -3189,6 +3210,18 @@ export class Game {
     // than no line at all.
     if (this.#el.hint.textContent !== hint) this.#el.hint.textContent = hint;
     this.#el.hint.hidden = hint === '';
+
+    // The lens's own way out, present exactly while there is a lens. It
+    // names the ground it would let go of, because the board is already
+    // flooded with that colour and the button should be about THAT rather
+    // than about a generic dismissal.
+    const lit = hud.spotlight?.colour ?? null;
+    this.#el.lensClear.hidden = lit === null;
+    if (lit !== null) {
+      const name = this.#theme.terrainNames[lit];
+      this.#el.lensClear.setAttribute('aria-label', `Turn the ${name} lens off`);
+      this.#el.lensClear.title = `The ${name} lens is on — tap to let it go.`;
+    }
 
     // The destination signpost, as a TOAST on CHANGE rather than a line that
     // sat in the hint permanently being true. `#lastSignpost` starts
@@ -4271,6 +4304,32 @@ export class Game {
     const total = hud.draft.length + held.length;
     const cols = total <= 5 ? Math.max(1, total) : total === 6 ? 3 : 4;
     this.#el.hand.style.setProperty('--hand-cols', String(cols));
+
+    /**
+     * The held cards go to the ENDS of the row they land on (Marc,
+     * 2026-08-27: "in a 3 column 2 row situation, put them 1 at each end of
+     * the row").
+     *
+     * DOM order is the whole draft and then the whole stash, so merging the
+     * two rows clumped both held cards into the bottom-right corner — which
+     * reads as a leftover rather than as a shelf. `order` moves them without
+     * moving them in the document, so the tab order still walks the hand
+     * first and every test that indexes `#draft`/`#stash` is untouched.
+     *
+     * With two held and six cards this is exactly the layout he described:
+     * three dealt across the top, and the bottom row held-dealt-held.
+     */
+    const lastRowStart = cols * Math.floor(Math.max(0, total - 1) / cols);
+    const heldSlots =
+      held.length === 2 ? [lastRowStart, total - 1] : held.length === 1 ? [total - 1] : [];
+    held.forEach((card, i) => {
+      card.style.order = String(heldSlots[i] ?? total);
+    });
+    let slot = 0;
+    for (const card of this.#el.draft.children) {
+      while (heldSlots.includes(slot)) slot++;
+      (card as HTMLElement).style.order = String(slot++);
+    }
   }
 
   /**
@@ -4403,7 +4462,11 @@ export class Game {
 
     const label = document.createElement('span');
     label.className = 'tile-name';
-    label.textContent = name;
+    // The mark, like the hand (2026-08-27). The held card was the one tile in
+    // the game naming its colour in two channels instead of three — and now
+    // that it sits IN the hand rather than on a shelf below it, the card
+    // beside it was saying the same thing in a different language.
+    label.textContent = `${COLOUR_MARK[held.colour]} ${name}`;
     button.append(label);
 
     if (held.rarity !== 'common') {

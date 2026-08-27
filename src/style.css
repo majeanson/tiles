@@ -650,6 +650,15 @@ button.fame-run[aria-expanded='true'] {
   border-top: 1px solid var(--panel-edge, #3a4150);
 }
 
+/* The lens's way out (2026-08-27). Accented because it is the one control in
+   this stack that is only there while something is ON — the same "this is
+   live, tap it" language the purse door speaks — and because the board it
+   sits over is currently flooded with one colour, which is the state it
+   exists to end. */
+#lens-clear {
+  color: var(--accent, #d7b45a);
+}
+
 /* `#camera button` (one id + one type) outweighs a bare `#camera-toggle`
    (one id) in specificity regardless of source order, so this used to lose
    its own font-size to the 40px icon buttons beside it — found on the
@@ -1236,9 +1245,16 @@ button.armed {
    used to trail at the end of. The stash moved to its own centred row on
    2026-08-21; the divider kept floating with nothing left to divide from,
    so both relics are gone. */
+/* A held card is a CARD (Marc, 2026-08-27: "make sure held tiles have the
+   same format as other tiles, keep the held mention").
+
+   It was capped at 64px against the hand's 87-108, which read as a different
+   kind of object on a shelf — right while the stash had a row of its own to
+   say so, and wrong the moment it joined the hand. Same width, same art,
+   same name and mark; the HELD line under it is what tells them apart, and
+   that is the one difference worth drawing. */
 .tile.hold {
   position: relative;
-  max-width: 64px;
 }
 
 /* Dashed while empty, so it reads as a place to put something rather than a
@@ -2551,15 +2567,26 @@ button.help-tab[data-on='true'] {
   border-color: var(--tile-blue, #4a7fb4);
 }
 
-/* TITHE (2026-08-19): the one row whose label states its own arithmetic —
-   "all luck → N relics" — where every sibling fits a verb and a number in
-   one word each (`spendsFor` in `ui/view.ts` calls it "the exit from the
-   purse"). Left in the same 1-of-3 grid cell it wrapped onto two lines,
-   visibly bulkier than the row it sits beside; a full-width row gives the
-   longer label room instead of a cramped leftover. The disabled state is
-   `button:disabled`, unchanged — same as every other spend. */
+/* SACRIFICE LUCK (2026-08-19 as TITHE; renamed and reddened 2026-08-27):
+   the one row whose label states its own arithmetic — "all → N relics" —
+   where every sibling fits a verb and a number in one word each (`spendsFor`
+   in `ui/view.ts` calls it "the exit from the purse"). Left in the same
+   1-of-3 grid cell it wrapped onto two lines, visibly bulkier than the row
+   beside it; a full-width row gives the longer label room instead of a
+   cramped leftover. The disabled state is `button:disabled`, unchanged —
+   same as every other spend.
+
+   RED, like the pocket SACRIFICE it is now named after (Marc, 2026-08-27:
+   "make sure TITHE all luck is in red, similar to sacrifice"). The danger
+   colour is spent almost nowhere else on purpose — the armed wipe wears it,
+   and the harvest that destroys a pocket — so red means exactly one thing
+   in this game: this button spends something you do not get back. Emptying
+   the whole purse in one tap is precisely that, and it was the only such
+   control wearing the same quiet ink as REDRAW. */
 #spends button.spend[data-spend='tithe'] {
   grid-column: 1 / -1;
+  border-color: var(--danger, #c1362b);
+  color: var(--danger, #c1362b);
 }
 
 /* The reorientation line is one line. It was three on a phone with the debug

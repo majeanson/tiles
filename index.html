@@ -371,6 +371,15 @@
                (Game#syncCamera) because they name where a tap GOES, not a
                fixed word. -->
           <div id="camera">
+            <!-- Turn the colour lens off (Marc, 2026-08-27: "when the lens is
+                 on, make sure we add a button on top of ? to clear the lens
+                 easily, sometimes its hard with tiles in hand"). The lens is
+                 released by re-doing whatever lit it — a long-press on the
+                 same card, or a second tap on the same fog — and finding
+                 that exact card again with a full hand is the fiddly part.
+                 Present only while the lens is on; the game writes its
+                 label, because it names the colour it will let go of. -->
+            <button id="lens-clear" type="button" hidden>✕</button>
             <button id="help" type="button" aria-label="How to play">?</button>
             <!-- Sound, mid-run (Marc's launch call, 2026-08-20): mute
                  exactly where sound happens. Ships muted — the silent-1.0

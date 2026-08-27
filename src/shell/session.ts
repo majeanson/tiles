@@ -1245,6 +1245,7 @@ export async function startSession(route: Route): Promise<Session> {
     controls: required('controls'),
     end: required('end'),
     cameraToggle: required<HTMLButtonElement>('camera-toggle'),
+    lensClear: required<HTMLButtonElement>('lens-clear'),
     help: required<HTMLButtonElement>('help'),
     helpPanel: required('help-panel'),
     helpManual: required('help-manual'),
