@@ -304,6 +304,24 @@ export function resolveFeatures(): FeatureSet {
 }
 
 /**
+ * Choose a hex facing, or hand the decision back to the theme.
+ *
+ * The dev picker's half of `resolveFacing` (2026-08-27). It used to make the
+ * choice by putting `?hex=` in the URL and reloading through it — the URL as
+ * a message to the next page load. A session restarts in place now and a
+ * `Route` carries no rig params, so the value goes straight to the storage
+ * `resolveFacing` was going to read it out of anyway.
+ */
+export function rememberFacing(value: 'flat' | 'pointy' | 'auto'): void {
+  try {
+    if (value === 'auto') localStorage.removeItem(HEX_STORAGE_KEY);
+    else localStorage.setItem(HEX_STORAGE_KEY, value);
+  } catch {
+    // Private mode keeps the theme's own facing, which is a fine game.
+  }
+}
+
+/**
  * `?hex=flat` / `?hex=pointy` overrides the active theme's facing; `?hex=auto`
  * hands the decision back to the theme. Sticky, like the theme choice, and for
  * the same reason: prompt.md Q2 is decided by LOOKING, on a phone, and both

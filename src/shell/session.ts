@@ -38,7 +38,7 @@ import {
 } from '@meta/progress';
 import { decodeRecords, EMPTY as EMPTY_RECORDS, ONLY_WORLD } from '@meta/records';
 import { sendCrashReport } from '@meta/report';
-import type { Route } from '@meta/route';
+import { parseRoute, type Route } from '@meta/route';
 import {
   dailiesOf,
   prehistory,
@@ -58,14 +58,14 @@ import { applyTheme } from '@theme/apply';
 import { assetPath, resolveTheme, AUTO_THEME_ID, DEFAULT_THEME_ID, THEMES } from '@theme/index';
 import type { Orientation, Theme } from '@theme/tokens';
 import { Sound } from '@ui/audio';
-import { closeDialog, openDialog, siblingsOf } from '@ui/dialog';
+import { closeDialog, openDialog, resetDialogs, siblingsOf } from '@ui/dialog';
 import { Game, type Elements, type GameHooks } from '@ui/game';
 import { shopParts } from '@ui/shop';
 import { markRendererAlive } from '@shell/failure';
 import { promptInstall } from '@shell/install';
 import { runKeeping } from '@shell/keeper';
 import { showInAppNote } from '@shell/notes';
-import { departTo } from '@shell/router';
+import { departTo, setRoute, transition } from '@shell/router';
 import {
   activeSlot,
   appendTimeline,
@@ -79,6 +79,7 @@ import {
   readDailyRun,
   readProgress,
   readTimeline,
+  rememberFacing,
   rememberTheme,
   resolveFacing,
   resolveFeatures,
@@ -99,6 +100,205 @@ import {
   type Slot,
 } from '@shell/store';
 
+/**
+ * What a live session is, and what it takes to end one.
+ *
+ * A page load used to BE the session: everything below was done exactly once
+ * and torn down by the document going away. Since 2026-08-27 a scene change
+ * swaps one session for the next without a navigation, so each one has to be
+ * able to die — and everything it holds is here so that nothing is forgotten.
+ */
+export type Session = {
+  readonly route: Route;
+  readonly abort: AbortController;
+  readonly keeper: ReturnType<typeof runKeeping>;
+  readonly renderer: PixiRenderer;
+  readonly game: Game;
+  readonly sound: Sound;
+};
+
+/** The session on screen, or null before the first one has been built. */
+let live: Session | null = null;
+
+/**
+ * Which game is on screen right now.
+ *
+ * The panels are painted by module functions that never see the session's
+ * scope, and a restart from one of them — a theme swatch, say — must land on
+ * the SAME game rather than dropping a daily player back into their own
+ * world. The URL is the fallback for the window before the first session
+ * exists, which is also exactly what it means there.
+ */
+function currentRoute(): Route {
+  return live?.route ?? parseRoute(location.search);
+}
+
+/**
+ * The signal every listener in this file is wired with.
+ *
+ * Module-level rather than threaded through twenty functions: exactly one
+ * session exists at a time, `startSession` sets this before it wires
+ * anything, and `endSession` aborts it. `mountSettings` and its friends are
+ * module functions that cannot see the session's scope, and they wire onto
+ * markup that outlives every session — which is precisely the wiring that
+ * would otherwise double.
+ */
+let sessionAbort = new AbortController();
+function sessionSignal(): AbortSignal {
+  return sessionAbort.signal;
+}
+
+/**
+ * Listen, and be able to stop. Every `addEventListener` in this file goes
+ * through here so none can be forgotten by the one call that ends a session.
+ */
+function on<K extends keyof HTMLElementEventMap>(
+  target: HTMLElement,
+  type: K,
+  handler: (event: HTMLElementEventMap[K]) => void,
+  options?: AddEventListenerOptions,
+): void {
+  target.addEventListener(type, handler as EventListener, {
+    ...options,
+    signal: sessionSignal(),
+  });
+}
+
+/**
+ * Put the markup back the way `index.html` declares it.
+ *
+ * This is the half a reload used to get for free: a fresh document arrives
+ * with the front door up, the shell inert, every optional button hidden and
+ * every panel closed, and the session then reveals what applies. In place,
+ * whatever the last session revealed is still revealed — so a daily's door
+ * would still be offering YESTERDAY's RESUME on the way home.
+ *
+ * Three hosts are deliberately NOT emptied. `#themes` is relocated into
+ * `#settings-body` by `mountSettings`, and `#help-menu` into the manual by
+ * the game's own `#buildManual` — emptying their new parents would delete
+ * nodes `index.html` declares once and `required()` would then never find
+ * again. They are hidden panels repainted on open, so stale content in them
+ * is never seen.
+ */
+function resetShell(): void {
+  const el = (id: string): HTMLElement | null => document.getElementById(id);
+
+  el('front-door')?.removeAttribute('hidden');
+  el('game-shell')?.setAttribute('inert', '');
+
+  // Everything the markup declares hidden, hidden again.
+  for (const id of [
+    'front-door-mode',
+    'front-door-worlds',
+    'front-door-daily',
+    'front-door-settle',
+    'front-door-home',
+    'front-door-shop',
+    'worlds-camp',
+    'worlds-panel',
+    'more-panel',
+    'shop-panel',
+    'settings-panel',
+    'fame-panel',
+    'help-panel',
+    'more-fame',
+    'more-data-title',
+    'more-backup',
+    'more-restore',
+    'more-reset',
+    'mode-chip',
+    'hint',
+    'toast',
+    'event-card',
+    'end',
+    'purse',
+    'spends',
+    'harvest-points',
+    'harvest-treasure',
+    'harvest-burn',
+    'themes',
+  ]) {
+    const node = el(id);
+    if (node !== null) node.hidden = true;
+  }
+
+  // Hosts that hold only nodes their painter created.
+  for (const id of [
+    'worlds-list',
+    'fame-body',
+    'shop-body',
+    'end',
+    'stats',
+    'draft',
+    'stash',
+    'spends',
+    'themes',
+  ]) {
+    el(id)?.replaceChildren();
+  }
+
+  // The armed two-tap labels. Their `armed` booleans are session closures and
+  // reset with the session; the words on the persistent button do not.
+  const relabel = (id: string, text: string): void => {
+    const node = el(id);
+    if (node === null) return;
+    node.classList.remove('armed');
+    node.textContent = text;
+  };
+  relabel('more-reset', 'RESET ALL');
+  relabel('more-restore', 'RESTORE A BACKUP');
+  relabel('more-backup', 'BACK UP MY WORLDS');
+  relabel('front-door-begin', 'BEGIN');
+}
+
+/**
+ * End a session: stop it writing, stop it listening, stop it drawing.
+ *
+ * The order is the whole safety argument. `flush` first, so a pause-like exit
+ * keeps the last few actions the world-write debounce was still holding — it
+ * is a no-op on a world that has been dropped, which is what makes it safe to
+ * call even on the exits that just held a funeral. `detach` and `abort` then
+ * make every further write impossible rather than merely unlikely. Only then
+ * is anything destroyed, and the renderer goes last of the three so no frame
+ * is ever drawn into a dead WebGL context.
+ */
+export function endSession(session: Session): void {
+  session.keeper.flush();
+  session.keeper.detach();
+  session.abort.abort();
+  session.game.destroy();
+  session.renderer.destroy();
+  session.sound.close();
+  resetDialogs();
+  resetShell();
+  if (live === session) live = null;
+}
+
+/**
+ * Swap this session for one opening `route`, in place.
+ *
+ * The fade is the acknowledgement a tap deserves (Marc, 2026-08-26) and is
+ * now doing a second job: for its 140ms the page is `pointer-events: none`,
+ * so nothing can be tapped in the window where one session has ended and the
+ * next has not begun.
+ *
+ * `between` runs with NO session alive — the wipes (RESET ALL, RESTORE) need
+ * that, because a keeper still holding the old slot's keys while they are
+ * deleted is exactly the double-write this refactor exists to make impossible.
+ */
+export async function restart(
+  route: Route,
+  how: 'push' | 'replace' | 'none',
+  between?: () => void,
+): Promise<void> {
+  await transition(async () => {
+    if (live !== null) endSession(live);
+    between?.();
+    if (how !== 'none') setRoute(route, how);
+    await startSession(route);
+  });
+}
+
 function prefersReducedMotion(): boolean {
   try {
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -117,9 +317,13 @@ function prefersReducedMotion(): boolean {
 function followReducedMotion(renderer: Renderer): void {
   try {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    query.addEventListener('change', (event) => {
-      renderer.setReducedMotion(event.matches);
-    });
+    query.addEventListener(
+      'change',
+      (event) => {
+        renderer.setReducedMotion(event.matches);
+      },
+      { signal: sessionSignal() },
+    );
   } catch {
     // A browser without matchMedia change events keeps the boot answer,
     // which is exactly what it did before.
@@ -133,24 +337,21 @@ function required<T extends HTMLElement>(id: string): T {
 }
 
 /**
- * The picker: one button per direction, reloading into it.
+ * The picker: one button per direction, restarting into it.
  *
- * A reload rather than a live swap, deliberately. Switching theme changes the
- * hex orientation, every baked texture, the webfont and the browser chrome
- * colour; a reload gets all of that right for free and costs a quarter of a
- * second, whereas a live swap is a pile of invalidation code guarding a
- * decision that will be made once and then deleted.
+ * A whole new session rather than a live swap, still deliberately — but no
+ * longer a page load (2026-08-27). Switching theme changes the hex
+ * orientation, every baked texture, the webfont and the browser chrome
+ * colour; `PixiRenderer` takes its theme in the constructor and holds it
+ * `readonly`, so the honest way to change it is to build another one. That is
+ * what a session restart IS, and it costs a fade instead of a navigation.
+ *
+ * The choice goes to STORAGE rather than into the URL, which is the other
+ * half of what changed: `?theme=` and `?hex=` were only ever a way to
+ * smuggle a value through a reload, and a route by design cannot carry them.
  */
 function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation | null): void {
   host.hidden = false;
-
-  const reloadWith = (mutate: (url: URL) => void): void => {
-    const url = new URL(location.href);
-    mutate(url);
-    departTo(() => {
-      location.href = url.toString();
-    });
-  };
 
   const themeButtons = THEMES.map((theme) => {
     const button = document.createElement('button');
@@ -159,9 +360,9 @@ function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation
     button.textContent = theme.name;
     button.title = theme.note;
     button.setAttribute('aria-pressed', String(theme.id === current.id));
-    button.addEventListener('click', () => {
+    on(button, 'click', () => {
       rememberTheme(theme.id);
-      reloadWith((url) => url.searchParams.set('theme', theme.id));
+      void restart(currentRoute(), 'replace');
     });
     return button;
   });
@@ -180,8 +381,9 @@ function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation
     button.className = 'swatch';
     button.textContent = label;
     button.setAttribute('aria-pressed', String(value === (facing ?? 'auto')));
-    button.addEventListener('click', () => {
-      reloadWith((url) => url.searchParams.set('hex', value));
+    on(button, 'click', () => {
+      rememberFacing(value);
+      void restart(currentRoute(), 'replace');
     });
     return button;
   });
@@ -266,7 +468,7 @@ function mountSettings(
   let features = initial;
 
   // The rows are interactive: their taps must not close the panel around them.
-  host.addEventListener('click', (event) => {
+  on(host, 'click', (event) => {
     event.stopPropagation();
   });
 
@@ -418,7 +620,7 @@ function mountSettings(
   abandon.id = 'abandon-world';
   abandon.className = 'quiet';
   abandon.textContent = 'NEW WORLD — leave this one behind';
-  abandon.addEventListener('click', () => {
+  on(abandon, 'click', () => {
     if (!armed) {
       armed = true;
       abandon.classList.add('armed');
@@ -457,7 +659,7 @@ function mountSettings(
     paint();
 
     if (f.wired) {
-      button.addEventListener('click', () => {
+      on(button, 'click', () => {
         const next: Partial<Record<FeatureId, boolean>> = {};
         next[f.id] = !isEnabled(features, f.id);
         features = withOverrides(features, next);
@@ -526,7 +728,7 @@ function mountSettings(
   resetTeaching.id = 'reset-teaching';
   resetTeaching.className = 'quiet';
   resetTeaching.textContent = 'RESET TEACHING';
-  resetTeaching.addEventListener('click', () => {
+  on(resetTeaching, 'click', () => {
     writeProgress({ ...readProgress(), met: [] });
     flashLabel(resetTeaching, 'TEACHING RESET', 'RESET TEACHING');
   });
@@ -572,7 +774,7 @@ function mountSettings(
         errorSend.type = 'button';
         errorSend.className = 'quiet';
         errorSend.textContent = 'SEND REPORT';
-        errorSend.addEventListener('click', () => {
+        on(errorSend, 'click', () => {
           errorSend.disabled = true;
           errorSend.textContent = 'SENDING…';
           void sendCrashReport({
@@ -595,7 +797,7 @@ function mountSettings(
         errorClear.id = 'clear-last-error';
         errorClear.className = 'quiet';
         errorClear.textContent = 'CLEAR LAST ERROR';
-        errorClear.addEventListener('click', () => {
+        on(errorClear, 'click', () => {
           try {
             localStorage.removeItem(ERROR_STORAGE_KEY);
           } catch {
@@ -635,7 +837,7 @@ function mountSettings(
   restart.type = 'button';
   restart.id = 'new-run';
   restart.textContent = 'RESTART — a fresh run on this world';
-  restart.addEventListener('click', startNewRun);
+  on(restart, 'click', startNewRun);
 
   // Back to the front door. Not destructive and not arming: the run is saved
   // after every action (and, since Day 2, so is a daily), so this is a pause
@@ -644,7 +846,7 @@ function mountSettings(
   toMenu.type = 'button';
   toMenu.id = 'to-main-menu';
   toMenu.textContent = live.mode.kind === 'world' ? 'MAIN MENU' : 'BACK TO YOUR WORLD';
-  toMenu.addEventListener('click', live.mainMenu);
+  on(toMenu, 'click', live.mainMenu);
 
   const toMenuNote = document.createElement('p');
   toMenuNote.className = 'flag-note';
@@ -663,7 +865,7 @@ function mountSettings(
   toSettings.id = 'to-settings';
   toSettings.className = 'quiet';
   toSettings.textContent = 'SETTINGS';
-  toSettings.addEventListener('click', () => {
+  on(toSettings, 'click', () => {
     live.openSettings(toSettings);
   });
 
@@ -720,7 +922,7 @@ function mountSettings(
   // and a tap that also closed the manual would leave BACK pointing at a
   // dialog that is no longer there.
   for (const control of [toMenu, toSettings, restart, abandon]) {
-    control.addEventListener('click', (event) => {
+    on(control, 'click', (event) => {
       event.stopPropagation();
     });
   }
@@ -793,22 +995,19 @@ function buildAppearance(current: Theme): HTMLElement {
       button.className = 'swatch';
       button.textContent = text;
       button.setAttribute('aria-pressed', String(id === chosen));
-      button.addEventListener('click', () => {
+      on(button, 'click', () => {
         rememberTheme(id);
-        // A reload rather than a live swap, and the run survives it: the board
-        // is saved after every action (`tiles.run.v1`), and `PixiRenderer` takes
-        // its theme in the constructor and holds it `readonly` — so switching in
-        // place would mean tearing down and rebuilding the renderer, its texture
-        // caches and its ticker to save a reload that costs a blink. The dev
-        // picker has reloaded since Session 2 for the same reason.
-        const url = new URL(location.href);
-        // The stored choice is the one that has to win now, so a `?theme=` left
-        // over from an old shared link cannot override the tap that just
-        // happened.
-        url.searchParams.delete('theme');
-        departTo(() => {
-          location.href = url.toString();
-        });
+        // In place since 2026-08-27, and the run survives it exactly as it
+        // survived the reload: the board is saved after every action, and the
+        // restart re-reads it. `PixiRenderer` still takes its theme in the
+        // constructor and holds it `readonly` — so the renderer, its texture
+        // caches and its ticker are torn down and rebuilt. That is what the
+        // reload was buying, done deliberately and without leaving the page.
+        //
+        // The route carries no `?theme=`, so writing it back is also what
+        // drops a stale one left over from an old shared link — which is the
+        // deletion this handler used to have to remember to do itself.
+        void restart(currentRoute(), 'replace');
       });
       return button;
     }),
@@ -849,7 +1048,10 @@ function applyUnlocks(base: Tuning, unlocked: readonly string[]): Tuning {
   return t;
 }
 
-export async function startSession(route: Route): Promise<void> {
+export async function startSession(route: Route): Promise<Session> {
+  // A session's own listeners hang off this, and nothing else does: the
+  // previous one has already been aborted by `endSession` before we arrive.
+  sessionAbort = new AbortController();
   const features = resolveFeatures();
   // Three world slots (Marc, 2026-08-19): the active one is the game; the
   // door's WORLDS panel switches and begins the others, and a shared link's
@@ -903,7 +1105,6 @@ export async function startSession(route: Route): Promise<void> {
   // renderer, baked draft cards, layout — sees one consistent orientation.
   const theme: Theme = facing === null ? picked : { ...picked, orientation: facing };
 
-  const sessionAbort = new AbortController();
   const keeper = runKeeping(
     world,
     isEnabled(features, 'debug.overlay'),
@@ -948,10 +1149,17 @@ export async function startSession(route: Route): Promise<void> {
   // The name and the mark, written from one constant so renaming the game is
   // one edit. The icon is an inline SVG data URI: no request, cannot 404.
   document.title = NAME;
-  const icon = document.createElement('link');
-  icon.rel = 'icon';
-  icon.href = ICON_DATA_URI;
-  document.head.appendChild(icon);
+  // Replaced, never appended (2026-08-27): this used to run once per page.
+  // A session restart would otherwise leave a <link rel=icon> behind on every
+  // theme change, the way `applyWebfont` was already careful not to.
+  const icon =
+    document.getElementById('app-icon') ??
+    Object.assign(document.createElement('link'), {
+      id: 'app-icon',
+      rel: 'icon',
+    });
+  (icon as HTMLLinkElement).href = ICON_DATA_URI;
+  if (!icon.isConnected) document.head.appendChild(icon);
 
   // The stamp reclaims the bottom third for everyone but the one audience it
   // exists for (Stage 2, 2026-08-18: "bottom-third reclaim") — a build sha,
@@ -1045,7 +1253,8 @@ export async function startSession(route: Route): Promise<void> {
       panel.hidden = true;
       closeDialog(panel);
     };
-    required<HTMLButtonElement>(backId).addEventListener('click', close);
+    const backButton = required<HTMLButtonElement>(backId);
+    on(backButton, 'click', close);
     return {
       panel,
       close,
@@ -1067,7 +1276,7 @@ export async function startSession(route: Route): Promise<void> {
   const famePanelDoor = panelDoor('fame-panel', 'fame-back');
 
   const frontDoorMore = required<HTMLButtonElement>('front-door-more');
-  frontDoorMore.addEventListener('click', () => {
+  on(frontDoorMore, 'click', () => {
     morePanel.open(frontDoorMore);
   });
 
@@ -1101,7 +1310,7 @@ export async function startSession(route: Route): Promise<void> {
   // no heading, and a virgin device has nothing for any of the three to do.
   moreReset.hidden = virginDevice;
   let resetArmed = false;
-  moreReset.addEventListener('click', () => {
+  on(moreReset, 'click', () => {
     if (!resetArmed) {
       resetArmed = true;
       moreReset.classList.add('armed');
@@ -1136,7 +1345,7 @@ export async function startSession(route: Route): Promise<void> {
   moreRestore.hidden = virginDevice;
   required('more-data-title').hidden = virginDevice;
 
-  moreBackup.addEventListener('click', () => {
+  on(moreBackup, 'click', () => {
     let entries: Record<string, string> = {};
     try {
       for (const key of Object.keys(localStorage)) {
@@ -1178,7 +1387,7 @@ export async function startSession(route: Route): Promise<void> {
   // put back BEFORE it does, because "3 worlds · 412 relics · 2026-08-19" is
   // how a player tells their own backup from a stale one.
   let pending: ReturnType<typeof decodeBackup> = null;
-  moreRestore.addEventListener('click', () => {
+  on(moreRestore, 'click', () => {
     if (pending !== null) {
       try {
         for (const key of Object.keys(localStorage)) {
@@ -1242,7 +1451,7 @@ export async function startSession(route: Route): Promise<void> {
       location.href = url.toString();
     });
   };
-  frontDoorHome.addEventListener('click', goHome);
+  on(frontDoorHome, 'click', goHome);
 
   // Which game the board IS, said on the board itself (Marc, 2026-08-26:
   // "make sure its clear which one is which and which one is the current
@@ -1284,7 +1493,7 @@ export async function startSession(route: Route): Promise<void> {
       shopBody.replaceChildren(...shopParts(shopHook, paintShopPanel, doorJustWorn));
       paintShopDoor();
     };
-    frontDoorShop.addEventListener('click', () => {
+    on(frontDoorShop, 'click', () => {
       paintShopPanel();
       shopSheet.open(frontDoorShop);
     });
@@ -1296,11 +1505,15 @@ export async function startSession(route: Route): Promise<void> {
   // the door's date was baked at boot. Coming back to a still-open MENU on
   // a new day reloads into today; a run in progress is never touched — it
   // banks under the date it started, which is the Wordle rule.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && !frontDoor.hidden && localToday() !== today) {
-      goHome();
-    }
-  });
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState === 'visible' && !frontDoor.hidden && localToday() !== today) {
+        goHome();
+      }
+    },
+    { signal: sessionSignal() },
+  );
   if (dailyDate !== null) {
     // A daily in progress says so on its own door (Day 2), the same words the
     // home door uses — resuming is not a new try, and the button must not
@@ -1346,7 +1559,7 @@ export async function startSession(route: Route): Promise<void> {
     if (emptySlot !== undefined) {
       frontDoorSettle.hidden = false;
       frontDoorSettle.textContent = `SETTLE THIS WORLD — keep the seed as WORLD ${emptySlot}`;
-      frontDoorSettle.addEventListener('click', () => {
+      on(frontDoorSettle, 'click', () => {
         // The seed settles EXACTLY as played — the old 31-bit mask would
         // have settled a different world than the one just previewed
         // whenever a hand-typed seed was negative.
@@ -1406,7 +1619,7 @@ export async function startSession(route: Route): Promise<void> {
       keptDaily === null || keptDaily.placements === 0
         ? dailyBadge(dailyBook, today) + (streak > 1 ? ` · streak ${streak}` : '')
         : `RESUME DAILY ${dailyName(today)} — PLACEMENT ${keptDaily.placements}`;
-    frontDoorDaily.addEventListener('click', () => {
+    on(frontDoorDaily, 'click', () => {
       goWith('daily', today);
     });
 
@@ -1428,7 +1641,7 @@ export async function startSession(route: Route): Promise<void> {
       } else {
         worldsCamp.hidden = false;
         worldsCamp.textContent = `BEGIN AT CAMP — your farthest territory, ring ${ring}`;
-        worldsCamp.addEventListener('click', () => {
+        on(worldsCamp, 'click', () => {
           goWith('camp', '1');
         });
       }
@@ -1447,7 +1660,7 @@ export async function startSession(route: Route): Promise<void> {
     const worldFacts = (w: WorldMemory): string =>
       `${w.runs} ${w.runs === 1 ? 'run' : 'runs'} · best ${w.bestPoints} · ${w.territories.length} held`;
     frontDoorWorlds.hidden = false;
-    frontDoorWorlds.addEventListener('click', () => {
+    on(frontDoorWorlds, 'click', () => {
       worldsPanel.open(frontDoorWorlds);
     });
     worldsList.replaceChildren(
@@ -1460,7 +1673,7 @@ export async function startSession(route: Route): Promise<void> {
           // Close the panel before BEGIN fires: BEGIN hides the door and
           // lifts the shell's `inert`, and a dialog still on the stack over
           // a live board is a board you cannot tap.
-          button.addEventListener('click', () => {
+          on(button, 'click', () => {
             worldsPanel.close();
             frontDoorBegin.click();
           });
@@ -1468,7 +1681,7 @@ export async function startSession(route: Route): Promise<void> {
           const other = peekSlot(s);
           button.textContent =
             other === null ? `WORLD ${s} — begin new` : `WORLD ${s} — ${worldFacts(other)}`;
-          button.addEventListener('click', () => {
+          on(button, 'click', () => {
             setActiveSlot(s);
             goHome();
           });
@@ -1629,7 +1842,7 @@ export async function startSession(route: Route): Promise<void> {
         row.setAttribute('aria-expanded', String(open));
       };
       paint(false);
-      row.addEventListener('click', () => {
+      on(row, 'click', () => {
         const open = detail.hidden;
         detail.hidden = !open;
         paint(open);
@@ -1770,7 +1983,7 @@ export async function startSession(route: Route): Promise<void> {
         chip.className = 'fame-chip';
         chip.textContent = def.label;
         if (index === 0) chip.dataset['on'] = 'true';
-        chip.addEventListener('click', () => {
+        on(chip, 'click', () => {
           for (const [i, other] of chipButtons.entries()) {
             if (i === index) other.dataset['on'] = 'true';
             else delete other.dataset['on'];
@@ -1824,7 +2037,7 @@ export async function startSession(route: Route): Promise<void> {
       return els;
     };
 
-    fameOpen.addEventListener('click', () => {
+    on(fameOpen, 'click', () => {
       // The diary and the prehistory it has not lived: the record book's
       // device-wide run count and the daily ladder's summed tries, minus
       // what the timeline already holds — computed live, never stored,
@@ -1865,7 +2078,7 @@ export async function startSession(route: Route): Promise<void> {
         button.className = 'help-tab';
         button.textContent = tab.label;
         if (index === 0) button.dataset['on'] = 'true';
-        button.addEventListener('click', () => {
+        on(button, 'click', () => {
           for (const [i, panel] of panels.entries()) panel.hidden = i !== index;
           for (const [i, other] of buttons.entries()) {
             if (i === index) other.dataset['on'] = 'true';
@@ -1880,7 +2093,7 @@ export async function startSession(route: Route): Promise<void> {
       famePanelDoor.open(fameOpen);
     });
   }
-  frontDoorBegin.addEventListener('click', () => {
+  on(frontDoorBegin, 'click', () => {
     // Nothing may still be covering the game when the game arrives
     // (2026-08-25). WORLDS calls BEGIN through this same handler, and a panel
     // left on the dialog stack would hold `#game-shell` inert — a board you
@@ -1940,7 +2153,7 @@ export async function startSession(route: Route): Promise<void> {
     paintSoundToggle();
   };
   paintSoundToggle();
-  soundToggle.addEventListener('click', () => {
+  on(soundToggle, 'click', () => {
     syncSound(!soundLive);
     persistFeatures(withOverrides(storedFeatures(), { 'ui.sound': soundLive }));
     // Hearing IS the feedback: one small bell on enable, silence on mute —
@@ -2009,14 +2222,15 @@ export async function startSession(route: Route): Promise<void> {
         }),
     );
   paintSettings();
-  required('help').addEventListener('click', paintSettings);
+  const helpButton = required('help');
+  on(helpButton, 'click', paintSettings);
 
   // MORE ▸ SETTINGS (2026-08-25). Repainted first, unlike the MENU tab's own
   // button: nothing has painted this body since boot, and LAST ERROR is the
   // one row that can appear between then and now. Safe to repaint here
   // because the button that asked lives on MORE, not inside what is rebuilt.
   const moreSettings = required<HTMLButtonElement>('more-settings');
-  moreSettings.addEventListener('click', () => {
+  on(moreSettings, 'click', () => {
     paintSettings();
     settingsPanel.open(moreSettings);
   });
@@ -2239,7 +2453,7 @@ export async function startSession(route: Route): Promise<void> {
   // exactly one manual rather than two that could drift apart. It opens ON
   // TOP of MORE rather than replacing it, which is what makes the manual's
   // own close land the reader back on the panel they came from.
-  moreHelp.addEventListener('click', () => {
+  on(moreHelp, 'click', () => {
     // START, not MENU (2026-08-20): this is the only tutorial door a stranger
     // ever taps, and MENU took the tab bar's first seat the same day.
     game.openHelp(moreHelp, 'start');
@@ -2262,8 +2476,13 @@ export async function startSession(route: Route): Promise<void> {
   // empty today and the procedural surfaces are a complete board; a bitmap that
   // arrives late simply replaces one, and a bitmap that never arrives costs
   // nothing. The game must never wait on a picture.
+  const assetSignal = sessionSignal();
   void AssetBook.load(theme.id)
     .then((assets) => {
+      // The manifest can land after this session has ended — a theme switch
+      // is exactly the case, since it restarts while a fetch is in flight.
+      // Everything below would be drawing into a destroyed renderer.
+      if (assetSignal.aborted) return;
       if (assets.size > 0) renderer.useAssets(assets);
 
       // `ui.logo` (2026-08-19, WORKPLAN Stage 1): a PNG at the slot
@@ -2304,4 +2523,14 @@ export async function startSession(route: Route): Promise<void> {
     // not become an unhandled rejection — before 2026-08-19 that was one of
     // the ways the failure panel could fire over a perfectly playable game.
     .catch(() => undefined);
+
+  live = {
+    route,
+    abort: sessionAbort,
+    keeper,
+    renderer,
+    game,
+    sound: soundReal,
+  };
+  return live;
 }

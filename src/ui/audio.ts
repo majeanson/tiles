@@ -84,6 +84,28 @@ export class Sound {
     }
   }
 
+  /**
+   * Give the context back (2026-08-27, the reload-removal refactor).
+   *
+   * A page load used to be the only way a Sound ended, and the document going
+   * away took its context with it. Now a session ends in place and the next
+   * one builds its own voice, so an unclosed context would simply accumulate
+   * — and iOS caps how many a page may hold at around four, after which
+   * `new AudioContext()` throws and the game goes permanently silent. Closing
+   * costs nothing: `#ensure` builds a fresh one lazily on the next gesture,
+   * which is what autoplay policy wants anyway.
+   */
+  close(): void {
+    const ctx = this.#ctx;
+    this.#ctx = null;
+    try {
+      void ctx?.close().catch(() => undefined);
+    } catch {
+      // A context that objects to being closed is one we are dropping the
+      // reference to regardless.
+    }
+  }
+
   #ensure(): AudioContext | null {
     if (this.#broken) return null;
     if (this.#ctx !== null) {

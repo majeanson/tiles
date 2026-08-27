@@ -114,7 +114,40 @@ export function runKeeping(
   // Severs the flush listeners when the session that made this keeper ends
   // (2026-08-27, the reload-removal refactor): a dead session never writes.
   signal: AbortSignal,
-): GameHooks & { savedSeed: number | null; dropWorld: () => void } {
+): GameHooks & {
+  savedSeed: number | null;
+  dropWorld: () => void;
+  flush: () => void;
+  detach: () => void;
+} {
+  /**
+   * Is this keeper's session still the live one?
+   *
+   * Cleared by `detach` when a session ends. Until 2026-08-27 the answer was
+   * always yes, because the only way a session ended was the document going
+   * away — and a keeper whose page was being torn down could not be asked
+   * anything. Now sessions end in place, and every write below is one a DEAD
+   * keeper must never perform: its slot may already belong to the next
+   * session.
+   */
+  let alive = true;
+
+  /**
+   * Has this world been left behind?
+   *
+   * The other half of the same guard, and the one with history. The
+   * fresh-eyes review (2026-08-19) found that navigating away fires
+   * `pagehide`, and the flush re-saved a dirty world AFTER its own funeral —
+   * un-crossing every crossing and making the dowry an infinite relic farm.
+   * `dropWorld` answered that by clearing `worldDirty` first, which closed
+   * the flush and nothing else: every OTHER writer stayed live for the 140ms
+   * the departure fade lasts, and only the page dying stopped a queued tap
+   * from putting the world back. In place that window is real, so the
+   * funeral is now permanent — after `dropWorld` no hook writes this world
+   * or its run again, ever.
+   */
+  let dropped = false;
+
   // The perk shelf as this page booted, for the timeline's ✦ diff at finish.
   // PER-WORLD since 2026-08-26 — the shelf is the world's own now, so this
   // reads the world the page booted with, like every other diff input.
@@ -159,6 +192,10 @@ export function runKeeping(
   let actionsSinceWrite = 0;
   let worldDirty = false;
   const flushWorld = (): void => {
+    // `dropped` first, and it is the whole relic-farm fix restated: a world
+    // that has been left behind is never written again, by this path or any
+    // other. `alive` is the same rule for a session that simply ended.
+    if (dropped || !alive) return;
     if (!worldDirty) return;
     worldDirty = false;
     actionsSinceWrite = 0;
@@ -200,6 +237,8 @@ export function runKeeping(
    * farm (claim shrine, cross, land in the same world, repeat).
    */
   const dropWorld = (): void => {
+    // Latched, not merely cleared (2026-08-27): see `dropped` above.
+    dropped = true;
     worldDirty = false;
     try {
       localStorage.removeItem(keys.world);
@@ -220,6 +259,24 @@ export function runKeeping(
     resume: saved,
     savedSeed: saved?.rootSeed ?? null,
     dropWorld,
+
+    /**
+     * Write out anything owed, now. The session calls this as it ends, so a
+     * pause-like exit — HOME, the menu, a slot switch — keeps the last few
+     * actions the debounce was still holding. A no-op when clean, and a
+     * no-op on a dropped world, which is what makes it safe to call on every
+     * exit including the ones that just held a funeral.
+     */
+    flush: flushWorld,
+
+    /**
+     * This keeper is no longer the live one. Called before the next session
+     * is built; the flush listeners go with the session's own AbortSignal,
+     * and this closes the hooks a dying Game might still call into.
+     */
+    detach: (): void => {
+      alive = false;
+    },
     // A detour starts fully dark (Marc, 2026-08-20: "all dailies should
     // start fogged completely"). The write side was always guarded — a
     // detour never merges into this world's memory — but the READ side
@@ -240,6 +297,7 @@ export function runKeeping(
     shop: {
       read: () => withWorldPerks(readProgress(), current.perks, current.worn),
       write: (next) => {
+        if (dropped || !alive) return;
         writeProgress(next);
         if (detour) return;
         const worn = next.equipped[0] ?? null;
@@ -279,6 +337,7 @@ export function runKeeping(
     // engine's own "already claimed" cannot see, because the grant lives out
     // here.
     findLabel: (hex) => {
+      if (dropped || !alive) return null;
       if (detour) return null;
       if (current.finds.includes(hex)) return null;
       const granted = grantFind(
@@ -307,6 +366,7 @@ export function runKeeping(
     // and known% all read the same live facts the atlas does. A replay is
     // somebody else's world and must neither pay nor mark anything met.
     checkGoals: () => {
+      if (dropped || !alive) return null;
       if (detour) return null;
       const progress = withWorldPerks(readProgress(), current.perks, current.worn);
       const newly = newlyMetGoals(current, progress);
@@ -395,6 +455,12 @@ export function runKeeping(
         }),
 
     onChange: (state) => {
+      // The dead-session guard, first (2026-08-27). This is the hook every
+      // action goes through, so it is the one that would otherwise let a tap
+      // queued during a scene change write a run into a slot the next
+      // session has already taken over — or put back the world a crossing
+      // just left behind.
+      if (dropped || !alive) return;
       // Detours never touch the home save: before 2026-08-19 this write was
       // unconditional, so playing somebody's `?seed=` link OVERWROTE the run
       // in progress and an abandoned replay could be resumed as your own —
@@ -515,6 +581,13 @@ export function runKeeping(
     },
 
     finish: (state, shot) => {
+      // A dead keeper banks nothing. `finish` fires once per ended
+      // transition by construction, so this is a belt beside that brace —
+      // but it is the most expensive hook to get wrong (relics, records, the
+      // diary), and the cheapest possible guard.
+      if (dropped || !alive) {
+        return { runs: 0, best: 0, isNewBest: false, previousBest: 0 };
+      }
       // The daily lives on its own ladder (`ideas/daily.md`): tries counted
       // and confessed, best kept per date, and NOTHING of the home economy
       // touched — a daily run can earn relics in play, and banking them

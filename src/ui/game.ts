@@ -699,6 +699,29 @@ export class Game {
    */
   #runEndUrl: string | null = null;
 
+  /**
+   * Everything this game ever listened to, severable in one call
+   * (2026-08-27, the reload-removal refactor).
+   *
+   * Most of the handlers below sit on nodes built per render, which die with
+   * their `replaceChildren`. About fifteen do not: the camera toggle, the ?
+   * button, the manual, the toast, the event card, the four harvest buttons,
+   * the purse, the spend row and eight pointer handlers on the board are all
+   * wired onto markup `index.html` declares once and never replaces. While a
+   * scene change was a page load that cost nothing — the document went away.
+   * A second session on the same document would have wired every one of them
+   * a second time, and every tap would have fired twice.
+   */
+  #abort = new AbortController();
+
+  /**
+   * Set by `destroy`. A destroyed game must not act on a queued pointer
+   * event or a timer that was already in flight: `#dispatch` is the door to
+   * the reducer AND to the shell's autosave, so a single late action could
+   * write a run belonging to a session that no longer exists.
+   */
+  #dead = false;
+
   constructor(
     renderer: Renderer,
     elements: Elements,
@@ -792,6 +815,40 @@ export class Game {
     this.#renderDraft(toHudView(this.#state, this.#harvestAt, this.#spotlight));
   }
 
+  /**
+   * Listen, and be able to stop. Every `addEventListener` in this file goes
+   * through here so that none of them can be forgotten by the one call that
+   * ends a session; passing the signal uniformly costs nothing and removes
+   * the need to ever classify a node as persistent or not.
+   */
+  #on<K extends keyof HTMLElementEventMap>(
+    target: HTMLElement,
+    type: K,
+    handler: (event: HTMLElementEventMap[K]) => void,
+    options?: AddEventListenerOptions,
+  ): void {
+    target.addEventListener(type, handler as EventListener, {
+      ...options,
+      signal: this.#abort.signal,
+    });
+  }
+
+  /**
+   * End this game: cut every listener, close what it had open, and refuse to
+   * act again. The shell calls this before the renderer is destroyed and
+   * before the next session is built, so the two never overlap.
+   *
+   * Dialogs close through the stack rather than by hiding, or the `inert`
+   * a panel put on its siblings would outlive the game that opened it — and
+   * the next session's front door would be one you could see and not tap.
+   */
+  destroy(): void {
+    this.#dead = true;
+    this.#abort.abort();
+    this.#closeEventCard();
+    this.#closeHelp();
+  }
+
   start(): void {
     this.#mountGestures();
 
@@ -819,7 +876,7 @@ export class Game {
     // Past FIT, a tap goes back to seeing everything. Pinch and drag still
     // do continuous zoom and pan; this is the one DISCRETE decision left on
     // screen, and it is a toggle rather than a step.
-    this.#el.cameraToggle.addEventListener('click', () => {
+    this.#on(this.#el.cameraToggle, 'click', () => {
       // Flown rather than cut (Marc, 2026-08-20): HERE used to arrive as a
       // different picture, and the whole value of zooming to your last
       // placement is seeing WHERE it is relative to everything else.
@@ -847,11 +904,11 @@ export class Game {
     this.#el.helpPanel.setAttribute('aria-label', 'How to play, and settings');
     this.#el.helpPanel.tabIndex = -1;
 
-    this.#el.help.addEventListener('click', () => {
+    this.#on(this.#el.help, 'click', () => {
       if (this.#el.helpPanel.hidden) this.openHelp(this.#el.help);
       else this.#closeHelp();
     });
-    this.#el.helpPanel.addEventListener('click', () => {
+    this.#on(this.#el.helpPanel, 'click', () => {
       this.#closeHelp();
     });
     // (Escape is the dialog stack's, since 2026-08-21 — see ui/dialog.ts.
@@ -859,7 +916,7 @@ export class Game {
     // keypress with two panels open closed both.)
 
     // The popup goes away on a tap, like everything else that covers a board.
-    this.#el.toast.addEventListener('click', () => {
+    this.#on(this.#el.toast, 'click', () => {
       this.#showNote(null);
     });
 
@@ -867,7 +924,7 @@ export class Game {
     // click anywhere inside it, including its own GOT IT button (bubbling,
     // unstopped), dismisses it. Escape does the same, the keyboard path a
     // tap never offered.
-    this.#el.eventCard.addEventListener('click', () => {
+    this.#on(this.#el.eventCard, 'click', () => {
       this.#closeEventCard();
     });
     // The optional ACT button (the crossing): runs its moment's handler,
@@ -876,7 +933,7 @@ export class Game {
     act.type = 'button';
     act.id = 'event-card-action';
     act.hidden = true;
-    act.addEventListener('click', (event) => {
+    this.#on(act, 'click', (event) => {
       // An action that names an armed label confirms first (2026-08-20): the
       // crossing forgets a world, and every other control that does — NEW
       // WORLD, RESET ALL, SETTLE over a slot — has always taken two taps.
@@ -894,22 +951,22 @@ export class Game {
     this.#el.eventCardDismiss.insertAdjacentElement('beforebegin', act);
     this.#eventAction = act;
 
-    this.#el.harvestTiles.addEventListener('click', () => {
+    this.#on(this.#el.harvestTiles, 'click', () => {
       this.#harvest('tiles');
     });
-    this.#el.harvestPoints.addEventListener('click', () => {
+    this.#on(this.#el.harvestPoints, 'click', () => {
       this.#harvest('points');
     });
-    this.#el.harvestTreasure.addEventListener('click', () => {
+    this.#on(this.#el.harvestTreasure, 'click', () => {
       this.#harvest('treasure');
     });
-    this.#el.harvestBurn.addEventListener('click', () => {
+    this.#on(this.#el.harvestBurn, 'click', () => {
       this.#harvest('burn');
     });
 
     // The shop's buttons are rebuilt every frame, so the listener lives on
     // the row and reads what was tapped. One listener, any number of prices.
-    this.#el.purseToggle.addEventListener('click', () => {
+    this.#on(this.#el.purseToggle, 'click', () => {
       const open = this.#el.purseToggle.getAttribute('aria-expanded') === 'true';
       this.#el.purseToggle.setAttribute('aria-expanded', String(!open));
       // The fold's own first-contact card (Marc, 2026-08-20: "when the
@@ -938,7 +995,7 @@ export class Game {
       this.render();
     });
 
-    this.#el.spends.addEventListener('click', (event) => {
+    this.#on(this.#el.spends, 'click', (event) => {
       const button = (event.target as HTMLElement | null)?.closest('button');
       const on = button?.dataset['spend'];
       if (on === undefined) return;
@@ -1049,7 +1106,7 @@ export class Game {
       return target === board || target instanceof HTMLCanvasElement;
     };
 
-    board.addEventListener('pointerdown', (event) => {
+    this.#on(board, 'pointerdown', (event) => {
       if (!isBoardSurface(event.target)) return;
       // A fresh gesture starts from a known state. `down` being empty means
       // every finger of the last one is accounted for, so anything left in
@@ -1082,7 +1139,8 @@ export class Game {
     // band. Narrow on purpose: only this element, only that band, and
     // pointer events (which every gesture above is built on) are unaffected,
     // so nothing about placing or dragging changes.
-    board.addEventListener(
+    this.#on(
+      board,
       'touchstart',
       (event) => {
         if (!isBoardSurface(event.target)) return;
@@ -1099,7 +1157,8 @@ export class Game {
 
     // Desktop's native zoom gesture. The trackpad pinch arrives as a wheel
     // too, so this covers both mice and trackpads.
-    board.addEventListener(
+    this.#on(
+      board,
       'wheel',
       (event) => {
         if (!isBoardSurface(event.target)) return;
@@ -1110,7 +1169,7 @@ export class Game {
       { passive: false },
     );
 
-    board.addEventListener('pointermove', (event) => {
+    this.#on(board, 'pointermove', (event) => {
       const from = down.get(event.pointerId);
       if (from === undefined) return;
 
@@ -1146,8 +1205,8 @@ export class Game {
       pinch = 0;
       if (tapped) this.#tap(event);
     };
-    board.addEventListener('pointerup', lift);
-    board.addEventListener('pointercancel', lift);
+    this.#on(board, 'pointerup', lift);
+    this.#on(board, 'pointercancel', lift);
     // The stuck-in-pinch fix (Marc, Day 2: "sometimes our drag to move the map
     // converts to a zoom and we cant get out of this state without leaving and
     // coming back").
@@ -1170,7 +1229,7 @@ export class Game {
     // that releases EARLY cannot cost a placement: the real lift still gets
     // its pointer, and its tap, first. A gesture that is genuinely over loses
     // its ghost a millisecond later, which no thumb can feel.
-    board.addEventListener('lostpointercapture', (event) => {
+    this.#on(board, 'lostpointercapture', (event) => {
       const id = event.pointerId;
       setTimeout(() => {
         if (!down.delete(id)) return;
@@ -1244,7 +1303,7 @@ export class Game {
     back.type = 'button';
     back.className = 'panel-back';
     back.textContent = 'BACK';
-    back.addEventListener('click', (event) => {
+    this.#on(back, 'click', (event) => {
       // Stopped so the close is the button's own act, not the bubbling
       // tap's — the panel's tap-to-close would fire regardless, but a
       // control that works by accident is a control that breaks silently.
@@ -1679,7 +1738,7 @@ export class Game {
       button.className = 'help-tab';
       button.textContent = tab.label;
       if (index === first) button.dataset['on'] = 'true';
-      button.addEventListener('click', (event) => {
+      this.#on(button, 'click', (event) => {
         event.stopPropagation();
         for (const [i, panel] of panels.entries()) panel.hidden = i !== index;
         for (const [i, other] of buttons.entries()) {
@@ -1716,10 +1775,10 @@ export class Game {
     summary.textContent = 'NUMBERS';
     // A summary that let its tap through would open the fold and close the
     // panel in the same gesture, which reads as the button not working.
-    summary.addEventListener('click', (event) => {
+    this.#on(summary, 'click', (event) => {
       event.stopPropagation();
     });
-    fold.addEventListener('click', (event) => {
+    this.#on(fold, 'click', (event) => {
       event.stopPropagation();
     });
     fold.replaceChildren(
@@ -2462,6 +2521,10 @@ export class Game {
   }
 
   #dispatch(action: Action): void {
+    // A destroyed game acts on nothing (2026-08-27). `destroy` severs every
+    // listener, but a pointer event already queued when it ran still lands —
+    // and this is the one path that reaches the shell's autosave.
+    if (this.#dead) return;
     // Priced BEFORE the pop, because after it the pocket is stone and the
     // sum cannot be shown any more.
     const before = this.#state;
@@ -2577,6 +2640,9 @@ export class Game {
   }
 
   render(): void {
+    // Nothing to draw with: the renderer is destroyed a moment after this
+    // game is, and a late frame would be drawing into a dead WebGL context.
+    if (this.#dead) return;
     // One context for both selectors: the board and the HUD price the same
     // pocket, mark the same previews and measure the same reach from one set
     // of board passes instead of re-deriving them apart. See `renderContext`.
@@ -3322,7 +3388,7 @@ export class Game {
       if (el instanceof HTMLButtonElement) {
         el.type = 'button';
         el.classList.toggle('live', opts.live === true);
-        el.addEventListener('click', () => opts.link?.());
+        this.#on(el, 'click', () => opts.link?.());
       }
       const l = document.createElement('span');
       l.textContent = label;
@@ -3346,7 +3412,7 @@ export class Game {
       back.id = 'end-shop-back';
       back.className = 'end-link';
       back.textContent = '◂ BACK';
-      back.addEventListener('click', () => {
+      this.#on(back, 'click', () => {
         this.#endView = 'run';
         this.#renderEnd(hud);
       });
@@ -3428,7 +3494,7 @@ export class Game {
       again.id = 'end-new-run';
       again.textContent = this.#hooks.daily === undefined ? 'NEW RUN' : 'BACK TO YOUR WORLD';
       const start = this.#hooks.newRun;
-      again.addEventListener('click', () => {
+      this.#on(again, 'click', () => {
         start();
       });
       parts.push(again);
@@ -3482,7 +3548,7 @@ export class Game {
         // card still cannot show anything the screen did not.
         shot: this.#snapshot,
       };
-      share.addEventListener('click', () => {
+      this.#on(share, 'click', () => {
         void send(this.#state, card).then((outcome) => {
           // The share sheet is its own feedback; the clipboard is not. The
           // acknowledgement lives on the button because the button is what
@@ -3684,7 +3750,7 @@ export class Game {
       retry.id = 'end-retry';
       retry.textContent = 'TRY AGAIN';
       const go = this.#hooks.daily.retry;
-      retry.addEventListener('click', () => {
+      this.#on(retry, 'click', () => {
         go();
       });
       parts.push(retry);
@@ -3722,7 +3788,7 @@ export class Game {
       open.setAttribute('aria-controls', 'end-settle-slots');
       paintSettle();
 
-      open.addEventListener('click', () => {
+      this.#on(open, 'click', () => {
         slots.hidden = !slots.hidden;
         paintSettle();
       });
@@ -3735,7 +3801,7 @@ export class Game {
         const free = holds === null;
         button.textContent = free ? `WORLD ${slot} — empty` : `WORLD ${slot} — ${holds}`;
         let armed = false;
-        button.addEventListener('click', () => {
+        this.#on(button, 'click', () => {
           if (!free && !armed) {
             armed = true;
             button.classList.add('armed');
@@ -3773,7 +3839,7 @@ export class Game {
         button.id = 'end-install-button';
         button.className = 'quiet';
         button.textContent = `INSTALL ${NAME.toUpperCase()}`;
-        button.addEventListener('click', () => {
+        this.#on(button, 'click', () => {
           // No prompt captured after all (already dismissed once, or the
           // browser never offered): fall back to the words.
           if (native()) button.remove();
@@ -3918,7 +3984,7 @@ export class Game {
         const explain = (): void => {
           this.#showNote(this.#statNote(stat.id, hud));
         };
-        box.addEventListener('click', (event) => {
+        this.#on(box, 'click', (event) => {
           explain();
           // A tap must not leave the focus ring standing (2026-08-25): Chrome on
           // Android treats a tapped tabindex div as :focus-visible, so the ring
@@ -3926,7 +3992,7 @@ export class Game {
           // keyboard activation arrives via the keydown path below and keeps focus.
           if (event.detail > 0) box.blur();
         });
-        box.addEventListener('keydown', (event) => {
+        this.#on(box, 'keydown', (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             explain();
@@ -4011,7 +4077,7 @@ export class Game {
         // say where every card pays, and the badge was an answer to a
         // question the numbers answer better.
 
-        button.addEventListener('click', () => {
+        this.#on(button, 'click', () => {
           // A second tap on the selected card puts it DOWN (Marc, 2026-08-20:
           // "we can always unselect a selected tile by tapping it again") —
           // SELECT -1 empties the hand — and still answers the question the
@@ -4038,7 +4104,7 @@ export class Game {
         // hand-rolled timer, which is what buys the keyboard path for free
         // and keeps this in step with whatever hold-time the platform
         // already trains a thumb to expect.
-        button.addEventListener('contextmenu', (event) => {
+        this.#on(button, 'contextmenu', (event) => {
           event.preventDefault();
           this.#spotlight = this.#spotlight === tile.colour ? null : tile.colour;
           this.render();
@@ -4133,7 +4199,7 @@ export class Game {
 
     const button = document.createElement('button');
     button.className = 'tile hold';
-    button.addEventListener('click', () => {
+    this.#on(button, 'click', () => {
       // The empty hand answers here too (fresh-eyes, 2026-08-20): with no
       // card selected and nothing stashed, HOLD has nothing to swap and
       // used to say nothing about it.
