@@ -8,7 +8,7 @@
 import { parseRoute } from '@meta/route';
 import { showFailure } from '@shell/failure';
 import { showUpdateNote } from '@shell/notes';
-import { startSession } from '@shell/session';
+import { followHistory, startSession } from '@shell/session';
 
 // A boot that dies (WebGL refused, an element missing, a bundle truncated)
 // used to be a silent blank page. The listeners catch what escapes later —
@@ -66,6 +66,10 @@ function registerServiceWorker(): void {
       });
   }
 }
+
+// BACK and FORWARD, before the first session: a page restored from the
+// browser's back/forward cache can fire `popstate` at any point after this.
+followHistory();
 
 void startSession(parseRoute(location.search))
   .then(() => {

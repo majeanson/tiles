@@ -36,27 +36,44 @@ export function departTo(go: () => void): void {
 }
 
 /**
- * One swap at a time.
+ * One swap at a time, and the last word wins.
  *
- * A double-tapped button, or a burst of history events, must not run two
- * teardowns concurrently — the second would destroy a renderer the first is
- * still building. Later taps during a swap are dropped rather than queued:
- * the fade has already swallowed the pointer events, so anything arriving
- * here is a race rather than an intention.
+ * Two teardowns must never overlap — the second would destroy a renderer the
+ * first is still building. A swap asked for while one is running is held
+ * instead, and only the most recent is held: if BACK is pressed three times
+ * before the first has finished, the scene that matters is the one the URL
+ * ends on, and the two in between would only be built to be torn down.
+ *
+ * During a tap this queue is nearly always empty — `departing` sets
+ * `pointer-events: none`, so a second tap cannot land. It is history events,
+ * which no CSS can swallow, that this exists for.
  */
 let busy = false;
+let queued: (() => Promise<void>) | null = null;
 
 export async function transition(swap: () => Promise<void>): Promise<void> {
-  if (busy) return;
+  if (busy) {
+    queued = swap;
+    return;
+  }
   busy = true;
   document.documentElement.classList.add('departing');
-  await new Promise((resolve) => setTimeout(resolve, FADE_MS));
   try {
-    await swap();
+    let next: (() => Promise<void>) | null = swap;
+    while (next !== null) {
+      // The beat comes before each swap, not once around the whole drain:
+      // a queued route is a second scene change and deserves the same
+      // acknowledgement the first one got.
+      await new Promise((resolve) => setTimeout(resolve, FADE_MS));
+      await next();
+      next = queued;
+      queued = null;
+    }
   } finally {
     // Whatever happened, the page comes back: a swap that threw still has to
     // leave something tappable behind, and the error itself reaches the
     // failure panel through the window listeners in main.ts.
+    queued = null;
     document.documentElement.classList.remove('departing');
     busy = false;
   }

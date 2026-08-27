@@ -36,7 +36,9 @@ function playedRun(world: WorldMemory): GameState {
 }
 
 function makeKeeper(world: WorldMemory, signal: AbortSignal) {
-  return runKeeping(world, false, null, null, KEYS, PLACEHOLDER, SLOT, signal);
+  // The way home is the session's, and no test here takes it: these are all
+  // about what the keeper WRITES, not where the shell goes afterwards.
+  return runKeeping(world, false, null, null, KEYS, PLACEHOLDER, SLOT, signal, () => undefined);
 }
 
 /** Every key this slot owns, as the device would see them. */

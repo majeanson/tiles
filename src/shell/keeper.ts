@@ -29,7 +29,6 @@ import type { Theme } from '@theme/tokens';
 import type { GameHooks } from '@ui/game';
 import { epitaphFor } from '@ui/view';
 import { showStorageNote } from '@shell/notes';
-import { departTo } from '@shell/router';
 import {
   appendTimeline,
   askPersistence,
@@ -114,6 +113,15 @@ export function runKeeping(
   // Severs the flush listeners when the session that made this keeper ends
   // (2026-08-27, the reload-removal refactor): a dead session never writes.
   signal: AbortSignal,
+  /**
+   * Back to the front door, on a freshly started session.
+   *
+   * Handed in rather than imported: the session builds the keeper, so the
+   * keeper cannot reach back for `restart` without a cycle — and the two
+   * doors below that leave a world (the crossing, and NEW RUN) are the only
+   * places this edge needs to change scene at all.
+   */
+  goHome: () => void,
 ): GameHooks & {
   savedSeed: number | null;
   dropWorld: () => void;
@@ -250,8 +258,8 @@ export function runKeeping(
       // would hand it the device's legacy levels instead of a fresh start.
       localStorage.removeItem(keys.shop);
     } catch {
-      // A storage that refuses the wipe reloads into the old world — with
-      // anything already banked kept, which errs kind.
+      // A storage that refuses the wipe starts the next session in the old
+      // world — with anything already banked kept, which errs kind.
     }
   };
 
@@ -446,9 +454,12 @@ export function runKeeping(
                   relics: progress.relics + dowry + Math.max(0, carried),
                 });
                 dropWorld();
-                departTo(() => {
-                  location.href = new URL(location.pathname, location.href).toString();
-                });
+                // In place since 2026-08-27. `dropWorld` has already latched
+                // this world shut, so the session that ends on the way out
+                // cannot write it back — which is the same guarantee the
+                // navigation used to provide by killing the page, now made
+                // by the keeper itself.
+                goHome();
               },
             };
           })(),
@@ -774,14 +785,11 @@ export function runKeeping(
           // Nothing to clear is fine too.
         }
       }
-      const url = new URL(location.href);
-      url.searchParams.delete('seed');
-      url.searchParams.delete('ff');
-      url.searchParams.delete('daily');
-      url.searchParams.delete('camp');
-      departTo(() => {
-        location.href = url.toString();
-      });
+      // Home: no seed, no daily, no camp. Deleting those three params one
+      // by one was how this was said while the URL had to survive a reload;
+      // the home route simply IS their absence, and the seed re-derives from
+      // `world.worldSeed` on the session that starts next.
+      goHome();
     },
 
     /**

@@ -115,6 +115,70 @@ test('the swatch keeps the run, and the rebuilt board still plays', async ({ pag
 });
 
 /**
+ * The doors a player walks INTO push history; everything else replaces it.
+ *
+ * Before 2026-08-27 the address bar was a message to the next page load —
+ * `?daily=` meant "the reload after this one opens the daily". It is real
+ * navigation now, and BACK has to mean what it looks like it means.
+ */
+test('the daily door pushes, and BACK comes home', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  await page.evaluate(() => {
+    (window as unknown as { __sameDocument: boolean }).__sameDocument = true;
+  });
+
+  await page.locator('#front-door-daily').click();
+  await expect(page).toHaveURL(/\?daily=\d{4}-\d{2}-\d{2}$/);
+  await expect(page.locator('#front-door-begin')).toContainText('DAILY');
+
+  // The mode change never left the page.
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __sameDocument?: boolean }).__sameDocument === true,
+    ),
+  ).toBe(true);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('#front-door-begin')).not.toContainText('DAILY');
+  await expect(page.locator('#front-door-worlds')).toBeVisible();
+
+  // FORWARD re-enters the door, not the run — the door is the boot surface,
+  // which is exactly what the reload used to land on.
+  await page.goForward();
+  await expect(page).toHaveURL(/\?daily=/);
+  await expect(page.locator('#front-door-begin')).toContainText('DAILY');
+
+  expect(errors).toEqual([]);
+});
+
+test('BACK out of a daily in progress offers the board back', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  await page.locator('#front-door-daily').click();
+  await expect(page.locator('#front-door-begin')).toContainText('BEGIN DAILY');
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+  await clearCards(page);
+
+  await page.locator('#board').click({ position: { x: 180, y: 240 } });
+  await clearCards(page);
+
+  // BACK is HOME: the daily is saved after every action under its own key,
+  // so leaving it is a pause rather than a forfeit — and the home door says
+  // so by offering it straight back.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('#front-door')).toBeVisible();
+  await expect(page.locator('#front-door-daily')).toContainText('RESUME DAILY');
+
+  expect(errors).toEqual([]);
+});
+
+/**
  * The listener-accumulation canary, and the WebGL-context one.
  *
  * Five swaps is well past the ~4 live contexts iOS will hold, and each one

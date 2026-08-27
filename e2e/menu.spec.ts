@@ -439,8 +439,16 @@ test('a backup survives a wipe and puts the same world back', async ({ page }) =
   await reset.click();
   await reset.click();
   await expect(page.locator('#front-door-begin')).toBeVisible();
-  // Not null — the wipe reloads, and boot mints a fresh world immediately.
-  // What matters is that it is a DIFFERENT world, and that the purse is gone.
+  // Wait for the SESSION the wipe starts, not merely for the door to exist
+  // (2026-08-27). The wipe used to reload, and this assertion waited for the
+  // new page by waiting for the door to come back; in place the door never
+  // left, so it passed instantly and read storage mid-swap. A virgin device
+  // is what RESET ALL is FOR, and this line is the first moment it is true —
+  // the mode line is written by the session that starts after the wipe.
+  await expect(page.locator('#front-door-mode')).toContainText('A fresh world');
+  // Not null — the wipe starts a session, and boot mints a fresh world
+  // immediately. What matters is that it is a DIFFERENT world, and that the
+  // purse is gone.
   const wiped = await page.evaluate(() => ({
     world: localStorage.getItem('tiles.world.v1'),
     progress: localStorage.getItem('tiles.progress.v1'),

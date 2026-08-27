@@ -38,7 +38,7 @@ import {
 } from '@meta/progress';
 import { decodeRecords, EMPTY as EMPTY_RECORDS, ONLY_WORLD } from '@meta/records';
 import { sendCrashReport } from '@meta/report';
-import { parseRoute, type Route } from '@meta/route';
+import { HOME, parseRoute, type Route } from '@meta/route';
 import {
   dailiesOf,
   prehistory,
@@ -65,7 +65,7 @@ import { markRendererAlive } from '@shell/failure';
 import { promptInstall } from '@shell/install';
 import { runKeeping } from '@shell/keeper';
 import { showInAppNote } from '@shell/notes';
-import { departTo, setRoute, transition } from '@shell/router';
+import { setRoute, transition } from '@shell/router';
 import {
   activeSlot,
   appendTimeline,
@@ -131,6 +131,41 @@ let live: Session | null = null;
  */
 function currentRoute(): Route {
   return live?.route ?? parseRoute(location.search);
+}
+
+/**
+ * Back to the front door of your own world.
+ *
+ * `replace`, not `push`: leaving a daily, switching slot, settling a shared
+ * seed, abandoning a world and crossing on all change what the CURRENT
+ * history entry means rather than travelling somewhere new. Only the two
+ * doors a player walks INTO — the daily and the camp — push, because those
+ * are the two they expect to come back out of.
+ */
+function goHome(): void {
+  void restart(HOME, 'replace');
+}
+
+/**
+ * BACK and FORWARD, wired once per page.
+ *
+ * There is no dispatch table here and there deliberately never will be: the
+ * URL names a game, `startSession` is the one thing that opens one, so
+ * replaying a history entry is the same act as opening the link would be.
+ * A second mapping from URL to scene is a second thing to keep in step.
+ *
+ * `'none'`, because the browser has already moved the address bar — writing
+ * the route back would push an entry for arriving at one.
+ *
+ * What this makes true for a player: BACK out of the daily, or out of a run
+ * begun at camp, lands on the home door. Their board is not lost by it — a
+ * daily is saved after every action under its own key, and the door offers
+ * it straight back — which is exactly what the HOME button already promised.
+ */
+export function followHistory(): void {
+  window.addEventListener('popstate', () => {
+    void restart(parseRoute(location.search), 'none');
+  });
 }
 
 /**
@@ -1020,6 +1055,8 @@ function buildAppearance(current: Theme): HTMLElement {
     ' — AUTO follows this phone’s own light and contrast settings; the other ' +
     'three ignore them. Sticky on this device, and applied on the spot: the ' +
     'run in progress is saved and comes straight back.';
+  // "Applied on the spot" became literally true on 2026-08-27 — it used to
+  // describe a reload that took a blink and came back to the same board.
 
   section.append(label, row, note);
   return section;
@@ -1058,9 +1095,11 @@ export async function startSession(route: Route): Promise<Session> {
   // SETTLE fills an empty one.
   const slot = activeSlot();
   const keys = slotKeys(slot);
-  // Before the first `readProgress` anywhere: the shop levels this boot reads
-  // and writes are THIS world's (2026-08-20's split). Set here, once, because
-  // the active slot cannot change without a reload.
+  // Before the first `readProgress` anywhere: the shop levels this session
+  // reads and writes are THIS world's (2026-08-20's split). Set at the top of
+  // every session rather than once per page — this used to say "the active
+  // slot cannot change without a reload", which was true right up until
+  // switching slot stopped being one (2026-08-27).
   useShopSlot(keys);
   const world = loadWorld(keys);
   // There is a world on this device now — possibly minted a line ago — so it
@@ -1114,6 +1153,7 @@ export async function startSession(route: Route): Promise<Session> {
     theme,
     slot,
     sessionAbort.signal,
+    goHome,
   );
   const resuming = keeper.resume !== null && keeper.resume !== undefined;
   // Resumed run > the daily > shared seed link > THIS DEVICE'S WORLD. The
@@ -1317,15 +1357,17 @@ export async function startSession(route: Route): Promise<Session> {
       moreReset.textContent = 'TAP AGAIN — forgets everything on this device';
       return;
     }
-    try {
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith('tiles.')) localStorage.removeItem(key);
+    // The wipe runs BETWEEN sessions (2026-08-27): the old one has ended
+    // and the new one has not begun, so no keeper is holding keys while they
+    // are deleted. A reload used to buy that ordering for free.
+    void restart(HOME, 'replace', () => {
+      try {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('tiles.')) localStorage.removeItem(key);
+        }
+      } catch {
+        // Storage refused the wipe; the session below still starts clean-ish.
       }
-    } catch {
-      // Storage refused the wipe; the reload below still starts clean-ish.
-    }
-    departTo(() => {
-      location.href = '/';
     });
   });
 
@@ -1389,19 +1431,23 @@ export async function startSession(route: Route): Promise<Session> {
   let pending: ReturnType<typeof decodeBackup> = null;
   on(moreRestore, 'click', () => {
     if (pending !== null) {
-      try {
-        for (const key of Object.keys(localStorage)) {
-          if (isOwnKey(key)) localStorage.removeItem(key);
+      const plan = restorePlan(pending).write;
+      let refused = false;
+      // Between sessions, for the reason RESET ALL is: the keeper that owns
+      // these keys must be gone before they are replaced under it.
+      void restart(HOME, 'replace', () => {
+        try {
+          for (const key of Object.keys(localStorage)) {
+            if (isOwnKey(key)) localStorage.removeItem(key);
+          }
+          for (const [key, value] of Object.entries(plan)) {
+            localStorage.setItem(key, value);
+          }
+        } catch {
+          refused = true;
         }
-        for (const [key, value] of Object.entries(restorePlan(pending).write)) {
-          localStorage.setItem(key, value);
-        }
-      } catch {
-        moreRestore.textContent = 'RESTORE FAILED — storage refused';
-        return;
-      }
-      departTo(() => {
-        location.href = '/';
+      }).then(() => {
+        if (refused) moreRestore.textContent = 'RESTORE FAILED — storage refused';
       });
       return;
     }
@@ -1438,19 +1484,6 @@ export async function startSession(route: Route): Promise<Session> {
   const frontDoorWorlds = required<HTMLButtonElement>('front-door-worlds');
   const worldsList = required('worlds-list');
   const frontDoorSettle = required<HTMLButtonElement>('front-door-settle');
-  const goHome = (): void => {
-    departTo(() => {
-      location.href = new URL(location.pathname, location.href).toString();
-    });
-  };
-  /** Navigate home with one param set — the daily and camp doors' shape. */
-  const goWith = (param: string, value: string): void => {
-    const url = new URL(location.pathname, location.href);
-    url.searchParams.set(param, value);
-    departTo(() => {
-      location.href = url.toString();
-    });
-  };
   on(frontDoorHome, 'click', goHome);
 
   // Which game the board IS, said on the board itself (Marc, 2026-08-26:
@@ -1502,9 +1535,11 @@ export async function startSession(route: Route): Promise<Session> {
 
   // A daily game left open across midnight — the installed PWA's NORMAL
   // state — used to go on offering YESTERDAY (launch audit, 2026-08-20):
-  // the door's date was baked at boot. Coming back to a still-open MENU on
-  // a new day reloads into today; a run in progress is never touched — it
-  // banks under the date it started, which is the Wordle rule.
+  // the door's date is baked per session. Coming back to a still-open MENU
+  // on a new day starts a fresh session, which re-reads `localToday()` and
+  // the daily book with it; a run in progress is never touched — the guard
+  // is `!frontDoor.hidden` — and it banks under the date it started, which
+  // is the Wordle rule.
   document.addEventListener(
     'visibilitychange',
     () => {
@@ -1620,7 +1655,7 @@ export async function startSession(route: Route): Promise<Session> {
         ? dailyBadge(dailyBook, today) + (streak > 1 ? ` · streak ${streak}` : '')
         : `RESUME DAILY ${dailyName(today)} — PLACEMENT ${keptDaily.placements}`;
     on(frontDoorDaily, 'click', () => {
-      goWith('daily', today);
+      void restart({ ...HOME, daily: today }, 'push');
     });
 
     // BEGIN AT CAMP (waypoints, 2026-08-19): the remembered world's missing
@@ -1642,7 +1677,7 @@ export async function startSession(route: Route): Promise<Session> {
         worldsCamp.hidden = false;
         worldsCamp.textContent = `BEGIN AT CAMP — your farthest territory, ring ${ring}`;
         on(worldsCamp, 'click', () => {
-          goWith('camp', '1');
+          void restart({ ...HOME, camp: true }, 'push');
         });
       }
     }
@@ -1651,7 +1686,7 @@ export async function startSession(route: Route): Promise<Session> {
     // 2026-08-20: "offer all 3 worlds"): all three listed, always. The
     // active one is marked NOW and enters the same run BEGIN does; a
     // settled other switches; an empty one begins there — a switch is a
-    // reload, the same cheap honesty the theme picker keeps.
+    // whole new session, the same cheap honesty the theme picker keeps.
     //
     // In their own panel since 2026-08-25, behind one WORLDS button. The
     // list itself is unchanged: three rows, same words, same wiring. What
@@ -2200,8 +2235,9 @@ export async function startSession(route: Route): Promise<Session> {
           settingsPanel.open(opener);
         },
         // Which game the ? panel is describing. Read fresh on every paint,
-        // like everything else here, though these three cannot change without
-        // a reload — the URL is what decides them.
+        // like everything else here, though these three cannot change within
+        // one session — the route is what decides them, and a route change
+        // starts a new session by definition.
         mode:
           dailyDate !== null
             ? {
@@ -2216,9 +2252,7 @@ export async function startSession(route: Route): Promise<Session> {
       },
       keeper.newRun ??
         (() => {
-          departTo(() => {
-            location.reload();
-          });
+          void restart(currentRoute(), 'none');
         }),
     );
   paintSettings();
@@ -2371,7 +2405,7 @@ export async function startSession(route: Route): Promise<Session> {
     ...(installNudge === null ? {} : { install: installNudge }),
     // The daily's own end-screen voice (2026-08-19): the badge reads the
     // book FRESH — finish() has just moved best and tries — and TRY AGAIN
-    // replays the same date. The reload lands on the front door saying
+    // replays the same date. The new session lands on the front door saying
     // BEGIN DAILY #N, which is the menu doing its job, not a detour.
     ...(dailyDate === null
       ? {}
@@ -2379,9 +2413,10 @@ export async function startSession(route: Route): Promise<Session> {
           daily: {
             label: (): string => dailyBadge(readDailyBook(), dailyDate),
             retry: (): void => {
-              departTo(() => {
-                location.reload();
-              });
+              // The same date, played again: the route does not move, so
+              // nothing is written to history. The new session re-reads the
+              // daily book, which is what makes the badge say try N+1.
+              void restart(currentRoute(), 'none');
             },
           },
         }),
