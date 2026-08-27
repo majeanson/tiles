@@ -178,6 +178,7 @@ export default defineConfig({
       '@render': alias('./src/render'),
       '@theme': alias('./src/theme'),
       '@meta': alias('./src/meta'),
+      '@shell': alias('./src/shell'),
       '@ui': alias('./src/ui'),
       '@sim': alias('./src/sim'),
     },

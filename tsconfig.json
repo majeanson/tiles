@@ -29,6 +29,7 @@
       "@render/*": ["./src/render/*"],
       "@theme/*": ["./src/theme/*"],
       "@meta/*": ["./src/meta/*"],
+      "@shell/*": ["./src/shell/*"],
       "@ui/*": ["./src/ui/*"],
       "@sim/*": ["./src/sim/*"]
     }
