@@ -470,9 +470,14 @@ export type Tuning = {
    * Zeros = no meta economy, which is every game but the tiles-only one.
    */
   /**
-   * PERKS, bought with relics and carried into every world (Marc chose two
-   * of ten in the brainstorm, and parked the four big rule-breakers as
-   * "not convinced" — they stay in ideas/uniques.md, unbuilt).
+   * PERKS (Marc chose two of ten in the brainstorm, and parked the four big
+   * rule-breakers as "not convinced" — they stay in ideas/uniques.md,
+   * unbuilt). This line used to read "bought with relics and carried into
+   * every world"; both halves have since been ruled away — FOUND, never
+   * bought (2026-08-18), and per-world since 2026-08-26, which is why the
+   * shelf lives on `WorldMemory` and not in `Progress`. The DIALS below are
+   * unaffected: a perk has always worked by zeroing or moving a number
+   * here, whoever is holding it.
    *
    * ROOTBOUND (`rootboundOnly`) — native ground counts DOUBLE and off-native
    * ground pays nothing at all. Not a bonus: a rewrite of where you are

@@ -3,6 +3,7 @@ import { rngNext, stream } from '@engine/rng';
 import { homeOf } from '@engine/rules';
 import type { GameState } from '@engine/state';
 import { REARM, type GoalId } from '@content/goals';
+import { PERKS, type PerkId } from './progress';
 
 // (The module's own ORIGIN constant went with `mergeRun`'s origin-anchored
 // reach on 2026-08-21 — `homeOf(state)` is the anchor now, and nothing else
@@ -55,6 +56,16 @@ export type WorldMemory = {
    * never pays relics again.
    */
   readonly goalsMet: readonly GoalId[];
+  /**
+   * The perks this world's finds have granted, and the one being worn HERE
+   * (2026-08-26, Marc's phone ruling: "uniques are per world, not shared" —
+   * a shrine promising a fourth draft card beside an Open Hand found in
+   * another world was the bug). They live on the world so they travel with
+   * it, die with it, and a crossing or a settle starts the hunt fresh; the
+   * device blob (`meta/progress.ts`) no longer carries either field.
+   */
+  readonly perks: readonly PerkId[];
+  readonly worn: PerkId | null;
   /** What the world has seen. The atlas line reads these. */
   readonly runs: number;
   readonly bestPoints: number;
@@ -68,6 +79,8 @@ export const newWorld = (worldSeed: number): WorldMemory => ({
   shrines: [],
   finds: [],
   goalsMet: [],
+  perks: [],
+  worn: null,
   runs: 0,
   bestPoints: 0,
   farthestReach: 0,
@@ -158,8 +171,21 @@ export function decodeWorld(raw: string | null): WorldMemory | null {
   // retired id costs nothing, since `newlyMetGoals` only ever checks
   // membership against the CURRENT `GOALS` table).
   const shrines = keys(parsed['shrines']) ?? [];
-  const finds = keys(parsed['finds']) ?? [];
   const goalsMet = (keys(parsed['goalsMet']) ?? []) as GoalId[];
+
+  // The per-world perk era's one-way door (2026-08-26, Marc: full reset).
+  // A blob WITHOUT a `perks` field is a pre-split world whose finds fed a
+  // device-wide pool that no longer exists — so its claimed find-hexes are
+  // FORGOTTEN along with the pool, and every perk is out there to hunt
+  // again. A blob WITH the field is this era's and keeps both, salvaged to
+  // ids this build knows; `worn` is clamped to the perks actually held.
+  const preSplit = !('perks' in parsed);
+  const finds = preSplit ? [] : (keys(parsed['finds']) ?? []);
+  const knownPerks = new Set<string>(PERKS.map((p) => p.id));
+  const perks = (keys(parsed['perks']) ?? []).filter((id): id is PerkId => knownPerks.has(id));
+  const wornRaw = parsed['worn'];
+  const worn =
+    typeof wornRaw === 'string' && perks.includes(wornRaw as PerkId) ? (wornRaw as PerkId) : null;
 
   const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
   return {
@@ -169,6 +195,8 @@ export function decodeWorld(raw: string | null): WorldMemory | null {
     shrines,
     finds,
     goalsMet,
+    perks,
+    worn,
     runs: num(parsed['runs']),
     bestPoints: num(parsed['bestPoints']),
     farthestReach: num(parsed['farthestReach']),
@@ -243,8 +271,11 @@ export function mergeRun(world: WorldMemory, state: GameState): WorldMemory {
     finds: [...finds],
     // The survey's own ledger is not this function's business — goals are
     // detected and paid by `src/meta/goals.ts`, outside the engine's own
-    // facts, so it only ever rides through unchanged here.
+    // facts, so it only ever rides through unchanged here. The perk shelf
+    // the same, since 2026-08-26: grants and wears are the shell's writes.
     goalsMet: world.goalsMet,
+    perks: world.perks,
+    worn: world.worn,
     // The run count is rememberRun's alone — this function runs after EVERY
     // action, and when it bumped the count too (2026-08-18) the atlas called
     // each tap a run. That is what the docblock's "EXCEPT" always meant.

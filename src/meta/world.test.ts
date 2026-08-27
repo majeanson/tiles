@@ -4,6 +4,7 @@ import { key, neighbourKeys, type HexKey } from '@engine/hex';
 import { newRun, reduce } from '@engine/reduce';
 import { destinationsWithin, findsWithin } from '@engine/world';
 import type { Cell, GameState } from '@engine/state';
+import type { PerkId } from './progress';
 import {
   decodeWorld,
   encodeWorld,
@@ -160,6 +161,106 @@ describe('world memory', () => {
     // corrupt, the same contract `shrines` already keeps.
     const old = '{"worldSeed":5,"revealed":["0,0"],"territories":[],"runs":2}';
     expect(decodeWorld(old)?.finds).toEqual([]);
+  });
+
+  /**
+   * The perk shelf is the WORLD's since 2026-08-26 (Marc's phone ruling:
+   * "uniques are per world, not shared" — a shrine promising a fourth draft
+   * card beside an Open Hand found two worlds ago was the bug). These four
+   * assertions are the whole no-leak contract on this side of the split;
+   * `progress.test.ts` holds the other side, where the device blob refuses
+   * to carry a perk at all.
+   */
+  it('round-trips the shelf and the one perk worn here', () => {
+    const world = {
+      ...newWorld(3),
+      perks: ['stonewalker', 'openhand'] as PerkId[],
+      worn: 'openhand' as PerkId,
+    };
+    expect(decodeWorld(encodeWorld(world))).toEqual(world);
+
+    // A world wearing nothing round-trips as wearing nothing, not as absent.
+    const bare = { ...newWorld(4), perks: ['rootbound'] as PerkId[], worn: null };
+    expect(decodeWorld(encodeWorld(bare))?.worn).toBeNull();
+  });
+
+  it('drops a perk id this build has never heard of, and unwears it with it', () => {
+    const raw = JSON.stringify({
+      worldSeed: 5,
+      revealed: [],
+      territories: [],
+      perks: ['stonewalker', 'moonboots'],
+      worn: 'moonboots',
+    });
+    const decoded = decodeWorld(raw);
+    expect(decoded?.perks).toEqual(['stonewalker']);
+    // `worn` is clamped to what is actually held — a slot cannot wear a
+    // perk the shelf does not have, here or anywhere else.
+    expect(decoded?.worn).toBeNull();
+  });
+
+  it('refuses to wear a perk that is not on this world shelf', () => {
+    const raw = JSON.stringify({
+      worldSeed: 6,
+      revealed: [],
+      territories: [],
+      perks: ['stonewalker'],
+      worn: 'openhand',
+    });
+    expect(decodeWorld(raw)?.worn).toBeNull();
+  });
+
+  /**
+   * The one-way door (2026-08-26, Marc: full reset). A world saved BEFORE
+   * the split has no `perks` field, and its claimed find-hexes were spent
+   * filling a device-wide pool that no longer exists. Keeping them would
+   * leave those finds permanently claimed and their perks permanently
+   * unobtainable — a world with dead hexes. So a pre-split world forgets
+   * its finds, and every perk is out there to walk to again.
+   */
+  it('forgets a pre-split world claimed finds so every perk can be found again', () => {
+    const old = JSON.stringify({
+      worldSeed: 5,
+      revealed: ['0,0'],
+      territories: [],
+      finds: ['4,4', '-2,7'],
+      runs: 2,
+      bestPoints: 900,
+    });
+    const decoded = decodeWorld(old);
+    expect(decoded?.finds).toEqual([]);
+    expect(decoded?.perks).toEqual([]);
+    expect(decoded?.worn).toBeNull();
+    // The reset costs the finds and NOTHING else — the world you walked is
+    // still the world you walked.
+    expect(decoded?.revealed).toEqual(['0,0']);
+    expect(decoded?.runs).toBe(2);
+    expect(decoded?.bestPoints).toBe(900);
+  });
+
+  it('keeps this era claimed finds, because the field says it is this era', () => {
+    const current = JSON.stringify({
+      worldSeed: 5,
+      revealed: [],
+      territories: [],
+      finds: ['4,4'],
+      perks: ['stonewalker'],
+      worn: 'stonewalker',
+    });
+    const decoded = decodeWorld(current);
+    expect(decoded?.finds).toEqual(['4,4']);
+    expect(decoded?.perks).toEqual(['stonewalker']);
+    expect(decoded?.worn).toBe('stonewalker');
+  });
+
+  it('never lets a run merge write the shelf — grants are the shell writes', () => {
+    // `mergeRun` runs after EVERY action. If it carried the shelf it would
+    // be a second author of the least replaceable thing a world holds; the
+    // grant path (main.ts findLabel) saves it immediately instead.
+    const world = { ...newWorld(42), perks: ['openhand'] as PerkId[], worn: 'openhand' as PerkId };
+    const merged = mergeRun(world, newRun(42, TUNING));
+    expect(merged.perks).toEqual(['openhand']);
+    expect(merged.worn).toBe('openhand');
   });
 
   it('reports a fraction known that cannot exceed the world it measures', () => {

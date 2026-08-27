@@ -11,9 +11,16 @@ import { rngNext, stream } from '@engine/rng';
  *   vs a good point game vs advancing roguelite." Points stay the score you
  *   chase; RELICS buy upgrades, and the two compete for the same pockets. A
  *   run played for the record book is not a run played for the next run.
- * - **Carried across every world.** Upgrades are yours on any world seed, so
- *   a new world is a fresh map and never a reset. (Shrines stay per-world, so
- *   a world still has a story of its own.)
+ * - **Carried across every world.** As Marc first set it: upgrades are yours
+ *   on any world seed, so a new world is a fresh map and never a reset.
+ *   AMENDED TWICE since, both times by him, both times narrowing it — the
+ *   line is kept as written because the amendments only make sense against
+ *   it. 2026-08-20: the economy SPLIT — the RELICS travel, what you BUY with
+ *   them stays in the world you bought it in (`meta/shopLevels.ts`).
+ *   2026-08-26: perks joined the bought side — a found perk belongs to the
+ *   world that hid it (`WorldMemory.perks`/`worn`), and this module's blob
+ *   refuses to carry one at all. What is left of "carried across every
+ *   world" is the purse, and the purse alone.
  * - **Spent on the end screen**, at the moment the numbers mean something.
  *
  * And reshaped it on 2026-08-18, resolving `ideas/uniques.md`:
@@ -212,13 +219,36 @@ export type Progress = {
   readonly relics: number;
   /** Levels bought, by upgrade. Absent means none. */
   readonly bought: Readonly<Partial<Record<UpgradeId, number>>>;
-  /** Perks granted by hidden finds (or owned from the bought-perks era). */
+  /**
+   * Perks granted by hidden finds. PER-WORLD since 2026-08-26 (Marc's phone
+   * ruling — a shrine promising "a fourth draft card" beside an Open Hand
+   * found two worlds ago was the bug): the durable copy lives on
+   * `WorldMemory.perks`/`worn` now, and these two fields exist only on the
+   * in-memory COMPOSITE the shell builds with `withWorldPerks` — storage
+   * never carries them here (`encodeProgress` strips, `decodeProgress`
+   * refuses), so the device blob cannot leak one world's perks into another.
+   */
   readonly found: readonly PerkId[];
   /** The perk being carried. Never longer than the one slot there is. */
   readonly equipped: readonly PerkId[];
   /** Concepts this device has been taught, in the order it met them. */
   readonly met: readonly TeachId[];
 };
+
+/**
+ * The composite the shell actually plays with: device purse and levels,
+ * THIS world's perks. Every consumer of `found`/`equipped` — the shelf,
+ * `applyProgress`, `grantFind` — takes this and never notices the split.
+ */
+export const withWorldPerks = (
+  progress: Progress,
+  perks: readonly PerkId[],
+  worn: PerkId | null,
+): Progress => ({
+  ...progress,
+  found: perks,
+  equipped: worn === null ? [] : [worn],
+});
 
 export const EMPTY_PROGRESS: Progress = {
   relics: 0,
@@ -390,11 +420,9 @@ export function decodeProgress(raw: string | null): Progress {
       return EMPTY_PROGRESS;
     }
 
-    const { relics, bought, found, equipped, met } = parsed as {
+    const { relics, bought, met } = parsed as {
       relics?: unknown;
       bought?: unknown;
-      found?: unknown;
-      equipped?: unknown;
       met?: unknown;
     };
     // SALVAGED field by field (2026-08-20). Both of these used to return
@@ -408,31 +436,23 @@ export function decodeProgress(raw: string | null): Progress {
       typeof bought === 'object' && bought !== null ? (bought as Record<string, unknown>) : {};
 
     const knownUpgrades = new Set<string>(UPGRADES.map((u) => u.id));
-    const knownPerks = new Set<string>(PERKS.map((p) => p.id));
 
     const clean: Partial<Record<UpgradeId, number>> = {};
-    const owned = new Set<PerkId>();
     let refund = 0;
     for (const [id, n] of Object.entries(levels)) {
       if (typeof n !== 'number' || n <= 0) continue;
       if (knownUpgrades.has(id)) clean[id as UpgradeId] = Math.floor(n);
-      // The bought-perks era: a purchased perk is kept, as found.
-      else if (knownPerks.has(id)) owned.add(id as PerkId);
       // The deleted SECOND SLOT: its exact price comes back as relics.
       else if (id === 'slot') refund += SLOT_REFUND * Math.floor(n);
     }
 
-    if (Array.isArray(found)) {
-      for (const id of found) {
-        if (typeof id === 'string' && knownPerks.has(id)) owned.add(id as PerkId);
-      }
-    }
-
-    const worn: PerkId[] = Array.isArray(equipped)
-      ? (equipped as unknown[]).filter(
-          (id): id is PerkId => typeof id === 'string' && owned.has(id as PerkId),
-        )
-      : [];
+    // The per-world era's one-way door (2026-08-26, Marc: full reset, every
+    // world hunts its perks fresh): stored `found`/`equipped` are IGNORED,
+    // not migrated — the durable copy lives on each world now, and the
+    // matching side of the reset is `decodeWorld` forgetting a pre-split
+    // world's claimed find-hexes so every perk is out there again. The
+    // bought-perks-era migration that used to run here (perk purchases kept
+    // as found) dies with it, by the same ruling.
 
     // Teaching (2026-08-19): a blob with no `met` field predates the ledger,
     // and a device that has already played is not a stranger — it decodes as
@@ -456,8 +476,8 @@ export function decodeProgress(raw: string | null): Progress {
     return {
       relics: Math.max(0, Math.floor(purse)) + refund,
       bought: clean,
-      found: [...owned],
-      equipped: worn.slice(0, slotsOf()),
+      found: [],
+      equipped: [],
       met: taught,
     };
   } catch {
@@ -465,4 +485,9 @@ export function decodeProgress(raw: string | null): Progress {
   }
 }
 
-export const encodeProgress = (progress: Progress): string => JSON.stringify(progress);
+/** The device blob never carries perks (per-world since 2026-08-26): a
+ *  composite written back whole would smuggle one world's shelf into
+ *  storage every world then reads, so the two fields are stripped HERE,
+ *  at the one door everything leaves through. */
+export const encodeProgress = (progress: Progress): string =>
+  JSON.stringify({ relics: progress.relics, bought: progress.bought, met: progress.met });

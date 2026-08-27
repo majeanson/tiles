@@ -16,6 +16,7 @@ import {
   meet,
   priceOf,
   slotsOf,
+  withWorldPerks,
   type PerkId,
   type Progress,
   type UpgradeId,
@@ -189,10 +190,38 @@ describe('what the upgrades do to a run', () => {
 });
 
 describe('storage', () => {
-  it('round-trips', () => {
-    let progress = buy(withRelics(1000), upgrade('tiles'));
-    progress = { ...progress, found: ['stonewalker'], equipped: ['stonewalker'] };
+  it('round-trips the three fields the device blob still carries', () => {
+    const progress = meet(buy(withRelics(1000), upgrade('tiles')), 'relic');
     expect(decodeProgress(encodeProgress(progress))).toEqual(progress);
+  });
+
+  /**
+   * The one door everything leaves through (2026-08-26). `found`/`equipped`
+   * exist on the in-memory COMPOSITE the shell builds with `withWorldPerks`,
+   * and a composite written back whole would smuggle THIS world's shelf into
+   * the device blob every OTHER world then reads. So the encoder strips them
+   * - that strip is the whole no-leak guarantee, and it is pinned here.
+   */
+  it('never writes a perk into the device blob, even handed a composite', () => {
+    const composite = withWorldPerks(withRelics(40), ['stonewalker', 'openhand'], 'stonewalker');
+    const raw = encodeProgress(composite);
+    expect(raw).not.toContain('stonewalker');
+    expect(Object.keys(JSON.parse(raw) as object).sort()).toEqual(['bought', 'met', 'relics']);
+    const back = decodeProgress(raw);
+    expect(back.found).toEqual([]);
+    expect(back.equipped).toEqual([]);
+    expect(back.relics).toBe(40);
+  });
+
+  it('folds a world shelf onto the device purse, and wears at most the one', () => {
+    const base = buy(withRelics(1000), upgrade('tiles'));
+    const composite = withWorldPerks(base, ['stonewalker', 'openhand'], 'openhand');
+    expect(composite.relics).toBe(base.relics);
+    expect(composite.bought).toEqual(base.bought);
+    expect(composite.found).toEqual(['stonewalker', 'openhand']);
+    expect(composite.equipped).toEqual(['openhand']);
+    // A world wearing nothing is an EMPTY slot, not a slot holding null.
+    expect(withWorldPerks(base, ['stonewalker'], null).equipped).toEqual([]);
   });
 
   it('starts empty on nothing, on rubbish, and on the wrong shape', () => {
@@ -220,40 +249,49 @@ describe('storage', () => {
   });
 
   /**
-   * The bought-perks era (before 2026-08-18): perks lived in `bought` beside
-   * the upgrades, and 400 relics bought a second slot. Anyone who paid keeps
-   * what they paid for — perks stay owned, the deleted slot comes back as its
-   * exact price — and the one slot that exists now decides what stays worn.
+   * The per-world split's one-way door (2026-08-26, Marc: full reset, every
+   * world hunts its perks fresh). A stored `found`/`equipped` — from the
+   * device-wide era OR from the bought-perks era before it, where perks
+   * lived in `bought` beside the upgrades — is IGNORED, not migrated: the
+   * device-wide pool it fed no longer exists. The matching half of the reset
+   * lives in `decodeWorld`, which forgets a pre-split world's claimed
+   * find-hexes so every perk is out there to walk to again.
    */
-  it('keeps bought perks as found ones', () => {
+  it('ignores a stored shelf rather than migrating it', () => {
+    const decoded = decodeProgress(
+      '{"relics":50,"bought":{"tiles":2},"found":["stonewalker"],"equipped":["stonewalker"]}',
+    );
+    expect(decoded.found).toEqual([]);
+    expect(decoded.equipped).toEqual([]);
+    // Everything the blob holds that is still the DEVICE's survives intact.
+    expect(decoded.relics).toBe(50);
+    expect(decoded.bought).toEqual({ tiles: 2 });
+  });
+
+  it('ignores a bought-era perk purchase too, and keeps the upgrades beside it', () => {
     const decoded = decodeProgress(
       '{"relics":50,"bought":{"rootbound":1,"secondwind":1,"tiles":2},"equipped":["rootbound"]}',
     );
-    expect([...decoded.found].sort()).toEqual(['rootbound', 'secondwind']);
+    expect(decoded.found).toEqual([]);
+    expect(decoded.equipped).toEqual([]);
     expect(decoded.bought).toEqual({ tiles: 2 });
-    expect(decoded.equipped).toEqual(['rootbound']);
   });
 
+  /** The refund outlives the perk migration: it is relics, and relics are
+   *  still the device's own. */
   it('refunds the deleted second slot at its exact price', () => {
     const decoded = decodeProgress('{"relics":25,"bought":{"slot":1},"equipped":[]}');
     expect(decoded.relics).toBe(425);
     expect(decoded.bought).toEqual({});
   });
 
-  it('clamps a two-perk loadout to the one slot there is', () => {
+  it('refunds the slot even in a blob whose shelf it is dropping', () => {
     const decoded = decodeProgress(
       '{"relics":0,"bought":{"rootbound":1,"secondwind":1,"slot":1},"equipped":["rootbound","secondwind"]}',
     );
-    expect(decoded.equipped).toEqual(['rootbound']);
     expect(decoded.relics).toBe(400);
-  });
-
-  it('refuses to wear what is not owned', () => {
-    const decoded = decodeProgress(
-      '{"relics":0,"bought":{},"found":["stonewalker"],"equipped":["wallbreaker"]}',
-    );
+    expect(decoded.found).toEqual([]);
     expect(decoded.equipped).toEqual([]);
-    expect(decoded.found).toEqual(['stonewalker']);
   });
 });
 
@@ -371,20 +409,21 @@ describe('the shop climbs back to what the rebalance took', () => {
 describe('salvage, not surrender (2026-08-20)', () => {
   it('keeps the purse and the shelf when an unrelated field is malformed', () => {
     // Both of these used to return EMPTY_PROGRESS — throwing away relics AND
-    // every perk walked to — because one field was the wrong shape. Perks are
-    // the least replaceable thing on the device; nothing regenerates them.
+    // every level bought — because one field was the wrong shape. Since the
+    // per-world split (2026-08-26) the shelf is no longer this blob's to
+    // salvage; the purse and the levels still are, and they are what a
+    // malformed neighbour must not cost.
     const badBought = decodeProgress(
-      JSON.stringify({ relics: 250, bought: 'not an object', found: ['rootbound'], met: [] }),
+      JSON.stringify({ relics: 250, bought: 'not an object', met: [] }),
     );
     expect(badBought.relics).toBe(250);
-    expect(badBought.found).toContain('rootbound');
+    expect(badBought.bought).toEqual({});
 
     const badRelics = decodeProgress(
-      JSON.stringify({ relics: 'lots', bought: { tiles: 3 }, found: ['openhand'], met: [] }),
+      JSON.stringify({ relics: 'lots', bought: { tiles: 3 }, met: [] }),
     );
-    expect(badRelics.found).toContain('openhand');
     expect(levelOf(badRelics, 'tiles')).toBe(3);
-    // An unreadable purse is zero, not a reason to forget the shelf.
+    // An unreadable purse is zero, not a reason to forget the levels.
     expect(badRelics.relics).toBe(0);
   });
 });
