@@ -6212,3 +6212,88 @@ walked run). Five findings, all fixed:
 before/after screenshots in both schemes re-read after the fix. **Judged
 by looking is Marc's: the ember edge at phone brightness, the primaries'
 glow, MORE's centred menu, and the appearance grid.**
+
+### Session 52 — world is world only, the daily is the daily, and the perk shelf comes home (2026-08-26)
+
+Marc: "make sure going in to a daily, sharing, etc is explicit for dailies
+only and world is world only, make sure its clear which one is which and
+which one is the current world." A continuation — the session that started
+this work crashed mid-flight, leaving it uncommitted and untested — so the
+first job was recovering the working tree and putting the tests behind it.
+The second was auditing what still leaked.
+
+**The question:** can a player always tell which of the three games they are
+in, and does each one describe only its own economy?
+
+**The perk shelf is the WORLD's now.** Marc's phone ruling: "uniques are per
+world, not shared" — a shrine promising a fourth draft card beside an Open
+Hand found two worlds ago was the bug. `WorldMemory` grew `perks` and `worn`;
+`Progress` keeps them only on the in-memory COMPOSITE the shell builds with
+`withWorldPerks`, so every consumer (the shelf, `applyProgress`, `grantFind`)
+keeps its shape and notices nothing. The no-leak guarantee is one line:
+`encodeProgress` STRIPS both fields, so a composite written back whole cannot
+smuggle one world's shelf into the blob every other world reads. A one-way
+door, per his "full reset" call — a stored `found`/`equipped` is ignored
+rather than migrated, and `decodeWorld` forgets a PRE-SPLIT world's claimed
+find-hexes to match, so a world does not end up holding dead hexes whose
+perks are unobtainable. Grants and wears save immediately: a perk is the
+least replaceable thing a world holds.
+
+**The manual was where the modes leaked into each other.** Every promise it
+makes — banking, remembering, the survey, the shop, SACRIFICE — is the HOME
+world's, and a detour read all of them, because the only gates were the
+DEVICE's teaching ledger (which says nothing about which mode is running) and
+tuning dials nobody had zeroed. START is the first tab, so a shared link's
+recipient met "Your world remembers" and "what you carry out buys permanent
+upgrades" before their first placement: the most-read false copy the game had.
+Fixed on both sides — the detour gets its own honest lines ("this run is a
+visit"), and START now OPENS with which of the three you are in ("RIGHT NOW
+you are playing THE DAILY"), which is the one question the section could not
+previously answer. The survey line, the remembered-ground line and the MENU
+pointer went the same way; `systems.push('the survey')` is now detour-gated,
+since the shell withholds `checkGoals` there.
+
+**The relic vocabulary leaves the daily by dial, not by guard.** Marc:
+"completely remove anything relic related or sacrifice related" — you only
+optimise POINTS there. A detour's tuning zeroes `burnRelics`, `claimRelics`,
+`luckToRelics` and `titheRate`, and the existing dial-form gates do the rest
+for free: SACRIFICE's button hides itself (a zero burn is a hidden burn), the
+manual's relic and TITHE chapters drop, TREASURE loses its ", AND SACRIFICE".
+No points path moves — relics never were one — so a daily score stays
+comparable phone to phone. The two surfaces with no dial got guards: the end
+screen's shop door and the front door's.
+
+**Which game the board IS, on the board.** A `#mode-chip` under the stats,
+always on: `WORLD N OF 3`, `THE DAILY · <name> — points only, nothing banks`,
+or `A SHARED RUN — nothing banks`. Before it, a daily and a home run were told
+apart only by opening the `?` panel and reading the MENU tab.
+
+**Two other things landed with it.** THE SHOP is reachable from the front door
+between runs (Marc: "a way to access our relic and shop outside the main
+game"), drawn by one extracted builder — `ui/shop.ts`, shared with the end
+screen so the two shelves cannot drift — and home-door only, because a mode
+that banks nothing must not offer a shop priced in what it never banks. And
+`departTo`: every scene switch is a full reload, and the old screen used to
+sit frozen between the tap and the next build's first paint ("buttons are long
+to switch scenes — it seems to be working in the background"). One class
+fades the page and swallows further taps.
+
+**A lesson worth more than the batch: `pnpm test:e2e` does not build.**
+`playwright.config.ts` serves `dist/` via `vite preview`, and `reuseExistingServer`
+is on locally — so a green 18/18 can be a green run against a bundle from
+before the work. It was, here: the first e2e pass this session proved nothing,
+and the mode chip that a fresh build renders correctly was simply absent from
+the DOM being tested. **Build before claiming e2e.**
+
+**Verified:** 788 unit tests (+15 — the composite fold and the encoder's strip,
+the two one-way doors, the world shelf's round-trip and its clamp, and seven
+mode-leak pins asserting each promise from BOTH sides, since an absence test
+alone passes just as well when the words vanish everywhere); 19 e2e green
+**against a freshly built `dist/`**, including two new mode-chip specs; sim
+byte-identical, proven by stash-and-rerun twice (once after `content/tuning.ts`
+was touched, comment-only); typecheck / lint / format clean.
+
+**Judged by looking is Marc's:** the chip at phone brightness under the stats,
+the daily's manual with every relic word gone, the front door's SHOP, and
+whether `departTo`'s 140ms reads as acknowledgement or as lag. **The one gate
+is still Session C.**

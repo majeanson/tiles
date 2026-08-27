@@ -4,7 +4,25 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-26 — the balance is FROZEN; only the stranger
+Last checkpoint: **2026-08-26, later — the three games are told apart, and
+the perk shelf belongs to the world.** Marc: "make sure going in to a daily,
+sharing, etc is explicit for dailies only and world is world only ... make
+sure its clear which one is which and which one is the current world."
+Perks are PER-WORLD now (`WorldMemory.perks`/`worn`); the device blob refuses
+to carry one, so the strip in `encodeProgress` is the whole no-leak
+guarantee, and both halves of the reset are one-way by his "full reset"
+ruling. A detour's tuning zeroes every relic dial, which hides SACRIFICE and
+drops the relic chapters for free; the two surfaces with no dial (both shop
+doors) got guards. The manual now OPENS with which of the three you are in,
+and its home-world promises — banking, remembering, the survey — stay home.
+A `#mode-chip` says WORLD N OF 3 / THE DAILY / A SHARED RUN on the board
+itself. THE SHOP is reachable from the front door, via one builder shared
+with the end screen so the two shelves cannot drift. 788 tests, 19 e2e, sim
+byte-identical. **Caveat learned the hard way: the e2e suite serves `dist/`
+via `vite preview` and does NOT build — build first, or a green run proves
+nothing.** **The one gate is still Session C.**
+
+Previous checkpoint: **2026-08-26 — the balance is FROZEN; only the stranger
 remains.** Sessions A (re-run) and B closed on the phone in one day (LOG
 Session 47): the first run teaches itself with an EMPTY fix list,
 pop-vs-burn-vs-wait registered as a real decision (first positive datapoint
