@@ -1422,6 +1422,52 @@ describe('a stranger arriving', () => {
       expect(card.getAttribute('aria-label')?.length ?? 0).toBeGreaterThan(0);
     }
   });
+
+  /**
+   * WCAG 2.5.3, "Label in Name": a control's accessible name must contain
+   * its visible text, or voice control cannot address it by what it says.
+   * `#camera-toggle` broke this once (its label said "zoom in on your last
+   * placement" while its face said HERE) and was fixed on 2026-08-21; this
+   * is the rule held rather than remembered.
+   *
+   * Icon-only controls are exempt by the same standard — a glyph is not a
+   * text label — which is the project's consistent pattern for ?, ♪ and ✕.
+   */
+  it('never hides a visible word from the accessible name (WCAG 2.5.3)', () => {
+    const ctx = build(4, TUNING);
+    ctx.game.start();
+    const GLYPHS = new Set(['?', '♪', '✕']);
+    for (const el of [ctx.el.cameraToggle, ctx.el.help, ctx.el.lensClear]) {
+      const label = el.getAttribute('aria-label') ?? '';
+      const face = (el.textContent ?? '').trim();
+      if (face === '' || GLYPHS.has(face)) continue;
+      expect(label.toLowerCase(), `${face} is not in its own name`).toContain(face.toLowerCase());
+    }
+  });
+
+  /**
+   * The two-line action buttons (`actButton`) state their name rather than
+   * letting the DOM compute one (2026-08-27). Whether a browser joins two
+   * `display: block` children with a space is browser-dependent, and WebKit
+   * concatenates — so VoiceOver read the bar as "POP5 tiles · 6 pts". The
+   * last assertion is the one that catches a regression to that.
+   */
+  it('names every two-line action button in one readable string', () => {
+    const ctx = build(4, TUNING);
+    ctx.game.start();
+    let checked = 0;
+    for (const b of [ctx.el.harvestTiles, ctx.el.harvestPoints, ctx.el.purseToggle]) {
+      const verb = b.querySelector('.act-label')?.textContent ?? '';
+      const value = b.querySelector('.act-value')?.textContent ?? '';
+      if (verb === '') continue;
+      checked++;
+      const label = b.getAttribute('aria-label') ?? '';
+      expect(label.startsWith(verb), `${verb} does not lead its own name`).toBe(true);
+      expect(label).toContain(value);
+      expect(label).not.toContain(`${verb}${value}`);
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
 });
 
 describe('the manual as a dialog', () => {

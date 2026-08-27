@@ -136,9 +136,17 @@ soft numbers in this file; the checkboxes are not.
 
 ---
 
-## Where this stands, 2026-08-21
+## Where this stands, 2026-08-27
 
-M1–M6 are built, verified and deployed. What the checklist actually says now:
+M1–M6 are built, verified and deployed, and have been since 2026-08-21 — the
+audit below was written that day and every line of it still holds. What has
+happened since is not milestone work: launch-week polish, the daily, the
+museum, the teaching pack's corrections, and (2026-08-26/27) two structural
+passes that touched no balance number — the shell's reload removal and the
+one-hand/one-bar screen. **The checklist has not moved, because the only box
+left has never been code's to tick.**
+
+What the checklist actually says now:
 
 - [x] **All six gates** — A passed (S10), C passed (S1), D passed (S11),
       F passed (S14). **E: PASSED (stamped 2026-08-20, the launch
@@ -180,7 +188,10 @@ M1–M6 are built, verified and deployed. What the checklist actually says now:
       torchlit, an inline mark, a service worker whose cache name is the
       build.
 - [ ] **A stranger finished a run and chose to start another.** The one item
-      no amount of code produces.
+      no amount of code produces. Still the only unchecked box, six days after
+      the planned tag date; `PLAYTEST.md` Session C is the script, and its
+      prerequisite — one more rehearsal pass, because 2026-08-27 changed the
+      first minute again — is recorded in `FOLLOWUP.md` §1.
 - [x] **Post-1.0 parking lot** — below.
 
 **v1.0 is deliberately untagged.** The definition of done requires the

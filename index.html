@@ -480,7 +480,17 @@
               <button id="harvest-treasure" type="button" hidden></button>
               <button id="harvest-burn" type="button" hidden></button>
             </div>
-            <button id="purse-toggle" type="button" aria-expanded="false" hidden></button>
+            <!-- `aria-controls` because the drawer opens ABOVE the bar and
+                 therefore BEFORE this button in the document: without the
+                 relationship stated, the next tab stop after expanding is
+                 not the spends, and nothing says where they went. -->
+            <button
+              id="purse-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="spends"
+              hidden
+            ></button>
           </div>
         </div>
 

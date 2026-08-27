@@ -479,6 +479,14 @@ function actButton(button: HTMLButtonElement, label: string, value: string): voi
   paid.className = 'act-value';
   paid.replaceChildren(...rarityInked(value));
   button.replaceChildren(verb, paid);
+  // One deterministic name for the two lines. Whether a browser joins two
+  // `display: block` children with a space when it computes the accessible
+  // name is browser-dependent, and WebKit concatenates — so VoiceOver read
+  // this button as "POP5 tiles · 6 pts". Stated rather than inferred, and it
+  // still STARTS with the visible word, which is what voice control needs
+  // (WCAG 2.5.3 "Label in Name"). It also separates the two POP buttons,
+  // which otherwise both announce as bare "POP".
+  button.setAttribute('aria-label', `${label} — ${value}`);
 }
 
 /**
@@ -991,6 +999,10 @@ export class Game {
       this.#spotlight = null;
       this.#showNote('The lens is off.');
       this.render();
+      // That render hides this button, and focus must not go with it — a
+      // keyboard or switch user would be dropped to <body>. `#board` is the
+      // same focus sink the event card's close path already lands on.
+      this.#el.board.focus();
     });
 
     // The help panel is the manual: every system in play, in the order a run

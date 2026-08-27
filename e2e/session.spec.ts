@@ -238,6 +238,38 @@ test('a slot switch starts a new session on the other world', async ({ page }) =
 });
 
 /**
+ * The board does not move when a pocket ripens.
+ *
+ * `#actions` carried a `min-height: 44px` for exactly this, and the one-bar
+ * revamp made it `display: contents` — which generates no box, so the rule
+ * went quietly dead and took its promise with it. Measured at an 81px board
+ * jump the moment a pocket ripened: the board re-fitting under a thumb that
+ * is reaching for a ripe tile. The reserve lives on `#action-bar` now.
+ *
+ * Asserted as the BAR's height rather than the board's, because that is the
+ * promise: the bar occupies its row whether or not anything is in it.
+ */
+test('the action bar holds its row while it is empty', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await page.locator('#front-door-begin').click();
+  await expect(page.locator('#front-door')).toBeHidden();
+  await clearCards(page);
+
+  const empty = await page.evaluate(() => {
+    const bar = document.getElementById('action-bar')!;
+    const visible = [...bar.querySelectorAll('button')].filter((b) => !b.hidden).length;
+    return { height: Math.round(bar.getBoundingClientRect().height), visible };
+  });
+
+  // A fresh run has nothing ripe and no luck, so the bar is genuinely bare.
+  expect(empty.visible).toBe(0);
+  expect(empty.height).toBeGreaterThanOrEqual(52);
+
+  expect(errors).toEqual([]);
+});
+
+/**
  * The listener-accumulation canary, and the WebGL-context one.
  *
  * Five swaps is well past the ~4 live contexts iOS will hold, and each one

@@ -26,6 +26,13 @@ rehearsal saw: HOW TO PLAY opens the tutorial again, the GLOW card waits for
 RIPE, SACRIFICE waits until relics have a name, NEW RUN sits under the score
 instead of two screens below it, and the first pop can no longer score zero.
 
+**Owed again after 2026-08-27**, which changed the first minute a third time
+and is the largest of the three: the bottom of the screen is one hand and one
+action bar (the board went from ~53% to 69–73%), held cards sit in the hand
+rather than on their own row, the four-grounds and purse cards teach as
+marked lists, TITHE is SACRIFICE LUCK in red, and a ✕ above `?` drops the
+colour lens. None of it has been seen by a human on a phone.
+
 1. `?` ▸ MENU ▸ SETTINGS ▸ DEVELOPER ▸ **RESET TEACHING** (it forgets only
    the lessons; your game survives). SETTINGS is its own screen since
    2026-08-25 — reachable there, or from MORE on the front door.

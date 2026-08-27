@@ -3,16 +3,30 @@
 Rewritten 2026-08-20, launch week Day 1 — the old file predated a day of
 thirteen sessions' worth of shipping and named ONE of the eleven visual
 verdicts now waiting on your phone. Everything here needs Marc, not code.
-The tag plan: rehearsal Day 2, verdict run Day 3, **stranger test Day 4**,
-tag Day 5 (2026-08-25 — the daily epoch is set to it; if the launch day
-moves, move `DAILY_EPOCH` with it, never after).
 
-## 1. THE REHEARSAL — ✅ PLAYED 2026-08-20, and worth one more pass
+**The tag plan, as it actually went** (corrected 2026-08-27): the rehearsal
+was played 2026-08-20 and re-run 2026-08-26; the verdict run was played
+2026-08-26 and froze the balance. The stranger test has not happened, and it
+is the only gate. The tag is **dateless on purpose** — `DECISIONS.md` D20
+ruled `DAILY_EPOCH` stays on 2026-08-25 because dailies had already fired,
+so the epoch no longer follows the launch day. The line above used to read
+"tag Day 5 (2026-08-25)"; that day came and went untagged.
+
+## 1. THE REHEARSAL — ✅ PLAYED 2026-08-20, ✅ RE-RUN 2026-08-26 — and owed one more
 
 Marc played this and reported as he went; every verdict was built the same
 night. The script stays because the first minute it rehearsed no longer
 exists — the Day-2 batch changed it twice — so it is the thing to re-run
 before the stranger test, not a thing to tick off.
+
+**The 2026-08-26 re-run answered its own question: the first run teaches
+itself, with an EMPTY fix list** (LOG Session 47). It is owed AGAIN, and for
+the reason this section exists rather than as bookkeeping: **2026-08-27
+changed the first minute a third time.** The bottom of the screen was rebuilt
+into one hand and one action bar, the held cards joined the hand, the
+four-grounds card and the purse card became marked lists, and TITHE became
+SACRIFICE LUCK. A stranger's first minute now looks different from the one
+that last passed this script.
 
 Since that rehearsal: HOW TO PLAY opens the tutorial rather than an atlas of
 zeroes, the GLOW card waits until RIPE has been taught (it was teaching the
@@ -68,6 +82,26 @@ five things that shipped after this list was written:
   pointers, and is a dozen of them at FIT calm or busy?
 - the camera cluster as one pill, and the HOLD slot without its stray divider.
 
+**And the 2026-08-27 batch, none of it seen by a human** (the whole reason
+this list exists — it is a day of by-looking changes verified only by tests
+and desktop screenshots):
+
+- **the one hand and one bar**: the board went from ~53% of the screen to
+  69–73%. Does the bigger board read better, and does the bottom still feel
+  reachable one-handed?
+- **the hand at each size**: 4 cards in a row, 5 at 68px, and the 2×3 at six
+  with the stash down the right edge. Does a 68px card still read at arm's
+  length, and does the held column read as a shelf?
+- **the two-line action buttons** (POP / SACRIFICE / TAKE / LUCK, each with
+  its number underneath) — legible at a glance, or busy?
+- **SACRIFICE LUCK in red**, and whether the rename reads clearer than TITHE.
+- **the lens ✕** above `?` — findable when you want it, ignorable when not?
+- **the marked lists** in the four-grounds card, the purse card and the
+  manual's THE COLOURS / THE WORLD.
+- **scene changes without a reload**: every door, slot switch and theme swap
+  is now an in-place swap behind the same 140ms fade. Does it feel faster, or
+  does anything flash?
+
 Every one is a by-looking verdict the repo cannot test:
 
 1. **The fog overall** — legible now? (Map-light + thinned veil; your
@@ -85,7 +119,7 @@ Every one is a by-looking verdict the repo cannot test:
 9. **THE SHELF · N/5 FOUND** — reads as a collection now?
 10. **The hall of fame folds** — tap any run or daily row: the night
     comes back? (Rows written before today open with less — expected.)
-11. **The relic pace** — see §4's numbers first, then feel it.
+11. **The relic pace** — ✅ answered by Session B; see §4.
 
 ## 3. OPEN PLAY QUESTIONS (unchanged, still yours)
 
@@ -100,7 +134,11 @@ Every one is a by-looking verdict the repo cannot test:
 - The worn perk: does it change your next placement?
 - The timeline's spine-vs-✦ question — waits on a week of ticks (v1.1).
 
-## 4. THE RELIC PACE — the number to react to (Day 3's run)
+## 4. THE RELIC PACE — ✅ ANSWERED 2026-08-26: it EARNS
+
+Session B's verdict (LOG Session 47, `PLAYTEST.md`): the relic pace earns,
+and **the balance is FROZEN from that run — copy and crashes only until the
+tag.** The numbers below are kept as the reasoning that was reacted to.
 
 After the halving + reborn-pays-no-relics: competent play banks a median
 **13–18 relics a run** (timid 18, greedy 24 — the harness's `relics`

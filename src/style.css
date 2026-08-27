@@ -937,6 +937,14 @@ button.fame-run[aria-expanded='true'] {
   justify-content: center;
 }
 
+/* The bar holds its place whether or not anything is in it — one button's
+   height, so POP arriving moves nothing. This is the promise `#actions`
+   used to keep before it became `display: contents`; it costs 52px of board
+   and buys a board that does not resize under a reaching thumb. */
+#action-bar {
+  min-height: 52px;
+}
+
 /* How many cards a row takes. Written by `#renderDraft` from the hand's own
    size, because CSS cannot count the children of two containers it has
    flattened with `display: contents`. The declaration here is the floor a
@@ -1271,10 +1279,13 @@ button.armed {
 }
 
 /* Keep the action row's height stable while the harvest buttons come and go,
-   so the board above never resizes because a pocket ripened. */
-#actions {
-  min-height: 44px;
-}
+   so the board above never resizes because a pocket ripened.
+   MOVED to `#action-bar` (2026-08-27): this rule sat on `#actions`, which
+   became `display: contents` in the one-bar revamp and so stopped generating
+   a box for a min-height to apply to. The rule went quietly dead and took
+   its promise with it — measured at an 81px board jump the moment a pocket
+   ripened, which is the worst possible moment for the board to move under a
+   thumb that is reaching for it. See `#action-bar` below. */
 
 @media (prefers-reduced-motion: no-preference) {
   .tile {
@@ -2614,6 +2625,7 @@ button.help-tab[data-on='true'] {
 #camera button,
 #purse-toggle,
 #actions-more button,
+#help-panel .help-more > summary,
 #spends button.spend {
   position: relative;
 }
@@ -2622,6 +2634,7 @@ button.help-tab[data-on='true'] {
 #camera button::before,
 #purse-toggle::before,
 #actions-more button::before,
+#help-panel .help-more > summary::before,
 #spends button.spend::before {
   content: '';
   position: absolute;

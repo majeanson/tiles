@@ -71,11 +71,19 @@ export function shopParts(
     button.type = 'button';
     button.className = 'shop-buy';
 
+    // Named, not just priced (2026-08-27). The button's own text is "BUY 4"
+    // and the thing it buys is a sibling span, so a screen reader heard a
+    // column of "BUY 4, button" with nothing saying WHAT — the same defect
+    // the settings rows fixed with `aria-labelledby` on 2026-08-20. The name
+    // still begins with the visible text, so voice control keeps working
+    // (WCAG 2.5.3).
     if (price === null) {
       button.textContent = 'DONE';
+      button.setAttribute('aria-label', `DONE — ${upgrade.name}`);
       button.disabled = true;
     } else {
       button.textContent = `BUY ${price}`;
+      button.setAttribute('aria-label', `BUY ${price} — ${upgrade.name}`);
       button.disabled = progress.relics < price;
       button.addEventListener('click', () => {
         shop.write(buy(shop.read(), upgrade));
@@ -130,6 +138,7 @@ export function shopParts(
     button.type = 'button';
     button.className = 'shop-buy';
     button.textContent = worn ? 'WORN' : 'WEAR';
+    button.setAttribute('aria-label', `${worn ? 'WORN' : 'WEAR'} — ${perk.name}`);
     button.addEventListener('click', () => {
       shop.write(equip(shop.read(), perk.id));
       justWorn.id = perk.id;
