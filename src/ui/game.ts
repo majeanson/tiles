@@ -361,6 +361,10 @@ export type GameHooks = {
    * without the flag.
    */
   readonly buildSha?: string;
+  /** The day that build was made, YYYY-MM-DD. Beside the sha wherever the sha
+   *  is shown, because "which build" and "how old" are one question a player
+   *  asks and two facts the game had only half of. */
+  readonly buildAt?: string;
   /**
    * True for any DETOUR — a `?seed=` replay or the daily: a run that is not
    * this device's world. Every moment that speaks about THIS world (NEW
@@ -2597,19 +2601,23 @@ export class Game {
           title: 'THIS BUILD',
           lines: [
             `One endless plane, grown from seed ${this.#state.rootSeed}. Same seed, same world — share the number to share the run.`,
+            // Beside the seed, on the VISIBLE line (2026-08-28, Marc: "add a
+            // quick last build date and commit somewhere near the seed maybe
+            // or similar"). It was in the fold below and said only the sha,
+            // which answers "which build" without answering "how old" — and
+            // a section literally titled THIS BUILD ought to say which one it
+            // is without being opened. The date is baked at compile time
+            // (`__BUILD_AT__`), so it cannot disagree with the bundle.
+            this.#hooks.buildSha === undefined
+              ? 'An unlabelled build.'
+              : `Build ${this.#hooks.buildSha}${
+                  this.#hooks.buildAt === undefined ? '' : ` · ${this.#hooks.buildAt}`
+                }.`,
             systems.length > 0
               ? `In play: ${systems.join(' · ')}.`
               : 'In play: nothing. This is the smallest game there is.',
           ],
           detail: [
-            // The footer stamp that used to say this at all times moved
-            // behind ?ff=debug.overlay (Stage 2, 2026-08-18) — this line is
-            // what keeps "which build is this" answerable without it. Behind
-            // the fold since 2026-08-27: it is the first thing a bug report
-            // needs and the last thing a player does.
-            this.#hooks.buildSha === undefined
-              ? 'Running an unlabelled build.'
-              : `Running build ${this.#hooks.buildSha}.`,
             `Start with ${t.startingTiles} tiles · a placement costs ${t.baseCost}` +
               (t.costGrace > 0 ? ` for ${t.costGrace} placements, then` : ',') +
               ` +1 per ${t.costRisesEvery} placed` +

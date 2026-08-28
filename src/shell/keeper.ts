@@ -349,6 +349,7 @@ export function runKeeping(
     // debug.overlay must not make "which build is this" unanswerable
     // without the flag, so THIS BUILD (game.ts) states the sha directly.
     buildSha: __BUILD_SHA__.slice(0, 7),
+    buildAt: __BUILD_AT__,
 
     // A `?seed=` replay is somebody else's world, and a daily is nobody's:
     // every start-of-run moment that speaks about THIS world stays quiet.

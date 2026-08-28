@@ -170,6 +170,13 @@ export default defineConfig({
   plugins: [versionStamp(sha), assetManifest(), serviceWorkerStamp(sha)],
   define: {
     __BUILD_SHA__: JSON.stringify(sha),
+    // The day this bundle was built, as a plain YYYY-MM-DD (2026-08-28).
+    // `/version.json` has carried a full `builtAt` since the deploy verifier
+    // needed one, but that is a fetch and this is a label — THIS BUILD in the
+    // manual says the sha, and a sha alone answers "which build" without
+    // answering "how old". Compile-time, so it costs nothing at runtime and
+    // cannot disagree with the bundle it is baked into.
+    __BUILD_AT__: JSON.stringify(new Date().toISOString().slice(0, 10)),
   },
   resolve: {
     alias: {

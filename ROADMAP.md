@@ -187,25 +187,51 @@ What the checklist actually says now:
 - [x] **A name, an icon, a direction, and it installs offline.** Ashwake,
       torchlit, an inline mark, a service worker whose cache name is the
       build.
-- [ ] **A stranger finished a run and chose to start another.** The one item
-      no amount of code produces. Still the only unchecked box, six days after
-      the planned tag date; `PLAYTEST.md` Session C is the script, and its
-      prerequisite — one more rehearsal pass, because 2026-08-27 changed the
-      first minute again — is recorded in `FOLLOWUP.md` §1.
+- [→] **A stranger finished a run and chose to start another.** The one item
+  no amount of code produces. **MOVED TO v2.0 on 2026-08-28** (Marc: "tag
+  now, v 2.0 will be session C with our refactor") — it is not done, it
+  has not been attempted, and it is not being called done. `PLAYTEST.md`
+  Session C is still the script and `DECISIONS.md` D4 is still OPEN.
 - [x] **Post-1.0 parking lot** — below.
 
-**v1.0 is deliberately untagged.** The definition of done requires the
-stranger test — **and the stranger test alone** (Marc's ruling,
-2026-08-20: Gate B's successor question, pop-vs-burn-vs-wait timing, is a
-standing v1.1 question answered over weeks of real play, not a tag gate.
-This paragraph used to list both while `DECISIONS.md` disagreed; the
-ruling reconciles them). Tagging without the stranger would be the first
-cut corner in twenty sessions. The planned tag day — **2026-08-25** —
-came and went untagged, and the epoch question that raised was ruled
-2026-08-26 (`DECISIONS.md` D20): `DAILY_EPOCH` stays on 2026-08-25,
-because dailies #1 and #2 had already fired and the epoch never moves
-after a stranger has shared a line. The tag follows Session C, dateless
-on purpose.
+**v1.0 IS TAGGED, and it does not mean what this file said it would mean.**
+
+Until 2026-08-28 this section read "v1.0 is deliberately untagged… tagging
+without the stranger would be the first cut corner in twenty sessions", and the
+definition above had seven boxes with the stranger among them. Marc ruled
+otherwise: **tag now, and let v2.0 be Session C together with the React
+refactor** (`DECISIONS.md` D24).
+
+The definition is therefore rewritten rather than quietly scored 6/7, because a
+tag that claims a bar it did not clear is worse than either tag or no tag. What
+v1.0 actually asserts:
+
+- **Everything code can produce is produced, and is verified.** Six gates
+  passed with evidence, zero unwired flags, every `ideas/` file resolved,
+  `DESIGN.md`'s claims human-verified, a name and an art direction and offline
+  install — and, on 2026-08-28, the whole teaching layer behind one registry.
+- **Marc has played it.** `PLAYTEST.md` Sessions A and B, both re-run on this
+  build, both clean.
+- **No stranger has.** That is the whole of what v1.0 does not claim, and it is
+  now v2.0's gate, alongside the React work `NEXT.md` §3c describes.
+
+The planned tag day — **2026-08-25** — came and went untagged, and the epoch
+question that raised was ruled 2026-08-26 (`DECISIONS.md` D20): `DAILY_EPOCH`
+stays on 2026-08-25, because dailies #1 and #2 had already fired and the epoch
+never moves after a stranger has shared a line. **Tagging does not move it
+either** — D20 says the tag is dateless and nothing renumbers, and that holds
+whichever day the tag lands on.
+
+## v2.0 — the definition of done
+
+- [ ] **A stranger finished a run and chose to start another** (`DECISIONS.md`
+      D4, `PLAYTEST.md` Session C). Carried over intact.
+- [ ] **The React refactor** — the playtest console first, as the greenfield
+      surface that justifies the dependency; the game chrome only if that
+      proves it earns its ~8,675 lines and 5,954 lines of coupled tests.
+      `NEXT.md` §3c holds the measured surface.
+- [ ] **D22 and D23 answered** — telemetry and the privacy line; the first-run
+      acknowledgement.
 
 ## Post-1.0 parking lot
 

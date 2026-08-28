@@ -3,11 +3,12 @@
 Written 2026-08-15 as an open question list; by launch week every item but
 one had been answered, and the file had not been told. Corrected wholesale
 2026-08-20 (the launch deep-clean): each entry keeps its question and now
-states its answer, with the date and where the evidence lives. **D4 — the
-stranger test — is the one still waiting, and it is the v1.0 gate.**
+states its answer, with the date and where the evidence lives.
 
-**Three open, one gating (amended 2026-08-28).** D4 is still the only one that
-gates the TAG. D22 (telemetry, and what the privacy line costs) and D23 (the
+**Three open, none gating v1.0 (amended twice on 2026-08-28).** D4 gated the
+tag until Marc ruled otherwise (D24): v1.0 is tagged WITHOUT the stranger test,
+and D4 becomes v2.0's gate. It is still OPEN and still unattempted — moved,
+not answered. D22 (telemetry, and what the privacy line costs) and D23 (the
 first-run acknowledgement) were opened on 2026-08-28 and are both post-tag by
 construction — D22 needs a backend D13 rules out for 1.0, and D23 is
 deliberately sequenced after Session C so that it cannot contaminate the
@@ -39,7 +40,7 @@ The remembered world made runs richer, not duller — caches confirmed as
 lifelines in human hands, territories worth holding. Nobody has asked to
 unwind the machinery. `LOG.md` Session 26.
 
-### D4 — The stranger test — **OPEN. The last blocker — and by the 2026-08-20 ruling, the ONLY one.**
+### D4 — The stranger test — **OPEN. v2.0's gate since D24 (2026-08-28); it gated v1.0 until then.**
 
 Someone who is not Marc, on their own phone, unaided: do they finish a
 run and start another? (a) tags v1.0; (b) names the next milestone.
@@ -146,7 +147,10 @@ strangers ever see and share is #1. Rehearsal-week dailies stay playable
 moves, the epoch moves WITH the tag commit — and never after a stranger
 has shared a line.
 
-### D18 — What gates the tag — the stranger test alone
+### D18 — What gates the tag — the stranger test alone — **SUPERSEDED by D24 (2026-08-28)**
+
+True of v1.0 until Marc tagged without it; the sentence below now describes
+v2.0's gate rather than v1.0's.
 
 Gate B's successor question (pop-vs-burn-vs-wait timing) is a standing
 v1.1 question, answered over weeks of real play. ROADMAP and FOLLOWUP
@@ -170,6 +174,10 @@ Ruled: `DAILY_EPOCH` stays 2026-08-25. Dailies #1 and #2 have already
 fired, and D17's own closing clause — "never after a stranger has shared a
 line" — was written for exactly this. v1.0 tags whenever Session C passes,
 on whatever date that is; nothing renumbers.
+
+**Half superseded by D24 (2026-08-28):** v1.0 tagged WITHOUT Session C. The
+part that still holds is the part that mattered — the tag is dateless, the
+epoch stays 2026-08-25, and nothing renumbers.
 
 ### D21 — The OG image is the board, not the brand
 
@@ -232,3 +240,40 @@ depth arrives by unlock", and run one already opens the shop door and mints
 relics. What is missing is the ACKNOWLEDGEMENT, not the unlock — an end-screen
 beat on the first finished run that names what just opened. See `ROADMAP.md`'s
 parking lot.
+
+### D24 — v1.0 tags without the stranger; Session C becomes v2.0's gate
+
+Marc, 2026-08-28: **"tag now, v 2.0 will be session C with our refactor."**
+
+This overturns his own 2026-08-20 ruling (D18, and `ROADMAP.md`'s "tagging
+without the stranger would be the first cut corner in twenty sessions"), and it
+is his to overturn — he set that bar and he is entitled to move it. Recorded in
+full because a reversal that is not written down reads later as an oversight.
+
+**What changed is the meaning of the number, not the state of the game.** The
+old plan made v1.0 mean "validated by someone who is not Marc". The new plan
+makes v1.0 mean "everything code can produce is produced and verified, and
+Marc has played it" — which is true today, on evidence — and moves the stranger
+to v2.0 alongside the React work. That is a legitimate versioning philosophy
+rather than a corner cut for schedule: nothing is being called done that is not
+done.
+
+**So the definition of done was rewritten rather than scored 6/7.**
+`ROADMAP.md` now says what v1.0 actually asserts and, explicitly, what it does
+not: no stranger has played this. **D4 stays OPEN.** `PLAYTEST.md` Session C
+stays exactly as written, now as v2.0's gate. Neither is marked done, and the
+checklist entry carries `[→]` rather than `[x]` so nobody reading it later
+mistakes a move for a pass.
+
+**What the tag does not move.** D20 already ruled the tag dateless and the
+daily epoch fixed — `DAILY_EPOCH` stays 2026-08-25, nothing renumbers, and that
+holds whichever day the tag lands on. D8's reversal window on the points scale
+was never keyed to the tag either; it closes when strangers post daily scores,
+and the game has been publicly deployed since launch week regardless.
+
+**The one risk, stated so it is not a surprise later.** A tag is a promise to
+whoever finds it that this is the version to start from. Nobody outside this
+repository has played it. If Session C then finds something that changes the
+first minute, v1.1 will be a real release rather than a polish pass — which is
+fine, and is the cost of tagging first, and is worth naming now rather than
+discovering it in a changelog.
