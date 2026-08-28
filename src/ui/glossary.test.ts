@@ -66,6 +66,7 @@ function openFullManual(): string {
         <div id="event-card-panel">
           <p id="event-card-glyph"></p>
           <p id="event-card-text"></p>
+          <div id="event-card-figure"></div>
           <div id="event-card-rows"></div>
           <button id="event-card-dismiss">GOT IT</button>
         </div>
@@ -127,6 +128,7 @@ function openFullManual(): string {
     eventCard: pick('event-card'),
     eventCardGlyph: pick('event-card-glyph'),
     eventCardText: pick('event-card-text'),
+    eventCardFigure: pick('event-card-figure'),
     eventCardRows: pick('event-card-rows'),
     eventCardDismiss: pick<HTMLButtonElement>('event-card-dismiss'),
     termCard: pick('term-card'),

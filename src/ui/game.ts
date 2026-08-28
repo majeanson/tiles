@@ -204,6 +204,7 @@ export type Elements = {
   readonly eventCardGlyph: HTMLElement;
   readonly eventCardText: HTMLElement;
   /** Where a set-teaching card draws its rows. Empty for every other card. */
+  readonly eventCardFigure: HTMLElement;
   readonly eventCardRows: HTMLElement;
   readonly eventCardDismiss: HTMLButtonElement;
   /**
@@ -2884,7 +2885,8 @@ export class Game {
       const lesson = this.#teachCheck(before, next, action);
       if (lesson !== null) {
         this.#markMet(lesson.id);
-        if (lesson.tier === 'card') this.#showEventCard(lesson.text, undefined, lesson.rows);
+        if (lesson.tier === 'card')
+          this.#showEventCard(lesson.text, undefined, lesson.rows, lesson.figure);
         else this.#showNote(lesson.text);
       } else if (!this.#uniqueExplained && next.draft.some((tile) => tile.rarity === 'unique')) {
         this.#uniqueExplained = true;
@@ -2959,11 +2961,19 @@ export class Game {
     text: string,
     action?: { readonly label: string; readonly run: () => void; readonly arm?: string },
     rows?: readonly TipRow[],
+    figure?: FigureId,
   ): void {
     this.#showNote(null);
     const match = EVENT_GLYPH.exec(text);
     this.#el.eventCardGlyph.textContent = match?.[1] ?? '';
     this.#el.eventCardText.replaceChildren(...rarityInked(match?.[2] ?? text));
+    // The picture of the rule, where the rule has one (2026-08-28). Drawn by
+    // the same `drawFigure` the manual uses, from the same table, so the card
+    // that first teaches a rule and the page you re-read it on cannot show
+    // two different things.
+    this.#el.eventCardFigure.replaceChildren(
+      ...(figure === undefined ? [] : [this.#figure(figure)]),
+    );
     this.#el.eventCardRows.replaceChildren(...tipRows(rows));
     // A card with a choice grows its second button; GOT IT reads as staying.
     if (this.#eventAction !== null) {
@@ -3087,6 +3097,10 @@ export class Game {
     readonly text: string;
     /** A set-teaching card's rows (the four grounds). Absent for the rest. */
     readonly rows?: readonly TipRow[];
+    /** The picture of this rule, where it has one (2026-08-28). A card carries
+     *  a figure OR rows, never both: a portrait card already runs glyph, lead,
+     *  body and button, and both together overflow it. */
+    readonly figure?: FigureId;
   } | null {
     const t = next.tuning;
     const met = this.#metSet();
@@ -3103,6 +3117,7 @@ export class Game {
         // "the plane sends more of what you pop" is a nice sentence that
         // does not tell a first-time player what actually happens.
         text: `${TILE_GLYPH}  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to price its pocket, then choose: POP now (pays sooner, and your next draws lean toward the colour you popped) or keep growing it (a bigger pocket pays more than its pieces).`,
+        figure: 'ripen',
       };
     }
 

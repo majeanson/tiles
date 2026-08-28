@@ -1334,6 +1334,7 @@ async function buildSession(route: Route): Promise<Session> {
     eventCard: required('event-card'),
     eventCardGlyph: required('event-card-glyph'),
     eventCardText: required('event-card-text'),
+    eventCardFigure: required('event-card-figure'),
     eventCardRows: required('event-card-rows'),
     eventCardDismiss: required<HTMLButtonElement>('event-card-dismiss'),
     termCard: required('term-card'),

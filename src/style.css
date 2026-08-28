@@ -2153,6 +2153,26 @@ button.armed {
   box-shadow: 0 12px 32px rgb(0 0 0 / 55%);
 }
 
+/* The picture of the rule, on the card that first states it (2026-08-28).
+   Reuses the manual's own .help-figure skin verbatim — same table, same
+   renderer, same CSS — so the card and the page you re-read it on cannot
+   drift into looking like two different games. Collapsed when absent. */
+#event-card-figure:empty {
+  display: none;
+}
+
+#event-card-figure {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0 6px;
+}
+
+/* The manual gives a figure room above and below; on a card the lead and the
+   button are already doing that, so the wrap gives its margin back. */
+#event-card-figure .help-figure-wrap {
+  margin: 0;
+}
+
 /* The rows of a set-teaching card: the four grounds (2026-08-27, Marc:
    "teach all tiles at one in a beautiful tip"). Left-aligned under the
    centred lead, because four sentences centred is four ragged blocks and
