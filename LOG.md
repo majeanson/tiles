@@ -7003,3 +7003,58 @@ after. `e2e/` has no LUCK, BOUNTIES or relics-banked expectations to move —
 grepped, confirmed, Playwright not re-run for that reason. **Not checked on
 a phone** — HUD row width with `✤` in portrait is Marc's own call, per
 Stage 2's own stated gate.
+
+---
+
+### Session 63 — Stage 3: the glossary registry, no UI change (2026-08-27)
+
+**Question:** can one registry hold every definition the game repeats, so no
+two doors onto a concept can drift apart?
+
+**Answer: yes for sixteen concepts, and the two that could not join said why
+instead of forcing a manual rewrite this stage does not own.** New
+`src/ui/glossary.ts` — `GLOSSARY: readonly GlossaryEntry[]`, each entry an
+id, its UPPERCASE terms (longest first), an optional glyph borrowed from one
+of the four registries, an optional `ink-magic`/`ink-unique` class, and a
+`define(t, theme)` that reads live tuning where a number is the point. No UI
+reads it yet — Stage 4 wires the tap — but this stage's own test proves every
+entry IS reachable: it opens the manual with every teach id met (the same
+shape `game.test.ts`'s `openFullManual` builds, duplicated rather than
+imported since that helper is not exported) and checks each entry's primary
+term actually prints in the manual's own capitals, the same "uppercase only:
+the capitals are the vocabulary" rule `tips.ts`'s `rarityInked` already lives
+by.
+
+That check found two of the ~18 planned entries were dead on arrival.
+`lastGasp`'s rule is stated in full sentences on three doors (the toast, the
+manual, the COST tap note) and never once under that name — there is no
+"LAST GASP" for a player to tap. `wall` looked safe (`WALL` reads like the
+others) until the grep: the manual's own words are "Wall" and "wall", never
+"WALL" — `describeHexOf`'s tap note and the first-contact toast both lead
+capitalized, but neither is the static manual `#helpSections` builds, and
+THE WORLD section's own sentence is lowercase. Both stay out of `GLOSSARY`
+rather than pass by relaxing the check or capitalizing a manual sentence
+this stage was not asked to touch — `glossaryEntry('wall')` and
+`glossaryEntry('lastGasp')` are pinned `undefined`, on purpose, with the
+reason written down for whoever picks up the capital next.
+
+Two definitions moved rather than copied, per the brief. `RELIC_LESSON` in
+`game.ts` is now one line that reads `glossaryEntry('relic')!.define(...)`
+instead of carrying its own prose — the relic teach card and the shop's own
+words about relics are the same sentence now because there is only one
+sentence. LUCK split into a shared clause and two endings: `glossaryEntry`'s
+new `LUCK_CORE` export (`'LUCK — a purse, not a score.'`, the exact words
+`statNote('luck')` already had, so that pinned test did not have to move) is
+read by both the LUCK teach card (which appends what the purse row's buttons
+are for) and `statNote('luck')` (which appends the live relics-conversion
+rate) — two doors, one opening line, each free to finish its own sentence.
+
+**Verified:** 860 tests (+7: `glossary.test.ts` — unique ids, every term
+uppercase and unique across the whole registry, each entry's own terms
+longest-first, every glyph drawn from the four registries' union, every
+`define(TUNING, TORCHLIT)` non-empty, every primary term present in the
+full-ledger manual, and the two deliberate gaps pinned `undefined`),
+typecheck / lint / format clean on the touched files, `pnpm sim`'s table
+byte-identical before and after (stashed, ran, popped, diffed — this stage
+touches prose and a registry, no balance number moved). No UI changed, so no
+e2e surface to check and none was.

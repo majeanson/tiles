@@ -43,6 +43,7 @@ import {
   type Theme,
 } from '@theme/tokens';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
+import { LUCK_CORE } from './glossary';
 
 /** A direction that wants no falloff at all — and every test that has no theme. */
 const NO_FALLOFF: Light = { radius: Infinity, fade: 1, floor: 1 };
@@ -1660,8 +1661,11 @@ export function statNote(id: string, hud: HudView, t: Tuning): string {
     case 'points':
       return 'POINTS — the score. A pocket popped for points pays its worth × its size × its distance from home.';
     case 'luck':
+      // Shares its opening clause with the LUCK teach card
+      // (`glossary.ts`'s `LUCK_CORE`, read by `game.ts`'s `glossaryEntry`)
+      // and appends the one thing that clause never says: the live rate.
       return (
-        'LUCK — a purse, not a score. The row under your hand spends it' +
+        `${LUCK_CORE} The row under your hand spends it` +
         (t.luckToRelics > 0
           ? `; whatever is left when the run ends comes home as relics, at ${Math.round(t.luckToRelics * 100)}%.`
           : '.')

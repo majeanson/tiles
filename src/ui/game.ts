@@ -32,6 +32,7 @@ import {
   type Progress,
   type TeachId,
 } from '@meta/progress';
+import { glossaryEntry } from './glossary';
 import { shopParts } from './shop';
 import { perkRows, rarityInked, tipRows } from './tips';
 import type { Renderer } from '@render/Renderer';
@@ -553,9 +554,11 @@ const HAND_HEX_SIZE = 24;
  * The relic lesson (`ideas/teaching.md`), said from wherever the first relic
  * actually arrives: mid-run for a sacrifice or a claim's own relics, or at
  * the ended transition when the first ones only came home in the ending
- * bonus. One string, so the two doors cannot drift apart.
+ * bonus. The body is `glossary.ts`'s own `relic` entry (2026-08-27, Stage
+ * 3) — the teach card reads the registry rather than keeping its own copy,
+ * so the two doors cannot drift apart.
  */
-const RELIC_LESSON = `${CONCEPT_MARK.relic}  RELICS\nRelics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.`;
+const RELIC_LESSON = `${CONCEPT_MARK.relic}  RELICS\n${glossaryEntry('relic')!.define(TUNING, PLACEHOLDER)}`;
 
 /**
  * The stats whose INCREASE is a reward worth a flash (2026-08-26): a pop
@@ -3103,10 +3106,14 @@ export class Game {
     }
 
     if (!met.has('luck') && next.luck > 0) {
+      // The body is `glossary.ts`'s own `luck` entry (2026-08-27, Stage 3),
+      // built on the same `LUCK_CORE` sentence `statNote('luck')` opens
+      // with — the two doors share their first line and each appends only
+      // what it alone needs.
       return {
         tier: 'card',
         id: 'luck',
-        text: `${CONCEPT_MARK.luck}  LUCK\nEvery pop pays a little of it. Luck is a purse, not a score — the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.`,
+        text: `${CONCEPT_MARK.luck}  LUCK\n${glossaryEntry('luck')!.define(t, this.#theme)}`,
       };
     }
 
