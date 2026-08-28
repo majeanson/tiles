@@ -109,3 +109,33 @@ or rejected in writing. Three outcomes are all fine:
 
 The one thing that would make this a bad session is a chrome rewrite begun
 because it was asked for, without the argument being made first.
+
+## RESOLVED 2026-08-28 — outcome 3 for this repo, and a fourth outcome nobody listed
+
+The argument was made, and it came out **against** React in this chrome — and
+then the session went somewhere this file did not anticipate. `DECISIONS.md`
+D25 has the rulings; `../ashwake` is the result. In short:
+
+- **The chrome stays vanilla, and this repo is frozen at v1.0.0.** The one
+  honest argument FOR — `resetShell()`'s 30-id list — turned out to be "every
+  id `index.html` declares `hidden`", replaceable by a boot-time
+  `querySelectorAll('[hidden]')` snapshot replayed on reset; and the hand-kept
+  list already misses three ids (`lens-clear`, `purse-toggle`,
+  `event-card-action`). React was never needed for it. Not applied here,
+  because nothing is being applied here.
+- **The console's "live sync" was worth less than it looked.** `PLAYTEST.md`'s
+  own rules — no coaching, no fixes at the table — mean there is nothing for an
+  AI to act on DURING a stranger's run. A sheet filled as it happens and pasted
+  intact afterwards is the whole need. (A Claude-hosted artifact page with the
+  `artifact` capability could do live sync with zero repo code; noted, not
+  built.)
+- **Where React went instead: a second body.** Marc: "I'm not locked to React,
+  I just want a nice game … replicate it in a new repo with the same rules and
+  different visuals." So `../ashwake` is a pnpm monorepo whose `packages/core`
+  is this repo's DOM-free half lifted verbatim (646 tests, `pnpm sim`
+  byte-identical to `42d4da3`, diffed by its CI), and whose `apps/game` is a
+  3D board in Three.js + React Three Fiber with React chrome over `view.ts`'s
+  props. React belongs where there is no legacy to fight and a scene graph to
+  declare — which was never this repo.
+- **The stranger is held for v2.** Session C stays OPEN and becomes Ashwake 2's
+  gate (D25). The console lives there too, as a `/playtest` route.

@@ -84,9 +84,11 @@ One long home-world run, two questions:
 - **The relic pace** — `FOLLOWUP.md` §4 has the numbers; do early runs
   feel like they earn?
 
-## Session C — the stranger test (Day 4, the v1.0 gate)
+## Session C — the stranger test (was the v1.0 gate; **v2.0's gate, on Ashwake 2**)
 
-**A and B are paid as of 2026-08-28. This is the only thing left.**
+**A and B are paid as of 2026-08-28. This is the only thing left — and by
+`DECISIONS.md` D25 it is run on the new body in `../ashwake`, not on this one.**
+The script and the sheet below are unchanged and carried over there.
 
 One person who is not you. Their phone. Send the link, say nothing
 beyond "try this". Watch the first minute only, then leave them alone.

@@ -222,16 +222,25 @@ never moves after a stranger has shared a line. **Tagging does not move it
 either** — D20 says the tag is dateless and nothing renumbers, and that holds
 whichever day the tag lands on.
 
-## v2.0 — the definition of done
+## v2.0 — the definition of done (rewritten 2026-08-28, D25)
 
-- [ ] **A stranger finished a run and chose to start another** (`DECISIONS.md`
-      D4, `PLAYTEST.md` Session C). Carried over intact.
-- [ ] **The React refactor** — brief in `ideas/v2-react.md`. The playtest
-      console first, as the greenfield surface that justifies the dependency; the game chrome only if that
-      proves it earns its ~8,675 lines and 5,954 lines of coupled tests.
-      `NEXT.md` §3c holds the measured surface.
+**v2.0 is Ashwake 2, and it lives in `../ashwake`** — a new repo whose
+`packages/core` is this repo's rules lifted verbatim and whose `apps/game` is a
+new body (3D board in Three.js + React Three Fiber, React chrome). **This repo
+is frozen at v1.0.0**: it is the deployed game and the fallback, and it takes
+ledger commits only. `../ashwake/ROADMAP.md` carries the six stages; the
+definition of done, as it stands there:
+
+- [ ] **Ashwake 2 is playable end to end on a phone**, with the same rules
+      (`pnpm sim` byte-identical to `42d4da3`, diffed by CI) and its own look.
+- [ ] **A stranger finished a run and chose to start another — on v2**
+      (`DECISIONS.md` D4, `PLAYTEST.md` Session C; held for v2 by D25).
 - [ ] **D22 and D23 answered** — telemetry and the privacy line; the first-run
       acknowledgement.
+
+The React refactor line that stood here — console first, chrome only on
+evidence — is resolved in `ideas/v2-react.md`: **no React in this chrome**, and
+the argument for that is recorded there.
 
 ## Post-1.0 parking lot
 
@@ -285,16 +294,11 @@ whichever day the tag lands on.
   What it genuinely needs that does not exist: a backend, which is what D13
   rules out for 1.0 and explicitly leaves the door open for after.
 
-- **The playtest console** (proposed 2026-08-28): a live, tickable Session
-  A/B/C checklist Marc works through on the phone while the AI reads and
-  writes findings back. Post-1.0, and it is the **right first React project** —
-  better justified than porting the game chrome, because it is a new surface
-  with no legacy to fight (the chrome port means ~8,675 lines of DOM code and
-  5,954 lines of DOM-coupled tests, for zero user-visible gain), and because
-  checkboxes, notes and live sync are genuinely what React is good at. The one
-  caveat recorded honestly: if friction running `PLAYTEST.md` from a phone is
-  what holds the gate, a static `playtest.html` beside `gallery.html` is half a
-  session and unblocks it — say so and it gets built first.
+- **The playtest console** (proposed 2026-08-28; **placed the same day, D25**):
+  a `/playtest` route in `../ashwake`'s app, with a COPY SHEET button rather
+  than live sync — `PLAYTEST.md`'s no-coaching, no-fixes-at-the-table rules
+  mean there is nothing for an AI to act on during a run, so the sheet reaching
+  `LOG.md` intact is the whole need. Not built in this repo.
 
 - **Tier 1 uniques** (`ideas/uniques.md`): Ashbound Seal, Everbloom, Leap,
   The Hoard. Parked whole on 2026-08-18 — Marc chose to build none of the

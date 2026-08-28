@@ -4,7 +4,18 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-28, later — one lesson, one source, drawn with the
+Last checkpoint: **2026-08-28, last — this repo is FROZEN at v1.0.0; v2.0 is a
+second body in `../ashwake`.** Planning v2.0 from `ideas/v2-react.md`'s brief,
+Marc ruled (`DECISIONS.md` D25): a new pnpm monorepo, `packages/core` = this
+tree's DOM-free half lifted verbatim, `apps/game` = a 3D board in Three.js +
+React Three Fiber with React chrome; **no React in this chrome** (the argument
+is in the brief's resolution); the stranger held for v2. Stage 1 was built the
+same session: 646 tests green there, `pnpm sim` **byte-identical** to `42d4da3`
+and diffed by its CI, which is green (`majeanson/ashwake`). This repo takes
+ledger commits only from here; the deployed game and the tag are the fallback.
+`LOG.md` Session 70.
+
+Previous checkpoint: **2026-08-28, later — one lesson, one source, drawn with the
 real game.** Marc: "the world, the screen, etc. should be from in-game too, not
 just text ... a single source: when you get helped in game, its help you can
 review there." Plus his sequencing: **help refactor → Sessions A–C → tag 1.0 →

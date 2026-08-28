@@ -1,5 +1,11 @@
 # CLAUDE.md
 
+**This repo is FROZEN at v1.0.0 (2026-08-28, `DECISIONS.md` D25).** It is the
+deployed game and the fallback. New work — a second body on the same rules —
+happens in `../ashwake`, whose `packages/core` is this tree's DOM-free half
+lifted verbatim. Land ledger commits here; land code there. If a rule must
+change, it changes in the core package with its golden sim file, not here.
+
 Read `STATUS.md` first — the checkpoint ledger of what is done **and verified**,
 so shipped ground doesn't get re-audited. `NEXT.md` is the short answer to
 "what now": what is left, sorted by whether it needs Marc or not. `LOG.md`

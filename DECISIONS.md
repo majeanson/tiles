@@ -5,14 +5,17 @@ one had been answered, and the file had not been told. Corrected wholesale
 2026-08-20 (the launch deep-clean): each entry keeps its question and now
 states its answer, with the date and where the evidence lives.
 
-**Three open, none gating v1.0 (amended twice on 2026-08-28).** D4 gated the
-tag until Marc ruled otherwise (D24): v1.0 is tagged WITHOUT the stranger test,
-and D4 becomes v2.0's gate. It is still OPEN and still unattempted — moved,
-not answered. D22 (telemetry, and what the privacy line costs) and D23 (the
-first-run acknowledgement) were opened on 2026-08-28 and are both post-tag by
-construction — D22 needs a backend D13 rules out for 1.0, and D23 is
-deliberately sequenced after Session C so that it cannot contaminate the
-measurement it would otherwise help. Neither may displace D4.
+**Three open, none gating v1.0 (amended three times on 2026-08-28).** D4 gated
+the tag until Marc ruled otherwise (D24): v1.0 is tagged WITHOUT the stranger
+test, and D4 becomes v2.0's gate. It is still OPEN and still unattempted —
+moved, not answered, and **since D25 it is answered on Ashwake 2, in
+`../ashwake`, not here.** D22 (telemetry, and what the privacy line costs) and
+D23 (the first-run acknowledgement) were opened on 2026-08-28 and are both
+post-tag by construction — D22 needs a backend D13 rules out for 1.0, and D23
+is deliberately sequenced after Session C so that it cannot contaminate the
+measurement it would otherwise help. Neither may displace D4. **This repo is
+frozen at v1.0.0 (D25); new rulings about the game go in
+`../ashwake/DECISIONS.md`.**
 
 ---
 
@@ -277,3 +280,37 @@ repository has played it. If Session C then finds something that changes the
 first minute, v1.1 will be a real release rather than a polish pass — which is
 fine, and is the cost of tagging first, and is worth naming now rather than
 discovering it in a changelog.
+
+### D25 — v2.0 is a second body in a second repo; this one is frozen
+
+Marc, 2026-08-28, planning v2.0 from `ideas/v2-react.md`'s brief: **"I'm not
+locked to React, I just want a nice game"** · "my only requirement is web app,
+game oriented, maybe even some 3D or game engine library" · **"the game was fun,
+I want to replicate it in a new repo with the same rules and different
+visuals"** · "extract concepts, unify components, DRY — but logic and
+similarities stay."
+
+Five rulings, each put to him as an option set and answered:
+
+1. **Body: a 3D board in Three.js + React Three Fiber, chrome in React 19.**
+   Godot/Unity web exports rejected (20–40MB loads, iOS threading limits, the
+   TypeScript rules would have to be rewritten); Phaser rejected (2D, fights
+   DOM chrome); Babylon.js judged viable but heavier than a hex board needs.
+2. **Repo: a new pnpm monorepo, `../ashwake` (`majeanson/ashwake`) —
+   `packages/core` + `apps/game`.** The core is this repo's DOM-free half
+   lifted verbatim (646 tests) with `pnpm sim` byte-identical to `42d4da3`,
+   diffed by its CI on every push. **This repo is frozen at v1.0.0**: the
+   deployed game, the fallback, ledger commits only.
+3. **The stranger is held for v2.** Session C, never run, is spent on the new
+   body. D4 stays OPEN and is Ashwake 2's gate.
+4. **The clean pass comes before the stranger** — it is the port.
+5. **No React in this chrome**, and the argument is in `ideas/v2-react.md`'s
+   resolution: `resetShell()`'s list is "every id the markup declares
+   `hidden`", a one-line snapshot in vanilla, and it already misses three ids.
+
+The playtest console lives in the new app as a `/playtest` route with COPY
+SHEET; live sync was deliberately not built (the no-coaching rule leaves nothing
+to act on mid-run). Deploy: `ashwake.marcportal.com` during the build;
+tiles.marcportal.com cuts over at the v2.0 tag. The v1 → v2 bridge for a
+player's worlds is BACK UP MY WORLDS → RESTORE A BACKUP; the daily epoch does
+not move (D20).

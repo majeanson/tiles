@@ -27,6 +27,12 @@ only one since 2026-08-21. Nothing in this file may displace it.
 clean, and Session B re-confirmed both its answers. Session C is now the only
 thing between this tree and the tag, and a person is lined up for it.
 
+**HELD FOR v2, later on 2026-08-28 (`DECISIONS.md` D25).** v1.0.0 tagged
+without the stranger (D24), and Marc then chose to spend the one-shot stranger
+on Ashwake 2 — the new body in `../ashwake`. Session C is that repo's gate
+now. **This repo is frozen at v1.0.0; nothing in this file is work for it any
+more.** It stays as the record of what was left when the freeze landed.
+
 The original note, kept because it is why the rehearsal was owed: (`PLAYTEST.md` Session A) not
 bookkeeping — 2026-08-27 changed the first minute a third time, and the
 2026-08-26 re-run that passed with an empty fix list was measuring a screen
@@ -111,7 +117,12 @@ Still open, in the order they are worth doing:
   sign-off; the registry makes it ~30 lines whenever he says yes. **Design it,
   do not build it uninvited.**
 
-**React** is `ROADMAP.md` parking-lot work now, to be done against a tag rather
+**React — PLACED 2026-08-28, and not here.** `ideas/v2-react.md`'s resolution
+and `DECISIONS.md` D25: no React in this chrome; the new body in `../ashwake`
+is where it went. The paragraph below is the measured surface as it stood, kept
+for the record.
+
+**React** was `ROADMAP.md` parking-lot work, to be done against a tag rather
 than before one. `LOG.md` Session 68 carries the measured surface so the
 estimate does not have to be re-derived: ~8,675 lines of DOM-producing code,
 `style.css`'s 3,329 id-keyed lines and 5,954 lines of DOM-coupled tests at
@@ -134,12 +145,8 @@ two of them as open decisions (`DECISIONS.md` D22, D23). None displaces §1.
   SETTINGS says "no account, no analytics, no server" on screen; either that
   line stays and there are none, or it moves in the same commit that adds
   them. Needs a backend, which D13 rules out for 1.0.
-- **The playtest console** — the right FIRST React project, and the brief for
-  it is written: `ideas/v2-react.md` carries the measured surface and a
-  pasteable prompt for a fresh session. a new surface with
-  no legacy to fight, and genuinely component-shaped. A static
-  `playtest.html` beside `gallery.html` is the half-session version if
-  phone friction is ever what holds the gate.
+- **The playtest console** — placed 2026-08-28 (D25): a `/playtest` route in
+  `../ashwake`'s app with COPY SHEET, no live sync. Not built here.
 
 ## 4. Known and deliberately not done — no one blocked
 

@@ -7636,3 +7636,48 @@ rather than failing the game.**
 
 **Verified:** ledger-only session — no production code touched. 898 tests, 33
 e2e, all gates clean, live sha `148b219` matching HEAD.
+
+---
+
+### Session 70 — v2.0 is a second body; the core leaves as a package (2026-08-28)
+
+**Question:** where does React actually belong — and is the answer even
+"React"?
+
+**Answered with Marc, by option set, from `ideas/v2-react.md`'s brief.** The
+brief asked about React in this chrome and a playtest console first. Reading
+turned up two facts and Marc turned up a third:
+
+- `resetShell()`'s 30-id list — the one honest argument FOR React here — is
+  "every id `index.html` declares `hidden`", replaceable by a boot-time
+  `[hidden]` snapshot; and the hand-kept list already misses three ids
+  (`lens-clear`, `purse-toggle`, `event-card-action`). React was never needed
+  for it.
+- The console's "live sync" buys little: `PLAYTEST.md`'s own rules (no
+  coaching, no fixes at the table) leave nothing for an AI to act on during a
+  run. The need is a sheet filled as it happens and handed over intact.
+- Marc: _"I'm not locked to React, I just want a nice game … replicate it in a
+  new repo with the same rules and different visuals."_
+
+So v2.0 is **Ashwake 2** (`DECISIONS.md` D25): a new monorepo at
+`../ashwake`, a 3D board in Three.js + React Three Fiber, React chrome over
+`view.ts`'s props, and **this repo frozen at v1.0.0**. The stranger is held
+for the new body.
+
+**Stage 1 was built the same session, in the new repo.** The DOM-free half of
+this tree — `engine`, `content`, `meta`, `sim`, `render/layout.ts`, the
+`BoardView` contract, `view.ts`, the lessons registry, the theme data and all
+their tests — lifted **verbatim** into `packages/core`: 646 tests green, and
+`pnpm sim` there prints byte for byte what `pnpm sim` here prints at
+`42d4da3`. That output is its `sim.golden.txt`, diffed by its CI. Two edits,
+both findings: `labelFor` (faint means SPENT) left `PixiRenderer.ts` for
+`render/labels.ts` — a rule about what a star means had been filed under a
+drawing library — and `scripts/sim.ts` moved a directory. `../ashwake/LOG.md`
+Session 1 has the full account.
+
+**This repo:** ledger-only. `ideas/v2-react.md` resolved (outcome 3 here, and
+a fourth outcome it did not list), `ROADMAP.md`'s v2.0 rewritten, D25, `NEXT.md`
+§1 and §3 updated, `PLAYTEST.md` Session C re-addressed to v2.
+
+**Verified here:** no production code touched; 898 tests / 33 e2e stand as at
+`42d4da3`.
