@@ -7584,3 +7584,55 @@ literals — each is reachable through `#say`/`#core` whenever it earns a commit
 Visuals for the shop's upgrade rows and the perk cards are still open, and are
 the next-best in-game-displays win. `lessons.ts`'s `rows` field is declared and
 unused for that reason; it is the seam those two land on.
+
+---
+
+### Session 69 — A and B are paid; only the stranger is left (2026-08-28)
+
+**Question:** does the first minute still teach itself, on a build whose first
+minute changed twice in two days — and does the economy still read the way it
+did when it was last played?
+
+**Answered by Marc, on the phone, on `148b219`.**
+
+- **Session A — clean.** He played the rehearsal and wrote down nothing: no
+  moment where the screen failed to say what he needed. Third consecutive
+  empty fix list, and the one that was owed hardest. The first minute had
+  changed twice since the last rehearsal (2026-08-27's one-hand-one-action-bar
+  rebuild) and once more the same day — the RIPE card now carries the
+  six-around-one figure, the four-grounds card shows the real baked tiles where
+  it had shown flat swatches, THE COLOURS stopped reading "■ ASH — ash.", and
+  the daylight palette was repainted from the ladder up after his own
+  "ember in light skin has no contrast" report. **None of it had been seen by a
+  human until this run.** The four risk checks from `NEXT.md` §2 rode along.
+- **Session B — both answers still hold.** Pop-vs-burn-vs-wait still feels like
+  a decision; the relic pace still earns. Recorded as a CONFIRMATION rather
+  than a re-test, and it should be read as one: `pnpm sim` is byte-identical
+  across every commit since 2026-08-26, so not one number in `content/` or
+  `engine/` has moved. What changed is the screen. A second datapoint on the
+  standing v1.1 question, from the same player — worth exactly that and no
+  more.
+- **Session C — a person is lined up.** Not run.
+
+**So the ledger now reads: six of seven boxes checked, and the seventh is a
+stranger.** Everything code can produce is produced. `DECISIONS.md` D4 stays
+OPEN — it is answered by a person, not by a test run, and the honest state of
+this repository is that it is waiting on one.
+
+**The sheet is written before the run rather than during it** (`PLAYTEST.md`,
+Session C): four yes/no facts, every question asked out loud verbatim, every
+hesitation and its length, and everything they did that the game did not
+expect. The one thing that cannot be recovered afterwards is what a person did
+in their first minute, and a sheet improvised at the table is a sheet that
+records a verdict instead of a fact.
+
+Two rules restated where they will be read: **no coaching** — a question they
+ask IS the bug, and answering it destroys the datapoint — and a confusing
+moment is a FINDING, not a failure. And the outcome is stated both ways in
+advance, so neither is a surprise: if they start another run, D4 is answered
+and the tag follows; **if they do not, the reason they stopped is the most
+valuable sentence this project has collected, and it names the next milestone
+rather than failing the game.**
+
+**Verified:** ledger-only session — no production code touched. 898 tests, 33
+e2e, all gates clean, live sha `148b219` matching HEAD.

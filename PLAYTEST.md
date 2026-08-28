@@ -10,7 +10,21 @@ actively misleading with a launch five days out. This is the live script;
 portrait.** Reload twice first (or tap NEW VERSION) so the build is
 today's.
 
-## Session A — the stranger rehearsal — ✅ PLAYED 2026-08-20, ✅ RE-RUN 2026-08-26
+## Session A — the stranger rehearsal — ✅ PLAYED 2026-08-20, ✅ RE-RUN 2026-08-26, ✅ RE-RUN 2026-08-28
+
+**2026-08-28, on build `148b219`: clean. Marc played it and wrote down
+nothing** — no moment where the screen failed to say what he needed.
+
+That is the third consecutive empty fix list, and this time it was owed
+hardest: the first minute had changed twice since the last rehearsal and once
+more the same day. The bottom of the screen became one hand and one action bar
+(2026-08-27), and then the teaching itself changed (2026-08-28) — the RIPE card
+carries the six-around-one figure now, the four-grounds card shows the real
+baked tiles instead of flat swatches, THE COLOURS stopped reading "■ ASH —
+ash.", and the daylight palette was repainted from the ladder up. **None of
+that had been seen by a human before this run.** It has now, and it holds.
+
+The four risk checks from `NEXT.md` §2 rode along with it.
 
 **The re-run's verdict (LOG Session 47): the first run teaches itself.**
 Every card at its moment, no gaps written down. The script below stays for
@@ -47,11 +61,17 @@ colour lens. None of it has been seen by a human on a phone.
    world: fog, anchors, lens, reborn landmarks, ember, rarity colours,
    pop cascade, wording, shelf count, fame folds, relic pace.
 
-## Session B — the verdict run — ✅ PLAYED 2026-08-26
+## Session B — the verdict run — ✅ PLAYED 2026-08-26, ✅ RE-CONFIRMED 2026-08-28
 
 **Both answers in (LOG Session 47): pop-vs-burn-vs-wait FELT LIKE A
 DECISION (first datapoint on the standing v1.1 question), and the relic
 pace EARNS.**
+
+**Both still hold on 2026-08-28**, which is a confirmation rather than a
+re-test and should be read as one: `pnpm sim` is byte-identical across every
+commit since, so not one number in `content/` or `engine/` has moved. What
+changed is the screen. A second datapoint on the standing v1.1 question, from
+the same player — worth exactly what that is worth, and no more.
 
 **The freeze this session declared was LIFTED on 2026-08-27**, by Marc,
 after playing ROOTBOUND to a 52k high and asking for it repriced. See
@@ -66,12 +86,51 @@ One long home-world run, two questions:
 
 ## Session C — the stranger test (Day 4, the v1.0 gate)
 
+**A and B are paid as of 2026-08-28. This is the only thing left.**
+
 One person who is not you. Their phone. Send the link, say nothing
 beyond "try this". Watch the first minute only, then leave them alone.
 
 - Record: did they place without help? pop? finish? **start another?**
 - The last one is the gate. Evidence goes in `LOG.md`; `DECISIONS.md` D4
   gets its answer; the tag follows on Day 5.
+
+### The sheet — filled in as it happens, not from memory afterwards
+
+Written before the run rather than during it, because the one thing that
+cannot be recovered is what a person did in their first minute. Four facts and
+a list; nothing here needs a verdict at the time.
+
+```
+DATE / DEVICE            ______________  (iOS or Android, and roughly which)
+SKIN IT OPENED IN        ______________  (auto picks: light phone → daylight)
+
+1. PLACED A TILE UNAIDED                    yes / no      after how long? ____
+2. POPPED A POCKET UNAIDED                  yes / no
+3. FINISHED THE RUN                         yes / no
+4. STARTED ANOTHER            ← THE GATE    yes / no
+
+EVERY QUESTION THEY ASKED OUT LOUD  (each one is a bug, verbatim)
+  -
+  -
+
+EVERY PLACE THEY HESITATED, AND FOR HOW LONG
+  -
+  -
+
+WHAT THEY DID THAT THE GAME DID NOT EXPECT
+  -
+```
+
+**The two rules that make it worth anything.** No coaching — a question they
+ask IS the bug, and answering it destroys the datapoint you are there to
+collect. And a confusing moment is a FINDING, not a failure: one sentence
+each, no fixes at the table.
+
+**If they start another run**, that is D4 answered and the tag follows. **If
+they do not**, the reason they stopped is the most valuable sentence this
+project has ever collected, and it names the next milestone rather than
+failing the game.
 
 ## Standing rules
 

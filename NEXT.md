@@ -23,7 +23,11 @@ This is the **only** unchecked box in `ROADMAP.md`'s definition of done, and
 by the 2026-08-20 ruling the only one that gates the tag. It has been the
 only one since 2026-08-21. Nothing in this file may displace it.
 
-**Owed first: one more rehearsal pass** (`PLAYTEST.md` Session A). Not
+**PAID 2026-08-28.** Session A was re-run on build 148b219 and came back
+clean, and Session B re-confirmed both its answers. Session C is now the only
+thing between this tree and the tag, and a person is lined up for it.
+
+The original note, kept because it is why the rehearsal was owed: (`PLAYTEST.md` Session A) not
 bookkeeping — 2026-08-27 changed the first minute a third time, and the
 2026-08-26 re-run that passed with an empty fix list was measuring a screen
 that no longer exists: the bottom is one hand and one action bar, held cards
