@@ -134,7 +134,9 @@ two of them as open decisions (`DECISIONS.md` D22, D23). None displaces §1.
   SETTINGS says "no account, no analytics, no server" on screen; either that
   line stays and there are none, or it moves in the same commit that adds
   them. Needs a backend, which D13 rules out for 1.0.
-- **The playtest console** — the right FIRST React project: a new surface with
+- **The playtest console** — the right FIRST React project, and the brief for
+  it is written: `ideas/v2-react.md` carries the measured surface and a
+  pasteable prompt for a fresh session. a new surface with
   no legacy to fight, and genuinely component-shaped. A static
   `playtest.html` beside `gallery.html` is the half-session version if
   phone friction is ever what holds the gate.

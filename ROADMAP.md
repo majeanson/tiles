@@ -226,8 +226,8 @@ whichever day the tag lands on.
 
 - [ ] **A stranger finished a run and chose to start another** (`DECISIONS.md`
       D4, `PLAYTEST.md` Session C). Carried over intact.
-- [ ] **The React refactor** — the playtest console first, as the greenfield
-      surface that justifies the dependency; the game chrome only if that
+- [ ] **The React refactor** — brief in `ideas/v2-react.md`. The playtest
+      console first, as the greenfield surface that justifies the dependency; the game chrome only if that
       proves it earns its ~8,675 lines and 5,954 lines of coupled tests.
       `NEXT.md` §3c holds the measured surface.
 - [ ] **D22 and D23 answered** — telemetry and the privacy line; the first-run
