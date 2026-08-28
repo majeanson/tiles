@@ -577,16 +577,6 @@ const EVENT_GLYPH = /^(\S+)\s\s([\s\S]*)$/;
 const HAND_HEX_SIZE = 24;
 
 /**
- * The relic lesson (`ideas/teaching.md`), said from wherever the first relic
- * actually arrives: mid-run for a sacrifice or a claim's own relics, or at
- * the ended transition when the first ones only came home in the ending
- * bonus. The body is `glossary.ts`'s own `relic` entry (2026-08-27, Stage
- * 3) — the teach card reads the registry rather than keeping its own copy,
- * so the two doors cannot drift apart.
- */
-const RELIC_LESSON = `${CONCEPT_MARK.relic}  RELICS\n${glossaryEntry('relic')!.define(TUNING, PLACEHOLDER)}`;
-
-/**
  * The stats whose INCREASE is a reward worth a flash (2026-08-26): a pop
  * refilling the purse, the score moving, luck landing, the edge pushing
  * out. COST and LEFT change routinely and never flash; decreases never
@@ -3165,38 +3155,25 @@ export class Game {
         // card covers the first ever. Both firing for one tile would say
         // the same thing twice.
         this.#uniqueExplained = true;
-        return {
-          tier: 'card',
-          id: 'rareUnique',
-          text: `${TILE_GLYPH}  UNIQUE\nWild, and heavy: every match it is part of counts DOUBLE, for both sides. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.`,
-        };
+        return { tier: 'card', ...this.#teach('rareUnique') };
       }
       if (!met.has('rare') && inHand.some((tile) => tile.rarity === 'magic')) {
-        return {
-          tier: 'card',
-          id: 'rare',
-          text: `${TILE_GLYPH}  MAGIC\nWild: it matches every neighbouring tile, whatever the colour, and they match it back. Spend it where many tiles touch — placed, it wears a star on the board so you can always find it.`,
-        };
+        return { tier: 'card', ...this.#teach('rare') };
       }
     }
 
     if (!met.has('luck') && next.luck > 0) {
-      // The body is `glossary.ts`'s own `luck` entry (2026-08-27, Stage 3),
-      // built on the same `LUCK_CORE` sentence `statNote('luck')` opens
-      // with — the two doors share their first line and each appends only
-      // what it alone needs.
-      return {
-        tier: 'card',
-        id: 'luck',
-        text: `${CONCEPT_MARK.luck}  LUCK\n${glossaryEntry('luck')!.define(t, this.#theme)}`,
-      };
+      // The `luck` lesson, which still opens on the same `LUCK_CORE` sentence
+      // `statNote('luck')` opens with — the two doors share their first line
+      // and each appends only what it alone needs.
+      return { tier: 'card', ...this.#teach('luck') };
     }
 
     // Never on a detour: a daily's run-relics bank nothing, and the lesson's
     // own words ("they follow you out") must not be taught by a mode where
     // they do not. The moment stays armed for the home world.
     if (!met.has('relic') && next.relics > 0 && !this.#detour) {
-      return { tier: 'card', id: 'relic', text: RELIC_LESSON };
+      return { tier: 'card', ...this.#teach('relic') };
     }
 
     // The last-gasp rule, taught the first time it fires (Marc, 2026-08-19:
@@ -3680,7 +3657,8 @@ export class Game {
         const banked = this.#hooks.shop?.read().relics ?? 0;
         if (banked > 0 || hud.relics > 0) {
           this.#markMet('relic');
-          this.#showEventCard(RELIC_LESSON);
+          const relic = this.#teach('relic');
+          this.#showEventCard(relic.text, undefined, undefined, relic.figure);
         }
       }
     }

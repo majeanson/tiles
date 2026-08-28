@@ -137,6 +137,11 @@ export type Lesson = {
  *  live conversion rate, which is the one thing this clause never says. */
 export const LUCK_CORE = 'LUCK — a purse, not a score.';
 
+/** What MAGIC and UNIQUE both do once placed. Shared the way `LUCK_CORE` is:
+ *  one sentence, two lessons, so the two rarity cards cannot come to disagree
+ *  about the mark they both wear. */
+const RARE_STAR = 'A placed rare tile wears a star, so its power stays findable on a full map.';
+
 const weightOf = (beat: Beat): Weight => beat.at ?? 'more';
 
 /** Every sentence of one weight that this run actually speaks. */
@@ -369,18 +374,31 @@ export const LESSONS: readonly Lesson[] = [
       },
     ],
   },
+  /**
+   * The two rarities, and the sentence they share.
+   *
+   * "A placed rare tile wears a star" is true of both and belongs to neither,
+   * so both carry it — a MAGIC card that did not say it would be teaching half
+   * a rule. The manual's RARE TILES section is COMPOSED of these two lessons
+   * rather than being one of them, so it prints each core once and the shared
+   * sentence once; sections were never one-lesson-shaped, and this is the pair
+   * that proves it.
+   */
   {
     id: 'rare',
     name: 'MAGIC',
     terms: ['MAGIC'],
     ink: 'ink-magic',
+    glyph: TILE_GLYPH,
     figure: 'rare',
     beats: [
       {
         at: 'core',
         say: () =>
-          'MAGIC is wild: it matches every neighbouring tile, whatever the colour, and they match it back. Placed, it wears a star on the board so you can always find it again.',
+          'MAGIC is wild: it matches every neighbour whatever the colour, and they match it back.',
       },
+      { say: () => RARE_STAR },
+      { at: 'card', say: () => 'Spend it where many tiles touch.' },
     ],
   },
   {
@@ -388,12 +406,15 @@ export const LESSONS: readonly Lesson[] = [
     name: 'UNIQUE',
     terms: ['UNIQUE'],
     ink: 'ink-unique',
+    glyph: TILE_GLYPH,
+    figure: 'rare',
     beats: [
       {
         at: 'core',
-        say: () =>
-          'UNIQUE is wild and heavy: every match it is part of counts DOUBLE, for both sides. Placed, it wears a star on the board so you can always find it again.',
+        say: () => 'UNIQUE is wild and heavy: every match it makes counts DOUBLE, for both sides.',
       },
+      { say: () => RARE_STAR },
+      { at: 'card', say: () => 'Spend it where many tiles touch.' },
     ],
   },
   {
