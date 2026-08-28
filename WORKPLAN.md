@@ -72,7 +72,7 @@ Visual delta on ship: fame ❋ and the cache card's ✚ lead; nothing else.
 Marc's phone check of the five new characters is the gate for the glyph
 choices.
 
-## Stage 2 — Symbols where words stood (STATUS: TODO)
+## Stage 2 — Symbols where words stood (STATUS: DONE, commit `cfb5636`)
 
 Pure additive polish; depends on Stage 1's registry.
 
