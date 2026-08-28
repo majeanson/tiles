@@ -35,7 +35,7 @@ Marc's, on the deployed site, on a phone. Line numbers in stage briefs are
 from 2026-08-27 pre-`aa78814` exploration — **grep for the anchors, do not
 trust the numbers.**
 
-## Stage 1 — CONCEPT_MARK, and every glyph literal routed through a registry (STATUS: TODO)
+## Stage 1 — CONCEPT_MARK, and every glyph literal routed through a registry (STATUS: DONE, commit `09debb4`)
 
 **Question:** when every glyph the game speaks comes from one of four
 registries, does any surface change its meaning — and is ❋ (fame) instantly
