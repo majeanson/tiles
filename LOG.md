@@ -6947,3 +6947,59 @@ number moved. **Not checked on a phone**, which is Stage 1's own stated gate:
 the five characters that changed voice (`◉ ✤ ▦ ▨ ❋`) and the one that changed
 its lead (`✚` on the cache claim, replacing a bare `+`) are Marc's call to
 make by looking, not something a test can verify.
+
+---
+
+### Session 62 — Stage 2: symbols where words stood (2026-08-27)
+
+**Question:** does a mark beside a word on the end screen and the HUD make
+the score legible at a glance, or is it noise?
+
+**Answer: additive, and nothing collided — the four registries had a home
+for every mark this stage needed, so no new ink went in.** Pure polish, no
+new registry, no engine change, no balance number: the plan's own promise
+held.
+
+**Where relics, luck, wall and stone got their mark.** The end screen: the
+CARRIED OUT line now reads `◉ N relics banked`, and the RELICS shop-door row
+leads `◉ RELICS` the same way — relics were the one currency that followed a
+player across three screens with a symbol on none of them until now. The
+facts-grid's BOUNTIES cell wears `LANDMARK_GLYPH.site`'s `★`, because a
+bounty IS a site's own second payout; DESTINATIONS stays a bare word, with a
+comment saying why — it names a mixed family (cache, site, shrine,
+territory, find) that has no single glyph to lead with, the same reasoning
+`describeHexOf` already leans on for that landmark. `describeHexOf`'s wall
+and stone sentences now lead `▦ Wall —` / `▨ Spent ground —`; `view.ts`
+imported `CONCEPT_MARK` for the first time (and dropped `TILE_GLYPH`, no
+longer used there since `purseLesson`'s lead moved off it). No wall/stone
+rows exist in the manual today — `#groundRows` covers only the four
+`COLOURS` — so the brief's conditional third leg (`glyph:` marks on manual
+tip rows) had nothing to do.
+
+**Three lesson leads traded the game's own voice for their own.** The LUCK
+teach card and `purseLesson`'s lead (`view.ts`) both moved off `TILE_GLYPH`
+onto `CONCEPT_MARK.luck`; `RELIC_LESSON` moved onto `CONCEPT_MARK.relic`.
+`TILE_GLYPH` keeps saying what it always has for every lesson that is about
+the game itself rather than one concept — YOUR FIRST POP, THE EXPEDITION,
+the WALL toast — none of which own a single mark to lead with instead.
+
+**The HUD's one hard constraint.** `Stat` gained an optional `mark` field;
+the LUCK stat is the only user. The visible label now reads `✤ LUCK`, built
+from a separate `aria-hidden` span rather than folded into the label's own
+text — belt over the brace the row already wore: `#renderStats` sets
+`aria-label` on the stat's own `<div>` from `stat.label` alone, which
+overrides all descendant text for the accessible name on its own, so the
+mark was already silent to a reader before the `aria-hidden` span existed.
+Both routes now say the same thing on purpose. `LUCK 0`'s aria-label is
+unchanged; the visible span is the only thing that moved.
+
+**Verified:** 853 tests (+1: a new case pins the LUCK stat's split — the
+visible label carries `✤ LUCK`, the mark's own span is `aria-hidden`, the
+box's `aria-label` stays `LUCK 0`; two existing cases widened rather than
+weakened — the shop-door text now expects the `◉` lead, and the CARRIED OUT
+case now pins `◉ 40 relics banked` plus the BOUNTIES/DESTINATIONS split),
+typecheck / lint / format clean, `pnpm sim` table byte-identical before and
+after. `e2e/` has no LUCK, BOUNTIES or relics-banked expectations to move —
+grepped, confirmed, Playwright not re-run for that reason. **Not checked on
+a phone** — HUD row width with `✤` in portrait is Marc's own call, per
+Stage 2's own stated gate.

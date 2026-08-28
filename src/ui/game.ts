@@ -522,8 +522,19 @@ const TAP_SLOP = 8;
  */
 const EDGE_SWIPE_PX = 28;
 
-/** Label, value, and whether this is the number counting down to the end. */
-type Stat = { readonly id: string; readonly label: string; readonly value: string };
+/**
+ * Label, value, and whether this is the number counting down to the end.
+ * `mark` is an optional glyph from one of the four registries, drawn beside
+ * the label in the visible span only — the accessible name stays the plain
+ * word (`#renderStats` builds `aria-label` from `label` alone), so a reader
+ * never hears a symbol it cannot pronounce.
+ */
+type Stat = {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly mark?: string;
+};
 
 /** How long a claim announcement stays up before it fades on its own. */
 
@@ -544,7 +555,7 @@ const HAND_HEX_SIZE = 24;
  * the ended transition when the first ones only came home in the ending
  * bonus. One string, so the two doors cannot drift apart.
  */
-const RELIC_LESSON = `${TILE_GLYPH}  RELICS\nRelics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.`;
+const RELIC_LESSON = `${CONCEPT_MARK.relic}  RELICS\nRelics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.`;
 
 /**
  * The stats whose INCREASE is a reward worth a flash (2026-08-26): a pop
@@ -3095,7 +3106,7 @@ export class Game {
       return {
         tier: 'card',
         id: 'luck',
-        text: `${TILE_GLYPH}  LUCK\nEvery pop pays a little of it. Luck is a purse, not a score — the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.`,
+        text: `${CONCEPT_MARK.luck}  LUCK\nEvery pop pays a little of it. Luck is a purse, not a score — the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.`,
       };
     }
 
@@ -3948,8 +3959,11 @@ export class Game {
           'BIGGEST POP',
           s.biggestHarvest > 0 ? `${s.biggestHarvest} at ${Math.round(s.biggestAt * 100)}%` : '—',
         ),
+        // DESTINATIONS stays a word: it names a mixed family — cache, site,
+        // shrine, territory, find — with no single glyph of its own, unlike
+        // BOUNTIES, which is always a site's ★.
         cell('DESTINATIONS', String(s.claims)),
-        cell('BOUNTIES', String(s.quests)),
+        cell(`${LANDMARK_GLYPH.site} BOUNTIES`, String(s.quests)),
       );
       parts.push(grid);
     }
@@ -3986,7 +4000,7 @@ export class Game {
       carried.append(
         line(
           carriedRelics > 0 ? 'end-facts end-carried-relics' : 'end-facts',
-          `${carriedRelics} relics banked`,
+          `${CONCEPT_MARK.relic} ${carriedRelics} relics banked`,
         ),
       );
       if (this.#foundThisRun !== null) {
@@ -4036,7 +4050,7 @@ export class Game {
       // it read as noise, and the shelf inside prices every rung already.
       const door = row(
         'end-payout-row end-link end-shop-door',
-        'RELICS',
+        `${CONCEPT_MARK.relic} RELICS`,
         `${progress.relics} · GO BUY ▸`,
         {
           link: () => {
@@ -4230,7 +4244,14 @@ export class Game {
         ? [{ id: 'points', label: 'POINTS', value: String(hud.points) } satisfies Stat]
         : []),
       ...(luckVisible
-        ? [{ id: 'luck', label: 'LUCK', value: String(hud.luck) } satisfies Stat]
+        ? [
+            {
+              id: 'luck',
+              label: 'LUCK',
+              value: String(hud.luck),
+              mark: CONCEPT_MARK.luck,
+            } satisfies Stat,
+          ]
         : []),
       // REACH is THIS run's, and only this run's (Marc, same day: "show our
       // best in the settings but not in the header — only show current
@@ -4266,7 +4287,18 @@ export class Game {
 
         const label = document.createElement('span');
         label.className = 'stat-label';
-        label.textContent = stat.label;
+        // The mark rides in its own aria-hidden span (2026-08-27, Stage 2):
+        // the visible row gets the glyph, the accessible name above stays
+        // the plain word regardless — belt over the `aria-label` braces.
+        if (stat.mark !== undefined) {
+          const mark = document.createElement('span');
+          mark.className = 'stat-mark';
+          mark.setAttribute('aria-hidden', 'true');
+          mark.textContent = stat.mark;
+          label.append(mark, document.createTextNode(` ${stat.label}`));
+        } else {
+          label.textContent = stat.label;
+        }
 
         const value = document.createElement('span');
         value.className = 'stat-value';

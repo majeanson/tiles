@@ -37,8 +37,8 @@ import {
 import {
   brightness,
   COLOUR_MARK,
+  CONCEPT_MARK,
   LANDMARK_GLYPH,
-  TILE_GLYPH,
   type Light,
   type Theme,
 } from '@theme/tokens';
@@ -1641,7 +1641,7 @@ export function purseLesson(t: Tuning, theme: Theme): SetLesson {
       : 'whatever is left when the run ends is lost outright';
   return {
     text:
-      `${TILE_GLYPH}  LUCK IS FOR SPENDING\n` +
+      `${CONCEPT_MARK.luck}  LUCK IS FOR SPENDING\n` +
       `Every button under your hand is priced in luck — and you CAN lose it all: ${lost}. Spend it.`,
     rows,
   };
@@ -1880,14 +1880,14 @@ export function describeHexOf(ctx: DescribeContext, hex: HexKey): string {
       // perk breaks must not go on being stated as a rule.
       const standing =
         t.wallBuildCostMult > 0
-          ? `Wall — you can build on it, at ${t.wallBuildCostMult}× the placement cost.`
-          : 'Wall — cannot be built on.';
+          ? `${CONCEPT_MARK.wall} Wall — you can build on it, at ${t.wallBuildCostMult}× the placement cost.`
+          : `${CONCEPT_MARK.wall} Wall — cannot be built on.`;
       return t.redAshWalls
         ? `${standing} It surrounds (so it helps things ripen) but never matches, except for ${name('red')}, which counts it as one.`
         : `${standing} It surrounds (so it helps things ripen) but never matches.`;
     }
     case 'stone':
-      return `Spent ground — a popped tile. It surrounds but never matches, except for ${name('red')}, which feeds on it.`;
+      return `${CONCEPT_MARK.stone} Spent ground — a popped tile. It surrounds but never matches, except for ${name('red')}, which feeds on it.`;
     case 'tile': {
       const worth = worthOf(state.cells, hex, t, homeOf(state), state.luck);
       const power = rarityLine(cell.rarity);

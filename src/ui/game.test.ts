@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { COLOUR_MARK, LANDMARK_GLYPH } from '@theme/tokens';
+import { COLOUR_MARK, CONCEPT_MARK, LANDMARK_GLYPH } from '@theme/tokens';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { BARE_TUNING, COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
@@ -942,9 +942,15 @@ describe('keeping the run, and ending it properly', () => {
     ctx.game.start();
     const text = ctx.el.end.textContent ?? '';
     expect(text).toMatch(/CARRIED OUT/);
-    expect(text).toMatch(/40 relics banked/);
+    expect(text).toMatch(/◉ 40 relics banked/);
     expect(text).toMatch(/2 territories held/);
     expect(text).toMatch(/35% of the world known/);
+    // The facts-grid: BOUNTIES wears the site glyph, DESTINATIONS stays a
+    // bare word — it names a mixed family (cache, site, shrine, territory,
+    // find) with no single glyph of its own.
+    expect(text).toMatch(/★ BOUNTIES/);
+    expect(text).toMatch(/DESTINATIONS/);
+    expect(text).not.toMatch(/★ DESTINATIONS/);
   });
 
   // Buying in the shop used to redraw the whole screen with no sign anything
@@ -2060,7 +2066,7 @@ describe('the moments pack (2026-08-18)', () => {
     const cheapest = [...UPGRADES].sort((a, b) => a.cost - b.cost)[0]!;
     const text = ctx.el.end.textContent ?? '';
     expect(text).not.toContain(`${cheapest.name} in ${cheapest.cost - 5}`);
-    expect(ctx.el.end.querySelector('#end-shop-open')?.textContent).toBe('RELICS5 · GO BUY ▸');
+    expect(ctx.el.end.querySelector('#end-shop-open')?.textContent).toBe('◉ RELICS5 · GO BUY ▸');
   });
 });
 
@@ -2486,6 +2492,17 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     const taught = setup({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] });
     expect(taught.el.stats.querySelector('[data-stat="luck"]')).not.toBeNull();
     expect(taught.el.purse.hidden).toBe(false);
+  });
+
+  // Stage 2, 2026-08-27: the LUCK stat wears its mark in the visible row —
+  // the accessible name must not, so a reader hears the plain word it can
+  // pronounce rather than a glyph it cannot.
+  it('wears the luck mark in the visible label but keeps the aria-label plain', () => {
+    const taught = setup({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] });
+    const box = taught.el.stats.querySelector('[data-stat="luck"]');
+    expect(box?.querySelector('.stat-label')?.textContent).toBe(`${CONCEPT_MARK.luck} LUCK`);
+    expect(box?.querySelector('.stat-mark')?.getAttribute('aria-hidden')).toBe('true');
+    expect(box?.getAttribute('aria-label')).toBe('LUCK 0');
   });
 
   it('grows the manual with the ledger, and says so in one quiet foot line', () => {
