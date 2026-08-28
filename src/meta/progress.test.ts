@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TUNING } from '@content/tuning';
+import { PERK_DIALS } from '@content/goals';
 import {
   EMPTY_PROGRESS,
   PERKS,
@@ -97,6 +98,64 @@ describe('perks: found, and one worn', () => {
   it('unequips on a second tap', () => {
     const progress = withPerks(['rootbound'], ['rootbound']);
     expect(equip(progress, 'rootbound').equipped).toEqual([]);
+  });
+
+  /**
+   * Every perk explains itself in full (2026-08-27, Marc: "what you gain what
+   * you lose style"), and this holds the CLASS rather than the five sentences
+   * — the same shape `theme.test.ts` uses on the palette. A sixth perk added
+   * later gets the same card or fails here; there is no version of this that
+   * ships explained-for-four-of-five, which is the failure mode a hand-written
+   * card set actually has.
+   */
+  it('gives every perk all three lines of its card', () => {
+    for (const perk of PERKS) {
+      for (const [field, line] of [
+        ['gain', perk.gain],
+        ['lose', perk.lose],
+        ['play', perk.play],
+      ] as const) {
+        // A whole sentence, not a fragment: these are read as prose beside a
+        // reserved mark column, and a dangling clause reads as a bug there.
+        expect(`${perk.name}.${field}: ${line}`).toMatch(/: \S.*[.]$/);
+      }
+      // The cost line is never quietly dropped for the perks that have no
+      // cost — "Nothing" is the answer, said out loud.
+      expect(perk.lose.length).toBeGreaterThan(0);
+      // `play` is advice, so it must not simply restate the dial `gain`
+      // already gave.
+      expect(perk.play).not.toBe(perk.gain);
+    }
+  });
+
+  /**
+   * The card reads the live dials, like `note` always has. Without this a
+   * number could be retuned in `src/content/` and the explanation would go on
+   * quoting the old one — the exact staleness `POLISH.md` caught the manual
+   * in, one layer down.
+   */
+  it('quotes the dials rather than hardcoding them', () => {
+    const perk = (id: PerkId): (typeof PERKS)[number] => PERKS.find((p) => p.id === id)!;
+    expect(perk('stonewalker').gain).toContain(String(PERK_DIALS.stoneDiscount));
+    expect(perk('wallbreaker').lose).toContain(String(PERK_DIALS.wallBuildCostMult));
+    expect(perk('openhand').gain).toContain(String(PERK_DIALS.openHandDraft));
+    expect(perk('secondwind').gain).toContain(String(PERK_DIALS.secondWindTiles));
+    expect(perk('secondwind').gain).toContain(`${Math.round(PERK_DIALS.secondWindChance * 100)}%`);
+  });
+
+  /**
+   * ROOTBOUND's cost is the sharpest edge in the game — `rules.ts` returns a
+   * hard 0 for anything off native ground, not a reduction — and the whole
+   * reason the card grew a LOSE line. If the sentence ever softens to "less",
+   * a player will grow a pocket across two colours and lose all of it.
+   */
+  it('says ROOTBOUND pays NOTHING off native ground, not less', () => {
+    const rootbound = PERKS.find((p) => p.id === 'rootbound')!;
+    // Both halves: the word, and the correction that stops it being read as a
+    // discount. "Not less" is doing real work in that sentence.
+    expect(rootbound.lose).toMatch(/NOTHING/);
+    expect(rootbound.lose).toMatch(/not less/i);
+    expect(rootbound.play).toMatch(/zero/i);
   });
 });
 

@@ -2300,6 +2300,49 @@ button.spare {
   color: var(--accent, #d7b45a);
 }
 
+/* THE SHELF's rows are a NAME and a STATE (2026-08-27, Marc: "just have the
+   title ROOTBOUND WORN (no explanation, need to tap)"). The perk's own card
+   folds out of the name itself, so the thing you tap to read about a perk is
+   the perk. One row of grid instead of two: an upgrade row still stacks a
+   note under its name, a perk row no longer has one to stack. */
+/* TOP, not centre. `.shop-row` centres its two columns against each other,
+   which is right when column one is a name over a note — and wrong the
+   moment column one can GROW: an open card left WORN floating in the middle
+   of three rows of prose, beside nothing, pointing at nothing. Both columns
+   start at the top and the button stays level with the name that opened it. */
+.shop-row.perk-row {
+  align-items: start;
+}
+
+.shop-row.perk-row button.shop-buy {
+  grid-row: 1;
+}
+
+.perk-more > summary {
+  /* The name IS the control. Left as a `list-item` on purpose — `display:
+     flex` here would centre the text and silently drop the disclosure
+     triangle, and the triangle is the whole affordance for "there is more
+     behind this". The padding is what lifts a one-line name to the 44px a
+     thumb needs, so the row is genuinely tappable rather than tappable via
+     an invisible pseudo-element. */
+  padding: 11px 0;
+  cursor: pointer;
+}
+
+.perk-more[open] > summary {
+  margin-bottom: 6px;
+  color: var(--accent, #d7b45a);
+}
+
+/* The card, once open: indented and edged, so it reads as this row's own
+   answer rather than as the next row starting. Same shape the manual's
+   folded numbers take. */
+.perk-rows {
+  margin: 0 0 4px 4px;
+  padding-left: 8px;
+  border-left: 1px solid var(--panel-edge, #3a4150);
+}
+
 /* The acknowledgement: a beat of the row wearing the accent right after a
    purchase — a bought upgrade used to look identical to one still for
    sale, same row, price just gone quiet. An ANIMATION since 2026-08-26 so
@@ -2644,6 +2687,7 @@ button.help-tab[data-on='true'] {
 #purse-toggle,
 #actions-more button,
 #help-panel .help-more > summary,
+.perk-more > summary,
 #spends button.spend {
   position: relative;
 }
@@ -2653,6 +2697,7 @@ button.help-tab[data-on='true'] {
 #purse-toggle::before,
 #actions-more button::before,
 #help-panel .help-more > summary::before,
+.perk-more > summary::before,
 #spends button.spend::before {
   content: '';
   position: absolute;

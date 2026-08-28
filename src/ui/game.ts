@@ -32,6 +32,7 @@ import {
   type TeachId,
 } from '@meta/progress';
 import { shopParts } from './shop';
+import { perkRows, rarityInked, tipRows } from './tips';
 import type { Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
@@ -437,28 +438,6 @@ const POWER_NAMES: Record<Colour, string> = {
  * long-press lens both wait to be found rather than arriving.
  */
 /**
- * MAGIC and UNIQUE wear their own colours wherever the WORDS appear (Marc,
- * 2026-08-20: "as well as documentation and anywhere it speaks about it") —
- * one splitter shared by the manual, the toast, the event card and the
- * purse row, so prose and palette can never disagree. Uppercase only: the
- * capitals are the vocabulary; lowercase prose stays prose.
- */
-function rarityInked(text: string): (Node | string)[] {
-  const parts: (Node | string)[] = [];
-  let last = 0;
-  for (const m of text.matchAll(/\b(MAGIC|UNIQUE)\b/g)) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    const span = document.createElement('span');
-    span.className = m[1] === 'MAGIC' ? 'ink-magic' : 'ink-unique';
-    span.textContent = m[1]!;
-    parts.push(span);
-    last = m.index + m[1]!.length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
-}
-
-/**
  * An action button: what it does, and what it pays.
  *
  * Two lines since 2026-08-27 (Marc: "make sure we know how much we sacrifice
@@ -501,46 +480,6 @@ const COLOUR_HELP: Readonly<Record<Colour, (name: string) => string>> = {
   red: (n) => `${n} — ash. Builds along the spent, popped land everyone else abandons.`,
   blue: (n) => `${n} — tide. Worth little at home, a lot on the frontier.`,
 };
-
-/**
- * A set, drawn as lines rather than as a paragraph.
- *
- * Born on the four-grounds card (2026-08-27) and shared with the manual the
- * same day (Marc: "use colors and symbols from the game in all help"), so a
- * set is drawn ONE way wherever the game explains one — the swatch is a MARK
- * and never the surface any text sits on, which is what keeps the reading
- * budget in `contrast.test.ts` untouched by it and lets every direction
- * inherit these unchanged.
- *
- * The mark column is reserved even for a row that has no mark, because the
- * point of a list is that the sentences start in the same place.
- */
-function tipRows(rows: readonly TipRow[] | undefined): HTMLElement[] {
-  return (rows ?? []).map((row) => {
-    const line = document.createElement('p');
-    line.className = 'tip-row';
-
-    const mark = document.createElement('span');
-    // Decoration in every case: the words beside it already name the thing,
-    // so a screen reader gains nothing but noise from the square or the glyph.
-    mark.setAttribute('aria-hidden', 'true');
-    if (row.colour !== undefined) {
-      mark.className = 'tip-swatch';
-      mark.dataset['colour'] = row.colour;
-    } else if (row.glyph !== undefined) {
-      mark.className = 'tip-glyph';
-      mark.textContent = row.glyph;
-    } else {
-      mark.className = 'tip-swatch tip-blank';
-    }
-
-    const words = document.createElement('span');
-    words.className = 'tip-words';
-    words.replaceChildren(...rarityInked(row.text));
-    line.append(mark, words);
-    return line;
-  });
-}
 
 /**
  * HERE's jump-in zoom, from FIT (always 1). Close enough to read worth
@@ -1568,6 +1507,15 @@ export class Game {
   ): {
     text: string;
     eventWorthy: boolean;
+    /**
+     * The LEADING claim's marked list, when it has one — only a find does
+     * today. Taken from the rarest note rather than merged across all of
+     * them, because this is one card with one subject: a placement that
+     * reaches a find and a cache at once is a find moment, and the cache
+     * gets its line of prose, not a second set of rows under someone else's
+     * heading.
+     */
+    rows?: readonly TipRow[];
     action?: { readonly label: string; readonly run: () => void; readonly arm?: string };
   } | null {
     const t = after.tuning;
@@ -1578,7 +1526,7 @@ export class Game {
       site: 3,
       cache: 4,
     };
-    const notes: { rank: number; text: string }[] = [];
+    const notes: { rank: number; text: string; rows?: readonly TipRow[] }[] = [];
     // Teaching (`ideas/teaching.md`): a claim IS its own first-contact card —
     // the note below already says what each kind is — so a first claim only
     // marks the ledger, except a first SITE, which upgrades itself to the
@@ -1719,10 +1667,22 @@ export class Game {
               label === null
                 ? '✦  A HIDDEN FIND\nNothing new inside — a find grants only what you do not already carry, and only on your own world.'
                 : `✦  FOUND — ${label}\n` +
-                  (perk === undefined ? '' : `${perk.note}\n`) +
                   (worn
-                    ? 'Already worn — it works from here on. WHAT YOU CARRY, in the ? panel, keeps the words; THE SHOP, on the end screen, is where it changes.'
+                    ? 'Already worn — it works from here on.'
                     : 'Yours for good, in THIS world. WEAR it in THE SHOP, on the end screen.'),
+            // The perk's own three lines (Marc, 2026-08-27: "when we discover
+            // a unique can we have a quick help card of how to use it
+            // properly, what you gain what you lose style"). It used to be
+            // `perk.note` folded into the prose above — one sentence naming
+            // the dial, in the middle of a paragraph about where to equip it,
+            // which is the shape a rule takes when nobody has decided it is a
+            // lesson. Rows since the same doctrine reached the four-grounds
+            // card and the purse: a set is a LIST.
+            //
+            // The exact rows THE SHOP's shelf folds open, from one builder —
+            // the second half of his ask. A perk gets explained once, in one
+            // voice, wherever you meet it.
+            ...(perk === undefined ? {} : { rows: perkRows(perk) }),
           });
           break;
         }
@@ -1731,9 +1691,11 @@ export class Game {
 
     if (notes.length === 0) return null;
     notes.sort((a, b) => a.rank - b.rank);
+    const lead = notes[0]!;
     return {
       text: notes.map((n) => n.text).join('\n\n'),
-      eventWorthy: notes[0]!.rank <= RANK.territory || firstSite,
+      eventWorthy: lead.rank <= RANK.territory || firstSite,
+      ...(lead.rows === undefined ? {} : { rows: lead.rows }),
       ...(action === undefined ? {} : { action }),
     };
   }
@@ -2788,7 +2750,8 @@ export class Game {
         this.#showNote(`${popped}${goalLine}`);
       }
     } else if (claimed !== null) {
-      if (claimed.eventWorthy) this.#showEventCard(`${claimed.text}${goalLine}`, claimed.action);
+      if (claimed.eventWorthy)
+        this.#showEventCard(`${claimed.text}${goalLine}`, claimed.action, claimed.rows);
       else this.#showNote(`${claimed.text}${goalLine}`);
     } else if (goalNote !== null) {
       this.#showNote(`GOAL MET — ${goalNote}`);

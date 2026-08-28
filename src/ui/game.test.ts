@@ -2266,7 +2266,24 @@ describe('the shelf', () => {
 
     expect(text).toMatch(/THE SHELF · 1\/5 FOUND/);
     expect(text).toMatch(/STONEWALKER/);
-    expect(text).toMatch(/beside stone cost 1 less/i);
+
+    // The row is a NAME and a STATE, and nothing else (Marc, 2026-08-27:
+    // "just have the title ROOTBOUND WORN (no explanation, need to tap)").
+    // The summary carries the name alone — the explanation is real, and it is
+    // behind the tap.
+    const row = ctx.el.end.querySelector('.perk-row')!;
+    expect(row.querySelector('summary')?.textContent).toBe('STONEWALKER');
+    expect(row.querySelector('.shop-note')).toBeNull();
+    expect((row.querySelector('details') as HTMLDetailsElement).open).toBe(false);
+
+    // And behind it, the same three rows the find card shows — one builder,
+    // two doors, so a perk is explained one way wherever you meet it.
+    const rows = [...row.querySelectorAll('.perk-rows .tip-row')].map((r) => r.textContent ?? '');
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatch(/^YOU GAIN — .*next to stone cost 1 less/i);
+    expect(rows[1]).toMatch(/^YOU LOSE — Nothing/);
+    expect(rows[2]).toMatch(/^PLAY IT — /);
+
     // Four perks unowned: one line naming the count, not four identical
     // UNDISCOVERED rows — and not one of their names, still.
     expect(text).toMatch(/4 more/);
@@ -2506,8 +2523,19 @@ describe('teaching, drop by drop (2026-08-19)', () => {
 
     const text = ctx.el.eventCardText.textContent ?? '';
     expect(text).toMatch(/FOUND — STONEWALKER/);
-    expect(text).toMatch(/beside stone cost 1 less/i);
     expect(text).toMatch(/Already worn/);
+
+    // What it DOES is rows now, not a sentence folded into the prose (Marc,
+    // 2026-08-27: "a quick help card of how to use it properly, what you gain
+    // what you lose style"). All three, in order, and the middle one is the
+    // point: a perk that costs nothing has to SAY it costs nothing.
+    const rows = [...ctx.el.eventCardRows.querySelectorAll('.tip-row')].map(
+      (r) => r.textContent ?? '',
+    );
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatch(/^YOU GAIN — .*next to stone cost 1 less/i);
+    expect(rows[1]).toMatch(/^YOU LOSE — Nothing/);
+    expect(rows[2]).toMatch(/^PLAY IT — /);
   });
 
   it('tells an unworn find where WEAR lives instead', () => {

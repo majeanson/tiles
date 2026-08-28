@@ -102,8 +102,25 @@ export type PerkId = 'rootbound' | 'secondwind' | 'stonewalker' | 'wallbreaker' 
 export type Perk = {
   readonly id: PerkId;
   readonly name: string;
-  /** What it does, in the words the shelf prints — once it is yours. */
+  /** What it does, in one line — the summary WHAT YOU CARRY still speaks. */
   readonly note: string;
+  /**
+   * The three lines a perk actually takes to use (Marc, 2026-08-27: "a quick
+   * help card of how to use it properly, what you gain what you lose style").
+   *
+   * `note` was the whole of what a found perk ever said, and it is a
+   * DESCRIPTION — it states the dial and stops. A perk is the one thing in
+   * this game that can make you worse at it if you carry on playing the way
+   * you were, and neither the find card nor the shelf ever said so. `lose` is
+   * written even where the honest answer is "Nothing", because that is a fact
+   * a player is entitled to read rather than infer from a missing line.
+   *
+   * Numbers come from `PERK_DIALS` like `note`'s do, so a card cannot
+   * describe an economy that is not being played.
+   */
+  readonly gain: string;
+  readonly lose: string;
+  readonly play: string;
 };
 
 /**
@@ -118,26 +135,50 @@ export const PERKS: readonly Perk[] = [
     id: 'rootbound',
     name: 'ROOTBOUND',
     note: 'Native ground pays DOUBLE. Ground that is not yours pays nothing at all.',
+    // `rules.ts`: `onNative ? (worth + native) * 2 : 0` — the ground's own
+    // bonus is counted in BEFORE the doubling, and off-native is a hard zero
+    // rather than a reduction. Both halves are stated because the second one
+    // is the sharpest edge any perk has.
+    gain: 'Native ground pays DOUBLE — the ground’s own bonus is counted in first, then the lot doubles.',
+    lose: 'Ground that is not yours pays NOTHING. Not less — nothing at all.',
+    play: 'Grow along ONE colour’s field and pop inside it. A pocket that strays off its native ground scores zero however big you let it get.',
   },
   {
     id: 'secondwind',
     name: 'SECOND WIND',
     note: `The first time a run would end broke, a coin is flipped: ${Math.round(PERK_DIALS.secondWindChance * 100)}% of the time you carry on with ${PERK_DIALS.secondWindTiles} tiles, and the rest of the time you do not.`,
+    gain: `The first time a run would end BROKE, a coin is flipped: ${Math.round(PERK_DIALS.secondWindChance * 100)}% of the time you carry on with ${PERK_DIALS.secondWindTiles} tiles.`,
+    // `reduce.ts` guards on `!usedSecondWind && death === 'broke'`, and the
+    // coin is spent whichever way it lands. Both are easy to misread as "a
+    // free life", which is the reading that gets a run killed.
+    lose: 'Nothing you had — but the coin is flipped once a run, and only for running BROKE. Any other ending is still an ending.',
+    play: `A reprieve you cannot count on, so it is worth one placement more than you would dare, not ten. If the coin lands, reach a pocket and POP before the ${PERK_DIALS.secondWindTiles} tiles are gone.`,
   },
   {
     id: 'stonewalker',
     name: 'STONEWALKER',
     note: `Placements beside stone cost ${PERK_DIALS.stoneDiscount} less.`,
+    gain: `Placements next to stone cost ${PERK_DIALS.stoneDiscount} less — down to free, never below it.`,
+    lose: 'Nothing. This one is pure discount.',
+    play: 'Stone stops being ground to route around and becomes the cheapest ground there is. Build ALONG a ridge rather than away from one.',
   },
   {
     id: 'wallbreaker',
     name: 'WALLBREAKER',
     note: `Walls can be built on, at ${PERK_DIALS.wallBuildCostMult}× cost.`,
+    gain: 'Walls can be built ON, which nothing else in the game can do.',
+    lose: `A wall placement costs ${PERK_DIALS.wallBuildCostMult}× a normal one, and the tiles are spent whether or not the pocket ever ripens.`,
+    play: 'A wall surrounds without ever matching, so breaking one JOINS two pockets that could never have touched. Worth it to close a big pocket; never worth it to save a step.',
   },
   {
     id: 'openhand',
     name: 'OPEN HAND',
     note: `Draft ${PERK_DIALS.openHandDraft} tiles. No stash.`,
+    gain: `You draft ${PERK_DIALS.openHandDraft} tiles every hand instead of the usual deal.`,
+    // `perkTuning` sets `holdSlots: 0` — the shelf is not merely unused, it
+    // is gone, and a player who has learned to stash needs telling.
+    lose: 'NO STASH. The shelf disappears while this is worn — nothing can be put by for later.',
+    play: `More choice now, none saved. Take the best of ${PERK_DIALS.openHandDraft} every single turn instead of banking a tile for a pocket two moves away.`,
   },
 ];
 

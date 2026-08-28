@@ -8,6 +8,7 @@ import {
   type PerkId,
   type Progress,
 } from '@meta/progress';
+import { perkRows, tipRows } from './tips';
 
 /**
  * The shop's shelf and upgrade rows, extracted whole from `Game#shopParts`
@@ -100,9 +101,18 @@ export function shopParts(
   });
 
   // THE SHELF (2026-08-18): perks are found in the world, never bought.
-  // An owned perk shows its name, its sentence and the one toggle it has;
-  // the header carries the count as N/5 FOUND so a fresh shelf reads as a
-  // collection with a size, not a shop section that failed to load.
+  // An owned perk shows its name, the one toggle it has, and its full card
+  // ONE TAP AWAY; the header carries the count as N/5 FOUND so a fresh shelf
+  // reads as a collection with a size, not a shop section that failed to
+  // load.
+  //
+  // Title-only since 2026-08-27, on Marc's ask: "just have the title
+  // ROOTBOUND WORN (no explanation, need to tap) and explanation is fully
+  // complete". The shelf used to print each perk's one sentence inline,
+  // which read as a wall of small grey text between you and the WEAR button
+  // — and the sentence was a summary anyway, so the shelf was simultaneously
+  // too long to scan and too short to explain. Folding it turns the row into
+  // a NAME and a STATE, and buys the room to say the whole thing properly.
   const owned = PERKS.filter((perk) => progress.found.includes(perk.id));
 
   const shelfHead = document.createElement('p');
@@ -117,22 +127,34 @@ export function shopParts(
     const worn = progress.equipped.includes(perk.id);
 
     const row = document.createElement('div');
-    row.className = 'shop-row';
+    row.className = 'shop-row perk-row';
     if (worn) row.dataset['worn'] = 'true';
     if (worn && justWorn.id === perk.id) {
       row.classList.add('bought');
       justWorn.id = null;
     }
 
-    const name = document.createElement('span');
+    // `<details>` rather than a card over the top: THE SHOP has two hosts —
+    // the end screen inside the Game, and a front-door SHEET — and only one
+    // of them owns the event card. A modal would either have to be built
+    // twice or stack a panel on a panel, and the dialog stack's whole point
+    // (`ui/dialog.ts`) is that covering surfaces is a rule, not a paint job.
+    // A fold is the same content, in one implementation, in both places.
+    const fold = document.createElement('details');
+    fold.className = 'perk-more';
+
+    const name = document.createElement('summary');
     name.className = 'shop-name';
     name.textContent = perk.name;
+    // The summary says what it opens, since the visible word is only a name.
+    name.setAttribute('aria-label', `${perk.name} — what it gains, what it costs, how to play it`);
 
-    const note = document.createElement('span');
-    note.className = 'shop-note';
-    note.textContent = perk.note;
+    const body = document.createElement('div');
+    body.className = 'perk-rows';
+    body.replaceChildren(...tipRows(perkRows(perk)));
 
-    row.append(name, note);
+    fold.append(name, body);
+    row.append(fold);
 
     const button = document.createElement('button');
     button.type = 'button';
