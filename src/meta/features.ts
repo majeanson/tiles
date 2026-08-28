@@ -18,10 +18,15 @@ export type FeatureDef = {
   readonly id: string;
   readonly label: string;
   /**
-   * Why it exists, what turning it on changes, and — when a default moved —
-   * the decision that moved it. This is the note the in-game settings panel
-   * prints, so the registry doubles as the player-visible decision record:
-   * one source, no staleness.
+   * What turning it on changes, in one line a PLAYER can read (2026-08-27).
+   *
+   * It used to be the whole decision record — why the flag exists, what moved
+   * its default and on what date — because SETTINGS was a developer fold and
+   * the registry was the only place that record lived. SETTINGS is a public
+   * screen now, and a player reading "Marc chose a silent 1.0 (2026-08-15)"
+   * under a SOUND switch is reading somebody else's notebook. The record did
+   * not go anywhere: it is in the comments above each entry, where the people
+   * it is for already read.
    */
   readonly note: string;
   readonly defaultOn: boolean;
@@ -31,6 +36,15 @@ export type FeatureDef = {
    * nothing — a toggle that lies is worse than no toggle.
    */
   readonly wired: boolean;
+  /**
+   * Does this belong on a screen a player opens (2026-08-27)?
+   *
+   * SETTINGS renders exactly the flags marked `true`, so "which switches are
+   * public" is a fact of the registry rather than a filter written into the
+   * panel. A `false` flag is not hidden — `?ff=` still flips it, and the
+   * manual's THIS BUILD says so — it simply has no row on a player's screen.
+   */
+  readonly player: boolean;
 };
 
 /**
@@ -38,44 +52,47 @@ export type FeatureDef = {
  * A registry full of aspirational flags is just a to-do list that lies.
  */
 export const FEATURES = [
+  // The only console this project has: testing happens on the deployed site,
+  // from a phone. Not a player's switch — it prints raw state under the board
+  // — so it keeps its `?ff=` door and gives up its row (2026-08-27).
   {
     id: 'debug.overlay',
     label: 'Debug overlay',
-    note:
-      'Seed, cell counts and the run’s own numbers, printed under the board. Off unless ' +
-      'you are diagnosing something on a phone with no console — which is the only ' +
-      'console this project has, because testing happens on the deployed site.',
+    note: 'Prints the run’s raw numbers under the board, for reporting a bug.',
     defaultOn: false,
     wired: true,
-  },
-  {
-    id: 'ui.themePicker',
-    label: 'Theme picker',
-    note:
-      'A row of art directions under the build stamp, switching the whole look on tap. ' +
-      'Off by default because torchlit is the decision (Gate E, 2026-08-15); on when you ' +
-      'are standing outside with a phone deciding which direction survives daylight.',
-    defaultOn: false,
-    wired: true,
+    player: false,
   },
   // fame.timeline lived here from its birth (2026-08-20) to launch week
   // (same week): Marc ruled the diary ON for everyone — record-keeping,
   // engine-invisible, and launch day is the only clean epoch the record
   // will ever get. One game for everybody, the world.endless precedent.
+  //
+  // ui.themePicker was deleted on 2026-08-27. It gated a row of art
+  // directions plus the hex-facing flip — a workbench for choosing between
+  // candidates, and Gate E chose torchlit on 2026-08-15. What a PLAYER
+  // needs from it (the three readable directions) is APPEARANCE, which is
+  // public and unflagged; what a workbench needs (the placeholder, the
+  // facing) is `?hex=` and `/gallery.html`. A kept corpse is a cut corner.
+  //
+  // Sound: three synthesised moments (ideas/sound.md, 2026-08-19) — the pop
+  // as a rising run of bells, one struck note per claim kind, a low fade on
+  // a near-dry purse. Web Audio, zero assets, voiced by the theme. Off by
+  // default because Marc chose a silent 1.0 (2026-08-15) and a phone game
+  // that surprises a quiet room is uninstalled. The ♪ button by the camera
+  // is the same wire (2026-08-20).
   {
     id: 'ui.sound',
     label: 'Sound',
-    note:
-      'Three synthesised moments (ideas/sound.md, built 2026-08-19): the pop as a rising ' +
-      'run of bells, one struck note per claim kind, and a low fade when the purse runs ' +
-      'near dry. Web Audio, zero assets, voiced by the theme. Off by default — Marc chose ' +
-      'a silent 1.0 (2026-08-15), and a phone game that surprises a quiet room is ' +
-      'uninstalled. The ♪ button by the camera flips it mid-run (2026-08-20); this switch ' +
-      'is the same wire.',
+    note: 'A few quiet notes as you pop and claim. The ♪ button on the board is this switch.',
     defaultOn: false,
     wired: true,
+    player: true,
   },
 ] as const satisfies readonly FeatureDef[];
+
+/** The switches a player's SETTINGS screen offers. */
+export const PLAYER_FEATURES = FEATURES.filter((f) => f.player);
 
 export type FeatureId = (typeof FEATURES)[number]['id'];
 export type FeatureSet = Readonly<Record<FeatureId, boolean>>;

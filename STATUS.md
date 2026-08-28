@@ -4,7 +4,28 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-27, later still — the manual says it in half the
+Last checkpoint: **2026-08-27, last — SETTINGS becomes a screen for players.**
+Marc: "no more developer, only skins, reset teaching is fine, etc. make it
+public", then "remove all text that is unnecessary, lean it up." The DEVELOPER
+fold is gone and so is what made it necessary: **`ui.themePicker` is deleted**
+(it gated a workbench for choosing between art-direction CANDIDATES, and Gate E
+chose on 2026-08-15 — `?hex=` and `/gallery.html` keep its two real controls),
+and **`debug.overlay` keeps its `?ff=` door and gives up its row**. SOUND, which
+had been filed under a word telling players it was not for them, is a public
+row. `FeatureDef` gains **`player: boolean`** and the panel renders
+`PLAYER_FEATURES`, so who sees a switch is a fact of the registry, not a filter
+in the panel — and `note` stopped being the decision record (a player does not
+need "Marc chose a silent 1.0 (2026-08-15)" under a switch; that moved to the
+comments, and a test forbids notes a date, a name, or 120 characters). Every
+remaining line was halved, the intro paragraph deleted, and APPEARANCE's line
+stopped opening with four sentences of art direction — those live on
+`/gallery.html`, now the only consumer of `theme.note`. The screen is
+APPEARANCE ▸ SOUND ▸ RESET TEACHING ▸ (LAST ERROR) ▸ privacy. Dead weight
+removed with it: `mountThemePicker`, `#themes`, `rememberFacing`, the gallery's
+second link. 823 tests, 28 e2e, typecheck/lint/format/build clean. **NOT played
+on a phone.** The one gate is still Session C.
+
+Previous checkpoint: **2026-08-27, later still — the manual says it in half the
 words, and NUMBERS becomes DETAILS.** Marc: "review the content of menu,
 start, play, hand, after ... be more concise and simple, straight to the
 point, less words. inside NUMBERS, change it for DETAILS ... you can still

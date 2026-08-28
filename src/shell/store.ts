@@ -77,7 +77,7 @@ export const SHRINE_RECEIPT_KEY = 'tiles.shrinereceipt.v1';
  * The last uncaught error, kept so a phone can REPORT it (2026-08-19: Marc
  * hit "lots of please reload errors" on iOS and could say nothing more,
  * because iOS has no console and the old panel showed no detail and nuked
- * the screen). Written by `showFailure`, shown under SETTINGS ▸ DEVELOPER.
+ * the screen). Written by `showFailure`, shown under SETTINGS.
  */
 export const ERROR_STORAGE_KEY = 'tiles.lasterror.v1';
 /** The daily ladder: best and tries per date, plus the streak they imply. */
@@ -280,8 +280,8 @@ export function appendTimeline(entry: TimelineEntry): void {
  * against the deployed site.
  *
  * The resolved set is written BACK to storage, so an override sticks: visit
- * `?ff=ui.themePicker` once and the picker is simply there from then on, until
- * `?ff=-ui.themePicker` takes it away. One link makes a phone a test device.
+ * `?ff=debug.overlay` once and the readout is simply there from then on, until
+ * `?ff=-debug.overlay` takes it away. One link makes a phone a test device.
  */
 export function persistFeatures(set: FeatureSet): void {
   try {
@@ -301,24 +301,6 @@ export function resolveFeatures(): FeatureSet {
   const resolved = withOverrides(decodeFeatures(stored), parseOverrides(location.search));
   persistFeatures(resolved);
   return resolved;
-}
-
-/**
- * Choose a hex facing, or hand the decision back to the theme.
- *
- * The dev picker's half of `resolveFacing` (2026-08-27). It used to make the
- * choice by putting `?hex=` in the URL and reloading through it — the URL as
- * a message to the next page load. A session restarts in place now and a
- * `Route` carries no rig params, so the value goes straight to the storage
- * `resolveFacing` was going to read it out of anyway.
- */
-export function rememberFacing(value: 'flat' | 'pointy' | 'auto'): void {
-  try {
-    if (value === 'auto') localStorage.removeItem(HEX_STORAGE_KEY);
-    else localStorage.setItem(HEX_STORAGE_KEY, value);
-  } catch {
-    // Private mode keeps the theme's own facing, which is a fine game.
-  }
 }
 
 /**

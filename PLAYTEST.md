@@ -33,7 +33,7 @@ rather than on their own row, the four-grounds and purse cards teach as
 marked lists, TITHE is SACRIFICE LUCK in red, and a ✕ above `?` drops the
 colour lens. None of it has been seen by a human on a phone.
 
-1. `?` ▸ MENU ▸ SETTINGS ▸ DEVELOPER ▸ **RESET TEACHING** (it forgets only
+1. `?` ▸ MENU ▸ SETTINGS ▸ **RESET TEACHING** (it forgets only
    the lessons; your game survives). SETTINGS is its own screen since
    2026-08-25 — reachable there, or from MORE on the front door.
 2. **BEGIN DAILY.** Play it cold. This is the closest thing to a

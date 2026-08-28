@@ -8,7 +8,7 @@
  *
  * The privacy contract this module lives under: a report leaves the device
  * ONLY when a human taps SEND REPORT — on the failure panel or in
- * SETTINGS ▸ DEVELOPER ▸ LAST ERROR. Nothing here runs at boot, on error,
+ * SETTINGS ▸ LAST ERROR. Nothing here runs at boot, on error,
  * or on a timer. The tap is the consent; SETTINGS says so in words.
  *
  * The DSN is public-by-design (it ships in every client that uses Sentry;

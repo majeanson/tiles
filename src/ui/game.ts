@@ -2450,7 +2450,7 @@ export class Game {
             // bottom of this panel and became a screen of its own. It has two
             // doors now, and a manual that names neither is a manual that
             // sends the reader scrolling for something that is not there.
-            'SETTINGS — the MENU tab’s own button, or MORE on the front door — switches every system and carries the decision that set each default.',
+            'SETTINGS — the MENU tab’s own button, or MORE on the front door — holds the look, the sound and a way to replay the teaching cards.',
             '?ff=debug.overlay adds a raw readout in the hint line and the footer, for reporting a bug with no console to hand.',
           ],
         },

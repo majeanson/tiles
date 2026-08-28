@@ -22,7 +22,7 @@ import {
   decodeFeatures,
   isEnabled,
   withOverrides,
-  FEATURES,
+  PLAYER_FEATURES,
   type FeatureId,
   type FeatureSet,
 } from '@meta/features';
@@ -55,8 +55,8 @@ import { AssetBook } from '@render/assets';
 import { PixiRenderer } from '@render/PixiRenderer';
 import type { Renderer } from '@render/Renderer';
 import { applyTheme } from '@theme/apply';
-import { assetPath, resolveTheme, AUTO_THEME_ID, DEFAULT_THEME_ID, THEMES } from '@theme/index';
-import type { Orientation, Theme } from '@theme/tokens';
+import { assetPath, resolveTheme, AUTO_THEME_ID, DEFAULT_THEME_ID } from '@theme/index';
+import type { Theme } from '@theme/tokens';
 import { Sound } from '@ui/audio';
 import { closeDialog, openDialog, resetDialogs, siblingsOf } from '@ui/dialog';
 import { Game, type Elements, type GameHooks } from '@ui/game';
@@ -79,7 +79,6 @@ import {
   readDailyRun,
   readProgress,
   readTimeline,
-  rememberFacing,
   rememberTheme,
   resolveFacing,
   resolveFeatures,
@@ -218,12 +217,12 @@ function on<K extends keyof HTMLElementEventMap>(
  * whatever the last session revealed is still revealed — so a daily's door
  * would still be offering YESTERDAY's RESUME on the way home.
  *
- * Three hosts are deliberately NOT emptied. `#themes` is relocated into
- * `#settings-body` by `mountSettings`, and `#help-menu` into the manual by
- * the game's own `#buildManual` — emptying their new parents would delete
- * nodes `index.html` declares once and `required()` would then never find
- * again. They are hidden panels repainted on open, so stale content in them
- * is never seen.
+ * `#help-menu` is deliberately NOT emptied: the game's own `#buildManual`
+ * relocates it into the manual, and emptying its new parent would delete a
+ * node `index.html` declares once and `required()` would then never find
+ * again. It is a hidden panel repainted on open, so stale content in it is
+ * never seen. (`#themes` was the other one, until the picker it hosted was
+ * deleted on 2026-08-27.)
  */
 function resetShell(): void {
   const el = (id: string): HTMLElement | null => document.getElementById(id);
@@ -261,7 +260,6 @@ function resetShell(): void {
     'harvest-points',
     'harvest-treasure',
     'harvest-burn',
-    'themes',
   ]) {
     const node = el(id);
     if (node !== null) node.hidden = true;
@@ -277,7 +275,6 @@ function resetShell(): void {
     'draft',
     'stash',
     'spends',
-    'themes',
   ]) {
     el(id)?.replaceChildren();
   }
@@ -378,7 +375,7 @@ export async function restart(
       // Without this the app is left with no session at all: the door up
       // over an empty shell, BEGIN throwing on a `game` that was never
       // built, and a failure panel offering CONTINUE into nothing. The
-      // error is recorded first so SETTINGS ▸ DEVELOPER still has it.
+      // error is recorded first so SETTINGS still has it.
       recordFailure(error);
       departTo(() => {
         location.href = `${location.pathname}${searchFor(route)}`;
@@ -425,61 +422,6 @@ function required<T extends HTMLElement>(id: string): T {
 }
 
 /**
- * The picker: one button per direction, restarting into it.
- *
- * A whole new session rather than a live swap, still deliberately — but no
- * longer a page load (2026-08-27). Switching theme changes the hex
- * orientation, every baked texture, the webfont and the browser chrome
- * colour; `PixiRenderer` takes its theme in the constructor and holds it
- * `readonly`, so the honest way to change it is to build another one. That is
- * what a session restart IS, and it costs a fade instead of a navigation.
- *
- * The choice goes to STORAGE rather than into the URL, which is the other
- * half of what changed: `?theme=` and `?hex=` were only ever a way to
- * smuggle a value through a reload, and a route by design cannot carry them.
- */
-function mountThemePicker(host: HTMLElement, current: Theme, facing: Orientation | null): void {
-  host.hidden = false;
-
-  const themeButtons = THEMES.map((theme) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'swatch';
-    button.textContent = theme.name;
-    button.title = theme.note;
-    button.setAttribute('aria-pressed', String(theme.id === current.id));
-    on(button, 'click', () => {
-      rememberTheme(theme.id);
-      void restart(currentRoute(), 'replace');
-    });
-    return button;
-  });
-
-  // The facing row: prompt.md Q2 is answered by flipping between these on a
-  // phone, so they sit right next to the directions being judged.
-  const facingButtons = (
-    [
-      ['auto', 'theme facing'],
-      ['pointy', 'pointy-top'],
-      ['flat', 'flat-top'],
-    ] as const
-  ).map(([value, label]) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'swatch';
-    button.textContent = label;
-    button.setAttribute('aria-pressed', String(value === (facing ?? 'auto')));
-    on(button, 'click', () => {
-      rememberFacing(value);
-      void restart(currentRoute(), 'replace');
-    });
-    return button;
-  });
-
-  host.replaceChildren(...themeButtons, ...facingButtons);
-}
-
-/**
  * A button label that reports an outcome, then goes back to work — every
  * transient label in the shell on ONE clock (2026-08-26; they were at 2000,
  * 2500 and forever). The rule that decides which labels use this: an
@@ -510,9 +452,6 @@ function mountSettings(
   host: HTMLElement,
   initial: FeatureSet,
   live: {
-    themesHost: HTMLElement;
-    theme: Theme;
-    facing: Orientation | null;
     world: WorldMemory;
     slot: Slot;
     abandon: () => void;
@@ -567,26 +506,17 @@ function mountSettings(
   // No SETTINGS heading of its own since 2026-08-25: the panel this writes
   // into wears the word in its own header, and a screen that says its name
   // twice in the first two lines reads as a bug.
-  const intro = document.createElement('p');
-  intro.textContent =
-    'Sticky on this device. The switches — SOUND among them — are folded ' +
-    'under DEVELOPER below, each with the decision that set its default. A ' +
-    'changed switch never touches the run in progress; RESTART, in the ? ' +
-    'panel’s MENU tab, is what makes it count.';
-
   // The privacy fact (2026-08-20, launch polish): it was true since Session
   // 0 and written only in a README no player ever sees. One quiet line,
   // here where a person wondering about their data would actually look.
   const privacy = document.createElement('p');
   privacy.className = 'flag-note';
   privacy.textContent =
-    'Nothing leaves your phone: no account, no analytics, no server. Every ' +
-    'run, record and setting lives in this device’s own storage, and sharing ' +
-    'sends only what you see in the share sheet. The one exception is a crash ' +
-    'report, and only if you tap SEND REPORT — it carries the error, the ' +
-    'build and your browser’s name, nothing that says who you are.';
+    'Nothing leaves your phone: no account, no analytics, no server. Sharing ' +
+    'sends only what you see in the share sheet, and a crash report only if ' +
+    'you tap SEND REPORT.';
 
-  const appearance = buildAppearance(live.theme);
+  const appearance = buildAppearance();
 
   // The atlas, as a label/value grid in the stat row's own language
   // (`.fact`/`.fact-label`/`.fact-value` — shared with the end screen's own
@@ -726,12 +656,19 @@ function mountSettings(
     live.abandon();
   });
 
-  // The developer fold (2026-08-18): both registered flags are testing
-  // tools (a raw readout with no console to hand; a way to compare art
-  // directions before Gate E was chosen) rather than something a run asks
-  // a PLAYER to decide, so they are folded away — the manual's own NUMBERS
-  // pattern, restated here as DEVELOPER.
-  const rows = FEATURES.map((f) => {
+  // One row per PUBLIC switch (2026-08-27, Marc: "revamp the settings so
+  // there is no more developer, only skins, reset teaching is fine, etc.
+  // make it public").
+  //
+  // There was a DEVELOPER fold here from 2026-08-18, and by today it held
+  // one thing a player wants — SOUND, the same wire as the ♪ button on the
+  // board — behind a word telling them it was not for them. The other two
+  // rows were a workbench: a raw state readout, and a picker for choosing
+  // between art directions that Gate E chose between on 2026-08-15. So the
+  // fold is gone, the workbench is gone with it (`?ff=`, `?hex=` and
+  // /gallery.html are its doors, and the manual names the first), and what
+  // is left is a screen with nothing on it a player should not touch.
+  const rows = PLAYER_FEATURES.map((f) => {
     const row = document.createElement('div');
     row.className = 'flag';
 
@@ -761,17 +698,9 @@ function mountSettings(
         persistFeatures(features);
         paint();
 
-        // The live wires: the theme picker mounts and unmounts in place,
-        // and sound flips the same gate the board's ♪ button reads (both
-        // 2026-08-20). Everything world-shaped waits for the next run.
-        if (f.id === 'ui.themePicker') {
-          if (isEnabled(features, f.id)) {
-            mountThemePicker(live.themesHost, live.theme, live.facing);
-          } else {
-            live.themesHost.hidden = true;
-            live.themesHost.replaceChildren();
-          }
-        }
+        // The live wire: sound flips the same gate the board's ♪ button
+        // reads (2026-08-20). Anything world-shaped would wait for the next
+        // run, and nothing public is world-shaped.
         if (f.id === 'ui.sound') live.syncSound(isEnabled(features, f.id));
       });
     }
@@ -793,31 +722,11 @@ function mountSettings(
     return row;
   });
 
-  // The theme picker itself, and the gallery, live in the ui.themePicker
-  // row's own area — "render it inside the flag's own row/area when the
-  // flag is on" — rather than a separate section elsewhere. `themesHost`
-  // is the SAME node `index.html` declares and `main()` mounts into; it is
-  // relocated here, into the fold, the first time SETTINGS paints.
-  const galleryLink = document.createElement('a');
-  galleryLink.href = '/gallery.html';
-  galleryLink.textContent = 'THE GALLERY — every art direction, side by side ▸';
-
-  const themePickerIndex = FEATURES.findIndex((f) => f.id === 'ui.themePicker');
-  const flagElements: HTMLElement[] = [];
-  rows.forEach((row, i) => {
-    flagElements.push(row);
-    if (i === themePickerIndex) flagElements.push(live.themesHost, galleryLink);
-  });
-
-  const developer = document.createElement('details');
-  developer.className = 'help-more';
-  const developerSummary = document.createElement('summary');
-  developerSummary.textContent = 'DEVELOPER';
-
   // RESET TEACHING (`ideas/teaching.md`, 2026-08-19): replay the drip on a
-  // device that has met everything — the only way Marc's own phone ever sees
-  // what a stranger sees. Harmless (it forgets no relics, no perks, only
-  // which concepts have been explained), so it needs no arming tap.
+  // device that has met everything. Harmless — it forgets no relics, no
+  // perks, only which concepts have been explained — so it needs no arming
+  // tap, and that is also why it is public: it is the one control here that
+  // gives something back rather than taking it away.
   const resetTeaching = document.createElement('button');
   resetTeaching.type = 'button';
   resetTeaching.id = 'reset-teaching';
@@ -830,11 +739,8 @@ function mountSettings(
   const resetTeachingNote = document.createElement('p');
   resetTeachingNote.className = 'flag-note';
   resetTeachingNote.textContent =
-    'Forgets which concepts have been explained — nothing else — so every ' +
-    'card and toast fires again from its next moment. It previews the ' +
-    'LESSONS a stranger sees, not their game: your shop, perks and known ' +
-    'world all stay. The closest true rehearsal is RESET TEACHING, then ' +
-    'BEGIN DAILY — the daily plays plain and fully fogged, like their run one.';
+    'Every teaching card plays again from its next moment. Nothing else ' +
+    'changes — your worlds, relics and perks all stay.';
 
   // LAST ERROR (2026-08-19): whatever `showFailure` last caught, readable
   // and selectable here — the report channel for a phone with no console.
@@ -909,14 +815,6 @@ function mountSettings(
   } catch {
     // A corrupt record is not worth a row.
   }
-
-  developer.append(
-    developerSummary,
-    ...flagElements,
-    resetTeaching,
-    resetTeachingNote,
-    ...errorElements,
-  );
 
   // A fresh run under whatever the switches now say — the same path as the
   // end screen's button, so it also clears the saved run and drops ?seed and
@@ -1057,26 +955,36 @@ function mountSettings(
   }
   live.menuHost.replaceChildren(...menuParts);
 
-  // SETTINGS keeps the switches, the privacy note and the developer fold —
-  // what the DEVICE does, rather than what this world is. NEW RUN and NEW
-  // WORLD moved to MENU above; repeating them here is the intertwining the
+  // SETTINGS is what the DEVICE does, not what this world is — NEW RUN and
+  // NEW WORLD live in MENU, and repeating them here is the intertwining the
   // MENU tab exists to undo.
-  // APPEARANCE first, above the intro: it is the only row here a player is
-  // likely to have come looking for, and it is the answer to the one complaint
-  // the panel has ever had to field ("constrast is very bad", 2026-08-25).
-  host.replaceChildren(appearance, intro, privacy, developer);
+  //
+  // In the order somebody arrives looking for them: the look (the one
+  // complaint this panel has ever had to field — "constrast is very bad",
+  // 2026-08-25), the sound, the way to see the lessons again, whatever last
+  // broke, and the promise about where any of it goes. No intro paragraph
+  // since 2026-08-27: it existed to explain a fold that no longer exists,
+  // and four rows that say what they are need no preamble.
+  host.replaceChildren(
+    appearance,
+    ...rows,
+    resetTeaching,
+    resetTeachingNote,
+    ...errorElements,
+    privacy,
+  );
 }
 
 /**
  * How this device wants the game to look.
  *
- * The FIRST setting in the panel that is not a developer switch, and the first
- * that is not behind a flag. There has been a theme picker since Session 2, but
- * it lived behind `?ff=ui.themePicker` — a URL you have to know — because for
- * eleven sessions the directions were CANDIDATES and letting a player pick one
- * would have been letting them decide Gate E. Gate E is decided. What is left is
- * not a vote on the art; it is whether the art is readable on the phone in your
- * hand, and that is a question only the person holding it can answer.
+ * The first setting in the panel, and the first that was ever unflagged.
+ * There has been a theme picker since Session 2, but it lived behind
+ * `?ff=ui.themePicker` — a URL you have to know — because for eleven sessions
+ * the directions were CANDIDATES and letting a player pick one would have been
+ * letting them decide Gate E. Gate E is decided. What is left is not a vote on
+ * the art; it is whether the art is readable on the phone in your hand, and
+ * that is a question only the person holding it can answer.
  *
  * Four options, and AUTO is deliberately first and the default. A phone set to
  * light mode, or set to increase contrast, has already answered this question
@@ -1084,12 +992,13 @@ function mountSettings(
  * reads those two and picks. The other three are for the case the OS gets wrong,
  * which is most cases: the setting is about the room you are in, not the device.
  *
- * The dev picker (`mountThemePicker`) stays where it is, in the DEVELOPER fold,
- * because it does a different job — it offers the PLACEHOLDER and the
- * orientation flip, which are workbench controls and not choices to put in front
- * of anyone.
+ * It is the WHOLE picker since 2026-08-27. The dev one beside it — the
+ * placeholder direction and the hex-facing flip, behind `ui.themePicker` —
+ * was a workbench for choosing between candidates, and Gate E chose on
+ * 2026-08-15. Its two controls keep their doors (`?hex=`, /gallery.html) and
+ * gave up their screen.
  */
-function buildAppearance(current: Theme): HTMLElement {
+function buildAppearance(): HTMLElement {
   const section = document.createElement('div');
   section.id = 'appearance';
 
@@ -1144,13 +1053,16 @@ function buildAppearance(current: Theme): HTMLElement {
 
   const note = document.createElement('p');
   note.className = 'flag-note';
-  note.textContent =
-    current.note +
-    ' — AUTO follows this phone’s own light and contrast settings; the other ' +
-    'three ignore them. Applied on the spot: the run is saved and comes ' +
-    'straight back.';
+  // The direction's OWN note used to lead this line — four sentences of art
+  // direction ("a warm pool over the middle of the map, deep falloff …")
+  // written for the workbench that chose between candidates. The four
+  // buttons above say which look you are in; the line only has to say what
+  // AUTO means and that tapping one costs nothing. The long notes still live
+  // where they are read on purpose: /gallery.html.
+  //
   // "Applied on the spot" became literally true on 2026-08-27 — it used to
   // describe a reload that took a blink and came back to the same board.
+  note.textContent = 'AUTO follows your phone. Applied on the spot; your run is kept.';
 
   section.append(label, row, note);
   return section;
@@ -2270,10 +2182,6 @@ async function buildSession(route: Route): Promise<Session> {
     game.announceArrival();
   });
 
-  if (isEnabled(features, 'ui.themePicker')) {
-    mountThemePicker(required('themes'), theme, facing);
-  }
-
   // The voice (ideas/sound.md, behind ui.sound — off by default): the ♪
   // button in the board chrome and SETTINGS' switch are the same wire
   // (Marc's launch call, 2026-08-20: "a way to toggle on/off easily") —
@@ -2334,9 +2242,6 @@ async function buildSession(route: Route): Promise<Session> {
       settingsHost,
       storedFeatures(),
       {
-        themesHost: required('themes'),
-        theme,
-        facing,
         world: loadWorld(keys),
         slot,
         abandon: () => {

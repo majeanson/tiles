@@ -166,7 +166,13 @@ test('SETTINGS opens from the door and from the MENU tab, and stacks over both',
   await expect(page.locator('#help-panel')).toBeVisible();
   await page.locator('#to-settings').click();
   await expect(settings).toBeVisible();
-  await expect(settings).toContainText('Sticky on this device');
+  // Public since 2026-08-27: the look, the sound, the lessons — and no
+  // DEVELOPER fold hiding a switch a player wants behind a word that tells
+  // them it is not for them.
+  await expect(settings).toContainText('APPEARANCE');
+  await expect(settings).toContainText('the board is this switch');
+  await expect(page.locator('#reset-teaching')).toBeVisible();
+  await expect(settings).not.toContainText('DEVELOPER');
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
   // Escape reaches the TOP panel only — the manual it opened over is still up.

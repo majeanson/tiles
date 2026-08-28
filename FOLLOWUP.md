@@ -41,7 +41,7 @@ RESET TEACHING previews the LESSONS a stranger sees, not their game —
 your shop, perks and known world all survive it. The closest true
 rehearsal, in order:
 
-1. **`?` ▸ MENU ▸ SETTINGS ▸ DEVELOPER ▸ RESET TEACHING** (SETTINGS is its
+1. **`?` ▸ MENU ▸ SETTINGS ▸ RESET TEACHING** (SETTINGS is its
    own screen since 2026-08-25 — from the MENU tab mid-run, or MORE on the
    front door).
 2. Back out, **BEGIN DAILY** — the daily plays plain and fully fogged,

@@ -6758,3 +6758,62 @@ ledger), typecheck / lint / format clean, build clean, screenshotted at
 390×844 in both torchlit and daylight. **Not played on a phone**, which is
 still the gate — and this session changed the first minute a fourth time, so
 `PLAYTEST.md` Session A is owed before Session C, as it already was.
+
+---
+
+### Session 59 — SETTINGS becomes a screen for players (2026-08-27)
+
+**Question:** if the settings screen is public, what is actually left on it?
+
+**Marc:** "revamp the settings so there is no more developer, only skins,
+reset teaching is fine, etc. make it public" — and, mid-session: "remove all
+text that is unnecessary, lean it up."
+
+**Answer: four things, and the fold was hiding the wrong one.** The DEVELOPER
+fold had stood since 2026-08-18 for a good reason — two of the three flags in
+it were testing tools. But by today it also held SOUND, which is the same wire
+as the ♪ button on the board, filed under a word that tells a player it is not
+for them. The fold was the problem, not the switches.
+
+**What went, and why each one is not a corpse:**
+
+- **`ui.themePicker` is deleted.** It gated a row of art directions plus the
+  hex-facing flip — a workbench for choosing between CANDIDATES, and Gate E
+  chose torchlit on 2026-08-15. What a player needs from it is APPEARANCE,
+  which is public and unflagged; what a workbench needs is `?hex=` and
+  `/gallery.html`, both of which still work. `mountThemePicker`, the `#themes`
+  nav in `index.html`, `rememberFacing`, and the gallery's second "with the
+  picker on →" link went with it.
+- **`debug.overlay` keeps its `?ff=` door and gives up its row.** It prints
+  raw state under the board; it is not a player's switch. The manual's THIS
+  BUILD names the URL, which is where a bug report starts anyway.
+- **The intro paragraph is gone.** It existed to explain the fold.
+
+**The registry decides who sees what.** `FeatureDef` gains `player: boolean`
+and SETTINGS renders `PLAYER_FEATURES`, so "which switches are public" is a
+fact of the registry rather than a filter written into the panel — a new flag
+is private until somebody says otherwise. The `note` field changed job with
+it: it was the whole decision record (why the flag exists, what moved its
+default, on what date), because SETTINGS was a developer surface and the
+registry was the only place that record lived. A player reading "Marc chose a
+silent 1.0 (2026-08-15)" under a SOUND switch is reading somebody else's
+notebook. Notes are one player-facing line now, pinned under 120 characters
+and forbidden a date or a name by test; the record moved to the comments above
+each entry, where the people it is for already read.
+
+**And the copy.** Every remaining line was cut roughly in half: the privacy
+promise, RESET TEACHING's note, the appearance line. The biggest was
+APPEARANCE's — it opened with the DIRECTION's own note, four sentences of art
+direction ("a warm pool over the middle of the map, deep falloff …") written
+for the workbench that chose between candidates. The four buttons above it say
+which look you are in. Those notes still live where they are read on purpose:
+`/gallery.html`, which is the one consumer of `theme.note` now.
+
+The screen is APPEARANCE ▸ SOUND ▸ RESET TEACHING ▸ (LAST ERROR, on a bad day)
+▸ the privacy line, in the order somebody arrives looking for them.
+
+**Verified:** 823 tests (+1: the registry offers only public switches, in a
+voice written for a player), 28 e2e (the SETTINGS spec now pins APPEARANCE,
+SOUND and RESET TEACHING present and DEVELOPER absent), typecheck / lint /
+format clean, build clean, screenshotted at 390×844 in torchlit. **Not played
+on a phone.** The one gate is still Session C.

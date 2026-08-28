@@ -46,7 +46,7 @@ function rememberError(text: string): void {
 }
 
 /**
- * Keep an error for SETTINGS ▸ DEVELOPER without raising the panel over it.
+ * Keep an error for SETTINGS without raising the panel over it.
  *
  * For the failures that RECOVER (2026-08-27): a session rebuild that throws
  * falls back to a real navigation, and the panel it would otherwise show
@@ -71,7 +71,7 @@ export function recordFailure(error: unknown): void {
  * It is an OVERLAY now, with CONTINUE beside RELOAD (a transient error is
  * survivable; the autosave means RELOAD loses nothing either way), it shows
  * the actual error so a phone can report it, it counts repeats instead of
- * stacking, and it remembers the last error for SETTINGS ▸ DEVELOPER.
+ * stacking, and it remembers the last error for SETTINGS.
  */
 export function showFailure(error?: unknown): void {
   failureCount++;
