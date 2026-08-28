@@ -1161,13 +1161,13 @@ export class PixiRenderer implements Renderer {
                 kind: 'dots' as const,
                 // A territory glows in the colour of the field claiming it
                 // unfurls, so the walk is toward a known reward.
-                ink: cell.colour !== null ? theme.terrain[cell.colour].fill : theme.ink.accent,
+                ink: cell.colour !== null ? theme.terrain[cell.colour].fill : theme.ink.lit,
                 alpha: 0.45,
                 radius: 1.6,
                 pitch: 5,
               },
             };
-        return plain(cell.beacon ? { ...base, alpha: 0.55 } : base);
+        return plain(cell.beacon ? { ...base, alpha: theme.board.beaconFade } : base);
       }
       case 'empty': {
         // Native ground (2026-08-20: `fieldGround` owns the WHOLE decision,
@@ -1586,7 +1586,7 @@ export class PixiRenderer implements Renderer {
     // An unclaimed destination is the other thing worth walking toward, so it
     // carries the accent even at beacon distance. Claimed, it drops to chrome.
     if (cell.kind === 'landmark' && !cell.claimed)
-      return { width: Math.max(1.5, size * board.ripeEdgeWidth), colour: this.#theme.ink.accent };
+      return { width: Math.max(1.5, size * board.ripeEdgeWidth), colour: this.#theme.ink.lit };
     // Magic and unique tiles keep a quiet edge in their OWN colour
     // (2026-08-20 — see `Ink.magic`/`Ink.unique`) so their power stays
     // findable on a full board without shouting over ripe.
@@ -2053,8 +2053,12 @@ export class PixiRenderer implements Renderer {
     chip.alpha = 0.85;
 
     // The ring speaks the same colour language as the full beacon: the
-    // claiming territory's own fill, or the accent where no colour owns it.
-    const tint = cell.colour !== null ? theme.terrain[cell.colour].fill : theme.ink.accent;
+    // claiming territory's own fill, or the lit colour where no colour owns
+    // it. `lit` rather than `accent` since 2026-08-28 — a chip is drawn on
+    // `theme.wall.fill`, and daylight's accent is at 1.02:1 there, so this
+    // ring and its halo were being painted in an invisible colour on the one
+    // direction whose whole argument is legibility.
+    const tint = cell.colour !== null ? theme.terrain[cell.colour].fill : theme.ink.lit;
     const r = clamp(layout.size * 0.6, 8, 14);
 
     // A small breathing glow first, so it sits under the hex.

@@ -56,6 +56,9 @@ export const TORCHLIT: Theme = {
     // `ripeEdgeWidth`, and the stroke ladder in `PixiRenderer.ts` never draws
     // it over anything louder regardless.
     home: { ring: 0xe0803c, ringWidth: 0.065 },
+    // The value that was hard-typed in `PixiRenderer` until 2026-08-28. A
+    // beacon here fades into black, which keeps it dark — nothing moves.
+    beaconFade: 0.55,
     // A torch throws hard light: a bright lip along the top of every cell and a
     // deep one at its foot. These are the numbers `bake.ts` used to hold as
     // constants for every direction; torchlit is the direction they were tuned
@@ -85,6 +88,11 @@ export const TORCHLIT: Theme = {
     // disappearing into the one ground that was pale enough to swallow it.
     inkFaint: 0xa28b5e,
     accent: 0xc79a4b,
+    // The same gold: on a black board the chrome's signature colour and the
+    // "walk here" mark are one colour, which is why the two were one token
+    // until a pale direction proved they are two jobs. 6.42:1 on the wall
+    // ground a landmark stands on, 7.10 once faded to a beacon.
+    lit: 0xc79a4b,
     // The rarities' own voices (2026-08-20, Marc): the selected ring below
     // is the SAME gold as the accent, so a rare card and a selected card
     // were indistinguishable at a glance. MAGIC is moonlit violet — the

@@ -1178,10 +1178,31 @@ button.armed {
   background: var(--panel, #1e222b);
 }
 
+/* ...and it needs the same guarantee `.tip-swatch` was given on 2026-08-27,
+   for the same measured reason and on a surface that matters more.
+   That pass fixed the MANUAL's 16px legend square — "against its own panel,
+   torchlit MOSS runs 1.93:1 at its light end, daylight's EMBER is 1.20" —
+   by outlining it in `--ink-faint`, which `contrast.test.ts` holds at 4.5:1
+   against the panel in every direction. The card in your HAND has exactly
+   the same problem against exactly the same panel, is the thing a player
+   reads every single turn rather than once in a menu, and got nothing: on
+   daylight the EMBER card was a pale sand hex on pale vellum chrome with no
+   edge at all, and the screen audit's shot of it (2026-08-28) is a card that
+   looks empty.
+
+   A `border` cannot do it here — the art is a hex and a border is a rounded
+   rectangle — so the outline traces the image's own alpha instead. Two
+   passes of a 1px shadow rather than one: a single pass reads as a blur at
+   this size, two read as a line. The terrain colours stay untouched, which
+   is the same call the legend made — they answer to the board and to the
+   greyscale ladder, and bending a palette to suit a 42px card would be the
+   tail wagging the dog. */
 .tile-art {
   height: 42px;
   width: auto;
   pointer-events: none;
+  filter: drop-shadow(0 0 1px var(--ink-faint, #767d8d))
+    drop-shadow(0 0 1px var(--ink-faint, #767d8d));
 }
 
 /* Selected: which card would place next. Strengthened (Stage 2,
@@ -2455,6 +2476,31 @@ button.spare {
   flex: 0 0 auto;
 }
 
+/* The one disabled control in the game whose label you still have to read
+   (2026-08-28, the screen audit).
+
+   `button:disabled` fades to 0.35 and states its reason plainly: "nobody has
+   to read a button they cannot press." That is right for every other button
+   here and wrong for exactly this one, because a BUY button's label IS ITS
+   PRICE — and an unaffordable upgrade is precisely when a player needs to
+   read it, to know what to come back with. The audit's shot of a 24-relic
+   purse is five ghosts: BUY 40, BUY 35, BUY 50, BUY 60 at 1.8:1 on daylight
+   and 1.99 on torchlit, which is a shop that has stopped saying what
+   anything costs.
+
+   So: full opacity and `--ink-faint`, which `contrast.test.ts` already holds
+   at 4.5:1 against the panel in every direction — the same substitution the
+   2026-08-25 pass made everywhere else it found opacity doing a colour's
+   job. Unpressable is still said, by the quiet ink and the quiet border and
+   the cursor; it is just no longer said by making the number vanish. DONE —
+   a maxed row — keeps the same treatment, and reads as a statement rather
+   than as a smudge. */
+.shop-row button.shop-buy:disabled {
+  opacity: 1;
+  color: var(--ink-faint, #767d8d);
+  border-color: var(--panel-edge, #3a4150);
+}
+
 /* A perk being worn is the one piece of state in the shop worth a colour. */
 .shop-row[data-worn='true'] .shop-name {
   color: var(--accent, #d7b45a);
@@ -2745,11 +2791,23 @@ button.help-tab[data-on='true'] {
 
 /* The value inherits the button's own voice wherever the button has one —
    the bounty's accent, SACRIFICE's danger red — rather than staying dim and
-   reading as a different control's number. */
+   reading as a different control's number.
+
+   The `opacity: 0.85` that used to sit here is GONE (2026-08-28, the screen
+   audit found it at 4.00:1 against a bar of 4.5). It is the failure mode a
+   measured palette is most exposed to: `danger` was raised to 0xe05244 on
+   2026-08-25 precisely to clear 4.5 on the board — 5.20:1, argued a line at
+   a time in torchlit's own tokens — and then a decorative 15% wash in the
+   stylesheet quietly spent it, on the one number in the game that tells you
+   what a SACRIFICE costs. Daylight's bounty accent was doing the same thing
+   at 4.44. Nothing in `contrast.test.ts` could see it: that file measures
+   tokens, and this was an alpha applied to a token afterwards. The quieting
+   this rule wanted is already done by `.act-value`'s 0.72em — a value
+   smaller than its label is quieter than its label, and it costs no
+   contrast to say so. */
 #harvest-burn .act-value,
 .bounty .act-value {
   color: inherit;
-  opacity: 0.85;
 }
 
 /* SACRIFICE destroys the pocket it prices — tiles you LOSE, not a variation
@@ -2890,6 +2948,15 @@ button.help-tab[data-on='true'] {
    transparent ::before, centred on the button, at least 44px each way. A
    press on the pseudo-element is a press on the button; nothing on screen
    moves by a pixel. */
+/* `#stats .stat` is deliberately NOT in this list, and the reason is worth a
+   line because the screen audit got it wrong once (2026-08-28) and nearly
+   bought a redundant rule with it. The HUD stats DO have a grown target —
+   `.stat::after { inset: -6px }`, further up — and that -6px is not a
+   near-miss of the 44px this block spends: it is a number chosen on
+   2026-08-21 against the row's own 12px gap, so neighbouring targets meet
+   exactly and never cross. At 36px tall the stats come out at 48. The audit
+   reported them as misses because it read `::before` and never `::after`;
+   the auditor was fixed, not the stylesheet. */
 .flag-toggle,
 #camera button,
 #purse-toggle,

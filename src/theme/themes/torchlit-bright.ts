@@ -58,6 +58,7 @@ export const TORCHLIT_BRIGHT: Theme = {
     // to atmosphere is a high light floor, not a dark frame; say so honestly.
     vignette: null,
     home: { ring: 0xff9440, ringWidth: 0.07 },
+    beaconFade: 0.55,
     // A brighter room throws a harder highlight and a shorter shadow.
     sheen: 0.07,
     shade: 0.1,
@@ -69,6 +70,9 @@ export const TORCHLIT_BRIGHT: Theme = {
     inkDim: 0xe4d5b4,
     inkFaint: 0xc9b48b,
     accent: 0xf0c069,
+    // Same colour as the accent, same reason as torchlit: a black board makes
+    // the chrome gold and the destination gold one gold. 9.44:1 on the wall.
+    lit: 0xf0c069,
     magic: 0xc9a8ff,
     unique: 0xffa259,
     danger: 0xff6a58,

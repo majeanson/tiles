@@ -83,10 +83,17 @@ The four checks worth being deliberate about, in risk order:
   which is not deuteranopia. Every colour meaning already carries a second
   channel (names, marks, textures), so this would pin a property the game
   already has rather than find a bug.
-- **A source-level test that every `min-height` under 44px appears in the
-  hit-area block.** Would have caught the `<summary>` gap fixed on
-  2026-08-27, in the same "assert the data" shape `theme.test.ts` uses. Worth
-  it only to hold the class permanently.
+- ~~**A source-level test that every `min-height` under 44px appears in the
+  hit-area block.**~~ **DONE 2026-08-28, in a different shape — and the shape
+  matters.** The class recurred (the screen audit went looking), so it earned
+  its place; but a source scan would not have caught it. `#stats .stat`
+  declares no `min-height` at all — its 36px is content plus padding — and the
+  target is usually not the element but a pseudo (`max(100%, 44px)` for most,
+  `inset: -6px` for the HUD stats). All three are already resolved in a
+  rendered page, so `e2e/targets.spec.ts` measures it there: the union of an
+  element and BOTH its pseudo-elements, over the door, MORE, SETTINGS, the
+  board, the open purse and the manual. Verified to fail by breaking the
+  hit-area block on purpose.
 - **Everything in `ROADMAP.md`'s parking lot** — Tier-1 uniques, the sound
   pass, a leaderboard, store wrappers, the waypoint-perk earn, world mood,
   ground-feeds-draft, storage compaction. Deferred by ruling; do not reopen.

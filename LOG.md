@@ -7208,3 +7208,165 @@ carry whole into the fresh world; unspent luck converts at the tuning's own
 the crossing card's exact prose), typecheck / lint / format clean, `pnpm
 sim`'s table byte-identical before and after (stash-and-rerun), `pnpm build`
 clean, `pnpm exec playwright test` 31/31 against the built `dist/`.
+
+---
+
+### Session 66 — every screen, in every skin, on a device that has actually played (2026-08-28)
+
+**Question:** what does this game look like on all its screens, in all three
+skins, on a device with history — and what is wrong there that no test in this
+repository can currently see?
+
+**The harness first, because the question is not answerable without it.**
+
+- **`scripts/fixtures.ts` — `pnpm fixtures`.** Most screens in this game are
+  empty on a virgin device, and the empty version is never the one that
+  breaks: the shop with no purse, the hall of fame with no rows and the atlas
+  with no ground all look fine. So the audit needed PLAYED devices, and the
+  only honest way to get one is to play — this walks real runs through the
+  real reducer and folds each into the world, the record book, the purse and
+  the diary in the same order `shell/keeper.ts` does. Nothing is fabricated: a
+  fabricated fixture would put a territory at a hex the generator never
+  landmarked, or a shrine count the unlock ledger disagrees with.
+- **One finding fell straight out of building it, and is worth keeping.** The
+  first draft played 26 runs into one world with one policy and produced a
+  world with 99 revealed hexes, no territories and no shrines — because a
+  world's geography is a pure function of its seed, so one policy against one
+  world is the SAME run twenty-six times. A device history is made of a person
+  playing DIFFERENTLY. The generator rotates all 18 harness policies, varies
+  the dice per run, buys up the shop ladder between runs from relics it
+  actually earned, and wakes every third run at a held territory (the game's
+  own BEGIN AT CAMP) — which is the only way ground far from origin is ever
+  walked. Two histories result: `played` (5 runs, 24 relics, 312 hexes, no
+  shrine yet) and `veryPlayed` (300 runs, 6,145 relics, 9,608 hexes, 5/5
+  shrines, 5/5 perks, 5/5 goals, the whole ladder bought, a 302-row diary).
+- **`e2e/audit/` + `playwright.audit.config.ts` — `pnpm audit:screens`.** The
+  front door, all six panels, the manual's five tabs, the board at HERE and at
+  FIT, the purse, and the end screen: 3 skins × 3 histories, 198 shots at
+  390×844 portrait, plus a DOM measurement of every screen for contrast, tap
+  targets, page overflow and clipped text. Its own config and an `*.audit.ts`
+  name, so Playwright's default `testMatch` cannot see it — it produces
+  pictures and a table, not a pass or a fail, and gating the deploy on it would
+  buy nothing.
+
+**What the sweep found, and what was done about each.**
+
+- **Marc's own two, from the phone, mid-session.** "the + and star, they are
+  not yellow but grey and they seem inactive in light skin", and "ember in
+  light skin has no contrast compared to torchlit". Both were measurements
+  waiting to be taken. See the two entries below.
+- **An unclaimed destination was lit in a colour daylight could not show it
+  in.** `Ink.accent` was doing two jobs that are the same job only on a dark
+  board: the chrome's signature colour (read as TEXT on the board and on
+  panels, so daylight's is dark — 0x64491c) and the "walk here, this pays"
+  mark (drawn on the WALL's dark tablet, so it must be light). Daylight's
+  accent is **1.02:1** over that tablet — the ring, the lit dots and the edge
+  chips were all being painted in an invisible colour, and the marker read as
+  spent stone. `edgeCasing` had found the same 1.02:1 on 2026-08-27 and made
+  the ring VISIBLE; visible is not the claim, gold is. **New token `Ink.lit`**
+  — every dark direction sets it to its own accent and nothing about them
+  moves; daylight sets 0xe8b551. The beacon's opacity was the second half: one
+  hard-typed `0.55` in `PixiRenderer`, which on black keeps a tablet dark and
+  on vellum washes it to 0.59 L\*, the mid-grey where a warm mark and a dark
+  glyph both die. **New token `Board.beaconFade`** — 0.55 everywhere, 0.88 on
+  daylight. Pinned by a new `contrast.test.ts` rule over all three grounds a
+  destination is drawn on (solid, faded, edge chip).
+- **A terrain could sit on top of the board and no test could fail.**
+  `theme.test.ts` asked whether the four terrains were tellable apart from EACH
+  OTHER; nothing asked whether they were tellable from the BOARD — a question
+  no dark direction can fail, since black is the furthest thing from every
+  colour they own. Daylight's EMBER was **0.022 L\* from the paper, 1.06:1**: a
+  tile whose own silhouette was invisible. TIDE's was 0.071. New rule
+  `MIN_GROUND_CLEARANCE = 0.1` (twice the wall's floor, and under torchlit's
+  worst by 0.045 so it costs the dark directions nothing), both ends of every
+  gradient. Daylight's ladder came down to pay it — ember to 0.111, and moss
+  and tide with it, or the 0.05 the greyscale rule wants between neighbours
+  would have closed. Hue, saturation, pattern and gradient depth untouched;
+  only value moved, by one construction for all six ends. Its cell outline
+  darkened and widened too (0xbfb096 → 0x9c8f74, 0.04 → 0.05): a pale board has
+  a ceiling no repaint can lift — the paper is 0.881 and four terrains need
+  ~0.3 of ladder under it — so what carries a tile's silhouette at that range
+  is its edge.
+- **The card in your hand never got the fix the manual's legend got.** On
+  2026-08-27 `.tip-swatch` was given an `--ink-faint` outline for exactly this
+  reason, with the numbers written into the stylesheet ("daylight's EMBER is
+  1.20 and its TIDE 1.07"). The draft card has the same problem against the
+  same panel, is read every single turn rather than once in a menu, and got
+  nothing — the audit's shot of the daylight hand is a card that looks empty.
+  `.tile-art` now traces its own alpha with two 1px `drop-shadow`s (a border
+  cannot: the art is a hex and a border is a rounded rectangle). Terrain
+  colours untouched, which is the call the legend already made.
+- **A decorative opacity was quietly spending a measured palette.**
+  `#harvest-burn .act-value` — the number saying what a SACRIFICE costs — wore
+  `opacity: 0.85` over `danger`, a colour raised to 0xe05244 on 2026-08-25
+  _specifically_ to clear 4.5:1 on the board at 5.20. The wash put it at
+  **4.00**; daylight's bounty accent at 4.44. `contrast.test.ts` cannot see
+  this class of bug at all — it measures tokens, and this is an alpha applied
+  to a token afterwards. Opacity deleted; `.act-value`'s 0.72em already says
+  "quieter" and costs no contrast to say it.
+- **The shop stopped saying what anything costs.** `button:disabled` fades to
+  0.35 and states its reason: "nobody has to read a button they cannot press."
+  Right for every other button here and wrong for exactly one, because a BUY
+  button's label IS ITS PRICE, and an unaffordable upgrade is precisely when
+  you need to read it. A 24-relic purse rendered five ghosts at 1.8:1
+  (daylight) and 1.99 (torchlit). `.shop-buy:disabled` now keeps full opacity
+  and says unpressable with `--ink-faint`, which the budget already holds at
+  4.5:1 against the panel in every direction.
+- **The HUD stats were NOT a finding, and getting that wrong is the most
+  useful thing this session did.** The audit reported `#stats .stat` at 32–46
+  × 36px — a `role="button"` under the thumb floor — and the fix was written:
+  add it to the hit-area block. Checking the claim against the code first
+  (`CLAUDE.md`'s own rule) found `.stat::after { inset: -6px }` already there,
+  and that `-6px` is not a near-miss of this block's blanket 44px: it was
+  chosen on **2026-08-21** against the row's own 12px gap so neighbouring
+  targets meet exactly and never cross, which is a more careful answer, not a
+  worse one. At 36px tall the stats come out at 48. The audit had read
+  `::before` and never `::after`. **The auditor was fixed and the stylesheet
+  reverted**, with a comment in the hit-area block saying why `.stat` is
+  deliberately absent from it — so the next reader does not re-derive the same
+  wrong fix. A second false precision went with it: COST measured 43.98px and
+  was reported as "44 (bar 44)", a row that reads as a typo and teaches a
+  reader to distrust the table, so the compare rounds now.
+
+**The class the audit found is now held by a gate test.** `NEXT.md` §4 parked
+"a source-level test that every `min-height` under 44px appears in the hit-area
+block" as worth it only to hold the class permanently — and the shape it was
+parked in would not have worked. `.stat` has no `min-height` at all; its 36px
+is content plus padding, so a scanner for small declared values finds nothing
+there. And the target is usually not the element: it is a pseudo, at
+`max(100%, 44px)` for most and `inset: -6px` for the stats. All three problems
+are already solved in a rendered page, so `e2e/targets.spec.ts` measures it
+there — the union of an element and BOTH its pseudo-elements, over the door,
+MORE, SETTINGS, the board, the open purse and the manual. Two screens rather
+than the audit's 198: a gate holds a class, it does not survey the game.
+Verified to actually fail by breaking the hit-area block (`max(100%, 44px)` →
+`10px`) and watching the board screen go red.
+
+**Three things the audit got wrong about itself, all fixed, all worth
+recording.** Its first run reported 351 tap-target misses — every one on a
+control that is already 44px to a thumb, because `getBoundingClientRect` cannot
+see a pseudo-element; teaching it `::before` left the `.stat` false positive
+above, which took `::after` as well. And it passed the end screen's hero silently while that
+text sits on `--run-end-art`: a ratio needs two colours and a picture is not a
+colour, so it had composited the CSS and never noticed the PNG. Passing by luck
+and passing by measurement look identical in a report, which is the worst
+property a report can have — those elements are named `unmeasured` now and sent
+to the screenshot. Disabled controls are their own kind for the same reason:
+WCAG exempts them, and the shop proved the exemption is not always the right
+answer.
+
+**One assertion was written and then deleted rather than weakened.** A rule that
+a lit destination must read as different from a spent one failed torchlit
+(2.10:1) and the placeholder (1.26:1) in both spellings it was tried in, and
+neither number is a bug: claimed and unclaimed are told apart by the GOLD —
+present on one, absent on the other — and "one of these has a colour the other
+does not" is not a contrast ratio between two swatches. Lowering its bar until
+it could not fail is the thing that file's own header forbids.
+
+**Verified:** 880 unit tests (+8 over Session 65's 872), **33 e2e** (+2, the
+thumb-target gate), typecheck / lint / format clean, `pnpm build` clean, and
+the audit itself reporting **zero** contrast, tap-target, overflow and
+clipped-text findings across all 198 shots — against 76 contrast and 351
+tap-target rows on its first run. **NOT played on a phone since, and the
+daylight repaint in particular is a palette Marc has not looked at.** The one
+gate is still Session C.

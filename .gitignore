@@ -12,3 +12,10 @@ Thumbs.db
 # Playwright smoke artifacts
 test-results/
 playwright-report/
+
+# The screen audit's own output (2026-08-28): a few hundred PNGs and the
+# half-megabyte of played-device fixtures behind them. Both are regenerated
+# by `pnpm fixtures` and `pnpm audit:screens` and neither is a source of
+# truth — the tests that GATE anything live in src/ and e2e/*.spec.ts.
+audit-shots/
+e2e/fixtures/

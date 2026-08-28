@@ -48,8 +48,16 @@ export const DAYLIGHT: Theme = {
     // stayed green rather than one number moving alone.
     background: 0xe8dcc4,
     seam: 0.04,
-    edge: 0xbfb096,
-    edgeWidth: 0.04,
+    // Darkened 0xbfb096 → 0x9c8f74 and widened 0.04 → 0.05 on 2026-08-28,
+    // alongside the ladder below. A pale board has a ceiling the dark ones do
+    // not: the paper is at 0.881 L* and four terrains need ~0.3 of ladder
+    // under it, so the topmost colour can never be more than ~0.15 from the
+    // page however it is repainted. What carries a tile's SILHOUETTE at that
+    // range is its outline, and this one was a whisper — the cheapest half of
+    // the answer to "ember has no contrast", and the half that helps every
+    // terrain rather than only the top rung.
+    edge: 0x9c8f74,
+    edgeWidth: 0.05,
     // On a pale board the loudest edge is the DARKEST one. Both of these are
     // dark, which is why `theme.test.ts` had to start measuring distance from
     // the background rather than raw lightness.
@@ -60,6 +68,14 @@ export const DAYLIGHT: Theme = {
     // board with darkened corners reads as a stain rather than as distance.
     vignette: null,
     home: { ring: 0x9a5a1e, ringWidth: 0.07 },
+    // Nearly solid, where every dark direction fades to 0.55 (2026-08-28).
+    // The fade is toward the BOARD, and this board is vellum: at 0.55 the
+    // landmark's dark tablet came out at 0.59 L* — a mid-grey that swallowed
+    // the gold mark on it, the dark glyph in it, and any sense that the thing
+    // was live. Held near-solid, a beacon here reads the way it reads on a
+    // real survey: a bold marked point on unfinished ground, told apart from
+    // a drawn destination by its slow halo breath rather than by dissolving.
+    beaconFade: 0.88,
     // A drawing, not a lit room: barely any modelling on the cells at all, or
     // the vellum starts looking like plastic.
     sheen: 0.03,
@@ -76,6 +92,13 @@ export const DAYLIGHT: Theme = {
     inkDim: 0x40382a,
     inkFaint: 0x5c5342,
     accent: 0x64491c,
+    // The one place this direction needs a colour its accent cannot be. The
+    // accent above is read as TEXT on vellum, so it is dark; a destination is
+    // a mark on the wall's dark tablet, so it must be light. Gold rather than
+    // white because the mark means "worth walking to" in every direction, and
+    // gold is the word this game has always used for that — 4.34:1 on the
+    // solid tablet, 3.31 once faded to a beacon, against a floor of 3.
+    lit: 0xe8b551,
     magic: 0x532e8a,
     unique: 0x8e3a0a,
     danger: 0x9c1f16,
@@ -123,11 +146,26 @@ export const DAYLIGHT: Theme = {
   },
 
   /*
-   * The ladder runs the other way up: ash 0.453 / moss 0.606 / tide 0.726 /
-   * ember 0.847, all measured against a ground at 0.881. Ash is the darkest
+   * The ladder runs the other way up: ash 0.453 / moss 0.529 / tide 0.611 /
+   * ember 0.736, all measured against a ground at 0.881. Ash is the darkest
    * terrain here where it is the second-darkest in torchlit, which is what a
    * pale board does — the colour with the most pigment ends up furthest from
    * the paper.
+   *
+   * **The whole ladder came down on 2026-08-28** (Marc, from the phone:
+   * "ember in light skin has no contrast compared to torchlit"), and he was
+   * describing a measurement: EMBER's bright end was 0xf4e2b6 at **0.022 L\*
+   * from the paper — 1.06:1**, which is a tile you cannot see the SHAPE of,
+   * never mind read a number on. TIDE's was 0.071. Both passed every test in
+   * the project, because `theme.test.ts` asked whether the four terrains were
+   * tellable apart from EACH OTHER and nothing asked whether they were
+   * tellable from the BOARD — a question no dark direction could ever fail,
+   * since black is the furthest thing from every colour they own. The rule
+   * exists now (`MIN_GROUND_CLEARANCE`), and this is the palette that pays
+   * it: ember was the offender, but the three above ash all had to come down
+   * together or the 0.05 the greyscale rule wants between neighbours would
+   * have closed. Hue, saturation, pattern and gradient depth are untouched —
+   * only value moved, and it moved by the same construction for all six ends.
    *
    * ASH is redder than torchlit's (0xc45a2c against 0x915430) and that is not a
    * taste decision: `fieldDots` deepens each colour to full saturation before
@@ -139,14 +177,14 @@ export const DAYLIGHT: Theme = {
    * where the rule wants 60.
    */
   terrain: {
-    green: surface(0x8fae70, {
-      fillTo: 0x6a8a4c,
+    green: surface(0x78925e, {
+      fillTo: 0x5f7b44,
       pattern: { kind: 'hatch', angleDeg: 60, ink: 0x2c3a1c, alpha: 0.2, bar: 2, gap: 4 },
       overlay: { kind: 'dots', ink: 0x3f5626, alpha: 0.14, radius: 1.3, pitch: 11 },
       asset: 'terrain.green',
     }),
-    yellow: surface(0xf4e2b6, {
-      fillTo: 0xd9c191,
+    yellow: surface(0xcdbd98, {
+      fillTo: 0xbba67d,
       pattern: { kind: 'dots', ink: 0xa8791f, alpha: 0.3, radius: 2.1, pitch: 14 },
       overlay: { kind: 'hatch', angleDeg: 90, ink: 0x8a6d2e, alpha: 0.1, bar: 1, gap: 5 },
       asset: 'terrain.yellow',
@@ -157,8 +195,8 @@ export const DAYLIGHT: Theme = {
       overlay: { kind: 'dots', ink: 0x4a2210, alpha: 0.12, radius: 0.6, pitch: 5 },
       asset: 'terrain.red',
     }),
-    blue: surface(0xa9cfe0, {
-      fillTo: 0x74a2ba,
+    blue: surface(0x87a6b3, {
+      fillTo: 0x648ba0,
       pattern: { kind: 'hatch', angleDeg: 0, ink: 0x27505f, alpha: 0.16, bar: 1, gap: 5 },
       overlay: { kind: 'hatch', angleDeg: 0, ink: 0x27505f, alpha: 0.1, bar: 1, gap: 9 },
       asset: 'terrain.blue',

@@ -297,4 +297,57 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
       ).toBeGreaterThanOrEqual(MARK);
     }
   });
+
+  /**
+   * An unclaimed destination has to read as LIT (2026-08-28).
+   *
+   * The test that was missing when Marc looked at the light skin on his phone
+   * and said the `+` and the `★` "are not yellow but grey and they seem
+   * inactive". Nothing here was broken in the way the rest of this file
+   * measures — `edgeCasing` had already made the ring visible on 2026-08-27,
+   * and its own doc names the same 1.02:1 this fixes. Visible is not the
+   * claim, though. The claim a destination makes is "walk here, this pays",
+   * it makes it in gold in every direction, and daylight was making it in a
+   * brown that was 1.02:1 on the ground it was painted on — so the strongest
+   * promise on the board arrived as a grey smudge that looked spent.
+   *
+   * Three grounds, because a destination is drawn at three opacities and the
+   * beacon is the one that failed: solid (reached ground), faded to
+   * `beaconFade` over the board (out past the frontier), and the edge chip,
+   * which is drawn on the raw wall fill wherever the camera cannot reach the
+   * beacon itself. Deliberately NOT allowing `edgeCasing` to rescue this one:
+   * a casing can make a ring findable, and this assertion is about the ring
+   * being the right COLOUR, which is a thing no outline can stand in for.
+   */
+  it('lights an unclaimed destination in a colour that reads on its own tablet', () => {
+    const wall = theme.wall.fill;
+    const faded = mix(wall, theme.board.background, 1 - theme.board.beaconFade);
+    for (const [where, ground] of [
+      ['a reached destination', wall],
+      ['a beacon', faded],
+      ['an edge chip', wall],
+    ] as const) {
+      const ratio = contrastRatio(theme.ink.lit, ground);
+      expect(
+        ratio,
+        `${where}: lit ${at(theme.ink.lit)} on ${at(ground)} is ${ratio.toFixed(2)}:1; ` +
+          `${MARK} is the floor, and a destination nobody can see is a destination nobody walks to`,
+      ).toBeGreaterThanOrEqual(MARK);
+    }
+  });
+
+  /*
+   * There is deliberately NO assertion here that a lit destination reads as
+   * different from a spent one, and the reason is worth keeping. It was
+   * written first as `contrastRatio(lit, stone)` and then as
+   * `contrastRatio(wall, stone)`, and both failed the directions that have
+   * shipped and work: torchlit's two tablets are 2.10:1 apart and the
+   * placeholder's are 1.26:1. Neither number is a bug. Claimed and unclaimed
+   * are told apart by the GOLD — present, ringed and stippled on one, absent
+   * on the other — and "one of these has a colour the other does not" is not
+   * a contrast ratio between two swatches. The rule above is the whole rule;
+   * a second one invented to look thorough would have had to have its bar
+   * lowered until it could not fail, which is the thing this file's own
+   * header forbids.
+   */
 });

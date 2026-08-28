@@ -4,7 +4,49 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-27, from the phone — the fog stops lying, and every
+Last checkpoint: **2026-08-28 — the screens are looked at, in all three skins,
+on a device that has actually played.** Two harnesses and six fixes. **The
+harnesses:** `pnpm fixtures` plays real runs through the real reducer and folds
+each into the world, the record book, the purse and the diary the way
+`shell/keeper.ts` does — because every interesting screen this game owns is
+EMPTY on a virgin device, and the empty version is never the one that breaks.
+It rotates all 18 harness policies and wakes every third run at a held
+territory, after a first draft proved that one policy against one world is the
+same run twenty-six times (a world's geography is a pure function of its seed).
+`pnpm audit:screens` then walks the door, six panels, the manual's five tabs,
+the board at HERE and FIT, the purse and the end screen: **198 shots at 390×844
+in portrait**, 3 skins × {fresh, played, veryPlayed}, plus a DOM measurement of
+each for contrast, tap targets, overflow and clipped text. Its own config and an
+`*.audit.ts` name keep it out of the deploy gate — it makes pictures and a
+table, not a pass. **What it found, from Marc's phone and from the sweep:**
+daylight's `accent` was doing two jobs that are one job only on a dark board, so
+an unclaimed destination was ringed at **1.02:1** on the tablet it stands on and
+read as spent stone (**new `Ink.lit`** + **new `Board.beaconFade`**, both pinned
+by a new contrast rule); daylight's EMBER sat **0.022 L\* from the paper at
+1.06:1** with every test green, because nothing asked whether a terrain was
+tellable from the BOARD — only from the other terrains (**new
+`MIN_GROUND_CLEARANCE`**, and daylight's ladder repainted to pay it); the draft
+card never got the outline the manual's legend got on 2026-08-27 for the same
+measured reason; a decorative `opacity: 0.85` was spending the contrast
+`danger` had been raised to 0xe05244 to buy (4.00 against a bar of 4.5); the
+shop's disabled BUY buttons hid the one thing an empty purse needs to read,
+their own price, at 1.8:1. **And one reported finding was wrong**: the HUD
+stats looked like the one `role="button"` missing a thumb target, and checking
+the claim against the code before acting on it found `.stat::after { inset:
+-6px }` already there since 2026-08-21, sized against that row's own gap so
+neighbours meet exactly — the auditor had read `::before` and never `::after`.
+Auditor fixed, stylesheet reverted, and the hit-area block now says why `.stat`
+is deliberately absent from it. **The class is held permanently now** by
+`e2e/targets.spec.ts`, measured in a rendered page as the union of an element
+and both its pseudos — the source-level shape `NEXT.md` §4 parked would have
+missed it, since `.stat` declares no `min-height` at all. **880 tests, 33 e2e
+(+2), typecheck / lint / format / build clean, and the audit now reporting zero
+contrast, tap-target, overflow and clipped-text findings across all 198 shots**
+— against 76 contrast and 351 tap-target rows on its first run. **NOT played on
+a phone — and the daylight repaint is a palette Marc has not yet looked at.**
+The one gate is still Session C.
+
+Previous checkpoint: **2026-08-27, from the phone — the fog stops lying, and every
 control says what it will do.** Four asks, three of them mid-play. **The bug:**
 Marc, at a ★ he had reached before — "its the ui that makes it like nothings
 gonna happen, but all happen correctly, only the ui is grey and not shiny."

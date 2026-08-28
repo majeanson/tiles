@@ -332,6 +332,32 @@ export type Ink = {
    */
   readonly accent: Rgb;
   /**
+   * What an unclaimed destination is LIT with (2026-08-28).
+   *
+   * Split off `accent` because the two are the same colour only on a dark
+   * board, and every direction until daylight was dark. `accent` answers to
+   * the CHROME — it is read as text on panels and on the board background, so
+   * on a pale direction it has to be dark (daylight's is 0x64491c, 6.16:1 on
+   * vellum). A destination is the opposite job: it is a mark, on the wall's
+   * own dark ground, and it has to say "worth walking to" from across the
+   * map. Torchlit got both for free because its gold is bright and its board
+   * is black; daylight got neither — its accent sits at **1.02:1** over the
+   * ground a landmark stands on, so the ring, the lit dots and the whole
+   * "this is live" signal were invisible, and the marker read as spent
+   * stone. Marc, from the phone (2026-08-28): "the + and star, they are not
+   * yellow but grey and they seem inactive in light skin."
+   *
+   * `edgeCasing` had already found half of this on 2026-08-27 and names the
+   * same 1.02:1 in its own doc — but a casing makes a ring VISIBLE, not warm,
+   * and what was missing was the colour, not the outline. Every dark
+   * direction sets this to its own accent and nothing about them moves.
+   *
+   * The bar is `MIN_MARK_CONTRAST` against the destination's own ground, at
+   * both opacities it is ever drawn at — solid, and faded to a beacon. That
+   * is stated and checked in `contrast.test.ts`.
+   */
+  readonly lit: Rgb;
+  /**
    * The two rarities' OWN colours (Marc, 2026-08-20: "make sure magic and
    * unique have their own color, distinctive of the normal selected tile
    * color") — in torchlit the selected ring and the accent were the same
@@ -434,6 +460,20 @@ export type Board = {
    * without inventing a new colour for directions that never asked for one.
    */
   readonly home: { readonly ring: Rgb; readonly ringWidth: number };
+  /**
+   * How solid a BEACON is — a destination glowing through ground that has not
+   * been drawn yet (2026-08-28).
+   *
+   * One hard-typed 0.55 in `PixiRenderer` until now, and it is the same
+   * inversion `clearance` was written for: a beacon fades toward the board so
+   * it reads as "out there, not here", and on a black board a 45% wash of
+   * black keeps the tablet dark and every gold mark on it intact. On vellum
+   * the identical rule washes the tablet 45% of the way to 0.88 L*, landing
+   * it in the mid-greys — which is where a warm mark and a dark glyph both
+   * die, and is exactly what Marc's light-skin screenshot shows. Same intent,
+   * different amount, so the amount becomes a token the direction states.
+   */
+  readonly beaconFade: number;
   /**
    * The depth pass every baked surface wears (2026-08-25, promoted out of
    * `render/bake.ts` where both numbers were hand-typed).

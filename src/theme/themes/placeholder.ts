@@ -36,6 +36,7 @@ export const PLACEHOLDER: Theme = {
     // well under `ripeEdgeWidth` — a marker every theme renders something for,
     // not a fifth colour invented for one token.
     home: { ring: 0xe8ecf4, ringWidth: 0.07 },
+    beaconFade: 0.55,
     // The control's depth pass: the exact alphas `bake.ts` hand-typed for every
     // direction before they became tokens (2026-08-25). Unchanged on purpose —
     // moving the placeholder's would make it a second opinion instead of one.
@@ -57,6 +58,9 @@ export const PLACEHOLDER: Theme = {
     // a panel, both under the bar for text nobody is asked to squint at.
     inkFaint: 0x828a99,
     accent: 0xe8ecf4,
+    // The control direction has one bright chrome colour and reuses it here,
+    // which is what every dark direction does.
+    lit: 0xe8ecf4,
     // Plain but its own (2026-08-20): even the placeholder must keep the
     // rarities apart from its white accent/selection, or the contract
     // "magic and unique have their own colour" only holds in one theme.

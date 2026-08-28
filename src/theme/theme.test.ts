@@ -69,6 +69,18 @@ const MIN_STONE_SEPARATION = 0.03;
  */
 const MIN_WALL_CLEARANCE = 0.045;
 
+/**
+ * Live ground against the board (2026-08-28).
+ *
+ * Twice the wall's floor, and deliberately: a wall has a hard band pattern and
+ * a solid dark mass doing half the work, where a placed tile is a plain
+ * gradient whose only claim on your attention is that it is not the paper. The
+ * number is set where the two dark directions already sit comfortably —
+ * torchlit's worst is MOSS's dark end at 0.145 — so it costs them nothing and
+ * asks the one pale direction the question its palette was never asked.
+ */
+const MIN_GROUND_CLEARANCE = 0.1;
+
 describe('the registry', () => {
   it('defaults to the direction Gate E chose', () => {
     // Not a style preference, in either direction. For eleven sessions this
@@ -158,6 +170,41 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
         `terrains ${i - 1} and ${i} are ${gap.toFixed(3)} apart in luma; ` +
           `the board needs ${MIN_SEPARATION} to survive greyscale`,
       ).toBeGreaterThanOrEqual(MIN_SEPARATION);
+    }
+  });
+
+  /**
+   * ...and separates them from the BOARD as well as from each other.
+   *
+   * The gap in the rule above, found by Marc's phone on 2026-08-28 ("ember in
+   * light skin has no contrast compared to torchlit") and not by any test
+   * here: the ladder asks whether the four terrains are tellable apart, and a
+   * palette can satisfy that perfectly while one of its rungs sits on top of
+   * the paper. Daylight's EMBER did — 0.022 L* from the background, 1.06:1,
+   * a tile whose own SILHOUETTE was invisible — and every direction was
+   * green, because no dark direction can fail this: black is already the
+   * furthest thing from every colour they paint.
+   *
+   * Both ENDS, like `contrast.test.ts`: a gradient that starts clear of the
+   * paper and finishes on it is still half a tile you cannot see. Stone is
+   * deliberately exempt and always will be — "a tile that popped leaves the
+   * map looking undrawn" is daylight's own words for a signal it sends ON
+   * purpose, and stone sits 0.062 from the paper because of it.
+   */
+  it('separates every live terrain from the board it is drawn on', () => {
+    const bg = theme.board.background;
+    for (const colour of COLOURS) {
+      const s = theme.terrain[colour];
+      const ends: [string, number][] = [['fill', s.fill]];
+      if (s.fillTo !== null) ends.push(['fillTo', s.fillTo]);
+      for (const [end, paint] of ends) {
+        const gap = clearance(paint, bg);
+        expect(
+          gap,
+          `${theme.terrainNames[colour]}'s ${end} sits ${gap.toFixed(3)} from the board; ` +
+            `${MIN_GROUND_CLEARANCE} is the floor that keeps a placed tile a visible shape`,
+        ).toBeGreaterThanOrEqual(MIN_GROUND_CLEARANCE);
+      }
     }
   });
 

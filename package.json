@@ -17,7 +17,9 @@
     "format:check": "prettier --check .",
     "sim": "tsx scripts/sim.ts",
     "deploy": "wrangler deploy",
-    "verify:deploy": "tsx scripts/verify-deploy.ts"
+    "verify:deploy": "tsx scripts/verify-deploy.ts",
+    "fixtures": "tsx scripts/fixtures.ts",
+    "audit:screens": "playwright test --config playwright.audit.config.ts"
   },
   "dependencies": {
     "pixi.js": "^8.19.0"
