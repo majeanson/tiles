@@ -117,7 +117,7 @@ torchlit)` non-empty, ≤ ~3 sentences · every glossary term occurs in
    the full-ledger manual text (reuse `game.test.ts`'s `openFullManual`
    pattern) — no dead definitions nobody can tap.
 
-## Stage 4 — Tappable terms and the definition card (STATUS: TODO)
+## Stage 4 — Tappable terms and the definition card (STATUS: DONE, commit `1097bf6`)
 
 1. `src/ui/tips.ts`: refactor `rarityInked` around a shared splitter and
    add `conceptInked(text, open)` — one regex from all glossary terms +
@@ -175,5 +175,9 @@ manual.
 
 ## After the pipeline
 
-Marc's phone pass over the four stages (glyph legibility is his verdict, by
-looking) · then back to the pre-tag close: a phone pass and Session C.
+All four stages are built and green (typecheck, lint, format, `pnpm sim`
+byte-identical, unit and e2e all passing, CI green on every commit). What is
+left is Marc's own verdict, on the deployed site, on a phone: the five glyphs
+from Stage 1, the HUD's `✤` in portrait from Stage 2, and now Stage 4's tap
+targets, the card's legibility over the manual, and focus behaviour on GOT IT
+and Escape — then back to the pre-tag close: a phone pass and Session C.
