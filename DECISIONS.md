@@ -6,6 +6,13 @@ one had been answered, and the file had not been told. Corrected wholesale
 states its answer, with the date and where the evidence lives. **D4 — the
 stranger test — is the one still waiting, and it is the v1.0 gate.**
 
+**Three open, one gating (amended 2026-08-28).** D4 is still the only one that
+gates the TAG. D22 (telemetry, and what the privacy line costs) and D23 (the
+first-run acknowledgement) were opened on 2026-08-28 and are both post-tag by
+construction — D22 needs a backend D13 rules out for 1.0, and D23 is
+deliberately sequenced after Session C so that it cannot contaminate the
+measurement it would otherwise help. Neither may displace D4.
+
 ---
 
 ## A. Was blocked on play — play happened (two debriefs, 2026-08-15 and 2026-08-19)
@@ -174,3 +181,54 @@ directly under the image. Baked by `scripts/social.ts` from the same
 terrain art the live board serves, deterministic like every other bake.
 The same sitting kept the onward-share line (one quiet end-screen
 sentence for a run that arrived by `?seed=`, shipped in Session 44).
+
+### D22 — Telemetry, and what the privacy line costs — OPEN, post-1.0
+
+Marc, 2026-08-28: "id like to be able to gather game data to balance things out
+once people play." Recorded as OPEN rather than ruled, because it is a promise
+question before it is an engineering one.
+
+The promise exists and is on screen, in SETTINGS, in words a player reads:
+**"Nothing leaves your phone: no account, no analytics, no server."** So there
+are only two honest options, and picking one is Marc's:
+
+- **(a) Keep the line, take no analytics.** Balance stays answered by the sim
+  harness and by the runs players choose to send by hand.
+- **(b) Amend the line in the same commit that adds collection**, and make the
+  collection consent-first the way `meta/report.ts` already is: a report leaves
+  the device only when a human taps SEND REPORT, nothing at boot or on a timer,
+  and SETTINGS says so.
+
+There is no third option where the line stays and data flows. This project has
+already made that mistake once: a fonts.googleapis.com link carried every
+player's IP to Google while the README claimed otherwise, until the fonts were
+self-hosted on 2026-08-20.
+
+Two facts that make (b) cheap when it is chosen. D13's own note records that
+the timeline was "deliberately shaped as self-describing dated events a future
+backend could ingest unchanged" — the data model was built for this. And the
+right payload is the TIMELINE, not the world blobs: it is the part that answers
+balance questions and the part that carries no map.
+
+What (b) still needs is a backend, which D13 rules out for 1.0 and explicitly
+leaves the door open for after. So: post-tag either way.
+
+### D23 — The first-run acknowledgement — OPEN, sequenced after Session C
+
+Marc, 2026-08-28: "could we have a congratulations you played your first game
+(either first world or daily) then based on this we unlock new features?"
+
+Not ruled on content. Ruled on TIMING, and the reason is worth keeping: the
+v1.0 gate is "did they finish a run AND start another", and this feature is a
+mechanism for converting the first half into the second. Shipping it before
+Session C means a stranger who starts a second run tells us nothing — the game
+and the confetti cannot be separated — and Session A's clean pass of 2026-08-28
+would no longer cover the build they met. **A stranger is a one-shot resource;
+they meet the game for the first time exactly once.**
+
+The recommendation on content, for when it is ruled: probably not a third
+unlock axis. `CLAUDE.md` already says "run one is the smallest game there is;
+depth arrives by unlock", and run one already opens the shop door and mints
+relics. What is missing is the ACKNOWLEDGEMENT, not the unlock — an end-screen
+beat on the first finished run that names what just opened. See `ROADMAP.md`'s
+parking lot.

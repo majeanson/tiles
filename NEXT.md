@@ -120,6 +120,25 @@ Pixi behind a 14-method interface on one stable host div, and four hand-rolled
 components already in place. The honest argument for it is `resetShell()`'s
 30-id list, which React deletes rather than ports.
 
+## 3c. Proposed 2026-08-28, parked with reasons — no one blocked
+
+Three ideas from Marc, all recorded in full in `ROADMAP.md`'s parking lot and
+two of them as open decisions (`DECISIONS.md` D22, D23). None displaces §1.
+
+- **A first-run congratulations that unlocks** (D23) — sequenced AFTER Session
+  C, because it is a mechanism for converting "finished a run" into "started
+  another", which is the gate itself. Ship it first and the stranger cannot
+  tell you whether it was the game or the confetti. Probably an end-screen
+  beat rather than a third unlock axis.
+- **Balance telemetry** (D22) — a promise question before an engineering one.
+  SETTINGS says "no account, no analytics, no server" on screen; either that
+  line stays and there are none, or it moves in the same commit that adds
+  them. Needs a backend, which D13 rules out for 1.0.
+- **The playtest console** — the right FIRST React project: a new surface with
+  no legacy to fight, and genuinely component-shaped. A static
+  `playtest.html` beside `gallery.html` is the half-session version if
+  phone friction is ever what holds the gate.
+
 ## 4. Known and deliberately not done — no one blocked
 
 - **`src/main.ts` has no unit tests** — largely overtaken: it is ~90 lines

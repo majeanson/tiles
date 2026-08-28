@@ -209,6 +209,67 @@ on purpose.
 
 ## Post-1.0 parking lot
 
+- **The first-run acknowledgement** (proposed 2026-08-28, Marc: "could we have
+  a congratulations you played your first game (either first world or daily)
+  then based on this we unlock new features?"). **Sequenced after Session C,
+  not ruled on content.** Two notes for whoever builds it:
+
+  It is smaller than it sounds, and probably should not be a new unlock AXIS.
+  `CLAUDE.md` already rules "run one is the smallest game there is; depth
+  arrives by unlock", and the game already opens up after run one — relics
+  exist, the shop door appears, NEW RUN sits under the score. There are two
+  gating axes today (shrines, per world; the shop, by relics) and a third
+  keyed to "your first finished run" is a system where a SENTENCE would do.
+  What is actually missing is the acknowledgement: the game opens things and
+  never says so. The cheap honest version is an end-screen beat on the first
+  finished run that NAMES what just opened.
+
+  **Why it waits for the stranger.** The gate is "did they finish a run AND
+  start another", and this feature is a mechanism for converting the first
+  half into the second. Build it before Session C and a stranger who starts a
+  second run tells you nothing — you cannot separate the game from the
+  confetti — and Session A's clean pass no longer covers the build they met. A
+  stranger is a one-shot resource. If they DO start another, this is 1.1
+  polish; if they do not, the reason they stopped says whether this is the
+  right fix or whether something else is.
+
+- **Balance telemetry** (proposed 2026-08-28, Marc: "id like to be able to
+  gather game data to balance things out once people play"). **Post-1.0 by
+  D13, and the shape is already chosen by this repository.** Three
+  constraints, all of them existing facts rather than opinions:
+
+  1. **SETTINGS says, in words a player reads: "Nothing leaves your phone: no
+     account, no analytics, no server."** Silent collection makes that line a
+     lie. This project has been burned by exactly that once — a
+     fonts.googleapis.com link made the same claim false until the fonts were
+     self-hosted on 2026-08-20. **The privacy line moves in the same commit as
+     any analytics, or there are no analytics.**
+  2. **The crash reporter is the template** (`meta/report.ts`): a report leaves
+     the device ONLY when a human taps SEND REPORT; nothing runs at boot, on
+     error, or on a timer; one hand-rolled envelope POST, no SDK; and SETTINGS
+     states the contract. Run data should be the same shape — one explicit
+     SHARE MY RUN DATA tap.
+  3. **The data model already exists and was built for this.** D13's own note:
+     the timeline's storage was "deliberately shaped as self-describing dated
+     events a future backend could ingest unchanged", and `meta/backup.ts`
+     already encodes device state. Send the TIMELINE, not the world blobs —
+     it is the part that answers balance questions and the part that carries
+     no map.
+
+  What it genuinely needs that does not exist: a backend, which is what D13
+  rules out for 1.0 and explicitly leaves the door open for after.
+
+- **The playtest console** (proposed 2026-08-28): a live, tickable Session
+  A/B/C checklist Marc works through on the phone while the AI reads and
+  writes findings back. Post-1.0, and it is the **right first React project** —
+  better justified than porting the game chrome, because it is a new surface
+  with no legacy to fight (the chrome port means ~8,675 lines of DOM code and
+  5,954 lines of DOM-coupled tests, for zero user-visible gain), and because
+  checkboxes, notes and live sync are genuinely what React is good at. The one
+  caveat recorded honestly: if friction running `PLAYTEST.md` from a phone is
+  what holds the gate, a static `playtest.html` beside `gallery.html` is half a
+  session and unblocks it — say so and it gets built first.
+
 - **Tier 1 uniques** (`ideas/uniques.md`): Ashbound Seal, Everbloom, Leap,
   The Hoard. Parked whole on 2026-08-18 — Marc chose to build none of the
   four for 1.0. Rejected on scope, not merit: each is a real build-definer
