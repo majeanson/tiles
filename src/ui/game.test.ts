@@ -135,6 +135,7 @@ function build(
           <p id="term-card-glyph"></p>
           <p id="term-card-name"></p>
           <p id="term-card-text"></p>
+          <div id="term-card-figure"></div>
           <button id="term-card-dismiss">GOT IT</button>
         </div>
       </div>
@@ -190,6 +191,7 @@ function build(
     termCardGlyph: pick('term-card-glyph'),
     termCardName: pick('term-card-name'),
     termCardText: pick('term-card-text'),
+    termCardFigure: pick('term-card-figure'),
     termCardDismiss: pick<HTMLButtonElement>('term-card-dismiss'),
   };
 
@@ -3375,6 +3377,27 @@ describe('a glossary term inside the manual opens its own card', () => {
     findTerm(ctx, 'LUCK').click();
     expect(ctx.el.termCardGlyph.hidden).toBe(false);
     expect(ctx.el.termCardGlyph.textContent).toBe(CONCEPT_MARK.luck);
+  });
+
+  /**
+   * "when you get helped in game, its help you can review there" (Marc,
+   * 2026-08-28), at full strength: the word you tap in the manual shows the
+   * SAME picture the teaching card showed you at first contact, because the
+   * figure belongs to the lesson rather than to any one door.
+   */
+  it('draws the lesson’s own figure beside a definition that has one', () => {
+    const ctx = openStart();
+    findTerm(ctx, 'RIPENS').click();
+    expect(ctx.el.termCardFigure.querySelectorAll('.fig-hex').length).toBe(7);
+    // Captionless, like the teaching card: the definition just above it has
+    // stated the rule in full, and the caption would say it a second time.
+    expect(ctx.el.termCardFigure.querySelector('.flag-note')).toBeNull();
+    ctx.el.termCardDismiss.click();
+
+    // ...and nothing at all where the lesson has no picture, so the node
+    // collapses rather than reserving space for an absent one.
+    findTerm(ctx, 'POCKET').click();
+    expect(ctx.el.termCardFigure.children.length).toBe(0);
   });
 
   it('GOT IT hides the card, un-inerts the manual, and returns focus to the term', () => {

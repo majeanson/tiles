@@ -80,6 +80,7 @@ function openFullManual(): string {
           <p id="term-card-glyph"></p>
           <p id="term-card-name"></p>
           <p id="term-card-text"></p>
+          <div id="term-card-figure"></div>
           <button id="term-card-dismiss">GOT IT</button>
         </div>
       </div>
@@ -135,6 +136,7 @@ function openFullManual(): string {
     termCardGlyph: pick('term-card-glyph'),
     termCardName: pick('term-card-name'),
     termCardText: pick('term-card-text'),
+    termCardFigure: pick('term-card-figure'),
     termCardDismiss: pick<HTMLButtonElement>('term-card-dismiss'),
   };
 

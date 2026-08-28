@@ -2157,11 +2157,13 @@ button.armed {
    Reuses the manual's own .help-figure skin verbatim — same table, same
    renderer, same CSS — so the card and the page you re-read it on cannot
    drift into looking like two different games. Collapsed when absent. */
-#event-card-figure:empty {
+#event-card-figure:empty,
+#term-card-figure:empty {
   display: none;
 }
 
-#event-card-figure {
+#event-card-figure,
+#term-card-figure {
   display: flex;
   justify-content: center;
   margin: 2px 0 6px;
@@ -2169,7 +2171,8 @@ button.armed {
 
 /* The manual gives a figure room above and below; on a card the lead and the
    button are already doing that, so the wrap gives its margin back. */
-#event-card-figure .help-figure-wrap {
+#event-card-figure .help-figure-wrap,
+#term-card-figure .help-figure-wrap {
   margin: 0;
 }
 

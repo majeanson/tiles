@@ -1341,6 +1341,7 @@ async function buildSession(route: Route): Promise<Session> {
     termCardGlyph: required('term-card-glyph'),
     termCardName: required('term-card-name'),
     termCardText: required('term-card-text'),
+    termCardFigure: required('term-card-figure'),
     termCardDismiss: required<HTMLButtonElement>('term-card-dismiss'),
   };
 

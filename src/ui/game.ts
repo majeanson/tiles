@@ -227,6 +227,7 @@ export type Elements = {
   readonly termCardGlyph: HTMLElement;
   readonly termCardName: HTMLElement;
   readonly termCardText: HTMLElement;
+  readonly termCardFigure: HTMLElement;
   readonly termCardDismiss: HTMLButtonElement;
 };
 
@@ -1467,6 +1468,28 @@ export class Game {
     // open ANOTHER card mid-read is a rabbit hole, not an answer.
     this.#el.termCardText.replaceChildren(
       ...rarityInked(entry.define(this.#state.tuning, this.#theme)),
+    );
+    // ...and the lesson's own picture, where it has one (2026-08-28). The
+    // same figure the manual draws and the teaching card draws, because it
+    // belongs to the LESSON rather than to any one door — which is the whole
+    // of "when you get helped in game, its help you can review there".
+    // Captionless for the same reason a card is: the definition above it has
+    // just stated the rule in full.
+    const lesson = lessonOf(entry.id);
+    this.#el.termCardFigure.replaceChildren(
+      ...(lesson?.figure === undefined
+        ? []
+        : [
+            drawFigure(
+              lesson.figure,
+              {
+                art: this.#art,
+                orientation: this.#theme.orientation,
+                names: this.#theme.terrainNames,
+              },
+              { caption: false },
+            ),
+          ]),
     );
     this.#el.termCard.hidden = false;
     openDialog({
