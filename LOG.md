@@ -7098,7 +7098,7 @@ a fourth sibling in `#app`, styled by widening `#event-card`'s selectors
 (`#event-card, #term-card`, `#event-card-panel, #term-card-panel`, and so on
 through the glyph, the text and GOT IT) rather than a second copy of the same
 rules — only the z-index and the curtain's ember-theme keyframes needed a
-line of their own, because a term card can open over the manual (z 5) *or*
+line of their own, because a term card can open over the manual (z 5) _or_
 over MORE (z 4) depending which door a reader came through, so it sits at z
 7, above both. `#term-card-name` is the one row the event card never needed
 — the term itself, between the glyph and the definition — and the glyph node
@@ -7113,7 +7113,7 @@ the same contract the manual and the event card already lean on.
 **`.term` had one real fight: the cascade.** MAGIC/UNIQUE buttons carry both
 `.term` and their own `ink-magic`/`ink-unique` class, and both rules set
 `color` at equal specificity — so `.term`'s `color: inherit` had to land
-*before* `.ink-magic`/`.ink-unique` in the file, or a magic word would have
+_before_ `.ink-magic`/`.ink-unique` in the file, or a magic word would have
 lost its purple the moment it became tappable. It sits just above them now,
 with a comment saying why, rather than reaching for `!important` or a second
 selector.
