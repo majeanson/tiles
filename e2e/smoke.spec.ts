@@ -515,5 +515,38 @@ test('the end screen carries a real picture of the run, not a blank capture', as
   expect(base64, 'the snapshot src is not a PNG data URL').not.toBeUndefined();
   assertLooksLikeAPicture(Buffer.from(base64 as string, 'base64'), 'the end-screen snapshot');
 
+  /**
+   * The points breakdown (2026-08-27), on the one path that actually reaches
+   * an end screen with points on it. The unit suite proves the arithmetic —
+   * that all three axes total what was banked — and cannot prove the fold
+   * renders: it is built from `hud.summary.points`, which is `null` for any
+   * run whose harvests carry no split, and a silently absent DETAILS is
+   * exactly the failure a green unit suite would sail past.
+   *
+   * This walk takes POINTS at every harvest it is offered one (see the
+   * button order in `clearWhatBlocksTheNextTap`), so the run banks pop
+   * points and the fold must be there.
+   */
+  const breakdown = page.locator('.end-breakdown');
+  await expect(breakdown, 'the end screen banked points but shows no DETAILS fold').toBeVisible();
+  await expect(breakdown.locator('summary')).toHaveText('DETAILS');
+  // Shut by default: the basic score is what the screen opens on, and the
+  // distribution is the thing you ask for.
+  expect(await breakdown.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(false);
+
+  await breakdown.locator('summary').click();
+  await expect(breakdown.locator('.end-breakdown-title')).toHaveText([
+    'BY COLOUR',
+    'BY RARITY',
+    'BY SOURCE',
+  ]);
+  // Every row carries a count and its share, and at least one row under each
+  // heading paid — a fold of three empty headings is the same bug as no fold.
+  const rows = breakdown.locator('.end-payout-row');
+  expect(await rows.count()).toBeGreaterThanOrEqual(3);
+  for (const text of await rows.allTextContents()) {
+    expect(text, 'a breakdown row is missing its count or its share').toMatch(/\d+ · \d+%/);
+  }
+
   expect(errors).toEqual([]);
 });

@@ -77,7 +77,15 @@ lengths fun. A player-picked length was never built — the game chose.
 ### D10 — Difficulty — ANSWERED (a): right (2026-08-19)
 
 The rebalance verdict was positive; the lean start did not read as
-punishing. Do not retune a working economy days before launch.
+punishing.
+
+This entry used to close "do not retune a working economy days before
+launch". **Amended 2026-08-27**: the ruling on DIFFICULTY stands and is not
+reopened — what is withdrawn is the blanket sentence after it, which by then
+was being read as a freeze on every number in the game rather than as a
+finding about this one. A perk that doubled a score on a run's first
+placement was not a working economy, and the rule as written would have
+shipped it. The replacement is in `PLAYTEST.md`: a retune needs evidence.
 
 ---
 

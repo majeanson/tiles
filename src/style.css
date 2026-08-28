@@ -1609,6 +1609,71 @@ button.armed {
   font-weight: 600;
 }
 
+/* WHERE the points came from (2026-08-27), folded exactly the way the manual
+   folds its own DETAILS. The manual's `.help-more` rules are scoped to
+   `#help-panel` and this fold lives on the end screen, so the control is
+   restated here rather than the selector loosened — the panel's copy carries
+   a footnote treatment for its prose that a column of numbers must not
+   inherit. Same word, same marker, same 44px floor: a player who has opened
+   one has learned both. */
+.end-breakdown {
+  max-width: var(--menu-col, 320px);
+  margin: 0 auto 10px;
+}
+
+.end-breakdown > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--panel-edge, #3a4150);
+  border-radius: 3px;
+  color: var(--ink-dim, #8a91a0);
+  font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 0.8125rem;
+  letter-spacing: var(--label-tracking, 0.04em);
+  cursor: pointer;
+  list-style: none;
+}
+
+.end-breakdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.end-breakdown > summary::after {
+  content: '+';
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.end-breakdown[open] > summary {
+  margin-bottom: 10px;
+  border-color: var(--accent, #d7b45a);
+  color: var(--accent, #d7b45a);
+}
+
+.end-breakdown[open] > summary::after {
+  content: '−';
+}
+
+/* Three groups in one column, each headed by the axis it counts along. The
+   heading is the quietest thing in the fold on purpose: the numbers are what
+   was asked for, and a loud header between every four rows would chop the
+   column into three screens' worth of furniture. */
+.end-breakdown-title {
+  margin: 12px 0 4px;
+  color: var(--ink-faint, #6b7280);
+  font-family: var(--font-label, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 0.6875rem;
+  letter-spacing: var(--label-tracking, 0.04em);
+}
+
+.end-breakdown-title:first-of-type {
+  margin-top: 0;
+}
+
 /* A label/value grid in the stat row's own language (`.stat-label` /
    `.stat-value`, restated at settings scale) — used twice: the end screen's
    six fixed cells (the shape of that screen must not jump between a short

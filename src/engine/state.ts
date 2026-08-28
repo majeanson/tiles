@@ -156,7 +156,54 @@ export type HarvestRecord = {
   readonly choice: HarvestChoice;
   readonly tiles: number;
   readonly points: number;
+  /**
+   * WHERE this harvest's points came from (2026-08-27, Marc: "in our stats
+   * end run we could see our points distribution and like 'normal' tile
+   * points, blue points, unique points, moss points").
+   *
+   * Recorded here rather than accumulated on `log` because a harvest is the
+   * only moment the answer is knowable — the tiles are stone a line later and
+   * the board can no longer be asked. Absent on a harvest that banked no
+   * points, and absent on every harvest of a run saved before today, which is
+   * why every reader treats `undefined` as "no breakdown" rather than as
+   * zeroes. See `pointsSplit`.
+   */
+  readonly split?: PointsSplit;
 };
+
+/**
+ * One scoring harvest, taken apart three ways.
+ *
+ * The same points counted three times over, not three different numbers:
+ * `byColour`, `byRarity` and `bySource` each sum to `total`. That is the
+ * whole contract, it is what lets the end screen print any of the three
+ * without a caveat, and `rules.test.ts` pins it.
+ */
+export type PointsSplit = {
+  readonly total: number;
+  readonly byColour: Readonly<Record<Colour, number>>;
+  readonly byRarity: Readonly<Record<'common' | 'magic' | 'unique', number>>;
+  readonly bySource: Readonly<Record<PointSource, number>>;
+};
+
+/**
+ * The seven things that can pay a point, in the order they are peeled off.
+ *
+ * Order is load-bearing rather than cosmetic: every one of these is measured
+ * as a DIFFERENCE — the board re-tallied with one rule switched off — so
+ * "what the colour's power earned" only means something once you have said
+ * what it is being compared against. See `pointsSplit` for the exact ladder.
+ *
+ *   matches   one per matching neighbour, the game's floor
+ *   power     green crowds, yellow company, red ash, blue tide
+ *   rare      what this tile's own magic or unique rarity added
+ *   native    the tile standing on its own colour's ground
+ *   pocket    what harvesting many at once multiplied it by
+ *   distance  what cashing it far from home multiplied it by
+ *   bounty    what a collected bounty multiplied it by
+ */
+export type PointSource =
+  'matches' | 'power' | 'rare' | 'native' | 'pocket' | 'distance' | 'bounty';
 
 export type GameState = {
   readonly version: 1;
@@ -302,6 +349,20 @@ export type GameState = {
     readonly popped: number;
     /** Bounties collected this run. The end screen counts them. */
     readonly questsDone: number;
+    /**
+     * Points paid by claiming ★ SITES outright, which is the one scoring
+     * channel that is not a harvest (2026-08-27).
+     *
+     * Tracked because the end screen's payout row called `POPS` was
+     * quietly the sum of two different things — pops AND sites — and the
+     * points breakdown underneath it, which can only speak for tiles that
+     * were popped, therefore did not add up to the row above it. A run of
+     * mine showed POPS 94 over a breakdown totalling 19; the missing 75 was
+     * four sites. Separating them is what lets both numbers be true.
+     *
+     * Absent on a run saved before today, so every reader takes `?? 0`.
+     */
+    readonly sitePoints?: number;
   };
 };
 

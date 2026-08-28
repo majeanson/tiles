@@ -51,14 +51,18 @@ colour lens. None of it has been seen by a human on a phone.
 
 **Both answers in (LOG Session 47): pop-vs-burn-vs-wait FELT LIKE A
 DECISION (first datapoint on the standing v1.1 question), and the relic
-pace EARNS. The balance is FROZEN — copy and crashes only until the tag.**
+pace EARNS.**
+
+**The freeze this session declared was LIFTED on 2026-08-27**, by Marc,
+after playing ROOTBOUND to a 52k high and asking for it repriced. See
+"Standing rules" below.
 
 One long home-world run, two questions:
 
 - **Pop-vs-burn-vs-wait** — does WHEN feel like a decision? (A standing
   v1.1 question by your ruling; still worth the first datapoint.)
 - **The relic pace** — `FOLLOWUP.md` §4 has the numbers; do early runs
-  feel like they earn? After this session the balance freezes for launch.
+  feel like they earn?
 
 ## Session C — the stranger test (Day 4, the v1.0 gate)
 
@@ -73,5 +77,13 @@ beyond "try this". Watch the first minute only, then leave them alone.
 
 - A confusing moment is a FINDING, not a failure — one sentence each.
 - No coaching during the stranger test. A question they ask IS the bug.
-- Nothing retunes after Session B. Launch-day changes are copy and
-  crashes only.
+- **The tuning freeze is lifted (2026-08-27).** This line used to read
+  "nothing retunes after Session B; launch-day changes are copy and
+  crashes only", and it was a good rule right up until play disagreed
+  with a number. Marc found ROOTBOUND, doubled his score on the first
+  placement of a run, scored a 52k high, and asked for it repriced — and
+  a rule that would have shipped a known-broken perk to strangers in
+  order to protect a schedule is the wrong rule. What replaces it is not
+  "retune freely": it is that a change to a number now needs the thing
+  the freeze was standing in for, which is EVIDENCE. Play found it, or
+  the harness did. A retune argued from taste alone still does not land.

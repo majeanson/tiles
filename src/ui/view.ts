@@ -18,7 +18,14 @@ import {
   withinBeaconHorizon,
   worthOf,
 } from '@engine/rules';
-import type { GameState, HarvestChoice, LandmarkReward, Rarity, Spend } from '@engine/state';
+import type {
+  GameState,
+  HarvestChoice,
+  LandmarkReward,
+  PointsSplit,
+  Rarity,
+  Spend,
+} from '@engine/state';
 import {
   destinationAt,
   destinationsWithin,
@@ -761,6 +768,17 @@ export type HudView = {
     readonly harvests: number;
     readonly tilesTaken: number;
     readonly pointsTaken: number;
+    /**
+     * Where the run's POP points came from, counted three ways (2026-08-27,
+     * Marc: "in our stats end run we could see our points distribution").
+     * Every scoring harvest's own `split`, summed. `null` when the run banked
+     * nothing from pops, and when a run saved before today is finished — its
+     * harvests carry no splits and inventing zeroes would be a lie shaped
+     * like data.
+     */
+    readonly points: PointsSplit | null;
+    /** Points paid by claiming sites outright — see `log.sitePoints`. */
+    readonly sitePoints: number;
   } | null;
 };
 
@@ -914,6 +932,8 @@ function summariseRun(state: GameState): NonNullable<HudView['summary']> {
   let biggestPlacement = 0;
   let tilesTaken = 0;
   let pointsTaken = 0;
+  const points = emptySplit();
+  let anySplit = false;
   for (const h of state.log.harvests) {
     // Same fix as `recordRun` (2026-08-21): a burn and a treasure are
     // sacrifices, not a payout taken one way rather than the other, and
@@ -924,6 +944,10 @@ function summariseRun(state: GameState): NonNullable<HudView['summary']> {
     if (h.points > biggestHarvest) {
       biggestHarvest = h.points;
       biggestPlacement = h.at;
+    }
+    if (h.split !== undefined) {
+      anySplit = true;
+      addSplit(points, h.split);
     }
   }
 
@@ -941,8 +965,50 @@ function summariseRun(state: GameState): NonNullable<HudView['summary']> {
     harvests: state.log.harvests.length,
     tilesTaken,
     pointsTaken,
+    points: anySplit ? points : null,
+    sitePoints: state.log.sitePoints ?? 0,
   };
 }
+
+/** A zeroed split, to fold every harvest's own into. */
+function emptySplit(): Mutable<PointsSplit> {
+  return {
+    total: 0,
+    byColour: { green: 0, yellow: 0, red: 0, blue: 0 },
+    byRarity: { common: 0, magic: 0, unique: 0 },
+    bySource: {
+      matches: 0,
+      power: 0,
+      rare: 0,
+      native: 0,
+      pocket: 0,
+      distance: 0,
+      bounty: 0,
+    },
+  };
+}
+
+/**
+ * Add one harvest's split into the running total, in place.
+ *
+ * Summing whole points rather than re-deriving from worth is what keeps the
+ * run's three axes agreeing with each other: each harvest already settled its
+ * own rounding against its own banked points (`pointsSplit`), so the sums
+ * inherit that and cannot drift.
+ */
+function addSplit(into: Mutable<PointsSplit>, from: PointsSplit): void {
+  into.total += from.total;
+  for (const c of COLOURS) into.byColour[c] += from.byColour[c];
+  for (const r of ['common', 'magic', 'unique'] as const) into.byRarity[r] += from.byRarity[r];
+  for (const k of Object.keys(into.bySource) as (keyof PointsSplit['bySource'])[]) {
+    into.bySource[k] += from.bySource[k];
+  }
+}
+
+/** Writable mirror of `PointsSplit`, for the fold above and nowhere else. */
+type Mutable<T> = {
+  -readonly [K in keyof T]: T[K] extends object ? { -readonly [J in keyof T[K]]: T[K][J] } : T[K];
+};
 
 /**
  * Gate D's question, answered in words (2026-08-26): where the run's biggest

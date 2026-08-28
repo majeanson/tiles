@@ -172,6 +172,8 @@ describe('the hud', () => {
       harvests: 5,
       tilesTaken: 5,
       pointsTaken: 0,
+      points: null,
+      sitePoints: 0,
       ...over,
     });
 

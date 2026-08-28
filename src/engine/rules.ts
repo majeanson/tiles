@@ -1,6 +1,6 @@
-import type { Colour, Tuning } from '@content/tuning';
+import { COLOURS, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from './hex';
-import type { Cell, GameState, Rarity, Tile } from './state';
+import type { Cell, GameState, PointsSplit, PointSource, Rarity, Tile } from './state';
 
 /**
  * The six rules, as functions. Nothing here decides anything — the reducer does
@@ -519,6 +519,190 @@ export function harvestValue(
     questPays,
     treasure: treasureFor(pops.length, t),
   };
+}
+
+/**
+ * One tile's worth, taken apart into the four rules that built it.
+ *
+ * Measured, never estimated — the same technique `colourPotentials` uses for
+ * the live board: re-tally with one rule switched off and take the
+ * difference. The peeling ORDER is the definition, because each step is a
+ * difference against the step before it:
+ *
+ *   1. plain matching, with no personality, no rarity and no ground
+ *   2. + the colour's own power   -> `power`
+ *   3. + this tile's own rarity   -> `rare`
+ *   4. + the ground it stands on  -> `native`
+ *
+ * A neighbour's rarity is deliberately left alone at step 3: what is being
+ * asked is what THIS tile's magic or unique earned, and a wild neighbour
+ * lifting this tile is that neighbour's doing, counted under its own row.
+ *
+ * The four sum to the tile's real worth by construction, with one exception —
+ * ROOTBOUND rounds — so the caller reconciles. See `pointsSplit`.
+ */
+export function worthParts(
+  cells: Cells,
+  k: HexKey,
+  t: Tuning,
+  home: { q: number; r: number },
+  luck: number,
+): { matches: number; power: number; rare: number; native: number; total: number } {
+  const cell = cells[k];
+  if (cell?.kind !== 'tile') return { matches: 0, power: 0, rare: 0, native: 0, total: 0 };
+
+  const { colour, rarity } = cell;
+  const onNative = cell.onNative === true;
+  const counts = (n: HexKey): boolean => (t.ripeTilesMatch ? true : !isRipe(cells, n));
+  // The personalities off, exactly as `colourPotentials` switches them off.
+  const dull: Tuning = {
+    ...t,
+    greenCrowdBonus: 0,
+    yellowCompanyBonus: 0,
+    redAshMatches: false,
+    blueTideEvery: 0,
+  };
+  const tally = (u: Tuning, r: Rarity | undefined, ground: boolean): number =>
+    tallyWorth(cells, k, colour, r, ground, u, home, luck, counts);
+
+  const bare = tally(dull, 'common', false);
+  const withPower = tally(t, 'common', false);
+  const withRare = tally(t, rarity, false);
+  const total = tally(t, rarity, onNative);
+
+  return {
+    matches: bare,
+    power: withPower - bare,
+    rare: withRare - withPower,
+    native: total - withRare,
+    total,
+  };
+}
+
+/**
+ * Where a scoring harvest's points came from, counted three ways.
+ *
+ * Called once, from the reducer, at the only moment the answer exists: a line
+ * later the tiles are stone. Never from `harvestValue`, which prices every
+ * pocket on every render — this walks the board four times per popped tile
+ * and has no business on that path.
+ *
+ * The arithmetic mirrors `harvestValue`'s own, peeled in the order the
+ * formula applies its factors:
+ *
+ *   sumWorth                                    the tiles themselves
+ *   x sizeBonus   -> `pocket`                   harvesting many at once
+ *   x mult        -> `distance`                 cashing it far from home
+ *   x bounty      -> `bounty`                   a bounty collected
+ *
+ * Then the whole thing is rescaled to the points ACTUALLY banked, so the two
+ * floors between `points` and `scored` — `Math.floor` and `scoreOf`'s
+ * minimum of one — land inside the breakdown rather than beside it. Rounding
+ * remainders go to the largest row, so all three axes total exactly.
+ */
+export function pointsSplit(
+  state: GameState,
+  keys: readonly HexKey[],
+  scored: number,
+): PointsSplit | undefined {
+  if (scored <= 0 || keys.length === 0) return undefined;
+
+  const t = state.tuning;
+  const home = homeOf(state);
+  const colours: Record<Colour, number> = { green: 0, yellow: 0, red: 0, blue: 0 };
+  const rarities: Record<'common' | 'magic' | 'unique', number> = {
+    common: 0,
+    magic: 0,
+    unique: 0,
+  };
+  const sources: Record<PointSource, number> = {
+    matches: 0,
+    power: 0,
+    rare: 0,
+    native: 0,
+    pocket: 0,
+    distance: 0,
+    bounty: 0,
+  };
+
+  let sumWorth = 0;
+  for (const k of keys) {
+    const cell = state.cells[k];
+    if (cell?.kind !== 'tile') continue;
+    const parts = worthParts(state.cells, k, t, home, state.luck);
+    sumWorth += parts.total;
+    colours[cell.colour] += parts.total;
+    rarities[cell.rarity ?? 'common'] += parts.total;
+    sources.matches += parts.matches;
+    sources.power += parts.power;
+    sources.rare += parts.rare;
+    // ROOTBOUND rounds its multiplier, so the four parts can miss the tile's
+    // real worth by a point. The ground gets the remainder: it is the last
+    // rule applied and the one the multiplier is applied ON TOP of.
+    sources.native += parts.total - parts.matches - parts.power - parts.rare;
+  }
+  if (sumWorth <= 0) return undefined;
+
+  const counted = t.harvestSizeCap > 0 ? Math.min(keys.length, t.harvestSizeCap) : keys.length;
+  const sizeBonus = 1 + t.harvestSizeBonus * Math.max(0, counted - 1);
+  const mult = harvestMultiplier(state, keys);
+  const bounty = questMet(state, keys) ? (state.quest?.bonus ?? 1) : 1;
+
+  sources.pocket = sumWorth * (sizeBonus - 1);
+  sources.distance = sumWorth * sizeBonus * (mult - 1);
+  sources.bounty = sumWorth * sizeBonus * mult * (bounty - 1);
+
+  // Everything above is in WORTH; the run banks POINTS. One scale factor
+  // carries both floors, and it is the same factor for all three axes, which
+  // is what keeps them agreeing with each other and with the run's total.
+  const raw = sumWorth * sizeBonus * mult * bounty;
+  const scale = scored / raw;
+  const amplified = (n: number): number => n * sizeBonus * mult * bounty * scale;
+
+  return {
+    total: scored,
+    byColour: settle(
+      COLOURS.map((c) => [c, amplified(colours[c])]),
+      scored,
+    ),
+    byRarity: settle(
+      (['common', 'magic', 'unique'] as const).map((r) => [r, amplified(rarities[r])]),
+      scored,
+    ),
+    // Every source row is already in the same WORTH units, including the
+    // three multiplier rows — each was written as the slice of `raw` that
+    // its own factor added, so the seven of them sum to `raw` and one scale
+    // is the whole conversion. Amplifying the four tile rows on top of that
+    // (the first version of this) counted the multipliers twice and made the
+    // source column nearly double the colour column.
+    bySource: settle(
+      (Object.keys(sources) as PointSource[]).map((k) => [k, sources[k] * scale]),
+      scored,
+    ),
+  };
+}
+
+/**
+ * Round a set of shares to whole points that still add up to `total`.
+ *
+ * Floor everything, then hand the leftover out one point at a time, largest
+ * remainder first — the standard apportionment, chosen because the naive
+ * `Math.round` per row loses or invents points and an end screen whose
+ * columns do not match its headline is worse than no end screen.
+ */
+function settle<K extends string>(shares: readonly (readonly [K, number])[], total: number) {
+  const floored = shares.map(([k, v]) => [k, Math.floor(v), v - Math.floor(v)] as const);
+  let left = total - floored.reduce((n, [, v]) => n + v, 0);
+  const order = [...floored].sort((a, b) => b[2] - a[2]);
+  const extra = new Map<K, number>();
+  for (const [k] of order) {
+    if (left <= 0) break;
+    extra.set(k, 1);
+    left--;
+  }
+  const out = {} as Record<K, number>;
+  for (const [k, v] of floored) out[k] = v + (extra.get(k) ?? 0);
+  return out;
 }
 
 /**

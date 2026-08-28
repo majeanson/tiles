@@ -12,6 +12,7 @@ import {
   outOfTime,
   payPlacement,
   placementCostAt,
+  pointsSplit,
   reachOf,
   ripeKeys,
   scoreOf,
@@ -495,6 +496,9 @@ function place(state: GameState, hex: HexKey): GameState {
   // dials are zero, which is every economy that never equipped the perk.
   let tiles = payPlacement(state.tiles, placementCostAt(state.cells, hex, state.placements, t));
   let points = state.points;
+  // Sites pay points OUTSIDE any harvest, which is why they are counted
+  // separately — see `log.sitePoints`.
+  let sitePoints = state.log.sitePoints ?? 0;
   let relics = state.relics;
   let quest: Quest | null = state.quest;
 
@@ -533,7 +537,9 @@ function place(state: GameState, hex: HexKey): GameState {
       // prototype's whole question, answered here as everywhere else.
       if (c.reward === 'cache') tiles += cachePaysAt(n, t, homeOf(state));
       if (c.reward === 'site') {
-        points += t.sitePays * distanceMultiplierAt(n, t, homeOf(state));
+        const paid = t.sitePays * distanceMultiplierAt(n, t, homeOf(state));
+        points += paid;
+        sitePoints += paid;
         // A site also opens its bounty, if quests are on and none is in play.
         // One at a time: a second goal is not twice the goal, it is none.
         if (t.questNeed > 0 && quest === null) {
@@ -576,6 +582,7 @@ function place(state: GameState, hex: HexKey): GameState {
     bias,
     draft,
     selected: 0,
+    log: { ...state.log, sitePoints },
     rng: { ...state.rng, tiles: tilesStream, loot },
   });
 }
@@ -631,6 +638,7 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
   // One source for this arithmetic since 2026-08-21 — see , which
   // also carries the floor that stops a scoring pop banking zero.
   const scored = scoreOf(points, t);
+  const split = scores ? pointsSplit(state, keys, scored) : undefined;
 
   // The bounty is collected by the pop that SCORES the pocket — its multiplier
   // is already inside `points`, so a pop that banks no points must not consume
@@ -701,6 +709,11 @@ function harvest(state: GameState, choice: HarvestChoice, at?: HexKey): GameStat
           choice,
           tiles: pops ? tiles : 0,
           points: scores ? scored : 0,
+          // Taken apart HERE, where the tiles are still tiles — one line
+          // down they are stone and the question can no longer be asked.
+          // Only for a pop that actually banks something: a burn, a
+          // treasure and a tiles-only harvest have no points to distribute.
+          ...(split === undefined ? {} : { split }),
         },
       ],
     },

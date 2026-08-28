@@ -218,3 +218,47 @@ describe('the end of a run', () => {
     }
   });
 });
+
+/**
+ * The end screen's arithmetic, checked where it is actually produced
+ * (2026-08-27).
+ *
+ * The payout prints POPS, SITES, REACH, CLAIMS and TOTAL, and the points
+ * breakdown underneath explains the POPS row alone. That only holds if the
+ * engine keeps the two scoring channels apart — a harvest, and a ★ site paid
+ * outright on the placement that claims it. It did not: sites were added
+ * straight into `state.points` with nothing recording that they had been, so
+ * the screen's POPS row was pops-plus-sites under a word naming one of them,
+ * and the breakdown below it could never add up.
+ */
+describe('the two scoring channels', () => {
+  it('records site points apart from the points harvests bank', () => {
+    let state = newRun(7, TUNING);
+    for (let i = 0; i < 400 && state.phase === 'placing'; i++) {
+      const ripe = ripeKeys(state.cells);
+      const at = ripe[0];
+      if (at !== undefined) {
+        state = reduce(state, { type: 'HARVEST', choice: 'points', at });
+        continue;
+      }
+      const legal = legalPlacements(state.cells, state.tuning);
+      const hex = legal[0];
+      if (hex === undefined) break;
+      state = reduce(state, { type: 'PLACE', hex });
+    }
+
+    const banked = state.log.harvests.reduce((n, h) => n + h.points, 0);
+    const fromSplits = state.log.harvests.reduce((n, h) => n + (h.split?.total ?? 0), 0);
+    const sites = state.log.sitePoints ?? 0;
+
+    // Every point a harvest banked is a point some split accounted for. This
+    // is the claim the end screen's three columns rest on, made over a whole
+    // played run rather than one hand-built pocket.
+    expect(fromSplits).toBe(banked);
+
+    // And the run's score is those two channels and nothing else, before the
+    // end-of-run bonuses `ending` pays on top.
+    const ended = state.phase === 'ended';
+    if (!ended) expect(state.points).toBe(banked + sites);
+  });
+});

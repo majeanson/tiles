@@ -3812,11 +3812,22 @@ export class Game {
     if ((t.endReachBonus > 0 || t.endClaimBonus > 0) && hud.summary !== null) {
       const reachBonus = hud.depthValue * t.endReachBonus;
       const claimBonus = hud.summary.claims * t.endClaimBonus;
-      const pops = hud.points - reachBonus - claimBonus;
+      // SITES split out of POPS on 2026-08-27. This row used to be the
+      // remainder after the two end bonuses, which made it the sum of two
+      // unlike things — pops, and ★ sites paid outright the moment they were
+      // claimed — under a single word that named only one of them. It went
+      // unnoticed until the breakdown below tried to explain it and could
+      // not: a breakdown can only speak for tiles that were popped, so POPS
+      // 94 sat over a distribution totalling 19 and neither number was
+      // wrong. Now each row means one thing, and the fold explains exactly
+      // the row above it.
+      const sitePoints = hud.summary.sitePoints;
+      const pops = hud.points - reachBonus - claimBonus - sitePoints;
       const payout = document.createElement('div');
       payout.className = 'end-payout';
       payout.append(
         row('end-payout-row', 'POPS', String(pops)),
+        ...(sitePoints > 0 ? [row('end-payout-row', 'SITES', `+${sitePoints}`)] : []),
         row('end-payout-row', `REACH ${hud.depthValue} × ${t.endReachBonus}`, `+${reachBonus}`),
         row(
           'end-payout-row',
@@ -3826,6 +3837,78 @@ export class Game {
         row('end-payout-row end-payout-total', 'TOTAL', String(hud.points)),
       );
       parts.push(payout);
+    }
+
+    /**
+     * WHERE the points came from (2026-08-27, Marc: "in our stats end run we
+     * could see our points distribution and like 'normal' tile points, blue
+     * points, unique points, moss points" — and, on the shape: "do it like
+     * how to play, like the basic score and a toggle to get all details").
+     *
+     * So: folded, exactly like the manual's own DETAILS. The payout above is
+     * the basic score and stays the first thing read; this is the answer to
+     * the question that only arrives after a run is over, which is not "how
+     * many" but "off what".
+     *
+     * Three axes, all of them the same points counted again — COLOUR and
+     * RARITY answer "which tiles paid", SOURCE answers "which rule paid".
+     * Each sums to the POPS line above and to nothing else. Not to TOTAL:
+     * REACH and CLAIMS are paid for arriving somewhere, and SITES is paid
+     * the moment a ★ is claimed, none of which any tile did — a breakdown
+     * that swallowed them would make three honest columns add up to a
+     * number none of them earned. Splitting SITES out of POPS is what made
+     * that sentence true rather than nearly true; see the payout above.
+     */
+    const split = hud.summary?.points ?? null;
+    if (split !== null && split.total > 0) {
+      const fold = document.createElement('details');
+      fold.className = 'help-more end-breakdown';
+      const cap = document.createElement('summary');
+      cap.textContent = 'DETAILS';
+
+      const share = (n: number): string => `${n} · ${Math.round((n / split.total) * 100)}%`;
+      const group = (
+        title: string,
+        rows: readonly (readonly [string, number])[],
+      ): HTMLElement[] => {
+        const head = document.createElement('p');
+        head.className = 'end-breakdown-title';
+        head.textContent = title;
+        return [
+          head,
+          // Biggest first, and rows that paid nothing are dropped rather
+          // than printed as zeroes: a run that never placed a unique should
+          // not have to read a line telling it so.
+          ...rows
+            .filter(([, n]) => n > 0)
+            .sort((a, b) => b[1] - a[1])
+            .map(([label, n]) => row('end-payout-row', label, share(n))),
+        ];
+      };
+
+      const name = (c: Colour): string => this.#theme.terrainNames[c];
+      fold.replaceChildren(
+        cap,
+        ...group(
+          'BY COLOUR',
+          COLOURS.map((c) => [name(c), split.byColour[c]] as const),
+        ),
+        ...group('BY RARITY', [
+          ['COMMON', split.byRarity.common],
+          ['MAGIC', split.byRarity.magic],
+          ['UNIQUE', split.byRarity.unique],
+        ]),
+        ...group('BY SOURCE', [
+          ['MATCHES', split.bySource.matches],
+          ['COLOUR POWER', split.bySource.power],
+          ['RARE TILES', split.bySource.rare],
+          ['NATIVE GROUND', split.bySource.native],
+          ['POCKET SIZE', split.bySource.pocket],
+          ['DISTANCE', split.bySource.distance],
+          ['BOUNTIES', split.bySource.bounty],
+        ]),
+      );
+      parts.push(fold);
     }
 
     // The facts, as a 2×3 grid rather than one clause run together — six

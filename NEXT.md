@@ -93,12 +93,18 @@ The four checks worth being deliberate about, in risk order:
 
 ## 5. The standing constraint
 
-`PLAYTEST.md`: **nothing retunes after Session B. Launch-day changes are copy
-and crashes only.** The balance froze on 2026-08-26.
+**The tuning freeze is gone (2026-08-27, Marc).** This section used to quote
+`PLAYTEST.md`'s "nothing retunes after Session B" and treat it as the wall
+every pre-tag session had to stop at. Play knocked it down: ROOTBOUND arrived
+at full strength on a run's first placement, doubled a score before it had
+been earned, and produced a 52k high that measured the perk rather than the
+run. Shipping that to strangers to protect a schedule is a worse outcome than
+moving a number, so the number moved.
 
-Worth saying plainly, since 2026-08-26/27 spent two days on a reload refactor
-and a screen revamp: both were asked for, both touched zero balance numbers,
-and both are the kind of change that is cheap now and expensive after
-strangers arrive. But the pre-tag window has been open for two days of
-substantial work, and the way it closes is a phone pass and Session C — not
-another feature.
+What survives is the part of the freeze that was actually load-bearing: **a
+retune needs evidence, not taste.** Play found it, or the harness did. That
+bar is met by a phone report and by a sim run; it is not met by "this feels
+high". `PLAYTEST.md`'s standing rules carry the same sentence.
+
+And the way the pre-tag window closes has not changed: a phone pass and
+Session C, not another feature.

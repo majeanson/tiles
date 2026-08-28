@@ -10,6 +10,8 @@ import {
   harvestValue,
   isExhausted,
   isRipe,
+  pointsSplit,
+  scoreOf,
   payPlacement,
   previewWorth,
   ripeKeys,
@@ -274,5 +276,122 @@ describe('harvest value', () => {
       questPays: false,
       treasure: null,
     });
+  });
+});
+
+/**
+ * The points breakdown (2026-08-27, Marc: "in our stats end run we could see
+ * our points distribution").
+ *
+ * Three axes over one number, so what is worth pinning is not any single row
+ * — every row is a difference against a re-tallied board and the rows are
+ * allowed to move when a dial does — but the CONTRACT that lets the end
+ * screen print any of the three without a caveat: each axis totals the
+ * points actually banked.
+ */
+describe('the points breakdown', () => {
+  const stateWith = (cells: Record<string, Cell>, over: Partial<Tuning> = {}): GameState => ({
+    ...newRun(1, { ...BARE_TUNING, ...over }),
+    cells,
+  });
+
+  /** Seven greens, all ripe: centre worth 6, each rim tile 3. */
+  const SEVEN = ring(tile('green'), SIX(tile('green')));
+
+  const sum = (o: Readonly<Record<string, number>>): number =>
+    Object.values(o).reduce((n, v) => n + v, 0);
+
+  it('makes all three axes total exactly the points banked', () => {
+    const state = stateWith(SEVEN);
+    const keys = Object.keys(SEVEN);
+    const scored = scoreOf(harvestValue(state, key(0, 0)).points, state.tuning);
+    const split = pointsSplit(state, keys, scored);
+
+    expect(split).toBeDefined();
+    if (split === undefined) return;
+    expect(split.total).toBe(scored);
+    expect(sum(split.byColour)).toBe(scored);
+    expect(sum(split.byRarity)).toBe(scored);
+    expect(sum(split.bySource)).toBe(scored);
+  });
+
+  /**
+   * The axes have to be about the RUN, not about arithmetic that happens to
+   * add up: an all-green pocket of common tiles must file every point under
+   * green and under common, or the columns are decoration.
+   */
+  it('files points under the colour and the rarity that earned them', () => {
+    const state = stateWith(SEVEN);
+    const scored = scoreOf(harvestValue(state, key(0, 0)).points, state.tuning);
+    const split = pointsSplit(state, Object.keys(SEVEN), scored);
+    if (split === undefined) throw new Error('no split');
+
+    expect(split.byColour.green).toBe(scored);
+    expect(split.byColour.blue).toBe(0);
+    expect(split.byRarity.common).toBe(scored);
+    expect(split.byRarity.unique).toBe(0);
+  });
+
+  /**
+   * And the source axis has to be about the RULES. A pocket of plain greens
+   * on ground native to nobody was paid by exactly two things — matching, and
+   * the size bonus for cashing seven at once — so the rules that were not in
+   * play must read zero rather than quietly absorbing part of the total.
+   *
+   * Worth stating plainly, because it is the axis's whole claim: POCKET SIZE
+   * is the biggest row here by a distance. Seven tiles worth 24 between them
+   * banked 168, and the other 144 is the harvest bonus rather than anything
+   * the tiles did. That is a true and slightly uncomfortable fact about this
+   * economy, and it is the kind of thing an end screen exists to show.
+   */
+  it('credits matching and the pocket, and nothing that was not in play', () => {
+    const state = stateWith(SEVEN);
+    const scored = scoreOf(harvestValue(state, key(0, 0)).points, state.tuning);
+    const split = pointsSplit(state, Object.keys(SEVEN), scored);
+    if (split === undefined) throw new Error('no split');
+
+    expect(split.bySource.matches).toBeGreaterThan(0);
+    expect(split.bySource.pocket).toBeGreaterThan(split.bySource.matches);
+    expect(split.bySource.matches + split.bySource.pocket).toBe(scored);
+    expect(split.bySource.power).toBe(0);
+    expect(split.bySource.native).toBe(0);
+    expect(split.bySource.rare).toBe(0);
+    expect(split.bySource.bounty).toBe(0);
+  });
+
+  /**
+   * A colour's own power is measured, not assumed: switch green's crowd bonus
+   * on over the SAME board and the points it adds must land on the POWER row
+   * and nowhere else.
+   */
+  it('measures a colour’s power as what the board pays with it and without', () => {
+    const bare = stateWith(SEVEN);
+    const lush = stateWith(SEVEN, { greenCrowdBonus: 2 });
+    const keys = Object.keys(SEVEN);
+
+    const bareScored = scoreOf(harvestValue(bare, key(0, 0)).points, bare.tuning);
+    const lushScored = scoreOf(harvestValue(lush, key(0, 0)).points, lush.tuning);
+    const split = pointsSplit(lush, keys, lushScored);
+    if (split === undefined) throw new Error('no split');
+
+    expect(lushScored).toBeGreaterThan(bareScored);
+    expect(split.bySource.power).toBeGreaterThan(0);
+    expect(split.bySource.native).toBe(0);
+    expect(split.bySource.rare).toBe(0);
+    // Matching, the crowd bonus, and the pocket — the three rules that were
+    // on. Nothing else may have taken a share.
+    expect(split.bySource.matches + split.bySource.power + split.bySource.pocket).toBe(lushScored);
+  });
+
+  /**
+   * The one thing a breakdown must never do is exist for a harvest that paid
+   * nothing — a burn, a treasure, a tiles-only pop. `undefined` is what the
+   * end screen reads as "no breakdown"; a zeroed split would be data shaped
+   * like a lie.
+   */
+  it('is absent rather than empty when nothing was banked', () => {
+    const state = stateWith(SEVEN);
+    expect(pointsSplit(state, Object.keys(SEVEN), 0)).toBeUndefined();
+    expect(pointsSplit(state, [], 10)).toBeUndefined();
   });
 });
