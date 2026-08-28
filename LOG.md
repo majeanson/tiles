@@ -7058,3 +7058,84 @@ typecheck / lint / format clean on the touched files, `pnpm sim`'s table
 byte-identical before and after (stashed, ran, popped, diffed — this stage
 touches prose and a registry, no balance number moved). No UI changed, so no
 e2e surface to check and none was.
+
+---
+
+### Session 64 — Stage 4: tappable terms and the definition card (2026-08-27)
+
+**Question:** does tapping a word answer the question a reader actually had,
+without costing them their place in the manual?
+
+**Answer: yes — a term opens a held card over the manual, GOT IT or Escape
+hands the exact same word back, and nothing outside the manual's own prose
+grew a button it did not have yesterday.** `tips.ts`'s `rarityInked` — the
+MAGIC/UNIQUE splitter every host in the game already shared — was pulled
+apart into `inkSplit` (the walk: find every match, stitch the text back
+together around whatever `build` turns each one into) and `conceptInked`,
+which runs the same walk over one regex built from every `GLOSSARY` term,
+longest first. MAGIC and UNIQUE needed no second list — Stage 3 had already
+made them two of the registry's own entries (`rare`/`rareUnique`), so the
+same alternation catches them and hands them the same ink class `rarityInked`
+always did.
+
+**The listener stays out of `tips.ts` on purpose.** Every `addEventListener`
+in this game goes through the signalled `on`/`#on` helpers so a dead session
+can never still be wired to the DOM, and `tips.ts` has no session of its own
+to be signalled by. `conceptInked` takes the click binder as its third
+argument — the caller's own `Game#on`, handed in — so the button gets wired
+the moment it is built, but the actual `addEventListener` call happens where
+the signal lives, not in the file that drew the word. `Game#helpSection`
+supplies both callbacks: `open` looks the id up in `glossaryEntry` (guarded
+for `undefined`, though the matcher is built from terms that exist and
+should never miss) and hands the entry to `#openTermCard`; `bind` is a
+one-line wrapper around `this.#on`. Titles, tab labels, `tipRows`, the toast
+and the event card were left on `rarityInked` exactly as the brief said —
+pinned now by two tests that put a MAGIC card down and open the purse's own
+LUCK lesson and check neither host's markup grew a `<button>`.
+
+**The card wears the event card's own skin, not a new one.** `#term-card` is
+a fourth sibling in `#app`, styled by widening `#event-card`'s selectors
+(`#event-card, #term-card`, `#event-card-panel, #term-card-panel`, and so on
+through the glyph, the text and GOT IT) rather than a second copy of the same
+rules — only the z-index and the curtain's ember-theme keyframes needed a
+line of their own, because a term card can open over the manual (z 5) *or*
+over MORE (z 4) depending which door a reader came through, so it sits at z
+7, above both. `#term-card-name` is the one row the event card never needed
+— the term itself, between the glyph and the definition — and the glyph node
+is left empty and hidden for the 8 of 16 entries with no mark rather than
+inventing one (`stash`, `sizeBonus`, `pocket`… — `CONCEPT_MARK`/
+`LANDMARK_GLYPH` stay the whole vocabulary). The dialog-stack contract did
+the rest for free: `openDialog({panel, covers: siblingsOf(panel), opener,
+close})` with the term BUTTON itself as `opener` means `closeDialog` already
+hands focus back to the exact word that was tapped — no extra bookkeeping,
+the same contract the manual and the event card already lean on.
+
+**`.term` had one real fight: the cascade.** MAGIC/UNIQUE buttons carry both
+`.term` and their own `ink-magic`/`ink-unique` class, and both rules set
+`color` at equal specificity — so `.term`'s `color: inherit` had to land
+*before* `.ink-magic`/`.ink-unique` in the file, or a magic word would have
+lost its purple the moment it became tappable. It sits just above them now,
+with a comment saying why, rather than reaching for `!important` or a second
+selector.
+
+**Verified:** 868 tests (+8: a term draws as `button.term[data-term]` with
+`aria-haspopup="dialog"`; tapping RIPENS opens the card with its name, a
+non-empty definition, and makes `#help-panel` inert; the registry glyph
+shows where an entry has one (LUCK) and stays hidden where none exists
+(RIPENS); GOT IT un-inerts the manual and returns focus to the term; Escape
+closes the card first, a second Escape closes the manual; no `.term` inside
+a `.help-title` or the tab bar; the toast and the purse's first-contact event
+card still draw plain `.ink-magic` spans, no button), 31 e2e (+2: BEGIN → the
+manual → a term → the card, GOT IT, and Escape-closes-only-the-card; the
+same flow from the front door via MORE ▸ HOW TO PLAY — plus the existing
+"closes on BACK, not on the prose" test retargeted from an arbitrary
+paragraph, which a term button can now sit inside, onto `.help-title`, which
+never will), typecheck / lint / format clean, `pnpm sim`'s table
+byte-identical before and after (compared against a throwaway worktree at
+Stage 3's own commit rather than a stash-and-pop — an earlier `stash; sim;
+stash pop` one-liner in this same session timed out mid-`sim`, which killed
+the whole command before the `pop` half ran and left the stash sitting
+un-popped for a moment; recovered with a plain `git stash pop` before
+anything else touched the tree, but worth saying out loud rather than
+burying), `pnpm build` clean, `pnpm exec playwright test` 31/31 against the
+built `dist/`.

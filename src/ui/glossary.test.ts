@@ -74,6 +74,14 @@ function openFullManual(): string {
         <div id="help-manual"></div>
         <div id="help-menu"></div>
       </div>
+      <div id="term-card" hidden>
+        <div id="term-card-panel">
+          <p id="term-card-glyph"></p>
+          <p id="term-card-name"></p>
+          <p id="term-card-text"></p>
+          <button id="term-card-dismiss">GOT IT</button>
+        </div>
+      </div>
     </div>
     <p id="hint" hidden></p>
     <div id="controls"><div id="hand"><div id="draft"></div>
@@ -121,6 +129,11 @@ function openFullManual(): string {
     eventCardText: pick('event-card-text'),
     eventCardRows: pick('event-card-rows'),
     eventCardDismiss: pick<HTMLButtonElement>('event-card-dismiss'),
+    termCard: pick('term-card'),
+    termCardGlyph: pick('term-card-glyph'),
+    termCardName: pick('term-card-name'),
+    termCardText: pick('term-card-text'),
+    termCardDismiss: pick<HTMLButtonElement>('term-card-dismiss'),
   };
 
   const hooks: GameHooks = {

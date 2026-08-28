@@ -256,15 +256,91 @@ test('the ? panel closes on BACK, and not on the prose', async ({ page }) => {
   const panel = page.locator('#help-panel');
   await expect(panel).toBeVisible();
 
-  // Read something, tap it, and the manual is still open.
+  // Read something, tap it, and the manual is still open. `.help-title`
+  // rather than an arbitrary paragraph (Stage 4, 2026-08-27): a manual
+  // paragraph can now hold a `button.term` of its own, and this test is
+  // about the panel closing on nothing but BACK — not about that button,
+  // which gets its own test below.
   await page.locator('.help-tab').nth(1).click();
-  await page.locator('.help-panel-body:not([hidden]) p').first().click();
+  await page.locator('.help-panel-body:not([hidden]) .help-title').first().click();
   await expect(panel).toBeVisible();
   await page.locator('#help-name').click();
   await expect(panel).toBeVisible();
 
   await page.locator('#help-back').click();
   await expect(panel).toBeHidden();
+
+  expect(errors).toEqual([]);
+});
+
+/**
+ * The glossary's own card (WORKPLAN Stage 4, 2026-08-27): a term inside the
+ * manual opens a definition rather than sending a reader hunting the
+ * sentence that first used it. `#help-panel` stays open underneath, inert
+ * while the card covers it — the same dialog-stack contract every other
+ * panel already keeps.
+ */
+test('a term inside HOW TO PLAY opens its own card, and Escape closes only the card', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await begin(page);
+  await page.locator('#help').click();
+  await expect(page.locator('#help-panel')).toBeVisible();
+
+  // START, not MENU — the tutorial tab RIPENS lives on.
+  await page.locator('.help-tab').nth(1).click();
+  const term = page
+    .locator('.help-panel-body:not([hidden]) button.term')
+    .filter({ hasText: 'RIPENS' })
+    .first();
+  await expect(term).toBeVisible();
+  await term.click();
+
+  const card = page.locator('#term-card');
+  await expect(card).toBeVisible();
+  await expect(page.locator('#term-card-name')).toHaveText('RIPENS');
+  await expect(page.locator('#term-card-text')).not.toHaveText('');
+  await expect(page.locator('#help-panel')).toHaveAttribute('inert', /.*/);
+
+  await page.locator('#term-card-dismiss').click();
+  await expect(card).toBeHidden();
+  await expect(page.locator('#help-panel')).not.toHaveAttribute('inert', /.*/);
+  expect(await page.evaluate(() => document.activeElement?.textContent)).toBe('RIPENS');
+
+  // Reopened, Escape reaches the card only — the manual underneath stays up.
+  await term.click();
+  await expect(card).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(card).toBeHidden();
+  await expect(page.locator('#help-panel')).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+test('the same tap-a-term flow works from the front door too, via MORE ▸ HOW TO PLAY', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+
+  await openMore(page);
+  await page.locator('#more-help').click();
+  await expect(page.locator('#help-panel')).toBeVisible();
+  // HOW TO PLAY opens straight onto START (pinned above, 2026-08-20), so
+  // the term is on screen with no tab click needed.
+  const term = page
+    .locator('.help-panel-body:not([hidden]) button.term')
+    .filter({ hasText: 'RIPENS' })
+    .first();
+  await expect(term).toBeVisible();
+  await term.click();
+
+  await expect(page.locator('#term-card')).toBeVisible();
+  await page.locator('#term-card-dismiss').click();
+  await expect(page.locator('#term-card')).toBeHidden();
+  await expect(page.locator('#help-panel')).toBeVisible();
 
   expect(errors).toEqual([]);
 });

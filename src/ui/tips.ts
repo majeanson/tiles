@@ -1,4 +1,5 @@
 import type { Perk } from '@meta/progress';
+import { GLOSSARY, type GlossaryId } from './glossary';
 import type { TipRow } from './view';
 
 /**
@@ -15,6 +16,31 @@ import type { TipRow } from './view';
  */
 
 /**
+ * The walk both inkers do: find every match of `pattern`, in order, and
+ * stitch the plain text back together around whatever `build` turns each one
+ * into (2026-08-27, Stage 4 — extracted the day `conceptInked` needed the
+ * exact same loop `rarityInked` already had, so a second copy did not start
+ * drifting from the first the way `describeHexOf`'s glyphs once did before
+ * they shared a registry).
+ */
+function inkSplit(
+  text: string,
+  pattern: RegExp,
+  build: (match: RegExpMatchArray) => Node,
+): (Node | string)[] {
+  const parts: (Node | string)[] = [];
+  let last = 0;
+  for (const m of text.matchAll(pattern)) {
+    if (m.index === undefined) continue;
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(build(m));
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+/**
  * MAGIC and UNIQUE wear their own colours wherever the WORDS appear (Marc,
  * 2026-08-20: "as well as documentation and anywhere it speaks about it") —
  * one splitter shared by the manual, the toast, the event card, the purse row
@@ -22,18 +48,81 @@ import type { TipRow } from './view';
  * the capitals are the vocabulary; lowercase prose stays prose.
  */
 export function rarityInked(text: string): (Node | string)[] {
-  const parts: (Node | string)[] = [];
-  let last = 0;
-  for (const m of text.matchAll(/\b(MAGIC|UNIQUE)\b/g)) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
+  return inkSplit(text, /\b(MAGIC|UNIQUE)\b/g, (m) => {
     const span = document.createElement('span');
     span.className = m[1] === 'MAGIC' ? 'ink-magic' : 'ink-unique';
     span.textContent = m[1]!;
-    parts.push(span);
-    last = m.index + m[1]!.length;
+    return span;
+  });
+}
+
+/**
+ * Every term the glossary answers to, longest first — so RELICS is never cut
+ * short into RELIC and SIZE BONUS is never split at its own space — mapped
+ * back to the entry it opens. Built from `GLOSSARY` itself, which is where
+ * MAGIC and UNIQUE already live as its `rare`/`rareUnique` entries, so this
+ * needs no second list to keep in sync with the ink `rarityInked` gives them.
+ * `glossary.test.ts` is what guarantees no two entries share a term.
+ */
+const CONCEPT_TERM = new Map<
+  string,
+  { readonly id: GlossaryId; readonly ink?: 'ink-magic' | 'ink-unique' }
+>();
+for (const entry of GLOSSARY) {
+  for (const term of entry.terms) {
+    CONCEPT_TERM.set(
+      term,
+      entry.ink === undefined ? { id: entry.id } : { id: entry.id, ink: entry.ink },
+    );
   }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
+}
+
+const CONCEPT_PATTERN = new RegExp(
+  `\\b(${[...CONCEPT_TERM.keys()].sort((a, b) => b.length - a.length).join('|')})\\b`,
+  'g',
+);
+
+/**
+ * A glossary term, made tappable (WORKPLAN Stage 4, 2026-08-27): the
+ * manual's own capitalized words become the doors onto their own
+ * definitions, rather than a reader hunting the sentence that first used
+ * one. Same shape as `rarityInked` — one regex, longest term first, `\b`
+ * boundaries — but every match becomes a `button` instead of a `span`, and
+ * MAGIC/UNIQUE (already two of `GLOSSARY`'s own entries) wear the same ink
+ * class `rarityInked` gives them on top of it.
+ *
+ * This file attaches no listener itself. Every `addEventListener` in the
+ * game goes through the signalled `on`/`#on` helpers so a dead session can
+ * never still be wired to the DOM — and this file has no session of its own
+ * to be signalled by. `on` is the caller's own binder (`Game#on`); this
+ * function only decides WHICH button gets wired and to WHAT, never how the
+ * listener itself is attached or torn down.
+ */
+export function conceptInked(
+  text: string,
+  open: (id: GlossaryId, anchor: HTMLButtonElement) => void,
+  on: (target: HTMLElement, type: 'click', handler: (event: MouseEvent) => void) => void,
+): (Node | string)[] {
+  return inkSplit(text, CONCEPT_PATTERN, (m) => {
+    const term = m[1]!;
+    const meta = CONCEPT_TERM.get(term);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = meta?.ink === undefined ? 'term' : `term ${meta.ink}`;
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.textContent = term;
+    // Always true in practice — the pattern is built from `CONCEPT_TERM`'s
+    // own keys — but a matcher and its map are two pieces of code, and a
+    // button that opened nothing would be a silent dead end rather than a
+    // loud bug.
+    if (meta !== undefined) {
+      button.dataset['term'] = meta.id;
+      on(button, 'click', () => {
+        open(meta.id, button);
+      });
+    }
+    return button;
+  });
 }
 
 /**

@@ -254,6 +254,7 @@ function resetShell(): void {
     'hint',
     'toast',
     'event-card',
+    'term-card',
     'end',
     'purse',
     'spends',
@@ -1335,6 +1336,11 @@ async function buildSession(route: Route): Promise<Session> {
     eventCardText: required('event-card-text'),
     eventCardRows: required('event-card-rows'),
     eventCardDismiss: required<HTMLButtonElement>('event-card-dismiss'),
+    termCard: required('term-card'),
+    termCardGlyph: required('term-card-glyph'),
+    termCardName: required('term-card-name'),
+    termCardText: required('term-card-text'),
+    termCardDismiss: required<HTMLButtonElement>('term-card-dismiss'),
   };
 
   // The front door: static markup, already painted before any of this runs —

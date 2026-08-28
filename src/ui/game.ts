@@ -32,9 +32,9 @@ import {
   type Progress,
   type TeachId,
 } from '@meta/progress';
-import { glossaryEntry } from './glossary';
+import { glossaryEntry, type GlossaryEntry, type GlossaryId } from './glossary';
 import { shopParts } from './shop';
-import { perkRows, rarityInked, tipRows } from './tips';
+import { conceptInked, perkRows, rarityInked, tipRows } from './tips';
 import type { Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
@@ -198,6 +198,19 @@ export type Elements = {
   /** Where a set-teaching card draws its rows. Empty for every other card. */
   readonly eventCardRows: HTMLElement;
   readonly eventCardDismiss: HTMLButtonElement;
+  /**
+   * The glossary's own card (WORKPLAN Stage 4, 2026-08-27): what a tapped
+   * term in the manual opens. The event card's look and dialog-stack
+   * contract, over a fourth panel rather than a fifth — a definition is a
+   * held, dismissed-on-purpose moment too, just one the manual itself opens
+   * rather than the game.
+   */
+  readonly termCard: HTMLElement;
+  /** Empty (and hidden by CSS) for an entry with no glyph of its own. */
+  readonly termCardGlyph: HTMLElement;
+  readonly termCardName: HTMLElement;
+  readonly termCardText: HTMLElement;
+  readonly termCardDismiss: HTMLButtonElement;
 };
 
 /**
@@ -919,6 +932,7 @@ export class Game {
     this.#dead = true;
     this.#abort.abort();
     this.#closeEventCard();
+    this.#closeTermCard();
     this.#closeHelp();
   }
 
@@ -1034,6 +1048,14 @@ export class Game {
     });
     this.#el.eventCardDismiss.insertAdjacentElement('beforebegin', act);
     this.#eventAction = act;
+
+    // The glossary's own card (Stage 4): GOT IT is its only way out but
+    // Escape — the manual's own contract (2026-08-27, "remove the
+    // close-on-click"), since a definition sits over prose a reader may
+    // still want to tap.
+    this.#on(this.#el.termCardDismiss, 'click', () => {
+      this.#closeTermCard();
+    });
 
     this.#on(this.#el.harvestTiles, 'click', () => {
       this.#harvest('tiles');
@@ -1415,6 +1437,43 @@ export class Game {
     // through the stack (a bare test harness mounting the panel by hand).
     closeDialog(this.#el.helpPanel);
     this.#helpOpener.focus();
+  }
+
+  /**
+   * A tapped term's own card (Stage 4, 2026-08-27): what `conceptInked`'s
+   * buttons open. `opener` is the term button itself — `closeDialog` is what
+   * hands focus back to it, the same contract every other dialog on the
+   * stack already keeps, so a reader who tapped RIPENS lands back on the word
+   * RIPENS rather than the top of the manual.
+   */
+  #openTermCard(entry: GlossaryEntry, opener: HTMLButtonElement): void {
+    this.#el.termCardGlyph.textContent = entry.glyph ?? '';
+    // No mark invented for an entry that has none (`stash`, `sizeBonus`…) —
+    // a blank glyph node would still take the vertical space `:empty` CSS
+    // hides it for.
+    this.#el.termCardGlyph.hidden = entry.glyph === undefined;
+    this.#el.termCardName.textContent = entry.terms[0] ?? '';
+    // Through `rarityInked`, not `conceptInked` — a definition that could
+    // open ANOTHER card mid-read is a rabbit hole, not an answer.
+    this.#el.termCardText.replaceChildren(
+      ...rarityInked(entry.define(this.#state.tuning, this.#theme)),
+    );
+    this.#el.termCard.hidden = false;
+    openDialog({
+      panel: this.#el.termCard,
+      covers: siblingsOf(this.#el.termCard),
+      opener,
+      close: () => {
+        this.#closeTermCard();
+      },
+    });
+    this.#el.termCardDismiss.focus();
+  }
+
+  #closeTermCard(): void {
+    if (this.#el.termCard.hidden) return;
+    this.#el.termCard.hidden = true;
+    closeDialog(this.#el.termCard);
   }
 
   #tap(event: PointerEvent): void {
@@ -1963,9 +2022,30 @@ export class Game {
     heading.className = 'help-title';
     heading.textContent = section.title;
 
+    // The manual's own prose is the one place glossary terms are tappable
+    // (Stage 4) — titles, tab labels, `tipRows`, toasts and the event card
+    // all stay plain `rarityInked`, per the brief that shipped this. `open`
+    // and `bind` are shared by both `lines` and `detail` below so a term that
+    // appears in both opens the same card the same way.
+    const open = (id: GlossaryId, anchor: HTMLButtonElement): void => {
+      const entry = glossaryEntry(id);
+      // The matcher `conceptInked` builds is drawn from terms that exist, so
+      // this should never arise — guarded anyway, because a card that opens
+      // on `undefined` is a crash, not a missing definition.
+      if (entry !== undefined) this.#openTermCard(entry, anchor);
+    };
+    const bind = (
+      target: HTMLElement,
+      type: 'click',
+      handler: (event: MouseEvent) => void,
+    ): void => {
+      this.#on(target, type, handler);
+    };
+    const inked = (line: string): (Node | string)[] => conceptInked(line, open, bind);
+
     const lines = section.lines.map((line) => {
       const p = document.createElement('p');
-      p.replaceChildren(...rarityInked(line));
+      p.replaceChildren(...inked(line));
       return p;
     });
 
@@ -1985,7 +2065,7 @@ export class Game {
       summary,
       ...section.detail.map((line) => {
         const p = document.createElement('p');
-        p.replaceChildren(...rarityInked(line));
+        p.replaceChildren(...inked(line));
         return p;
       }),
     );

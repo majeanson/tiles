@@ -167,6 +167,9 @@ html.departing body {
      4    the door's own panels — WORLDS, MORE
      5    what those open — the manual, the hall of fame
      6    SETTINGS, which opens from MORE *and* from inside the manual
+     7    the glossary's own card (Stage 4, 2026-08-27) — opened FROM the
+          manual (5) or, via MORE ▸ HOW TO PLAY, from over MORE (4), so it
+          has to clear whichever one it happened to open on top of
      9    the notes (update, storage-full, in-app browser)
 
    The notes sit above everything on purpose: a new build claiming the page
@@ -288,6 +291,7 @@ html.departing body {
    as a second border; decoration only, so no contrast budget rides on it. */
 #front-door-begin,
 #event-card-dismiss,
+#term-card-dismiss,
 button.bounty {
   box-shadow: 0 2px 12px color-mix(in srgb, var(--accent, #d7b45a) 30%, transparent);
 }
@@ -1258,10 +1262,34 @@ button.armed {
   color: var(--unique, #d8892f);
 }
 
+/* A glossary term, inside the manual's own prose (WORKPLAN Stage 4,
+   2026-08-27, `tips.ts`'s `conceptInked`). A button dressed as a word: no
+   chrome of its own, `inherit` for font and colour so it sits in a sentence
+   rather than announcing itself, and a dotted underline as the one hint that
+   it does something. The prose it sits in is 17px (`.panel-sheet`) — this
+   sets no size of its own, so it grows and shrinks with it — with padding
+   sized for a finger rather than a cursor. `:focus-visible` (below, global)
+   already draws its ring; this rule only has to not suppress it. */
+.term {
+  display: inline;
+  margin: 0 -2px;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 /* The WORDS wear the colours too (Marc, 2026-08-20: "documentation and
    anywhere it speaks about it") — `rarityInked` in game.ts wraps every
    uppercase MAGIC / UNIQUE in prose: the manual, the toast, the event
-   cards, the purse row. */
+   cards, the purse row. A `.term` that is ALSO one of these (MAGIC and
+   UNIQUE are two of the glossary's own entries) keeps the same colour —
+   this rule comes after `.term` on purpose, so its `color` wins the tie. */
 .ink-magic {
   color: var(--magic, #9d7bd8);
 }
@@ -2043,11 +2071,15 @@ button.armed {
    one line, gone on its own, for the things a run does constantly (a cache,
    a site, the arithmetic of a pop). A find, a shrine or a territory are
    rarer and change what the next run starts with — those get an EVENT
-   CARD: held until dismissed, centred, impossible to miss mid-placement. */
-#event-card {
+   CARD: held until dismissed, centred, impossible to miss mid-placement.
+   `#term-card` (WORKPLAN Stage 4, 2026-08-27) shares this whole skin — a
+   glossary definition is the same kind of held, centred, GOT-IT moment —
+   widening these selectors rather than a second copy of every rule. Only
+   its z-index differs, because it can open over the manual OR over MORE. */
+#event-card,
+#term-card {
   position: fixed;
   inset: 0;
-  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2055,11 +2087,21 @@ button.armed {
   background: rgb(0 0 0 / 55%);
 }
 
+#event-card {
+  z-index: 2;
+}
+
+#term-card {
+  z-index: 7;
+}
+
 /* Heavier than the manual's or the toast's border (2px, not 1px) — this is
    the rarest surface in the game: a find, a shrine or a territory, the only
    claims that change what the NEXT run starts with. It should look like the
-   biggest thing on screen because it is. */
-#event-card-panel {
+   biggest thing on screen because it is. `#term-card-panel` shares it too —
+   see the note above. */
+#event-card-panel,
+#term-card-panel {
   max-width: var(--menu-col, 320px);
   padding: 20px;
   border: 2px solid var(--accent, #c79a4b);
@@ -2218,12 +2260,16 @@ button.armed {
    collapsed (`:empty` has no text node even for whitespace) for the rare
    text that arrives without the "glyph, two spaces" shape it expects. */
 /* The lead's own \n characters are the paragraph breaks a lesson writes
-   (`purseLesson` uses \n\n); nothing else on the card wants them. */
-#event-card-text {
+   (`purseLesson` uses \n\n); nothing else on the card wants them. Shared
+   with `#term-card-text` — a definition never carries a literal \n, so
+   `pre-line` is a no-op for it rather than a wrong choice. */
+#event-card-text,
+#term-card-text {
   white-space: pre-line;
 }
 
-#event-card-glyph {
+#event-card-glyph,
+#term-card-glyph {
   margin: 0 0 6px;
   font-family: var(--font-display, inherit);
   font-size: 2rem;
@@ -2231,8 +2277,20 @@ button.armed {
   color: var(--accent, #d7b45a);
 }
 
-#event-card-glyph:empty {
+#event-card-glyph:empty,
+#term-card-glyph:empty {
   display: none;
+}
+
+/* The term itself, between the glyph and its definition — bold rather than
+   large, since the glyph above it already carries the size. `#term-card`'s
+   own row; the event card names nothing this way. */
+#term-card-name {
+  margin: 0 0 8px;
+  font-family: var(--font-display, inherit);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: 0.02em;
 }
 
 /* The optional ACT button (the crossing): the one card control that DOES
@@ -2246,7 +2304,8 @@ button.armed {
   margin-top: 14px;
 }
 
-#event-card-dismiss {
+#event-card-dismiss,
+#term-card-dismiss {
   width: 100%;
   margin-top: 14px;
   border-color: var(--accent, #d7b45a);
@@ -2279,7 +2338,8 @@ button.armed {
     }
   }
 
-  #event-card {
+  #event-card,
+  #term-card {
     animation: surface-in 160ms var(--ease-arrive, ease-out);
   }
 
@@ -2303,7 +2363,8 @@ button.armed {
     }
   }
 
-  #event-card-panel {
+  #event-card-panel,
+  #term-card-panel {
     animation: event-card-in 160ms var(--ease-arrive, ease-out);
   }
 
@@ -2321,7 +2382,10 @@ button.armed {
      real direction since 2026-08-26, same reasoning as the toast above. */
   [data-theme='torchlit'] #event-card-panel,
   [data-theme='torchlit-bright'] #event-card-panel,
-  [data-theme='daylight'] #event-card-panel {
+  [data-theme='daylight'] #event-card-panel,
+  [data-theme='torchlit'] #term-card-panel,
+  [data-theme='torchlit-bright'] #term-card-panel,
+  [data-theme='daylight'] #term-card-panel {
     animation: event-card-in-ember 160ms var(--ease-arrive, ease-out);
   }
 

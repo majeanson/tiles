@@ -321,6 +321,28 @@
         <div id="help-manual"></div>
       </div>
 
+      <!-- The glossary's own card (WORKPLAN Stage 4, 2026-08-27): tapping a
+           term inside the manual opens this rather than sending a reader
+           hunting the sentence that first used it. The event card's own
+           look and dialog contract (role, modality, GOT IT), because a
+           definition is exactly that kind of held, dismissed-on-purpose
+           moment — sibling of #help-panel so `siblingsOf` covers it the
+           same way every other panel in #app is covered. -->
+      <div id="term-card" hidden>
+        <div
+          id="term-card-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="What this word means"
+          tabindex="-1"
+        >
+          <p id="term-card-glyph"></p>
+          <p id="term-card-name"></p>
+          <p id="term-card-text"></p>
+          <button id="term-card-dismiss" type="button">GOT IT</button>
+        </div>
+      </div>
+
       <!-- The MENU tab's contents (Marc, 2026-08-20: "add a menu in ? or
            similar to go back to main menu, new run, new world, etc. with the
            'your world' stats"). Declared out here and relocated into the

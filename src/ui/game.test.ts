@@ -129,6 +129,14 @@ function build(
         <div id="help-manual"></div>
         <div id="help-menu"></div>
       </div>
+      <div id="term-card" hidden>
+        <div id="term-card-panel">
+          <p id="term-card-glyph"></p>
+          <p id="term-card-name"></p>
+          <p id="term-card-text"></p>
+          <button id="term-card-dismiss">GOT IT</button>
+        </div>
+      </div>
     </div>
     <p id="hint" hidden></p>
     <div id="controls"><div id="hand"><div id="draft"></div>
@@ -176,6 +184,11 @@ function build(
     eventCardText: pick('event-card-text'),
     eventCardRows: pick('event-card-rows'),
     eventCardDismiss: pick<HTMLButtonElement>('event-card-dismiss'),
+    termCard: pick('term-card'),
+    termCardGlyph: pick('term-card-glyph'),
+    termCardName: pick('term-card-name'),
+    termCardText: pick('term-card-text'),
+    termCardDismiss: pick<HTMLButtonElement>('term-card-dismiss'),
   };
 
   const renderer = new StubRenderer();
@@ -3232,6 +3245,126 @@ describe('every shipped concept is written down somewhere', () => {
     expect(text).not.toMatch(/\b1 relics\b/); // burnRelics is 1
     // The points button has been hidden since the payout became single.
     expect(text).not.toContain('POP for pts');
+  });
+});
+
+/**
+ * Stage 4 (WORKPLAN, 2026-08-27): every glossary term the manual's own prose
+ * prints becomes a button that opens its own definition, rather than sending
+ * a reader hunting the sentence that first used it. `conceptInked` is scoped
+ * to the manual's `lines`/`detail` only — `rarityInked`'s older, narrower job
+ * (MAGIC/UNIQUE as plain coloured spans) has to keep drawing exactly what it
+ * always drew everywhere else, or a toast mid-placement would suddenly be
+ * reaching for a dialog.
+ */
+describe('a glossary term inside the manual opens its own card', () => {
+  const openStart = (): ReturnType<typeof build> => {
+    const ctx = build(4, TUNING);
+    ctx.game.start();
+    // Every tab is built at once (`#buildManual`) — only the panel shown
+    // differs — so 'start' just puts RIPENS on screen without a tab click.
+    ctx.game.openHelp(ctx.el.help, 'start');
+    return ctx;
+  };
+
+  const findTerm = (ctx: ReturnType<typeof build>, word: string): HTMLButtonElement => {
+    const button = [...ctx.el.helpPanel.querySelectorAll('button.term')].find(
+      (b) => b.textContent === word,
+    );
+    if (button === undefined) throw new Error(`no button.term reads ${word}`);
+    return button as HTMLButtonElement;
+  };
+
+  it('draws RIPENS, in START, as a button carrying its glossary id', () => {
+    const ctx = openStart();
+    const term = findTerm(ctx, 'RIPENS');
+    expect(term.tagName).toBe('BUTTON');
+    expect(term.type).toBe('button');
+    expect(term.dataset['term']).toBe('ripe');
+    expect(term.getAttribute('aria-haspopup')).toBe('dialog');
+  });
+
+  it('opens the card with the term, a real definition, and makes the manual inert', () => {
+    const ctx = openStart();
+    const term = findTerm(ctx, 'RIPENS');
+    term.click();
+
+    expect(ctx.el.termCard.hidden).toBe(false);
+    expect(ctx.el.termCardName.textContent).toBe('RIPENS');
+    expect((ctx.el.termCardText.textContent ?? '').length).toBeGreaterThan(0);
+    expect(ctx.el.helpPanel.hasAttribute('inert')).toBe(true);
+    expect(document.activeElement).toBe(ctx.el.termCardDismiss);
+  });
+
+  it('shows the registry glyph where an entry has one, and hides it where none exists', () => {
+    const ctx = openStart();
+    // LUCK's own entry carries CONCEPT_MARK.luck; RIPENS's does not.
+    findTerm(ctx, 'RIPENS').click();
+    expect(ctx.el.termCardGlyph.hidden).toBe(true);
+    expect(ctx.el.termCardGlyph.textContent).toBe('');
+    ctx.el.termCardDismiss.click();
+
+    findTerm(ctx, 'LUCK').click();
+    expect(ctx.el.termCardGlyph.hidden).toBe(false);
+    expect(ctx.el.termCardGlyph.textContent).toBe(CONCEPT_MARK.luck);
+  });
+
+  it('GOT IT hides the card, un-inerts the manual, and returns focus to the term', () => {
+    const ctx = openStart();
+    const term = findTerm(ctx, 'RIPENS');
+    term.click();
+    ctx.el.termCardDismiss.click();
+
+    expect(ctx.el.termCard.hidden).toBe(true);
+    expect(ctx.el.helpPanel.hasAttribute('inert')).toBe(false);
+    expect(document.activeElement).toBe(term);
+  });
+
+  it('Escape closes only the card; a second Escape closes the manual', () => {
+    const ctx = openStart();
+    const term = findTerm(ctx, 'RIPENS');
+    term.click();
+    expect(ctx.el.termCard.hidden).toBe(false);
+
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(ctx.el.termCard.hidden).toBe(true);
+    expect(ctx.el.helpPanel.hidden).toBe(false);
+
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(ctx.el.helpPanel.hidden).toBe(true);
+  });
+
+  it('never turns a title or a tab label into a term', () => {
+    const ctx = openStart();
+    expect(ctx.el.helpPanel.querySelectorAll('.help-title button.term')).toHaveLength(0);
+    expect(ctx.el.helpPanel.querySelectorAll('.help-tabs button.term')).toHaveLength(0);
+  });
+
+  it('leaves the toast drawing a plain ink-magic span, not a button', () => {
+    const base = newRun(9, TUNING);
+    const ctx = build(1, TUNING, {
+      resume: {
+        ...base,
+        draft: [{ ...base.draft[0]!, colour: 'green', rarity: 'magic' }, ...base.draft.slice(1)],
+        selected: 0,
+      },
+    });
+    ctx.game.start();
+    (ctx.el.draft.children[0] as HTMLButtonElement).click();
+
+    expect(ctx.el.toast.querySelector('button')).toBeNull();
+    expect(ctx.el.toast.querySelector('.ink-magic')?.textContent).toBe('MAGIC');
+  });
+
+  it('leaves the event card drawing plain text too — the purse’s first-contact LUCK lesson', () => {
+    const ctx = build(1, TUNING, {
+      shop: { read: () => ({ ...EMPTY_PROGRESS, met: [] }), write: () => undefined },
+    });
+    ctx.game.start();
+    ctx.el.purseToggle.click();
+
+    expect(ctx.el.eventCardText.textContent ?? '').toContain('LUCK');
+    expect(ctx.el.eventCardText.querySelector('button')).toBeNull();
   });
 });
 
