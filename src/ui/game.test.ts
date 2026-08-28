@@ -2,6 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COLOUR_MARK, CONCEPT_MARK, LANDMARK_GLYPH } from '@theme/tokens';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
+import { TORCHLIT } from '@theme/themes/torchlit';
+import type { Theme } from '@theme/tokens';
 import { BARE_TUNING, COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
 import { endingPayout, newRun, reduce } from '@engine/reduce';
@@ -107,6 +109,7 @@ function build(
   hooks?: GameHooks,
   claimed: readonly HexKey[] = [],
   wakeAt: HexKey | null = null,
+  theme?: Theme,
 ): { game: Game; renderer: StubRenderer; el: Elements } {
   document.body.innerHTML = `
     <header id="stats"></header>
@@ -197,7 +200,7 @@ function build(
 
   const renderer = new StubRenderer();
   return {
-    game: new Game(renderer, el, seed, undefined, tuning, hooks, claimed, [], wakeAt),
+    game: new Game(renderer, el, seed, theme, tuning, hooks, claimed, [], wakeAt),
     renderer,
     el,
   };
@@ -4223,12 +4226,12 @@ describe('a tip waits for you (2026-08-27)', () => {
  */
 describe('the manual, pinned exactly as it reads today', () => {
   /** Every tab's heading and body text, in order, from a full ledger. */
-  const manualText = (t?: Tuning, hooks: GameHooks = {}): Record<string, string> => {
+  const manualText = (t?: Tuning, hooks: GameHooks = {}, theme?: Theme): Record<string, string> => {
     const dev = {
       read: () => ({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] }) as Progress,
       write: () => undefined,
     };
-    const ctx = build(4, t, { shop: dev, ...hooks });
+    const ctx = build(4, t, { shop: dev, ...hooks }, [], null, theme);
     ctx.game.start();
     ctx.game.openHelp();
 
@@ -4290,5 +4293,23 @@ describe('the manual, pinned exactly as it reads today', () => {
    */
   it('pins every tab on a detour', () => {
     expect(manualText(undefined, { replay: true })).toMatchSnapshot();
+  });
+
+  /**
+   * ...and once on a SHIPPED direction, which the three passes above do not
+   * reach (2026-08-28).
+   *
+   * `build()` defaults the theme to `placeholder`, so every manual assertion
+   * this project has ever written has read a manual whose four grounds are
+   * called GREEN / YELLOW / RED / BLUE. Torchlit calls them MOSS / EMBER / ASH
+   * / TIDE — and two of those ARE the personality word the line then repeats,
+   * which is how "■ ASH — ash." and "● TIDE — tide." shipped in the manual of
+   * every real direction while a full-green suite watched.
+   *
+   * A pin that only ever runs on the fallback theme is a pin with a hole in
+   * exactly the shape of the bug it should have caught.
+   */
+  it('pins every tab as a shipped direction actually renders it', () => {
+    expect(manualText(undefined, {}, TORCHLIT)).toMatchSnapshot();
   });
 });

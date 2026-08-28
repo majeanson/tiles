@@ -1693,17 +1693,33 @@ export function statNote(id: string, hud: HudView, t: Tuning): string {
  * share, so the three doors cannot drift apart. Null while that colour's
  * power dial is zeroed: a personality that is off must not be taught.
  */
+/**
+ * "NAME — PERSONALITY", except where a direction has already named the ground
+ * after its personality.
+ *
+ * Torchlit calls red ASH and blue TIDE, so a line built as name-dash-word read
+ * "ASH — ASH." and "TIDE — TIDE." (2026-08-27). Invisible for three days
+ * because each colour was taught alone; the moment all four stood on one card,
+ * two of them stuttered. A direction is free to name its ground anything, so
+ * this is a rule rather than a rewording.
+ *
+ * **Shared, and case-insensitive, since 2026-08-28.** The rule was written
+ * inside `colourLesson` and fixed the CARD — and the manual's own THE COLOURS
+ * rows, built from a separate table in `game.ts`, never got it: every shipped
+ * skin printed "■ ASH — ash." and "● TIDE — tide." in the manual for a day.
+ * That is the same class of miss as the legend's outline fix that never
+ * reached the draft card, and it is precisely what the lesson registry exists
+ * to stop — so the rule is one exported function now, and both doors call it.
+ * Case-insensitive because the two tables disagreed about capitals: the card
+ * passes 'ASH', the manual passes 'ash', and the ground is named 'ASH'.
+ */
+export function groundHead(name: string, word: string): string {
+  return name.toLowerCase() === word.toLowerCase() ? `${name}.` : `${name} — ${word}.`;
+}
+
 export function colourLesson(colour: Colour, t: Tuning, theme: Theme): string | null {
   const n = theme.terrainNames[colour];
-  /**
-   * "NAME — PERSONALITY", except where a direction has already named the
-   * ground after its personality — torchlit calls red ASH and blue TIDE,
-   * so the line read "ASH — ASH." and "TIDE — TIDE." (2026-08-27). Invisible
-   * for three days because each colour was taught alone; the moment all four
-   * stood on one card, two of them stuttered. A direction is free to name
-   * its ground anything, so this is a rule rather than a rewording.
-   */
-  const head = (word: string): string => (n === word ? `${n}.` : `${n} — ${word}.`);
+  const head = (word: string): string => groundHead(n, word);
   switch (colour) {
     case 'green':
       return t.greenCrowdBonus > 0

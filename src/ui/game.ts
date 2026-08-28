@@ -65,6 +65,7 @@ import {
   pocketNote,
   powerOf,
   purseLesson,
+  groundHead,
   rarityLine,
   rememberedNativeAt,
   renderContext,
@@ -529,11 +530,22 @@ function actButton(button: HTMLButtonElement, label: string, value: string): voi
  * out in an order nothing enforces. The name is passed in because a direction
  * names its own grounds (`theme.terrainNames`).
  */
+/**
+ * The manual's own four ground lines — the short personalities, without the
+ * numbers that `colourLesson` carries and the DETAILS fold repeats.
+ *
+ * Each opens through `groundHead` since 2026-08-28, which is the fix rather
+ * than the shape: this table built its lead as name-dash-word directly, so on
+ * every shipped direction the manual read "■ ASH — ash." and "● TIDE —
+ * tide.". The stutter rule was written for the teaching card on 2026-08-27 and
+ * never reached here, because the card and the manual kept two tables.
+ */
 const COLOUR_HELP: Readonly<Record<Colour, (name: string) => string>> = {
-  green: (n) => `${n} — crowds. Wants to be one big mob of its own colour.`,
-  yellow: (n) => `${n} — company. Scores in messy mixed ground where nothing else matches.`,
-  red: (n) => `${n} — ash. Builds along the spent, popped land everyone else abandons.`,
-  blue: (n) => `${n} — tide. Worth little at home, a lot on the frontier.`,
+  green: (n) => `${groundHead(n, 'crowds')} Wants to be one big mob of its own colour.`,
+  yellow: (n) =>
+    `${groundHead(n, 'company')} Scores in messy mixed ground where nothing else matches.`,
+  red: (n) => `${groundHead(n, 'ash')} Builds along the spent, popped land everyone else abandons.`,
+  blue: (n) => `${groundHead(n, 'tide')} Worth little at home, a lot on the frontier.`,
 };
 
 /**
@@ -4684,7 +4696,22 @@ export class Game {
       // Name, hue AND symbol — the draft card's own three channels (2026-08-27),
       // so the one that survives colour blindness and a glance is present here
       // too rather than the square being the only non-word cue.
-      if (text !== null) rows.push({ colour, text: `${COLOUR_MARK[colour]} ${text}` });
+      //
+      // ...and the REAL TILE since 2026-08-28 (Marc: "the world, the screen,
+      // etc. should be from in-game too, not just text"). The manual's THE
+      // COLOURS section has drawn the baked hex here since 2026-08-27 — its
+      // own comment says the swatch and the card in your hand should be "one
+      // object rather than two things that resemble each other" — and this
+      // card, which is where a stranger MEETS the four grounds on their first
+      // placement, was still drawing flat CSS squares. Same rows, same art,
+      // same `this.#art` that was in scope the whole time.
+      if (text !== null) {
+        rows.push({
+          colour,
+          ...(this.#art[colour] === undefined ? {} : { art: this.#art[colour] }),
+          text: `${COLOUR_MARK[colour]} ${text}`,
+        });
+      }
     }
     return rows;
   }
