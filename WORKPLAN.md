@@ -91,7 +91,7 @@ Pure additive polish; depends on Stage 1's registry.
 
 Phone check: HUD row width with the ✤ mark, in portrait.
 
-## Stage 3 — The glossary registry, no UI change (STATUS: TODO)
+## Stage 3 — The glossary registry, no UI change (STATUS: DONE, commit `a219a46`)
 
 1. New `src/ui/glossary.ts` (`src/content/` is ESLint-restricted to balance
    data; `ui/` may import content/engine/theme/meta):
