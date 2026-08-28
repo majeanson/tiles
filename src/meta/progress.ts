@@ -134,14 +134,16 @@ export const PERKS: readonly Perk[] = [
   {
     id: 'rootbound',
     name: 'ROOTBOUND',
-    note: 'Native ground pays DOUBLE. Ground that is not yours pays nothing at all.',
-    // `rules.ts`: `onNative ? (worth + native) * 2 : 0` — the ground's own
-    // bonus is counted in BEFORE the doubling, and off-native is a hard zero
-    // rather than a reduction. Both halves are stated because the second one
-    // is the sharpest edge any perk has.
-    gain: 'Native ground pays DOUBLE — the ground’s own bonus is counted in first, then the lot doubles.',
-    lose: 'Ground that is not yours pays NOTHING. Not less — nothing at all.',
-    play: 'Grow along ONE colour’s field and pop inside it. A pocket that strays off its native ground scores zero however big you let it get.',
+    note: `Native ground pays up to ${PERK_DIALS.rootboundNativeMax}×, and ground that is not yours pays less — both sharpen as your luck fills.`,
+    // `rules.ts`: `rootboundGrip` walks native from `rootboundNative` to
+    // `rootboundNativeMax` and stray from `rootboundStray` to zero as luck
+    // fills. Repriced 2026-08-27: it used to be a flat ×2 / ×0 from the
+    // first placement, which doubled a score before it had been earned.
+    // Both halves are stated because the second one is the sharpest edge
+    // any perk has — it is just no longer sharp on turn one.
+    gain: `Your own ground pays ${PERK_DIALS.rootboundNative}× to start and ${PERK_DIALS.rootboundNativeMax}× at full luck — the ground’s own bonus is counted in first, then the lot multiplies.`,
+    lose: `Ground that is not yours pays ${PERK_DIALS.rootboundStray}× to start, and NOTHING once your luck is full. The better your odds get, the less the plane forgives.`,
+    play: 'Grow along ONE colour’s field and pop inside it. Early on a strayed pocket still pays something; bank enough luck and it stops paying at all, so the rule gets stricter exactly as you get richer.',
   },
   {
     id: 'secondwind',
@@ -428,6 +430,9 @@ export function applyProgress(tuning: Tuning, progress: Progress): Tuning {
     findSense: tuning.findSense + level('sense') * UPGRADE_STEPS.sense,
     // The worn perk, as dials. Exactly one of these blocks can fire.
     rootboundOnly: worn.has('rootbound'),
+    rootboundNative: worn.has('rootbound') ? PERK_DIALS.rootboundNative : 0,
+    rootboundNativeMax: worn.has('rootbound') ? PERK_DIALS.rootboundNativeMax : 0,
+    rootboundStray: worn.has('rootbound') ? PERK_DIALS.rootboundStray : 0,
     secondWindTiles: worn.has('secondwind') ? PERK_DIALS.secondWindTiles : 0,
     secondWindChance: worn.has('secondwind') ? PERK_DIALS.secondWindChance : 0,
     stoneDiscount: worn.has('stonewalker') ? PERK_DIALS.stoneDiscount : tuning.stoneDiscount,

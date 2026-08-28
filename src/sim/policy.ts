@@ -58,7 +58,11 @@ function options(state: GameState): { index: number; hex: string; worth: number 
     const tile = state.draft[index];
     if (tile === undefined) continue;
     for (const hex of spots) {
-      out.push({ index, hex, worth: previewWorth(state.cells, hex, tile, state.tuning) });
+      out.push({
+        index,
+        hex,
+        worth: previewWorth(state.cells, hex, tile, state.tuning, undefined, state.luck),
+      });
     }
   }
   return out;

@@ -225,7 +225,7 @@ export function renderContext(state: GameState, asked: HexKey | null = null): Re
     ? state.draft.map((tile) => {
         const map = new Map<HexKey, number>();
         for (const k of legal) {
-          map.set(k, previewWorth(state.cells, k, tile, state.tuning, home));
+          map.set(k, previewWorth(state.cells, k, tile, state.tuning, home, state.luck));
         }
         return map;
       })
@@ -314,7 +314,7 @@ export function toBoardView(
       // back so one colour's holdings read as a single shape on the board.
       dimmed: spotlight !== null && cell.kind === 'tile' && cell.colour !== spotlight,
       lensed: spotlight !== null && cell.kind === 'tile' && cell.colour === spotlight,
-      worth: worthOf(state.cells, k, state.tuning, home),
+      worth: worthOf(state.cells, k, state.tuning, home, state.luck),
       home: k === homeKey,
       light: lit(q, r),
       band: band(q, r),
@@ -1008,10 +1008,10 @@ function colourPotentials(state: GameState): ColourPotential[] {
     if (cell.kind !== 'tile') continue;
     const entry = acc.get(cell.colour);
     if (entry === undefined) continue;
-    const worth = worthOf(state.cells, k, t, home);
+    const worth = worthOf(state.cells, k, t, home, state.luck);
     entry.count++;
     entry.worth += worth;
-    entry.bonus += worth - worthOf(state.cells, k, plain, home);
+    entry.bonus += worth - worthOf(state.cells, k, plain, home, state.luck);
     if (isRipe(state.cells, k)) {
       entry.ripeCount++;
       entry.ripeWorth += worth;
@@ -1333,7 +1333,7 @@ export function pocketNote(state: GameState, at: HexKey): string {
   const t = state.tuning;
   const value = harvestValue(state, at);
   const home = homeOf(state);
-  const worth = value.keys.reduce((n, k) => n + worthOf(state.cells, k, t, home), 0);
+  const worth = value.keys.reduce((n, k) => n + worthOf(state.cells, k, t, home, state.luck), 0);
   const multiplier = harvestMultiplier(state, value.keys);
 
   // Rare tiles inside the pocket, and what each kind does — a ripe rare
@@ -1393,7 +1393,10 @@ export function harvestNote(
 ): string {
   const t = before.tuning;
   const homeBefore = homeOf(before);
-  const worth = value.keys.reduce((n, k) => n + worthOf(before.cells, k, t, homeBefore), 0);
+  const worth = value.keys.reduce(
+    (n, k) => n + worthOf(before.cells, k, t, homeBefore, before.luck),
+    0,
+  );
   const multiplier = harvestMultiplier(before, value.keys);
   const head = `POPPED ${value.count} — total worth ${worth}`;
 
@@ -1479,6 +1482,18 @@ export type TipRow = {
   readonly colour?: Colour;
   /** A glyph from the registry, for a row that is not a ground. */
   readonly glyph?: string;
+  /**
+   * The ground's REAL baked tile, as a data URL (2026-08-27, Marc: "can we
+   * have visuals with real tiles or examples in the how to play and hand and
+   * such? so we have a visual with real in game assets").
+   *
+   * The same canvas `bakeSurface` hands the draft card — texture, gradient,
+   * inset and all — so the square beside a colour's name stops being an
+   * approximation of the tile and becomes the tile. Optional because a caller
+   * without a canvas (a bare test, the gallery) has nothing to bake with, and
+   * the flat `colour` swatch is still a correct, if plainer, mark.
+   */
+  readonly art?: string;
 };
 
 /** A card that teaches a set: the lead, and the rows under it. */
@@ -1798,7 +1813,7 @@ export function describeHexOf(ctx: DescribeContext, hex: HexKey): string {
     case 'stone':
       return `Spent ground — a popped tile. It surrounds but never matches, except for ${name('red')}, which feeds on it.`;
     case 'tile': {
-      const worth = worthOf(state.cells, hex, t, homeOf(state));
+      const worth = worthOf(state.cells, hex, t, homeOf(state), state.luck);
       const power = rarityLine(cell.rarity);
       // The colour's personality rides along (2026-08-19, "the colors are
       // not explained") — a tapped tile is the cheapest place to learn

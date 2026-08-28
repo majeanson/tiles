@@ -58,7 +58,13 @@ export function tipRows(rows: readonly TipRow[] | undefined): HTMLElement[] {
     // Decoration in every case: the words beside it already name the thing,
     // so a screen reader gains nothing but noise from the square or the glyph.
     mark.setAttribute('aria-hidden', 'true');
-    if (row.colour !== undefined) {
+    if (row.colour !== undefined && row.art !== undefined) {
+      // The real tile, hex-shaped, where the game could bake one: the same
+      // art the draft card is wearing while you read this (2026-08-27).
+      mark.className = 'tip-swatch tip-tile';
+      mark.dataset['colour'] = row.colour;
+      mark.style.backgroundImage = `url(${row.art})`;
+    } else if (row.colour !== undefined) {
       mark.className = 'tip-swatch';
       mark.dataset['colour'] = row.colour;
     } else if (row.glyph !== undefined) {
@@ -82,8 +88,9 @@ export function tipRows(rows: readonly TipRow[] | undefined): HTMLElement[] {
  * style").
  *
  * A perk is the only thing in this game that can make you WORSE at it if you
- * keep playing the way you were — ROOTBOUND zeroes every pocket that strays
- * off its own ground, OPEN HAND takes the stash away — and until now the one
+ * keep playing the way you were — ROOTBOUND starves every pocket that strays
+ * off its own ground, and starves it harder the luckier you get; OPEN HAND
+ * takes the stash away — and until now the one
  * sentence each of them got said what the dial did without ever saying that.
  * The find card named the gain; nothing named the cost as a cost, and nothing
  * at all said what to do differently.

@@ -210,6 +210,7 @@ function tallyWorth(
   onNative: boolean,
   t: Tuning,
   home: { q: number; r: number },
+  luck: number,
   counts: (n: HexKey) => boolean,
 ): number {
   const { q, r } = parse(k);
@@ -260,11 +261,15 @@ function tallyWorth(
   // A heavy tile's ground match counts double like every other match it makes.
   const native = onNative ? (rarity === 'unique' ? 2 : 1) : 0;
 
-  // ROOTBOUND (perk): native ground counts double, and ground that is not
-  // yours pays NOTHING — every match the tile made is voided. Not a bonus on
-  // top of the normal game but a different game: where you may build well is
-  // decided by the terrain before you draw a card.
-  if (t.rootboundOnly) return onNative ? (worth + native) * 2 : 0;
+  // ROOTBOUND (perk): your own ground pays MORE and ground that is not yours
+  // pays LESS, by how much your luck says. Not a bonus on top of the normal
+  // game but a different game: where you may build well is decided by the
+  // terrain before you draw a card. Rounded, because worth is an integer
+  // everywhere else and a preview promising 4.05 is a preview nobody trusts.
+  if (t.rootboundOnly) {
+    const grip = rootboundGrip(t, luck);
+    return Math.round(onNative ? (worth + native) * grip.native : worth * grip.stray);
+  }
 
   return worth + native;
 }
@@ -288,12 +293,44 @@ export function worthOf(
   k: HexKey,
   t: Tuning,
   home: { q: number; r: number } = ORIGIN,
+  luck = 0,
 ): number {
   const cell = cells[k];
   if (cell?.kind !== 'tile') return 0;
-  return tallyWorth(cells, k, cell.colour, cell.rarity, cell.onNative === true, t, home, (n) =>
-    t.ripeTilesMatch ? true : !isRipe(cells, n),
+  return tallyWorth(
+    cells,
+    k,
+    cell.colour,
+    cell.rarity,
+    cell.onNative === true,
+    t,
+    home,
+    luck,
+    (n) => (t.ripeTilesMatch ? true : !isRipe(cells, n)),
   );
+}
+
+/**
+ * ROOTBOUND's grip, at this much luck (2026-08-27).
+ *
+ * Both ends walk with the purse: native from `rootboundNative` up to
+ * `rootboundNativeMax`, stray from `rootboundStray` down to nothing, linearly
+ * in luck against `luckCap`. The perk's whole character is that it is a
+ * DIFFERENT game rather than a bonus, and this keeps that while taking away
+ * the part Marc reported on 2026-08-27 — that the different game arrived
+ * whole on the first placement and doubled a score before it was earned.
+ *
+ * A zero dial means "as this perk shipped": a save written before today
+ * carries `rootboundOnly: true` with no grip beside it, and reading that as
+ * a multiplier of zero would score a whole reloaded run at nothing. Same
+ * `> 0` guard every perk dial in `Tuning` is documented to want.
+ */
+export function rootboundGrip(t: Tuning, luck: number): { native: number; stray: number } {
+  const max = t.rootboundNativeMax > 0 ? t.rootboundNativeMax : 2;
+  const base = t.rootboundNative > 0 ? t.rootboundNative : max;
+  const stray = t.rootboundStray > 0 ? t.rootboundStray : 0;
+  const filled = t.luckCap > 0 ? Math.min(1, Math.max(0, luck) / t.luckCap) : 0;
+  return { native: base + filled * (max - base), stray: stray * (1 - filled) };
 }
 
 const ORIGIN: { q: number; r: number } = { q: 0, r: 0 };
@@ -458,7 +495,7 @@ export function harvestValue(
   let tiles = 0;
   let sumWorth = 0;
   for (const k of pops) {
-    const worth = worthOf(state.cells, k, t, home);
+    const worth = worthOf(state.cells, k, t, home, state.luck);
     sumWorth += worth;
     tiles += t.tilesPerPop + Math.floor(worth / t.worthPerExtraTile);
   }
@@ -515,6 +552,7 @@ export function previewWorth(
   tile: Pick<Tile, 'colour' | 'rarity'>,
   t: Tuning,
   home: { q: number; r: number } = ORIGIN,
+  luck = 0,
 ): number {
   const { colour, rarity } = tile;
   const ground = cells[k];
@@ -525,9 +563,9 @@ export function previewWorth(
   // Worth taking — the harness asks this a few hundred times per placement, and
   // the slow path copies the whole board to answer it.
   if (t.ripeTilesMatch) {
-    return tallyWorth(cells, k, colour, rarity, onNative, t, home, () => true);
+    return tallyWorth(cells, k, colour, rarity, onNative, t, home, luck, () => true);
   }
-  return worthOf({ ...cells, [k]: { kind: 'tile', colour, onNative, rarity } }, k, t, home);
+  return worthOf({ ...cells, [k]: { kind: 'tile', colour, onNative, rarity } }, k, t, home, luck);
 }
 
 /** Build a `cells` record from a list of coordinates, all empty. */

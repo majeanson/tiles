@@ -111,7 +111,7 @@ test('boots, begins, places, reads the manual, works the camera — no errors', 
   // panel closing under an arming button could never be tapped twice), so
   // clicking the panel's bare centre is a coin toss about which half of it
   // the layout happens to put there.
-  await page.locator('#help-name').click();
+  await page.locator('#help-back').click();
   await expect(page.locator('#help-panel')).toBeHidden();
 
   // The camera toggle jumps in and back out; the wheel zooms. Every one of

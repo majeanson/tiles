@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { COLOURS } from '@content/tuning';
 import { THEMES } from './index';
-import { contrastRatio, mix, type Rgb, type Surface, type Theme } from './tokens';
+import { contrastRatio, edgeCasing, mix, type Rgb, type Surface, type Theme } from './tokens';
 
 /**
  * The contrast budget.
@@ -206,6 +206,73 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
         `${name} ${at(colour)} on the board ${at(board.background)} is ${ratio.toFixed(2)}:1; ` +
           `${MARK} is the floor for a mark`,
       ).toBeGreaterThanOrEqual(MARK);
+    }
+  });
+
+  /**
+   * Every edge that means something, over every ground it is actually drawn on
+   * (2026-08-27).
+   *
+   * The test above checks the same strokes against the BOARD, which is the one
+   * surface most of them are never drawn on: a legal edge rims a live tile, a
+   * ripe edge rims the tile you must not miss, and the accent rims a landmark —
+   * which wears the WALL's ground, because a destination is a thing standing on
+   * the plane. Checking an edge against the background and assuming the terrain
+   * is the same gap that put a tile's own number at 1.46:1 over EMBER, one
+   * layer up.
+   *
+   * Two numbers this found, both on a direction that was fully green: torchlit's
+   * ripe edge at **1.69:1** over EMBER — the loudest promise the board makes,
+   * invisible on one of its four grounds — and daylight's accent at **1.02:1**
+   * over the wall, which is to say a shrine that could not be told from a
+   * claimed one. Neither is fixable by moving a colour, for the same reason
+   * `Ink.halo` exists, so the rule is stated on a PAIR here too: the stroke
+   * clears the bar on its own, or `edgeCasing` has something to lay under it
+   * that does.
+   */
+  it('shows every edge over every ground it is drawn on, by itself or by its casing', () => {
+    const edges: readonly (readonly [string, Rgb])[] = [
+      ['the ripe edge', theme.board.ripeEdge],
+      ['the legal edge', theme.board.legalEdge],
+      ['the landmark accent', theme.ink.accent],
+      ['the magic edge', theme.ink.magic],
+      ['the unique edge', theme.ink.unique],
+      ['the home ring', theme.board.home.ring],
+    ];
+    for (const [edgeName, stroke] of edges) {
+      for (const [groundName, ground] of grounds(theme)) {
+        const alone = contrastRatio(stroke, ground);
+        const casing = edgeCasing(theme, stroke, ground);
+        expect(
+          alone >= MARK || casing !== null,
+          `${edgeName} ${at(stroke)} on ${groundName} ${at(ground)} is ${alone.toFixed(2)}:1 ` +
+            `and nothing this theme owns will case it; ${MARK} is the floor for a mark`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  /**
+   * The two anchors, in memory (2026-08-27).
+   *
+   * A remembered shrine or territory is the only thing in the fog that still
+   * wears an outline — Marc asked for it twice, on 2026-08-20 ("make them
+   * clearer, its hard to see") and again the same day ("i still dont see
+   * clearly") — and it is drawn in the accent veiled by half the fog's own
+   * veil, over ground that is veiled by all of it. Both halves are reproduced
+   * from the same tokens `PixiRenderer` reads. Daylight's landed at 2.85:1
+   * over remembered ASH, under a floor the direction passes everywhere else.
+   */
+  it('keeps a remembered shrine or territory findable in its own fog', () => {
+    const anchor = mix(theme.ink.accent, theme.board.background, theme.fog.veil * 0.5);
+    for (const [name, ground] of grounds(theme)) {
+      const behind = remembered(theme, ground);
+      const alone = contrastRatio(anchor, behind);
+      expect(
+        alone >= MARK || edgeCasing(theme, anchor, behind) !== null,
+        `a remembered anchor's edge ${at(anchor)} on remembered ${name} ${at(behind)} is ` +
+          `${alone.toFixed(2)}:1 and nothing will case it; ${MARK} is the floor`,
+      ).toBe(true);
     }
   });
 

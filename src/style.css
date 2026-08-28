@@ -2086,6 +2086,24 @@ button.armed {
   background: var(--tile-green, #4a7c59);
 }
 
+/* The REAL tile, where the game had a canvas to bake one (2026-08-27, Marc:
+   "can we have visuals with real tiles or examples ... so we have a visual
+   with real in game assets"). The baked art rides as a background IMAGE over
+   the flat fill, so the colour is still there if the bake failed, and the
+   square becomes a hex — the shape is the other half of "this is the tile".
+   Slightly larger than the flat swatch because a clipped hex loses the
+   corners the square was using. */
+.tip-tile {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 0;
+  border-radius: 0;
+  background-size: cover;
+  background-position: center;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
 .tip-swatch[data-colour='yellow'] {
   background: var(--tile-yellow, #b8983f);
 }
@@ -2964,4 +2982,71 @@ button:not(:disabled):active {
     grid-column: 2;
     grid-row: 4;
   }
+}
+
+/* ------------------------------------------------- the manual's own figures
+
+   A rule, drawn with the run's real art (2026-08-27, Marc: "can we have
+   visuals with real tiles or examples in the how to play and hand and such?
+   so we have a visual with real in game assets").
+
+   The hexes are positioned by `Game#figure` from `render/layout.ts`'s own
+   `place()`, at the theme's own orientation, so the picture uses the board's
+   geometry rather than a second copy of it. All this file owns is the shape,
+   the fill under the art, and the ring on the one tile being taught. */
+.help-figure-wrap {
+  margin: 12px 0 14px;
+}
+
+.help-figure {
+  position: relative;
+  margin: 0 auto 8px;
+}
+
+.fig-hex {
+  position: absolute;
+  /* The board's own gutter, which the baked art already carries as an inset
+     — restated here because these spans are the full cell box. */
+  transform: scale(0.94);
+  background-color: var(--tile-green, #4a7c59);
+  background-size: cover;
+  background-position: center;
+  /* Pointy-top by default, because torchlit is; the flat-top clip below
+     follows a theme that chose otherwise, the same way the board does. */
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.help-figure[data-facing='flat'] .fig-hex {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+.fig-hex[data-colour='yellow'] {
+  background-color: var(--tile-yellow, #b8983f);
+}
+
+.fig-hex[data-colour='red'] {
+  background-color: var(--tile-red, #a4503c);
+}
+
+.fig-hex[data-colour='blue'] {
+  background-color: var(--tile-blue, #3f6f96);
+}
+
+/* The tile the figure is ABOUT, said the way the board says it: the accent
+   ring. Drawn as a slightly LARGER clipped hex behind the tile, because
+   `clip-path` clips a border and an inset shadow along with everything else —
+   a rim on a clipped shape has to be a shape. */
+.fig-ring {
+  position: absolute;
+  background: var(--accent, #d7b45a);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.help-figure[data-facing='flat'] .fig-ring {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+.help-figure-wrap > .flag-note {
+  margin: 0;
+  text-align: center;
 }

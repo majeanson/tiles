@@ -144,18 +144,35 @@ describe('perks: found, and one worn', () => {
   });
 
   /**
-   * ROOTBOUND's cost is the sharpest edge in the game — `rules.ts` returns a
-   * hard 0 for anything off native ground, not a reduction — and the whole
-   * reason the card grew a LOSE line. If the sentence ever softens to "less",
-   * a player will grow a pocket across two colours and lose all of it.
+   * ROOTBOUND's cost is the sharpest edge in the game and the whole reason
+   * the card grew a LOSE line. Until 2026-08-27 it was a hard 0 from the
+   * first placement and the card said so in three words; now it starts as a
+   * reduction and BECOMES the hard 0 as luck fills, which is a strictly
+   * harder thing to say and a strictly worse one to get wrong. A player who
+   * reads only "pays less" will grow a pocket across two colours late in a
+   * lucky run and lose all of it, so the card must name BOTH ends.
    */
-  it('says ROOTBOUND pays NOTHING off native ground, not less', () => {
+  it('says ROOTBOUND ends at NOTHING off native ground, and names the end it starts at', () => {
     const rootbound = PERKS.find((p) => p.id === 'rootbound')!;
-    // Both halves: the word, and the correction that stops it being read as a
-    // discount. "Not less" is doing real work in that sentence.
     expect(rootbound.lose).toMatch(/NOTHING/);
-    expect(rootbound.lose).toMatch(/not less/i);
-    expect(rootbound.play).toMatch(/zero/i);
+    // The soft end, quoted from the dial rather than written out — the same
+    // rule the test above holds every other perk to.
+    expect(rootbound.lose).toContain(String(PERK_DIALS.rootboundStray));
+    // And what MOVES between the two ends, because a player who does not know
+    // it moves cannot plan around it.
+    expect(rootbound.lose).toMatch(/luck/i);
+    expect(rootbound.play).toMatch(/luck/i);
+  });
+
+  /**
+   * And the gain, both ends of it. The card quotes the dials so a repricing
+   * in `src/content/` cannot leave the explanation quoting the old numbers.
+   */
+  it('quotes both ends of ROOTBOUND’s grip', () => {
+    const rootbound = PERKS.find((p) => p.id === 'rootbound')!;
+    expect(rootbound.gain).toContain(String(PERK_DIALS.rootboundNative));
+    expect(rootbound.gain).toContain(String(PERK_DIALS.rootboundNativeMax));
+    expect(rootbound.note).toContain(String(PERK_DIALS.rootboundNativeMax));
   });
 });
 

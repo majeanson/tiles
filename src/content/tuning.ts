@@ -479,10 +479,12 @@ export type Tuning = {
    * unaffected: a perk has always worked by zeroing or moving a number
    * here, whoever is holding it.
    *
-   * ROOTBOUND (`rootboundOnly`) — native ground counts DOUBLE and off-native
-   * ground pays nothing at all. Not a bonus: a rewrite of where you are
-   * allowed to build well, which makes reading the terrain before placing
-   * the whole game for that run.
+   * ROOTBOUND (`rootboundOnly` plus the three grip dials below) — native
+   * ground pays MORE and off-native ground pays less, and how much of each
+   * rides your luck: it starts at x1.35 / x0.5 and reaches x2 / x0 as the
+   * purse fills. Not a bonus: a rewrite of where you are allowed to build
+   * well, which makes reading the terrain before placing the whole game for
+   * that run. Repriced 2026-08-27 — see `PERK_DIALS` for the why.
    *
    * SECOND WIND (`secondWindTiles`, `secondWindChance`) — the first time the
    * run would die broke, a coin is flipped: on `secondWindChance` you refill
@@ -494,6 +496,17 @@ export type Tuning = {
    * Zeros and false = the perk is not owned, which is where every run starts.
    */
   readonly rootboundOnly: boolean;
+  /**
+   * ROOTBOUND's grip, at empty luck and at full (2026-08-27). Set by
+   * `applyProgress` only while the perk is worn, like every dial above.
+   * Zero — or `undefined`, which is what a save written before today
+   * decodes to — means "the grip this perk shipped with", so an old run
+   * reloads as the flat double-or-nothing it was played as rather than
+   * silently scoring everything at zero. See `rootboundGrip`.
+   */
+  readonly rootboundNative: number;
+  readonly rootboundNativeMax: number;
+  readonly rootboundStray: number;
   readonly secondWindTiles: number;
   readonly secondWindChance: number;
 
@@ -651,6 +664,9 @@ export const BARE_TUNING: Tuning = {
   luckPerPop: 0,
   luckPerTile: 1,
   rootboundOnly: false,
+  rootboundNative: 0,
+  rootboundNativeMax: 0,
+  rootboundStray: 0,
   secondWindTiles: 0,
   secondWindChance: 0,
   burnRelics: 0,

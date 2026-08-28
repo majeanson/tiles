@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { PERK_DIALS } from '@content/goals';
 import { TUNING } from '@content/tuning';
 import { key, neighbourKeys, type HexKey } from './hex';
 import { canSpend, newRun, rarityOdds, reduce } from './reduce';
-import { costOf, harvestValue, worthOf } from './rules';
+import { costOf, harvestValue, rootboundGrip, worthOf } from './rules';
 import type { Cell, GameState } from './state';
 
 /**
@@ -288,30 +289,83 @@ describe('the perks Marc picked', () => {
    * four big rule-breakers he was not convinced by are in ideas/uniques.md,
    * unbuilt — these are the two that exist.
    */
-  const ROOTBOUND = { ...T, rootboundOnly: true };
+  const ROOTBOUND = {
+    ...T,
+    rootboundOnly: true,
+    rootboundNative: PERK_DIALS.rootboundNative,
+    rootboundNativeMax: PERK_DIALS.rootboundNativeMax,
+    rootboundStray: PERK_DIALS.rootboundStray,
+  };
 
-  it('rootbound: ground that is not yours pays NOTHING, however well packed', () => {
-    // A green tile among green neighbours, on ground native to nobody.
-    const cells: Record<HexKey, Cell> = {
-      [key(0, 0)]: { kind: 'tile', colour: 'green' },
-      [key(1, 0)]: { kind: 'tile', colour: 'green' },
-      [key(0, 1)]: { kind: 'tile', colour: 'green' },
-    };
-    const base: GameState = { ...newRun(5, T), cells };
-    const rooted: GameState = { ...newRun(5, ROOTBOUND), cells };
+  /**
+   * Repriced 2026-08-27 (Marc, after a 52k high: "i had rootbound and
+   * instantly doubled my points basically"). The perk's two ends now START
+   * soft and reach their old values as luck fills, so what these tests pin
+   * is the WALK rather than either endpoint — the endpoints are dials, and
+   * dials move.
+   */
+  const STRAY: Record<HexKey, Cell> = {
+    [key(0, 0)]: { kind: 'tile', colour: 'green' },
+    [key(1, 0)]: { kind: 'tile', colour: 'green' },
+    [key(0, 1)]: { kind: 'tile', colour: 'green' },
+  };
+  const OWN: Record<HexKey, Cell> = {
+    [key(0, 0)]: { kind: 'tile', colour: 'green', onNative: true },
+    [key(1, 0)]: { kind: 'tile', colour: 'green', onNative: true },
+  };
 
-    expect(worthOf(base.cells, key(0, 0), T)).toBeGreaterThan(0);
-    expect(worthOf(rooted.cells, key(0, 0), ROOTBOUND)).toBe(0);
+  it('rootbound: ground that is not yours pays less at empty luck, and NOTHING at full', () => {
+    const plain = worthOf(STRAY, key(0, 0), T);
+    const broke = worthOf(STRAY, key(0, 0), ROOTBOUND, undefined, 0);
+    const rich = worthOf(STRAY, key(0, 0), ROOTBOUND, undefined, ROOTBOUND.luckCap);
+
+    expect(plain).toBeGreaterThan(0);
+    expect(broke).toBeGreaterThan(0);
+    expect(broke).toBeLessThan(plain);
+    expect(rich).toBe(0);
   });
 
-  it('rootbound: your own ground pays double', () => {
-    const cells: Record<HexKey, Cell> = {
-      [key(0, 0)]: { kind: 'tile', colour: 'green', onNative: true },
-      [key(1, 0)]: { kind: 'tile', colour: 'green', onNative: true },
+  it('rootbound: your own ground pays more at empty luck, and double at full', () => {
+    const plain = worthOf(OWN, key(0, 0), T);
+    const broke = worthOf(OWN, key(0, 0), ROOTBOUND, undefined, 0);
+    const rich = worthOf(OWN, key(0, 0), ROOTBOUND, undefined, ROOTBOUND.luckCap);
+
+    expect(broke).toBeGreaterThan(plain);
+    expect(rich).toBe(plain * PERK_DIALS.rootboundNativeMax);
+    expect(rich).toBeGreaterThan(broke);
+  });
+
+  /**
+   * The whole point of the repricing: the perk may not arrive at full
+   * strength. A run's first placement happens at zero luck, and at zero luck
+   * neither end may already be where full luck takes it.
+   */
+  it('rootbound: does not arrive whole — luck is what sharpens both ends', () => {
+    const grip = {
+      broke: rootboundGrip(ROOTBOUND, 0),
+      rich: rootboundGrip(ROOTBOUND, ROOTBOUND.luckCap),
     };
-    const plain = worthOf(cells, key(0, 0), T);
-    const rooted = worthOf(cells, key(0, 0), ROOTBOUND);
-    expect(rooted).toBe(plain * 2);
+    expect(grip.broke.native).toBeLessThan(grip.rich.native);
+    expect(grip.broke.stray).toBeGreaterThan(grip.rich.stray);
+    expect(grip.rich.stray).toBe(0);
+    // Halfway up the purse is halfway along both ends — linear, so a player
+    // can feel the trade rather than discover a cliff.
+    const half = rootboundGrip(ROOTBOUND, ROOTBOUND.luckCap / 2);
+    expect(half.native).toBeCloseTo((grip.broke.native + grip.rich.native) / 2, 6);
+    expect(half.stray).toBeCloseTo((grip.broke.stray + grip.rich.stray) / 2, 6);
+  });
+
+  /**
+   * A run saved before 2026-08-27 carries `rootboundOnly: true` and no grip
+   * dials at all. Read as multipliers of zero it would score the whole
+   * reloaded run at nothing; the `> 0` guard every perk dial is documented
+   * to want is what makes it reload as the flat double-or-nothing it was
+   * actually played as.
+   */
+  it('rootbound: an old save with no grip dials reloads as the perk it was played as', () => {
+    const legacy = { ...T, rootboundOnly: true };
+    expect(worthOf(OWN, key(0, 0), legacy)).toBe(worthOf(OWN, key(0, 0), T) * 2);
+    expect(worthOf(STRAY, key(0, 0), legacy)).toBe(0);
   });
 
   it('second wind: a coin flip, not a floor — and only ever once', () => {
@@ -351,6 +405,8 @@ describe('the perks Marc picked', () => {
 
   it('does not exist unless the perk is worn', () => {
     expect(T.rootboundOnly).toBe(false);
+    expect(T.rootboundNative).toBe(0);
+    expect(T.rootboundStray).toBe(0);
     expect(T.secondWindTiles).toBe(0);
   });
 });

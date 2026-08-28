@@ -613,8 +613,42 @@ describe('the camera, and staying oriented', () => {
     expect(tabs[1]?.dataset['on']).toBe('true');
     expect(tabs[0]?.dataset['on']).toBeUndefined();
 
-    ctx.el.helpPanel.click();
+    // BACK is the only way out but Escape (2026-08-27): tapping the prose
+    // used to close the panel, which made every control inside it swallow
+    // its own tap to stay working.
+    (ctx.el.helpPanel.querySelector('#help-back') as HTMLButtonElement).click();
     expect(ctx.el.helpPanel.hidden).toBe(true);
+  });
+
+  /**
+   * The manual draws the rule with the run's OWN art (2026-08-27, Marc: "can
+   * we have visuals with real tiles or examples in the how to play and hand
+   * and such? so we have a visual with real in game assets").
+   *
+   * happy-dom has no 2D canvas, so `bakeSurface` returns null here and no
+   * `background-image` is set — which is exactly the degradation the figure
+   * is built for. What this pins is the part that must hold either way: the
+   * picture exists, it is seven hexes laid out on the board's own axial grid,
+   * one of them is the ripe tile being taught, and every hex names a real
+   * ground so CSS can colour it with the terrain token.
+   */
+  it('draws the six-around-one rule as a figure, in the theme’s own facing', () => {
+    ctx.el.help.click();
+    const figure = ctx.el.helpPanel.querySelector('.help-figure');
+    expect(figure).not.toBeNull();
+    expect(['pointy', 'flat']).toContain(figure?.getAttribute('data-facing'));
+
+    const hexes = [...(figure?.querySelectorAll('.fig-hex') ?? [])] as HTMLElement[];
+    expect(hexes).toHaveLength(7);
+    for (const hex of hexes) {
+      expect(COLOURS).toContain(hex.dataset['colour']);
+      // Positioned, not stacked: the board's geometry put each one somewhere.
+      expect(hex.style.left).not.toBe('');
+      expect(hex.style.width).not.toBe('');
+    }
+    // Exactly one ripe ring, and it is the tile the caption is about.
+    expect(figure?.querySelectorAll('.fig-ring')).toHaveLength(1);
+    expect(figure?.parentElement?.textContent).toContain('the middle tile is ripe');
   });
 
   it('keeps the arithmetic folded away, and reads it from the live tuning', () => {
@@ -1221,7 +1255,7 @@ describe('a stranger arriving', () => {
     ctx.game.openHelp(moreHelp);
     expect(ctx.el.helpPanel.hidden).toBe(false);
 
-    ctx.el.helpPanel.click();
+    (ctx.el.helpPanel.querySelector('#help-back') as HTMLButtonElement).click();
     expect(ctx.el.helpPanel.hidden).toBe(true);
     expect(document.activeElement).toBe(moreHelp);
   });
@@ -1487,8 +1521,8 @@ describe('the manual as a dialog', () => {
     expect(ctx.el.helpPanel.hidden).toBe(false);
     expect(document.activeElement).toBe(ctx.el.helpPanel);
 
-    // The close-on-any-tap behaviour stays, and it returns focus too.
-    ctx.el.helpPanel.click();
+    // BACK closes it, and returns focus too.
+    (ctx.el.helpPanel.querySelector('#help-back') as HTMLButtonElement).click();
     expect(ctx.el.helpPanel.hidden).toBe(true);
     expect(document.activeElement).toBe(ctx.el.help);
   });
@@ -1558,7 +1592,7 @@ describe('the curtain, and contextual help', () => {
     expect(ctx.renderer.pans).toHaveLength(0);
 
     // Closed again, the board answers as usual.
-    ctx.el.helpPanel.click();
+    (ctx.el.helpPanel.querySelector('#help-back') as HTMLButtonElement).click();
     ctx.renderer.nextHit = key(1, 0);
     tap(ctx.el.board);
     expect(ctx.game.state.placements).toBe(1);

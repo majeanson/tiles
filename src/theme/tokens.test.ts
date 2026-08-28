@@ -150,7 +150,7 @@ describe(
       }
     });
 
-    it('with art, wears the terrain slot’s own PNG ghosted over the flat ground', () => {
+    it('with art, ghosts the terrain slot’s own PNG UNDER the same field marks', () => {
       for (const theme of THEMES) {
         for (const c of COLOURS) {
           const asset = theme.terrain[c].asset;
@@ -159,7 +159,15 @@ describe(
           expect(ground.kind).toBe('art');
           if (ground.kind !== 'art') continue;
           expect(ground.asset).toBe(asset);
-          expect(ground.base).toEqual(theme.empty);
+          // The marks stay (2026-08-27). The ghost is the material layer and
+          // the pattern is the readable one; this assertion used to require
+          // `theme.empty` exactly, which is what let the art path quietly
+          // drop the only channel `MIN_FIELD_LIFT` grades. See
+          // `theme.test.ts`'s "never trades a field's marks for its art".
+          expect(ground.base.fill).toBe(theme.empty.fill);
+          expect(ground.base.inset).toBe(theme.empty.inset);
+          expect(ground.base.pattern).toEqual(fieldPattern(theme, c));
+          expect(ground.base.overlay).toEqual(fieldOverlayPattern(theme, c));
           // The ghost alpha still EQUALISES the way `fieldDots` does —
           // reused, not reinvented, so a future retune of one retunes the
           // other too. What it no longer does is match it exactly

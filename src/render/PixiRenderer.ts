@@ -3,6 +3,7 @@ import { distance, key, parse, type HexKey } from '@engine/hex';
 import {
   BAND_LIFT,
   depthOf,
+  edgeCasing,
   fieldGround,
   LANDMARK_GLYPH,
   hex,
@@ -1388,9 +1389,43 @@ export class PixiRenderer implements Renderer {
     const stroke = this.#strokeFor(cell, layout.size);
     if (stroke !== null) {
       const inset = surface.inset;
-      const edge = new Graphics()
-        .poly(corners(x, y, layout.size * (1 - inset), layout.orientation))
-        .stroke({ width: stroke.width, color: stroke.colour, alignment: 0.5 });
+      const ring = corners(x, y, layout.size * (1 - inset), layout.orientation);
+      // The casing (2026-08-27, `edgeCasing`): an outline whose own ground
+      // would swallow it gets the halo laid under it first, the same pair
+      // rule every LABEL on this board has been drawn with since the halo
+      // was invented. Torchlit's ripe edge over EMBER was at 1.69:1 and
+      // daylight's landmark accent over the wall a shrine stands on was at
+      // 1.02:1 — the two loudest promises on the board, invisible on one
+      // ground each. Only where it is needed, and under, so the stroke's
+      // own colour is still the thing being read.
+      // Against the ground as it is actually PAINTED: a remembered cell's
+      // sprite is veiled toward the board and then composited at `fog.alpha`,
+      // which is the same two steps `contrast.test.ts` reproduces. The
+      // remembered shrine and territory edges — the two anchors Marc has
+      // twice asked to be clearer — are the strokes this distinction is for.
+      const ground = cell.remembered
+        ? mix(
+            theme.board.background,
+            mix(surface.fill, theme.board.background, theme.fog.veil),
+            theme.fog.alpha,
+          )
+        : surface.fill;
+      const casing = edgeCasing(theme, stroke.colour, ground);
+      const edge = new Graphics();
+      if (casing !== null) {
+        // One `Graphics`, two strokes, casing first: a second display object
+        // per outlined cell is the kind of cost that adds up on a board where
+        // a third of the edge/ground pairs in a direction need one.
+        edge.poly(ring).stroke({
+          // Wide enough to flank the stroke by a couple of device pixels at
+          // phone density, additive rather than a multiple so the already-fat
+          // targeted ring does not double into a blot.
+          width: stroke.width + Math.max(3, layout.size * 0.08),
+          color: casing,
+          alignment: 0.5,
+        });
+      }
+      edge.poly(ring).stroke({ width: stroke.width, color: stroke.colour, alignment: 0.5 });
       // The edge steps back WITH its cell (fresh-eyes, 2026-08-20): the
       // surface sprite already dims to 0.25 under the colour lens, and an
       // undimmed stroke over a dimmed cell left the fog full of bright
@@ -1440,13 +1475,29 @@ export class PixiRenderer implements Renderer {
     // asked. `labelPx`'s floor keeps the text legible instead of letting it
     // shrink into mush; only sub-3px hexes — where even a floored label is
     // paint noise over paint noise — stay wordless. Remembered ground stays
-    // unlabelled EXCEPT its landmarks (same day, Marc's fog-memory call:
-    // memory shows what it saw) — a remembered cache or site draws its
-    // glyph faint, so walking back is an informed decision instead of a
-    // guess. Remembered SHRINES and TERRITORIES draw at full strength
-    // (Marc, 2026-08-20: "make them clearer, its hard to see" — they are
-    // the two anchors a next run is oriented by, fixed per world by the
-    // hash and remembered forever; see `#strokeFor`'s veiled edge too).
+    // unlabelled EXCEPT its landmarks (Marc's fog-memory call, 2026-08-20:
+    // memory shows what it saw; see `#strokeFor`'s veiled edge for the two
+    // anchors' outline).
+    //
+    // FAINT MEANS SPENT (2026-08-27, Marc, from the phone: "star sites are
+    // claimed between worlds ... in the ui they appear not claimed" — then,
+    // exactly: "its the ui that makes it like nothings gonna happen, but all
+    // happen correctly, only the ui is grey and not shiny").
+    //
+    // Remembered CACHES and SITES were forced faint here, on a 2026-08-20
+    // argument about orientation: shrines and territories are the anchors a
+    // next run steers by, caches and sites are mere stops. True about
+    // navigation, and backwards about the economy. A cache or a site RE-ARMS
+    // every run — "ground you know stays worth walking" is P4a's whole bet —
+    // so the fog was drawing the two landmarks that still pay as the dead
+    // ones, and the two that are spent for good at full strength. Walking
+    // back to a ★ paid exactly as promised while the map said not to bother.
+    //
+    // So the forced faint is gone and `labelFor`'s own `faint: cell.claimed`
+    // decides, in the fog as on the board: dim if it is spent, bright if it
+    // still pays. Nothing else moves — a held territory reads `claimed` and
+    // stays exactly as dim as it is today, with the accent edge that made it
+    // findable, and an unwoken shrine stays bright because it always was.
     const label = labelFor(cell);
     if (
       label !== null &&
@@ -1454,16 +1505,7 @@ export class PixiRenderer implements Renderer {
       !cell.dimmed &&
       (!cell.remembered || cell.kind === 'landmark')
     ) {
-      const anchor =
-        cell.kind === 'landmark' && (cell.landmark === 'shrine' || cell.landmark === 'territory');
-      group.addChild(
-        this.#drawLabel(
-          cell.remembered && !anchor ? { ...label, faint: true } : label,
-          x,
-          y,
-          layout.size,
-        ),
-      );
+      group.addChild(this.#drawLabel(label, x, y, layout.size));
     }
 
     return group;
@@ -2402,7 +2444,7 @@ export class PixiRenderer implements Renderer {
  */
 const labelPx = (size: number): number => Math.max(8, Math.round(size * 0.7));
 
-function labelFor(cell: CellView): { text: string; faint: boolean } | null {
+export function labelFor(cell: CellView): { text: string; faint: boolean } | null {
   // A shimmer carries `landmark: null` and must stay wordless — printing any
   // glyph would tell the player WHAT is out there, which is exactly the thing
   // the sense upgrade does not sell. The old `?? 'territory'` fallback would

@@ -77,9 +77,14 @@ export function bakeSurface(
   ctx.clip();
 
   paintFill(ctx, surface, w, h);
+  // Ghost first, patterns over it (2026-08-27). A native field's ghost is the
+  // MATERIAL layer and its pattern is the READABLE one; drawn last, a PNG at
+  // 0.42-0.62 alpha halved the very marks `fieldDots` equalises, which is the
+  // channel that says "this ground is native to MOSS" at all. Tiles pass no
+  // ghost, so for every other surface on the board this line is a no-op.
+  if (ghost !== null) paintGhost(ctx, ghost, w, h);
   paintPattern(ctx, surface.pattern, w, h);
   paintPattern(ctx, surface.overlay, w, h);
-  if (ghost !== null) paintGhost(ctx, ghost, w, h);
   paintDepth(ctx, depth, w, h);
   if (surface.scorch) paintScorch(ctx, w, h);
 
@@ -90,9 +95,10 @@ export function bakeSurface(
  * The ghost itself: `ghost.image` drawn full-frame at `ghost.alpha`, inside
  * the same hex clip every other layer paints through, so the PNG never
  * bleeds past the corners a rectangular `drawImage` would otherwise fill.
- * Drawn before `paintDepth` so the light-from-above/dark-toward-floor gloss
- * every surface gets lands on top of the ghost too — one whisper of
- * material, not a decal sitting apart from it.
+ * Drawn straight onto the fill and BEFORE the patterns and `paintDepth`, so
+ * the field's equalised marks and the light-from-above/dark-toward-floor
+ * gloss both land on top of it — one whisper of material, not a decal
+ * sitting apart from it and not a wash over the marks that have to be read.
  */
 function paintGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, w: number, h: number): void {
   ctx.globalAlpha = ghost.alpha;

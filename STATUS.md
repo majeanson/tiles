@@ -4,7 +4,33 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-27, last — SETTINGS becomes a screen for players.**
+Last checkpoint: **2026-08-27, from the phone — the fog stops lying, and every
+control says what it will do.** Four asks, three of them mid-play. **The bug:**
+Marc, at a ★ he had reached before — "its the ui that makes it like nothings
+gonna happen, but all happen correctly, only the ui is grey and not shiny."
+Engine, view and renderer all had the claim right; one line in `#drawCell`
+forced every remembered landmark faint unless it was a shrine or a territory —
+a 2026-08-20 rule about NAVIGATION (those two are the anchors you steer by)
+that is backwards about the ECONOMY: **caches and sites re-arm every run and
+pay again; shrines and territories are spent for good.** The fog dimmed the two
+that still pay and lit the two that never would, so walking back to a ★ paid
+exactly as promised while the map said not to bother. One rule now, pinned by
+`render/labels.test.ts`: **faint means spent.** **BACK, and only BACK:** the
+`?` panel was the one panel closing on any tap, which forced five
+`stopPropagation` guards on the controls inside it; all deleted, BACK given an
+id, and an e2e test taps the prose and expects the panel to stay. **Plain
+words:** every exit is one word (MAIN MENU · SETTINGS · RESTART · NEW WORLD)
+and the consequence arrives armed on the button — one `confirming` helper, so
+reaching for a second control disarms the first, and RESTART finally states
+that the run is **abandoned unscored**. **Real tiles:** the four grounds wear
+their actual baked hex in the manual, and START draws six-around-one as a
+figure laid out by `render/layout.ts`'s own `place()` at the theme's facing —
+the game's art, arranged by the game's geometry. 846 tests, 29 e2e, all gates
+clean. **Committed alongside another session's in-flight theme and tuning work,
+on Marc's "go now".** **NOT re-played on a phone since.** The one gate is still
+Session C.
+
+Previous checkpoint: **2026-08-27, last — SETTINGS becomes a screen for players.**
 Marc: "no more developer, only skins, reset teaching is fine, etc. make it
 public", then "remove all text that is unnecessary, lean it up." The DEVELOPER
 fold is gone and so is what made it necessary: **`ui.themePicker` is deleted**

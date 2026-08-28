@@ -21,6 +21,7 @@ import type {
   Spend,
 } from '@engine/state';
 import { bakeSurface } from '@render/bake';
+import { place } from '@render/layout';
 import {
   PERKS,
   UPGRADES,
@@ -88,6 +89,18 @@ type HelpSection = {
    * the thing look like each other.
    */
   readonly rows?: readonly TipRow[];
+  /**
+   * A picture of the rule, drawn from the run's OWN art (2026-08-27, Marc:
+   * "can we have visuals with real tiles or examples in the how to play and
+   * hand and such? so we have a visual with real in game assets").
+   *
+   * A figure id rather than an element, so `#helpSections` — which is a pure
+   * description of what the manual SAYS — stays free of DOM, and `#figure`
+   * owns every pixel. There is exactly one so far: the six-around-one that
+   * makes a tile ripen, which is the rule the whole game is built on and the
+   * one a sentence has always struggled to carry.
+   */
+  readonly figure?: 'ripen';
   readonly detail?: readonly string[];
 };
 
@@ -946,15 +959,12 @@ export class Game {
 
     // The help panel is the manual: every system in play, in the order a run
     // meets them, with its numbers read from the LIVE tuning so the text can
-    // never disagree with the economy it describes. It closes on any tap
-    // because the only thing to do with it is stop reading it.
+    // never disagree with the economy it describes.
     this.#paintManual();
 
     // The panel IS a dialog — it sits over the board and takes every gesture —
     // so it says so: role, modality, a name, and a keyboard path (Escape, and
-    // focus that moves in on open and back to the ? button on close). The
-    // close-on-any-tap behaviour stays; the keyboard is an addition, not a
-    // replacement.
+    // focus that moves in on open and back to the ? button on close).
     this.#el.helpPanel.setAttribute('role', 'dialog');
     this.#el.helpPanel.setAttribute('aria-modal', 'true');
     this.#el.helpPanel.setAttribute('aria-label', 'How to play, and settings');
@@ -963,9 +973,6 @@ export class Game {
     this.#on(this.#el.help, 'click', () => {
       if (this.#el.helpPanel.hidden) this.openHelp(this.#el.help);
       else this.#closeHelp();
-    });
-    this.#on(this.#el.helpPanel, 'click', () => {
-      this.#closeHelp();
     });
     // (Escape is the dialog stack's, since 2026-08-21 — see ui/dialog.ts.
     // Both panels used to install their own document-level handler, so one
@@ -1346,11 +1353,18 @@ export class Game {
 
   /** The manual's half of the panel, rebuilt from the live tuning and ledger. */
   #paintManual(tab?: string): void {
-    // The shared panel grammar (2026-08-26): title left, BACK right — the
+    // The shared panel grammar (2026-08-26): title left, BACK right. The
     // manual was the one `.panel-sheet` with no header and no visible way
-    // out, so its only exit was knowing to tap the prose. That contract
-    // stays (tapping prose still closes); the header makes it optional
-    // rather than the secret.
+    // out — its only exit was knowing to tap the prose.
+    //
+    // And BACK is now the only exit but Escape (2026-08-27, Marc: "remove
+    // the close-the-menu-on-click and put it only on the back button top
+    // right instead"). Tap-to-close made every control inside the panel a
+    // special case: the tabs, both DETAILS folds and all four MENU buttons
+    // had to swallow their own taps, and a control that works only because
+    // somebody remembered to do that is one that breaks the moment somebody
+    // adds a new one. The other four panels have always closed on BACK
+    // alone; this one has stopped being the exception.
     const head = document.createElement('div');
     head.className = 'panel-head';
     const title = document.createElement('p');
@@ -1358,13 +1372,10 @@ export class Game {
     title.textContent = NAME;
     const back = document.createElement('button');
     back.type = 'button';
+    back.id = 'help-back';
     back.className = 'panel-back';
     back.textContent = 'BACK';
-    this.#on(back, 'click', (event) => {
-      // Stopped so the close is the button's own act, not the bubbling
-      // tap's — the panel's tap-to-close would fire regardless, but a
-      // control that works by accident is a control that breaks silently.
-      event.stopPropagation();
+    this.#on(back, 'click', () => {
       this.#closeHelp();
     });
     head.append(title, back);
@@ -1780,10 +1791,6 @@ export class Game {
    * fold labelled NUMBERS is a fold nobody opens for a rule. What the label
    * changed is the CONTRACT — the visible lines now have to stand alone, and
    * anything a player can play without goes under the fold.
-   *
-   * The panel closes on any tap, which is right for prose and wrong for a
-   * control — so the tabs and the toggles swallow their own taps, the same
-   * way the settings rows already do.
    */
   #buildManual(want?: string): HTMLElement[] {
     // MENU first (Marc, 2026-08-20): the ways out of a run, and the world
@@ -1828,8 +1835,7 @@ export class Game {
       button.className = 'help-tab';
       button.textContent = tab.label;
       if (index === first) button.dataset['on'] = 'true';
-      this.#on(button, 'click', (event) => {
-        event.stopPropagation();
+      this.#on(button, 'click', () => {
         for (const [i, panel] of panels.entries()) panel.hidden = i !== index;
         for (const [i, other] of buttons.entries()) {
           if (i === index) other.dataset['on'] = 'true';
@@ -1841,6 +1847,93 @@ export class Game {
 
     bar.replaceChildren(...buttons);
     return [bar, ...panels];
+  }
+
+  /**
+   * A rule, drawn (2026-08-27).
+   *
+   * `bakeSurface` already gives the draft card the real tile; this hands the
+   * manual the same canvases, laid out on the same axial grid the board uses
+   * (`place`, from `render/layout.ts`) at the same orientation the theme
+   * chose. So the picture is not an illustration OF the game — it is the
+   * game's own art, arranged by the game's own geometry, and it follows a
+   * theme swap or an art-slot change without anybody remembering to redraw
+   * it.
+   *
+   * It degrades to flat ground where nothing could be baked (a bare test, a
+   * browser with no 2D canvas): every hex is a clipped span carrying its
+   * terrain colour, and the art is a background IMAGE on top of that. The
+   * shape and the colour are CSS; only the texture is a canvas.
+   */
+  #figure(kind: 'ripen'): HTMLElement {
+    void kind;
+    const figure = document.createElement('div');
+    figure.className = 'help-figure';
+    figure.dataset['facing'] = this.#theme.orientation;
+
+    // Six around one — the rule the whole game rests on, and the one that a
+    // sentence has never carried well. The ring is deliberately MIXED: worth
+    // counts neighbours that match, so a picture of six identical tiles
+    // would quietly teach the wrong lesson.
+    const size = 21;
+    const layout = { size, originX: 0, originY: 0, orientation: this.#theme.orientation };
+    const ring: readonly (readonly [number, number, Colour])[] = [
+      [0, 0, 'green'],
+      [1, 0, 'green'],
+      [0, 1, 'yellow'],
+      [-1, 1, 'green'],
+      [-1, 0, 'red'],
+      [0, -1, 'green'],
+      [1, -1, 'blue'],
+    ];
+
+    const placed = ring.map(([q, r, colour]) => ({ colour, ...place({ q, r }, layout) }));
+    const halfW = this.#theme.orientation === 'pointy' ? (Math.sqrt(3) / 2) * size : size;
+    const halfH = this.#theme.orientation === 'pointy' ? size : (Math.sqrt(3) / 2) * size;
+    const minX = Math.min(...placed.map((p) => p.x)) - halfW;
+    const minY = Math.min(...placed.map((p) => p.y)) - halfH;
+    figure.style.width = `${Math.max(...placed.map((p) => p.x)) + halfW - minX}px`;
+    figure.style.height = `${Math.max(...placed.map((p) => p.y)) + halfH - minY}px`;
+
+    const hexAt = (p: { x: number; y: number }, className: string, grow = 1): HTMLSpanElement => {
+      const span = document.createElement('span');
+      span.className = className;
+      const w = halfW * 2 * grow;
+      const h = halfH * 2 * grow;
+      span.style.left = `${p.x - w / 2 - minX}px`;
+      span.style.top = `${p.y - h / 2 - minY}px`;
+      span.style.width = `${w}px`;
+      span.style.height = `${h}px`;
+      return span;
+    };
+
+    // The six first, so the tile being taught paints over them, and the ripe
+    // ring between the two. It is a slightly larger hex of the accent behind
+    // the centre rather than an outline ON it: `clip-path` clips a border and
+    // an inset shadow along with everything else, so the only way to draw a
+    // rim on a clipped shape is to put a bigger clipped shape behind it —
+    // which is exactly what the board's own ripe edge looks like anyway.
+    const ground = (p: (typeof placed)[number], className: string): HTMLSpanElement => {
+      const hex = hexAt(p, className);
+      hex.dataset['colour'] = p.colour;
+      const art = this.#art[p.colour];
+      if (art !== undefined) hex.style.backgroundImage = `url(${art})`;
+      return hex;
+    };
+
+    const centre = placed[0];
+    for (const p of placed.slice(1)) figure.append(ground(p, 'fig-hex'));
+    if (centre !== undefined) {
+      figure.append(hexAt(centre, 'fig-ring', 1.22), ground(centre, 'fig-hex'));
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'help-figure-wrap';
+    const caption = document.createElement('p');
+    caption.className = 'flag-note';
+    caption.textContent = 'Six sides covered: the middle tile is ripe.';
+    wrap.append(figure, caption);
+    return wrap;
   }
 
   /** One section: a heading, its short lines, its rows, and the rest folded. */
@@ -1857,23 +1950,16 @@ export class Game {
 
     // The set, if this section lists one — same rows the cards use.
     const rows = tipRows(section.rows);
+    const figure = section.figure === undefined ? [] : [this.#figure(section.figure)];
 
     if (section.detail === undefined || section.detail.length === 0) {
-      return [heading, ...lines, ...rows];
+      return [heading, ...lines, ...figure, ...rows];
     }
 
     const fold = document.createElement('details');
     fold.className = 'help-more';
     const summary = document.createElement('summary');
     summary.textContent = 'DETAILS';
-    // A summary that let its tap through would open the fold and close the
-    // panel in the same gesture, which reads as the button not working.
-    this.#on(summary, 'click', (event) => {
-      event.stopPropagation();
-    });
-    this.#on(fold, 'click', (event) => {
-      event.stopPropagation();
-    });
     fold.replaceChildren(
       summary,
       ...section.detail.map((line) => {
@@ -1883,7 +1969,7 @@ export class Game {
       }),
     );
 
-    return [heading, ...lines, ...rows, fold];
+    return [heading, ...lines, ...figure, ...rows, fold];
   }
 
   #helpSections(): HelpTab[] {
@@ -1939,6 +2025,7 @@ export class Game {
             'Ring a tile on all six sides and it RIPENS.',
             'Tap a ripe tile, then POP. Pops pay the TILES that keep you placing.',
           ],
+          figure: 'ripen',
         },
         {
           title: 'WHY',
@@ -2086,8 +2173,13 @@ export class Game {
                 // the same rows since 2026-08-27 — name, hue AND symbol, the
                 // draft card's own three channels, so no single one of them
                 // has to carry the fact.
+                // The REAL tile beside each name since 2026-08-27 — the same
+                // baked canvas the draft card is wearing while you read this,
+                // so the manual's swatch and the card in your hand are one
+                // object rather than two things that resemble each other.
                 rows: COLOURS.map((colour) => ({
                   colour,
+                  ...(this.#art[colour] === undefined ? {} : { art: this.#art[colour] }),
                   text: `${COLOUR_MARK[colour]} ${COLOUR_HELP[colour](name(colour))}`,
                 })),
                 detail: [

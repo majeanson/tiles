@@ -622,6 +622,56 @@ function mountSettings(
     }),
   );
 
+  /**
+   * A control that says its NAME, and says what will happen when you reach
+   * for it (2026-08-27, Marc: "have normal words like Restart and New world
+   * that when you tap you get a confirmation about whats going to happen").
+   *
+   * Every exit used to carry its consequence in standing prose — a label with
+   * an explanation welded on ("RESTART — a fresh run on this world"), and a
+   * grey line under it for the rest. Four buttons and three paragraphs, all
+   * of it read every time the tab opened and needed exactly once, in the
+   * second before a tap.
+   *
+   * So the button is one plain word until you touch it, and the answer
+   * arrives at the only moment the question is being asked. NEW WORLD has
+   * worked this way since 2026-08-19; this is that, generalised — which also
+   * means the arming gesture is the same everywhere instead of belonging to
+   * the one destructive control.
+   *
+   * Reaching for a second control disarms the first: two buttons both saying
+   * "TAP AGAIN" is two questions on screen and no way to tell which one your
+   * next tap answers.
+   */
+  const disarms: (() => void)[] = [];
+  const confirming = (
+    button: HTMLButtonElement,
+    plain: string,
+    confirm: string,
+    act: () => void,
+  ): HTMLButtonElement => {
+    button.textContent = plain;
+    let armed = false;
+    const disarm = (): void => {
+      if (!armed) return;
+      armed = false;
+      button.classList.remove('armed');
+      button.textContent = plain;
+    };
+    disarms.push(disarm);
+    on(button, 'click', () => {
+      if (armed) {
+        act();
+        return;
+      }
+      for (const other of disarms) other();
+      armed = true;
+      button.classList.add('armed');
+      button.textContent = confirm;
+    });
+    return button;
+  };
+
   // Starting over is still the one destructive control in the game, so it
   // confirms — but it is an INVITATION now, not a punishment (Marc,
   // 2026-08-19: "a friendlier fresh start"): NEW WORLD, with the words
@@ -639,22 +689,16 @@ function mountSettings(
   // to be re-read every time the storage split moves.
   // The paid way out is the crossing — a fully-awake world's shrines offer it
   // with a relic dowry; this button is the unpaid anytime version.
-  let armed = false;
   const abandon = document.createElement('button');
   abandon.type = 'button';
   abandon.id = 'abandon-world';
   abandon.className = 'quiet';
-  abandon.textContent = 'NEW WORLD — leave this one behind';
-  on(abandon, 'click', () => {
-    if (!armed) {
-      armed = true;
-      abandon.classList.add('armed');
-      abandon.textContent =
-        'TAP AGAIN — only relics travel. The map, its territories, shrines, shop levels and the perks you found here stay behind.';
-      return;
-    }
-    live.abandon();
-  });
+  confirming(
+    abandon,
+    'NEW WORLD',
+    'TAP AGAIN — only relics travel. The map, its territories, shrines, shop levels and the perks you found here stay behind.',
+    live.abandon,
+  );
 
   // One row per PUBLIC switch (2026-08-27, Marc: "revamp the settings so
   // there is no more developer, only skins, reset teaching is fine, etc.
@@ -826,27 +870,34 @@ function mountSettings(
   // reads like a thing you get when the current one is finished, and it
   // stops colliding with the end screen's own NEW RUN, which is the same
   // action at a moment when it means something different.
+  // A fresh run: the current one is abandoned where it stands, unscored — no
+  // record, no timeline tick, nothing banked. That is the fact the second tap
+  // is buying, and it was on no screen at all while the label only promised
+  // the good half ("a fresh run on this world").
   const restart = document.createElement('button');
   restart.type = 'button';
   restart.id = 'new-run';
-  restart.textContent = 'RESTART — a fresh run on this world';
-  on(restart, 'click', startNewRun);
+  confirming(
+    restart,
+    'RESTART',
+    'TAP AGAIN — this run is abandoned unscored, and a fresh one begins on this world.',
+    startNewRun,
+  );
 
-  // Back to the front door. Not destructive and not arming: the run is saved
-  // after every action (and, since Day 2, so is a daily), so this is a pause
-  // rather than a forfeit — which is exactly what the label has to promise.
+  // Back to the front door. A pause, not a forfeit: the run is saved after
+  // every action (and, since Day 2, so is a daily) — which is exactly what
+  // its confirmation gets to say, at the moment somebody is wondering.
   const toMenu = document.createElement('button');
   toMenu.type = 'button';
   toMenu.id = 'to-main-menu';
-  toMenu.textContent = live.mode.kind === 'world' ? 'MAIN MENU' : 'BACK TO YOUR WORLD';
-  on(toMenu, 'click', live.mainMenu);
-
-  const toMenuNote = document.createElement('p');
-  toMenuNote.className = 'flag-note';
-  toMenuNote.textContent =
+  confirming(
+    toMenu,
+    live.mode.kind === 'world' ? 'MAIN MENU' : 'BACK TO YOUR WORLD',
     live.mode.kind === 'world'
-      ? 'Your board is kept — RESUME picks it up where it is.'
-      : 'This board is kept too — the door offers it back until you finish it.';
+      ? 'TAP AGAIN — your board is kept. RESUME picks it up exactly where it is.'
+      : 'TAP AGAIN — this board is kept too. The door offers it back until you finish it.',
+    live.mainMenu,
+  );
 
   // The door into SETTINGS (2026-08-25). The switchboard used to be printed
   // under this very panel, so mid-run there was nothing to open; now that it
@@ -899,6 +950,10 @@ function mountSettings(
   const menuParts: HTMLElement[] = [];
   if (live.mode.kind === 'world') {
     menuTitle.textContent = `YOUR WORLD · ${live.slot} OF 3`;
+    // "Your own map, kept between runs." stood here until 2026-08-27, when
+    // Marc asked for it and the board-is-kept line to move: the title above
+    // already says which world this is, and what a world IS belongs with the
+    // world's own facts rather than over the way out of a run.
     menuNote.textContent = 'Your own map, kept between runs.';
     // The EXITS first, the world's own ledger folded under them (2026-08-27,
     // Marc: "if people want more detail or numbers, they click on it").
@@ -910,12 +965,11 @@ function mountSettings(
     // DETAILS grammar.
     menuParts.push(
       menuTitle,
-      menuNote,
       toMenu,
-      toMenuNote,
       toSettings,
       restart,
       worldDetails(
+        menuNote,
         atlasGrid,
         ledger,
         shrineHint,
@@ -932,12 +986,12 @@ function mountSettings(
       const badge = document.createElement('p');
       badge.className = 'flag-note';
       badge.textContent = live.mode.badge;
-      menuParts.push(menuTitle, menuNote, badge, toMenu, toMenuNote, toSettings);
+      menuParts.push(menuTitle, menuNote, badge, toMenu, toSettings);
     } else {
       menuTitle.textContent = 'A SHARED RUN';
       menuNote.textContent =
         "Somebody else's world and seed, played plain. Nothing here is kept, and your own world is untouched.";
-      menuParts.push(menuTitle, menuNote, toMenu, toMenuNote, toSettings);
+      menuParts.push(menuTitle, menuNote, toMenu, toSettings);
     }
   }
 

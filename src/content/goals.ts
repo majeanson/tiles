@@ -117,4 +117,25 @@ export const PERK_DIALS = {
   wallBuildCostMult: 2,
   /** OPEN HAND: the wider draft it trades the stash for. */
   openHandDraft: 5,
+  /**
+   * ROOTBOUND, repriced 2026-08-27 (Marc, after a 52k high: "i had rootbound
+   * and instantly doubled my points basically... odds in some way linked to
+   * your luck instead of always double and always 0" — then, on the fork:
+   * "change how it works and tone it down with luck").
+   *
+   * It used to be a flat x2 on your own ground and a hard zero off it, from
+   * the first placement of the run. That is the perk that doubled a score
+   * before it had been earned. Now the two ends are where the perk BEGINS,
+   * and full luck is what walks them to where the perk used to start:
+   *
+   *   native   1.35 -> 2     as luck fills
+   *   stray    0.5  -> 0     as luck fills
+   *
+   * So the sharpest edge in the game is still there and is now something you
+   * bank rather than something you are handed — which also gives luck a third
+   * thing to be worth, against rerolling and against the rare odds it buys.
+   */
+  rootboundNative: 1.35,
+  rootboundNativeMax: 2,
+  rootboundStray: 0.5,
 };

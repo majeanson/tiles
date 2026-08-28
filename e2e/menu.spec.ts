@@ -216,13 +216,55 @@ test('MENU offers the exits first, folds the world’s ledger, and says only rel
   // Opening a fold must not close the panel under it.
   await expect(page.locator('#help-panel')).toBeVisible();
 
-  // NEW WORLD arms rather than fires, and the armed words are the ledger of
-  // what survives it.
+  // Every exit is a plain word, and the consequence arrives on the tap
+  // (2026-08-27, Marc: "have normal words like Restart and New world that
+  // when you tap you get a confirmation about whats going to happen").
+  const restart = page.locator('#new-run');
   const abandon = page.locator('#abandon-world');
+  await expect(restart).toHaveText('RESTART');
+  await expect(abandon).toHaveText('NEW WORLD');
+  await expect(page.locator('#to-main-menu')).toHaveText('MAIN MENU');
+
+  await restart.click();
+  await expect(restart).toContainText('abandoned unscored');
+  await expect(page.locator('#help-panel')).toBeVisible();
+
+  // Reaching for a second control disarms the first: two buttons both saying
+  // TAP AGAIN is two questions and no way to tell which one a tap answers.
   await abandon.click();
+  await expect(restart).toHaveText('RESTART');
   await expect(abandon).toContainText('only relics travel');
   await expect(abandon).toContainText('perks you found here stay behind');
   await expect(page.locator('#help-panel')).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+/**
+ * BACK is the only way out but Escape (2026-08-27, Marc: "remove the
+ * close-the-menu-on-click and put it only on the back button top right
+ * instead"). Tapping the prose used to close the panel, which made every
+ * control inside it a special case — the tabs, both DETAILS folds and all
+ * four MENU buttons had to swallow their own taps to keep working.
+ */
+test('the ? panel closes on BACK, and not on the prose', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await begin(page);
+  await page.locator('#help').click();
+
+  const panel = page.locator('#help-panel');
+  await expect(panel).toBeVisible();
+
+  // Read something, tap it, and the manual is still open.
+  await page.locator('.help-tab').nth(1).click();
+  await page.locator('.help-panel-body:not([hidden]) p').first().click();
+  await expect(panel).toBeVisible();
+  await page.locator('#help-name').click();
+  await expect(panel).toBeVisible();
+
+  await page.locator('#help-back').click();
+  await expect(panel).toBeHidden();
 
   expect(errors).toEqual([]);
 });
@@ -431,7 +473,7 @@ test('HOW TO PLAY opens on the tutorial, and the in-run ? opens on MENU', async 
   const shown = page.locator('.help-panel-body:not([hidden])');
   await expect(shown).toContainText('THE BOARD');
   await expect(shown).not.toContainText('YOUR WORLD ·');
-  await page.locator('#help-name').click();
+  await page.locator('#help-back').click();
   await expect(page.locator('#help-panel')).toBeHidden();
   // Back on MORE, where it was opened from.
   await expect(page.locator('#more-panel')).toBeVisible();

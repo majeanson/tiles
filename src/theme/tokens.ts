@@ -118,6 +118,58 @@ export function clearance(c: Rgb, ground: Rgb): number {
 }
 
 /**
+ * WCAG's floor for a mark — geometry you have to SEE rather than prose you
+ * have to read. `contrast.test.ts` has spent this number since 2026-08-25;
+ * `edgeCasing` needs the same one, so it stops being a literal in a test.
+ */
+export const MIN_MARK_CONTRAST = 3;
+
+/**
+ * The colour to lay UNDER an outline that its own ground would swallow, or
+ * `null` when the outline can carry itself (2026-08-27).
+ *
+ * This is the halo rule, applied to edges. `Ink.halo` exists because one ink
+ * over eight grounds cannot clear 4.5:1 in any direction — a light ink dies on
+ * the pale terrains, a dark one on the dark ones — so a label is drawn as a
+ * PAIR and the rule is stated on the pair. Every outline on the board had the
+ * same problem and nothing was saying so: torchlit's ripe edge, the loudest
+ * mark in the direction and the whole harvest decision, sits at **1.69:1** over
+ * EMBER; daylight's accent — the outline that says a shrine is unclaimed — sits
+ * at **1.02:1** over the wall ground a landmark actually stands on, which is
+ * the same as not drawing it. Neither is a palette that can be fixed by moving
+ * one colour, for exactly the reason the halo was invented.
+ *
+ * So: casing under, stroke over, and only where the stroke needs it — a cased
+ * edge is two draws, and every edge on the board wearing one would be a
+ * cartoon. The bar is against the GROUND, because that is the failure being
+ * fixed: what has to become visible is the ring, and it becomes visible the
+ * moment any part of it separates from the ground it sits on. Separation from
+ * the stroke only breaks ties — it decides whether the stroke's own colour
+ * still reads INSIDE the ring it now has, which is the difference between
+ * "that tile is outlined" and "that tile is outlined in the unique's orange".
+ * `halo` and `ink` are the two candidates because between them every theme
+ * already owns one colour at each end of its own range. `null` when neither
+ * clears the ground, because a casing nobody can see is only cost.
+ */
+export function edgeCasing(theme: Theme, stroke: Rgb, ground: Rgb): Rgb | null {
+  if (contrastRatio(stroke, ground) >= MIN_MARK_CONTRAST) return null;
+  let best: Rgb | null = null;
+  let score = 0;
+  let tie = 0;
+  for (const candidate of [theme.ink.halo, theme.ink.ink]) {
+    const onGround = contrastRatio(candidate, ground);
+    if (onGround < MIN_MARK_CONTRAST) continue;
+    const onStroke = contrastRatio(candidate, stroke);
+    if (onGround > score || (onGround === score && onStroke > tie)) {
+      score = onGround;
+      tie = onStroke;
+      best = candidate;
+    }
+  }
+  return best;
+}
+
+/**
  * Which way up the hexes sit.
  *
  * The engine has no opinion — axial coordinates are the same either way, and
@@ -607,6 +659,27 @@ export function depthOf(theme: Theme): Depth {
 export const MIN_FIELD_LIFT = 0.25;
 
 /**
+ * The same lift, measured where the player is actually standing — under the
+ * torch rather than in full light (2026-08-27).
+ *
+ * `MIN_FIELD_LIFT` grades a field against bare ground at FULL brightness, and
+ * most of the board is not at full brightness: the renderer tints every sprite
+ * toward the board by `light.floor` outside the light pool, and a multiply
+ * shrinks the DIFFERENCE between two colours exactly as hard as it shrinks
+ * either one. Torchlit's floor is 0.42, so a field that clears 0.25 in the lab
+ * arrives at about 0.11 on the board; daylight's floor is 0.94 and it arrives
+ * at 0.24. That gap is what Marc saw when he said native ground was easier to
+ * tell from plain ground on the light map than on the dark ones.
+ *
+ * 0.10 rather than something prouder because this is a FLOOR under an existing
+ * ladder, not a new target: every direction in the registry passes it today
+ * (torchlit at 0.112, torchlit-bright at 0.190, daylight at 0.240) and it is
+ * here to stop a future `light.floor` being lowered for atmosphere without
+ * anyone noticing what it costs the one rule the ground carries.
+ */
+export const MIN_LIT_FIELD_LIFT = 0.1;
+
+/**
  * The same colour at full strength: every channel scaled up until the
  * brightest one is maxed.
  *
@@ -895,15 +968,15 @@ export function fieldOverlayPattern(theme: Theme, colour: Colour): Pattern {
  * the identical answer from the identical inputs — a new PNG dropped in a
  * slot, or a token retune, reaches the ground with no other file touched.
  *
- * WITH art (`hasArt` true and the colour's terrain slot names one): the
- * ground wears `theme.empty`'s flat fill with that PNG ghosted over it at
- * `ghostAlpha` — the same file the board's TILES draw at full strength, at
- * a fraction of it, so a claimed hex and the field around it read as one
- * material at two weights rather than two eras of art.
+ * BOTH ways it wears `fieldPattern` plus `fieldOverlayPattern` — the
+ * terrain's own texture thinned to ground weight, inked at the alpha
+ * `fieldDots` equalises every colour to. That is the part a player reads.
  *
- * WITHOUT: today's `fieldPattern`, plus `fieldOverlayPattern` riding
- * alongside it — the procedural floor, now following the terrain's full
- * two-layer depth rather than only its axis.
+ * WITH art (`hasArt` true and the colour's terrain slot names one) it ALSO
+ * carries that PNG ghosted under the marks at `ghostAlpha` — the same file
+ * the board's TILES draw at full strength, at a fraction of it, so a claimed
+ * hex and the field around it read as one material at two weights rather
+ * than two eras of art. Material under, marks over: see `bakeSurface`.
  */
 export type FieldGround =
   | {
@@ -939,6 +1012,23 @@ const FIELD_GHOST_MAX = 0.62;
 
 export function fieldGround(theme: Theme, colour: Colour, hasArt: boolean): FieldGround {
   const asset = theme.terrain[colour].asset;
+  // The marks are the field's LEGIBILITY channel and the ghost is its MATERIAL
+  // channel; the art path used to trade the first for the second (2026-08-27,
+  // Marc: native ground is easier to tell from plain ground on the light board
+  // than on the dark ones). It was — and the reason is arithmetic. The ghost is
+  // an un-equalised mid-tone photograph of the terrain, so how far it lands from
+  // bare ground is whatever that PNG's average happens to be; then the torch
+  // multiplies the whole sprite by `light.floor`, which multiplies that distance
+  // too. Torchlit's MOSS field ended up 0.020 in L* from plain ground over most
+  // of the board, where daylight's floor of 0.94 left its fields at 0.14-0.22.
+  // `fieldDots` exists to answer exactly this question and the art path stopped
+  // asking it. Both branches build the same base now: the equalised pattern and
+  // overlay, ghost or no ghost, which puts torchlit's worst field back at 0.14.
+  const base: Surface = {
+    ...theme.empty,
+    pattern: fieldPattern(theme, colour),
+    overlay: fieldOverlayPattern(theme, colour),
+  };
   if (hasArt && asset !== null) {
     // Reuses `fieldDots`' own equalised alpha rather than one flat number
     // for all four colours — the exact reasoning `fieldDots`' doc gives for
@@ -950,19 +1040,12 @@ export function fieldGround(theme: Theme, colour: Colour, hasArt: boolean): Fiel
     // three" — so it gets the identical answer.
     return {
       kind: 'art',
-      base: theme.empty,
+      base,
       asset,
       ghostAlpha: Math.min(FIELD_GHOST_MAX, fieldDots(theme, colour).alpha * FIELD_GHOST_GAIN),
     };
   }
-  return {
-    kind: 'procedural',
-    surface: {
-      ...theme.empty,
-      pattern: fieldPattern(theme, colour),
-      overlay: fieldOverlayPattern(theme, colour),
-    },
-  };
+  return { kind: 'procedural', surface: base };
 }
 
 /**

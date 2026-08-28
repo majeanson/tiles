@@ -3,7 +3,18 @@ import { COLOURS } from '@content/tuning';
 import { decodeManifest, manifestHas } from './assets';
 import { themeCssVars } from './css';
 import { DEFAULT_THEME_ID, parseThemeId, resolveTheme, THEMES } from './index';
-import { clearance, fieldDots, luma, MIN_FIELD_LIFT, type Surface, type Theme } from './tokens';
+import {
+  clearance,
+  fieldDots,
+  fieldGround,
+  luma,
+  mix,
+  MIN_FIELD_LIFT,
+  MIN_LIT_FIELD_LIFT,
+  type Rgb,
+  type Surface,
+  type Theme,
+} from './tokens';
 
 /**
  * The art direction, checked without a screen.
@@ -341,6 +352,66 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s field dots', (_name, 
           ` and  field dots are  apart in RGB; ` + 'fields that close read as the same ground',
         ).toBeGreaterThanOrEqual(60);
       }
+    }
+  });
+
+  /**
+   * Art may not cost a field its marks (2026-08-27).
+   *
+   * When a terrain slot has a PNG, `fieldGround` ghosts it under the ground so
+   * a claimed hex and the field around it read as one material. For a week it
+   * ALSO replaced the field's pattern with that ghost, and the ghost is the one
+   * layer nothing equalises: it is whatever the PNG's average happens to be
+   * against `empty`, and then the torch multiplies that difference too.
+   * Torchlit's MOSS field ended up 0.020 in L* from bare ground over most of
+   * the board — the rule was still in the engine and gone from the screen.
+   *
+   * The marks are the channel `MIN_FIELD_LIFT` is a floor for, so this asserts
+   * the structure that keeps that floor connected to something drawn: both
+   * branches of `fieldGround` carry the pattern, art or no art.
+   */
+  it('never trades a field’s marks for its art', () => {
+    for (const colour of COLOURS) {
+      for (const hasArt of [false, true]) {
+        const ground = fieldGround(theme, colour, hasArt);
+        const base = ground.kind === 'art' ? ground.base : ground.surface;
+        expect(
+          base.pattern.kind,
+          `the ${colour} field ${hasArt ? 'with' : 'without'} art draws no pattern; ` +
+            `the ghost is the material layer and the pattern is the readable one`,
+        ).not.toBe('none');
+      }
+    }
+  });
+
+  /**
+   * And the torch may not eat what the pattern earns.
+   *
+   * The renderer dims a cell by tinting the whole sprite toward the board —
+   * `mix(background, white, light)` used as a multiply — so outside the light
+   * pool a field and the bare ground beside it are BOTH scaled down, and the
+   * gap between them with them. Reproduced here from the same two tokens the
+   * renderer reads, at each direction's own `light.floor`, which is the
+   * brightness most of an endless board is at.
+   */
+  it('keeps a native field readable at its own light floor', () => {
+    const floor = theme.light.floor;
+    const tint = mix(theme.board.background, 0xffffff, floor);
+    const under = (c: Rgb): Rgb => {
+      const ch = (shift: number): number =>
+        Math.round((((c >> shift) & 0xff) * ((tint >> shift) & 0xff)) / 255) & 0xff;
+      return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+    };
+
+    for (const colour of COLOURS) {
+      const { ink, alpha } = fieldDots(theme, colour);
+      const marked = mix(theme.empty.fill, ink, alpha);
+      const lift = clearance(under(marked), under(theme.empty.fill));
+      expect(
+        lift,
+        `the ${colour} field lifts ${lift.toFixed(3)} off bare ground at a light floor of ` +
+          `${floor}; ${MIN_LIT_FIELD_LIFT} is what keeps the rule visible off the torch`,
+      ).toBeGreaterThanOrEqual(MIN_LIT_FIELD_LIFT);
     }
   });
 });

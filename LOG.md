@@ -6817,3 +6817,74 @@ voice written for a player), 28 e2e (the SETTINGS spec now pins APPEARANCE,
 SOUND and RESET TEACHING present and DEVELOPER absent), typecheck / lint /
 format clean, build clean, screenshotted at 390×844 in torchlit. **Not played
 on a phone.** The one gate is still Session C.
+
+---
+
+### Session 60 — the fog stops lying, and every control says what it will do (2026-08-27)
+
+Four asks from Marc, three of them from the phone — the first minute of real
+play against the two days of unplayed work.
+
+**1. The bug: "only the ui is grey and not shiny."** Marc, arriving at a ★ he
+had reached before: "star sites are claimed between worlds, when you arrive to
+them it says site claimed but in the ui they appear not claimed" — then,
+exactly: "its the ui that makes it like nothings gonna happen, but all happen
+correctly."
+
+The engine, the view model and the renderer all agreed the claim was real; a
+probe confirmed `claimed: true` reaching the renderer. The lie was one line in
+`#drawCell`. Remembered landmarks were forced FAINT unless they were a shrine
+or a territory — a 2026-08-20 rule written about NAVIGATION (those two are the
+anchors a next run steers by; caches and sites are mere stops). True about
+orientation, backwards about the economy: **caches and sites re-arm every run
+and pay again, shrines and territories are spent for good once taken.** So the
+fog dimmed the two landmarks that still pay and lit the two that never would.
+Walking back to a ★ paid exactly as promised while the map said not to bother —
+which is P4a's whole bet ("ground you know stays worth walking") undercut by
+its own paint. One rule now, and `render/labels.test.ts` is it: **faint means
+spent.** Nothing else moved — a held territory still reads `claimed` and keeps
+the accent edge that made it findable.
+
+**2. BACK, and only BACK.** "remove the close-the-menu-on-click and put it only
+on the back button top right instead." The `?` panel was the one `.panel-sheet`
+that closed on any tap, and that made every control inside it a special case:
+the tabs, both DETAILS folds, `#settings-body` and all four MENU buttons
+swallowed their own taps to keep working. A control that works only because
+somebody remembered to do that breaks the moment somebody adds one. Five
+`stopPropagation` guards deleted, the manual's BACK given an id like every
+other panel's, and an e2e test that taps the prose and the title and expects
+the panel to still be there.
+
+**3. Plain words, and the answer on the tap.** "your own map, kept between runs
+and your board kept — can we move those text? have normal words like Restart
+and New world that when you tap you get a confirmation about whats going to
+happen." Every exit carried its consequence in standing prose: a label with an
+explanation welded on, and a grey line under it. Four buttons, three
+paragraphs, read every time the tab opened and needed once — in the second
+before a tap. Now each is one plain word (MAIN MENU · SETTINGS · RESTART · NEW
+WORLD) and the consequence arrives armed, on the button, at the only moment
+the question is being asked. NEW WORLD has worked this way since 2026-08-19;
+this is that generalised, through one `confirming` helper — so reaching for a
+second control disarms the first, which two independently-armed buttons could
+never have managed. RESTART gained a fact it never stated: the run you are in
+is **abandoned unscored**. "Your own map, kept between runs" moved into the
+world's own DETAILS, where the rest of the world's facts already live.
+
+**4. Real tiles in the manual.** "can we have visuals with real tiles or
+examples in the how to play and hand and such? so we have a visual with real
+in game assets." `bakeSurface` already hands the draft card the real tile, so
+the manual gets the same canvases: the four grounds wear their actual baked
+hex beside their names instead of a flat square, and START draws the rule the
+whole game rests on — **six around one** — as a figure, laid out by
+`render/layout.ts`'s own `place()` at the theme's own facing. It is not an
+illustration OF the game; it is the game's art arranged by the game's
+geometry, so a theme swap or an art-slot change carries it along. The ring is
+deliberately mixed, because worth counts neighbours that MATCH and six
+identical tiles would teach the wrong lesson. It degrades to flat clipped
+ground where nothing could be baked (happy-dom, a browser with no 2D canvas),
+which is what the unit test runs against.
+
+**Verified:** 846 tests (+4), 29 e2e (+1), typecheck / lint / format clean,
+build clean, screenshotted at 390×844 in torchlit. **Committed alongside
+another session's in-flight theme and tuning work, on Marc's "go now"** — the
+tree was green as a whole when the gate ran. The one gate is still Session C.
