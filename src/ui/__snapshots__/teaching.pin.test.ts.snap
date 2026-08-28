@@ -1,0 +1,355 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the teaching pins — every word, exactly as it reads today > pins every glossary definition, over both tunings and both directions 1`] = `
+{
+  "bounty · BARE_TUNING · daylight": "A BOUNTY is a site’s second payout: pop 0+ tiles within 6 hexes of its star and that pop scores ×3. It is live the moment you claim the site, and any pop in range can collect it.",
+  "bounty · BARE_TUNING · torchlit": "A BOUNTY is a site’s second payout: pop 0+ tiles within 6 hexes of its star and that pop scores ×3. It is live the moment you claim the site, and any pop in range can collect it.",
+  "bounty · TUNING · daylight": "A BOUNTY is a site’s second payout: pop 8+ tiles within 6 hexes of its star and that pop scores ×3. It is live the moment you claim the site, and any pop in range can collect it.",
+  "bounty · TUNING · torchlit": "A BOUNTY is a site’s second payout: pop 8+ tiles within 6 hexes of its star and that pop scores ×3. It is live the moment you claim the site, and any pop in range can collect it.",
+  "cache · BARE_TUNING · daylight": "A CACHE pays 12 tiles on the spot the moment you build a tile touching it. Caches re-arm every run, so ground you already know stays worth walking to.",
+  "cache · BARE_TUNING · torchlit": "A CACHE pays 12 tiles on the spot the moment you build a tile touching it. Caches re-arm every run, so ground you already know stays worth walking to.",
+  "cache · TUNING · daylight": "A CACHE pays 6 tiles on the spot, +4 per ring out the moment you build a tile touching it. Caches re-arm every run, so ground you already know stays worth walking to.",
+  "cache · TUNING · torchlit": "A CACHE pays 6 tiles on the spot, +4 per ring out the moment you build a tile touching it. Caches re-arm every run, so ground you already know stays worth walking to.",
+  "luck · BARE_TUNING · daylight": "LUCK — a purse, not a score. Every pop pays a little of it, and the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.",
+  "luck · BARE_TUNING · torchlit": "LUCK — a purse, not a score. Every pop pays a little of it, and the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.",
+  "luck · TUNING · daylight": "LUCK — a purse, not a score. Every pop pays a little of it, and the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.",
+  "luck · TUNING · torchlit": "LUCK — a purse, not a score. Every pop pays a little of it, and the row under your hand spends it: a fresh draw, a colour called, a rare tile forged.",
+  "pocket · BARE_TUNING · daylight": "A POCKET is a ripe tile and every ripe tile touching it — they pop together, as one. Tap any ripe tile to price its pocket; the buttons show what it pays.",
+  "pocket · BARE_TUNING · torchlit": "A POCKET is a ripe tile and every ripe tile touching it — they pop together, as one. Tap any ripe tile to price its pocket; the buttons show what it pays.",
+  "pocket · TUNING · daylight": "A POCKET is a ripe tile and every ripe tile touching it — they pop together, as one. Tap any ripe tile to price its pocket; the buttons show what it pays.",
+  "pocket · TUNING · torchlit": "A POCKET is a ripe tile and every ripe tile touching it — they pop together, as one. Tap any ripe tile to price its pocket; the buttons show what it pays.",
+  "pop · BARE_TUNING · daylight": "POP cashes a ripe pocket: it pays tiles to keep you placing, and points as your score. Waiting lets a pocket grow and pays more, but every placement still costs tiles, so waiting too long can end a run before it pops.",
+  "pop · BARE_TUNING · torchlit": "POP cashes a ripe pocket: it pays tiles to keep you placing, and points as your score. Waiting lets a pocket grow and pays more, but every placement still costs tiles, so waiting too long can end a run before it pops.",
+  "pop · TUNING · daylight": "POP cashes a ripe pocket: it pays tiles to keep you placing, and points as your score. Waiting lets a pocket grow and pays more, but every placement still costs tiles, so waiting too long can end a run before it pops.",
+  "pop · TUNING · torchlit": "POP cashes a ripe pocket: it pays tiles to keep you placing, and points as your score. Waiting lets a pocket grow and pays more, but every placement still costs tiles, so waiting too long can end a run before it pops.",
+  "rare · BARE_TUNING · daylight": "MAGIC is wild: it matches every neighbouring tile, whatever the colour, and they match it back. Placed, it wears a star on the board so you can always find it again.",
+  "rare · BARE_TUNING · torchlit": "MAGIC is wild: it matches every neighbouring tile, whatever the colour, and they match it back. Placed, it wears a star on the board so you can always find it again.",
+  "rare · TUNING · daylight": "MAGIC is wild: it matches every neighbouring tile, whatever the colour, and they match it back. Placed, it wears a star on the board so you can always find it again.",
+  "rare · TUNING · torchlit": "MAGIC is wild: it matches every neighbouring tile, whatever the colour, and they match it back. Placed, it wears a star on the board so you can always find it again.",
+  "rareUnique · BARE_TUNING · daylight": "UNIQUE is wild and heavy: every match it is part of counts DOUBLE, for both sides. Placed, it wears a star on the board so you can always find it again.",
+  "rareUnique · BARE_TUNING · torchlit": "UNIQUE is wild and heavy: every match it is part of counts DOUBLE, for both sides. Placed, it wears a star on the board so you can always find it again.",
+  "rareUnique · TUNING · daylight": "UNIQUE is wild and heavy: every match it is part of counts DOUBLE, for both sides. Placed, it wears a star on the board so you can always find it again.",
+  "rareUnique · TUNING · torchlit": "UNIQUE is wild and heavy: every match it is part of counts DOUBLE, for both sides. Placed, it wears a star on the board so you can always find it again.",
+  "relic · BARE_TUNING · daylight": "Relics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.",
+  "relic · BARE_TUNING · torchlit": "Relics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.",
+  "relic · TUNING · daylight": "Relics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.",
+  "relic · TUNING · torchlit": "Relics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.",
+  "ripe · BARE_TUNING · daylight": "A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.",
+  "ripe · BARE_TUNING · torchlit": "A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.",
+  "ripe · TUNING · daylight": "A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.",
+  "ripe · TUNING · torchlit": "A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.",
+  "shrine · BARE_TUNING · daylight": "A SHRINE switches a system on for your world, permanently, the moment you claim it. Once every shrine unlock is woken, the next one offers a crossing to a new world instead.",
+  "shrine · BARE_TUNING · torchlit": "A SHRINE switches a system on for your world, permanently, the moment you claim it. Once every shrine unlock is woken, the next one offers a crossing to a new world instead.",
+  "shrine · TUNING · daylight": "A SHRINE switches a system on for your world, permanently, the moment you claim it. Once every shrine unlock is woken, the next one offers a crossing to a new world instead.",
+  "shrine · TUNING · torchlit": "A SHRINE switches a system on for your world, permanently, the moment you claim it. Once every shrine unlock is woken, the next one offers a crossing to a new world instead.",
+  "site · BARE_TUNING · daylight": "A SITE pays 25 points, × its distance from home, the moment you claim it — and it opens a BOUNTY. Sites re-arm every run, so a claimed one is worth returning to.",
+  "site · BARE_TUNING · torchlit": "A SITE pays 25 points, × its distance from home, the moment you claim it — and it opens a BOUNTY. Sites re-arm every run, so a claimed one is worth returning to.",
+  "site · TUNING · daylight": "A SITE pays 25 points, × its distance from home, the moment you claim it — and it opens a BOUNTY. Sites re-arm every run, so a claimed one is worth returning to.",
+  "site · TUNING · torchlit": "A SITE pays 25 points, × its distance from home, the moment you claim it — and it opens a BOUNTY. Sites re-arm every run, so a claimed one is worth returning to.",
+  "sizeBonus · BARE_TUNING · daylight": "The SIZE BONUS is one point of multiplier per tile in a pocket — the more that pops together, the more its worth is multiplied.",
+  "sizeBonus · BARE_TUNING · torchlit": "The SIZE BONUS is one point of multiplier per tile in a pocket — the more that pops together, the more its worth is multiplied.",
+  "sizeBonus · TUNING · daylight": "The SIZE BONUS is one point of multiplier per tile in a pocket, up to 20: a bigger pocket pays more worth, but past that only more worth, no more multiplier.",
+  "sizeBonus · TUNING · torchlit": "The SIZE BONUS is one point of multiplier per tile in a pocket, up to 20: a bigger pocket pays more worth, but past that only more worth, no more multiplier.",
+  "stash · BARE_TUNING · daylight": "The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap it again to trade that tile back. Held tiles survive a redraw.",
+  "stash · BARE_TUNING · torchlit": "The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap it again to trade that tile back. Held tiles survive a redraw.",
+  "stash · TUNING · daylight": "The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap it again to trade that tile back. Held tiles survive a redraw.",
+  "stash · TUNING · torchlit": "The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap it again to trade that tile back. Held tiles survive a redraw.",
+  "stone · BARE_TUNING · daylight": "STONE is spent ground — what a tile becomes after it pops. It still surrounds neighbours, helping them ripen, but it never matches.",
+  "stone · BARE_TUNING · torchlit": "STONE is spent ground — what a tile becomes after it pops. It still surrounds neighbours, helping them ripen, but it never matches.",
+  "stone · TUNING · daylight": "STONE is spent ground — what a tile becomes after it pops. It still surrounds neighbours, helping them ripen, but only ASH counts it as a match.",
+  "stone · TUNING · torchlit": "STONE is spent ground — what a tile becomes after it pops. It still surrounds neighbours, helping them ripen, but only ASH counts it as a match.",
+  "territory · BARE_TUNING · daylight": "A TERRITORY claims the ground within 2 hexes as native to its colour, for good.",
+  "territory · BARE_TUNING · torchlit": "A TERRITORY claims the ground within 2 hexes as native to its colour, for good.",
+  "territory · TUNING · daylight": "A TERRITORY claims the ground within 2 hexes as native to its colour, for good. Each one held starts your later runs with +6 tiles, up to +24.",
+  "territory · TUNING · torchlit": "A TERRITORY claims the ground within 2 hexes as native to its colour, for good. Each one held starts your later runs with +6 tiles, up to +24.",
+  "worth · BARE_TUNING · daylight": "WORTH counts how many of a tile’s six sides touch a match — the same colour, or a wild rare tile. A pop scores the pocket’s summed worth, so the more that ripen together, the more it pays.",
+  "worth · BARE_TUNING · torchlit": "WORTH counts how many of a tile’s six sides touch a match — the same colour, or a wild rare tile. A pop scores the pocket’s summed worth, so the more that ripen together, the more it pays.",
+  "worth · TUNING · daylight": "WORTH counts how many of a tile’s six sides touch a match — the same colour, or a wild rare tile. A pop scores the pocket’s summed worth, so the more that ripen together, the more it pays.",
+  "worth · TUNING · torchlit": "WORTH counts how many of a tile’s six sides touch a match — the same colour, or a wild rare tile. A pop scores the pocket’s summed worth, so the more that ripen together, the more it pays.",
+}
+`;
+
+exports[`the teaching pins — every word, exactly as it reads today > pins every glossary entry’s terms, glyph and ink 1`] = `
+[
+  {
+    "glyph": null,
+    "id": "ripe",
+    "ink": null,
+    "terms": [
+      "RIPENS",
+    ],
+  },
+  {
+    "glyph": null,
+    "id": "pop",
+    "ink": null,
+    "terms": [
+      "POP",
+    ],
+  },
+  {
+    "glyph": null,
+    "id": "pocket",
+    "ink": null,
+    "terms": [
+      "POCKET",
+    ],
+  },
+  {
+    "glyph": null,
+    "id": "worth",
+    "ink": null,
+    "terms": [
+      "WORTH",
+    ],
+  },
+  {
+    "glyph": "✚",
+    "id": "cache",
+    "ink": null,
+    "terms": [
+      "CACHE",
+    ],
+  },
+  {
+    "glyph": "★",
+    "id": "site",
+    "ink": null,
+    "terms": [
+      "SITE",
+    ],
+  },
+  {
+    "glyph": "◈",
+    "id": "shrine",
+    "ink": null,
+    "terms": [
+      "SHRINE",
+    ],
+  },
+  {
+    "glyph": "❖",
+    "id": "territory",
+    "ink": null,
+    "terms": [
+      "TERRITORY",
+    ],
+  },
+  {
+    "glyph": "▨",
+    "id": "stone",
+    "ink": null,
+    "terms": [
+      "STONE",
+    ],
+  },
+  {
+    "glyph": null,
+    "id": "rare",
+    "ink": "ink-magic",
+    "terms": [
+      "MAGIC",
+    ],
+  },
+  {
+    "glyph": null,
+    "id": "rareUnique",
+    "ink": "ink-unique",
+    "terms": [
+      "UNIQUE",
+    ],
+  },
+  {
+    "glyph": "✤",
+    "id": "luck",
+    "ink": null,
+    "terms": [
+      "LUCK",
+    ],
+  },
+  {
+    "glyph": "◉",
+    "id": "relic",
+    "ink": null,
+    "terms": [
+      "RELICS",
+      "RELIC",
+    ],
+  },
+  {
+    "glyph": "★",
+    "id": "bounty",
+    "ink": null,
+    "terms": [
+      "BOUNTY",
+    ],
+  },
+  {
+    "glyph": null,
+    "id": "stash",
+    "ink": null,
+    "terms": [
+      "STASH",
+    ],
+  },
+  {
+    "glyph": null,
+    "id": "sizeBonus",
+    "ink": null,
+    "terms": [
+      "SIZE BONUS",
+    ],
+  },
+]
+`;
+
+exports[`the teaching pins — every word, exactly as it reads today > pins every perk’s rows, as both its hosts draw them 1`] = `
+[
+  {
+    "id": "rootbound",
+    "rows": [
+      {
+        "text": "YOU GAIN — Your own ground pays 1.35× to start and 2× at full luck — the ground’s own bonus is counted in first, then the lot multiplies.",
+      },
+      {
+        "text": "YOU LOSE — Ground that is not yours pays 0.5× to start, and NOTHING once your luck is full. The better your odds get, the less the plane forgives.",
+      },
+      {
+        "text": "PLAY IT — Grow along ONE colour’s field and pop inside it. Early on a strayed pocket still pays something; bank enough luck and it stops paying at all, so the rule gets stricter exactly as you get richer.",
+      },
+    ],
+  },
+  {
+    "id": "secondwind",
+    "rows": [
+      {
+        "text": "YOU GAIN — The first time a run would end BROKE, a coin is flipped: 50% of the time you carry on with 20 tiles.",
+      },
+      {
+        "text": "YOU LOSE — Nothing you had — but the coin is flipped once a run, and only for running BROKE. Any other ending is still an ending.",
+      },
+      {
+        "text": "PLAY IT — A reprieve you cannot count on, so it is worth one placement more than you would dare, not ten. If the coin lands, reach a pocket and POP before the 20 tiles are gone.",
+      },
+    ],
+  },
+  {
+    "id": "stonewalker",
+    "rows": [
+      {
+        "text": "YOU GAIN — Placements next to stone cost 1 less — down to free, never below it.",
+      },
+      {
+        "text": "YOU LOSE — Nothing. This one is pure discount.",
+      },
+      {
+        "text": "PLAY IT — Stone stops being ground to route around and becomes the cheapest ground there is. Build ALONG a ridge rather than away from one.",
+      },
+    ],
+  },
+  {
+    "id": "wallbreaker",
+    "rows": [
+      {
+        "text": "YOU GAIN — Walls can be built ON, which nothing else in the game can do.",
+      },
+      {
+        "text": "YOU LOSE — A wall placement costs 2× a normal one, and the tiles are spent whether or not the pocket ever ripens.",
+      },
+      {
+        "text": "PLAY IT — A wall surrounds without ever matching, so breaking one JOINS two pockets that could never have touched. Worth it to close a big pocket; never worth it to save a step.",
+      },
+    ],
+  },
+  {
+    "id": "openhand",
+    "rows": [
+      {
+        "text": "YOU GAIN — You draft 5 tiles every hand instead of the usual deal.",
+      },
+      {
+        "text": "YOU LOSE — NO STASH. The shelf disappears while this is worn — nothing can be put by for later.",
+      },
+      {
+        "text": "PLAY IT — More choice now, none saved. Take the best of 5 every single turn instead of banking a tile for a pocket two moves away.",
+      },
+    ],
+  },
+]
+`;
+
+exports[`the teaching pins — every word, exactly as it reads today > pins every shop upgrade’s name and note 1`] = `
+[
+  {
+    "id": "tiles",
+    "name": "DEEPER PURSE",
+    "note": "+5 tiles to start every run.",
+  },
+  {
+    "id": "odds",
+    "name": "KEENER EYE",
+    "note": "Magic and unique tiles turn up more often, on every run, for good.",
+  },
+  {
+    "id": "world",
+    "name": "RICHER WORLDS",
+    "note": "More caches, sites and territories out there to find — and richer caches when you reach them.",
+  },
+  {
+    "id": "pace",
+    "name": "STEADY PACE",
+    "note": "Placements stay cheap for longer, on every run, for good.",
+  },
+  {
+    "id": "sense",
+    "name": "KEEN NOSE",
+    "note": "Hidden finds shimmer when your ground grows near — +2 hexes farther each level.",
+  },
+]
+`;
+
+exports[`the teaching pins — every word, exactly as it reads today > pins every stat note on an opening board 1`] = `
+{
+  "cost · BARE_TUNING": "COST — the next placement's price: 1. It rises +1 every 70 placed, and it never comes back down — the clock that ends every run. You may place while ANY tiles remain — the difference is forgiven at zero, and it cannot chain: only a pop can lift you back above zero.",
+  "cost · TUNING": "COST — the next placement's price: 1. It rises +1 every 22 placed, and it never comes back down — the clock that ends every run. You may place while ANY tiles remain — the difference is forgiven at zero, and it cannot chain: only a pop can lift you back above zero.",
+  "left · BARE_TUNING": "LEFT — placements remaining in the expedition. At zero it ends; anything already ripe can still be popped.",
+  "left · TUNING": "LEFT — placements remaining in the expedition. At zero it ends; anything already ripe can still be popped.",
+  "luck · BARE_TUNING": "LUCK — a purse, not a score. The row under your hand spends it.",
+  "luck · TUNING": "LUCK — a purse, not a score. The row under your hand spends it; whatever is left when the run ends comes home as relics, at 5%.",
+  "map · BARE_TUNING": "REACH — how far from home you have built. Every 4 hexes out raises the distance multiplier by 1, so the same pocket scores more the deeper it pops.",
+  "map · TUNING": "REACH — how far from home you have built. Every 3 hexes out raises the distance multiplier by 1, so the same pocket scores more the deeper it pops.",
+  "points · BARE_TUNING": "POINTS — the score. A pocket popped for points pays its worth × its size × its distance from home.",
+  "points · TUNING": "POINTS — the score. A pocket popped for points pays its worth × its size × its distance from home.",
+  "tiles · BARE_TUNING": "TILES — what keeps you alive. Every placement spends them; pops, caches and territories pay them back. At zero with nothing ripe to pop, the run ends.",
+  "tiles · TUNING": "TILES — what keeps you alive. Every placement spends them; pops, caches and territories pay them back. At zero with nothing ripe to pop, the run ends.",
+}
+`;
+
+exports[`the teaching pins — every word, exactly as it reads today > pins the colour lessons and powers, over both tunings and both directions 1`] = `
+{
+  "lesson · blue · BARE_TUNING · daylight": null,
+  "lesson · blue · BARE_TUNING · torchlit": null,
+  "lesson · blue · TUNING · daylight": "TIDE. Worth little at home, a lot on the frontier: +1 worth per 6 hexes from home.",
+  "lesson · blue · TUNING · torchlit": "TIDE. Worth little at home, a lot on the frontier: +1 worth per 6 hexes from home.",
+  "lesson · green · BARE_TUNING · daylight": null,
+  "lesson · green · BARE_TUNING · torchlit": null,
+  "lesson · green · TUNING · daylight": "MOSS — CROWDS. Wants one big mob of its own colour: +1 worth per MOSS neighbour past the first.",
+  "lesson · green · TUNING · torchlit": "MOSS — CROWDS. Wants one big mob of its own colour: +1 worth per MOSS neighbour past the first.",
+  "lesson · red · BARE_TUNING · daylight": null,
+  "lesson · red · BARE_TUNING · torchlit": null,
+  "lesson · red · TUNING · daylight": "ASH. Stone and walls count as matches for it: it feeds on the spent ground everyone else abandons.",
+  "lesson · red · TUNING · torchlit": "ASH. Stone and walls count as matches for it: it feeds on the spent ground everyone else abandons.",
+  "lesson · yellow · BARE_TUNING · daylight": null,
+  "lesson · yellow · BARE_TUNING · torchlit": null,
+  "lesson · yellow · TUNING · daylight": "EMBER — COMPANY. Scores in messy mixed ground: +1 worth per differently-coloured neighbour.",
+  "lesson · yellow · TUNING · torchlit": "EMBER — COMPANY. Scores in messy mixed ground: +1 worth per differently-coloured neighbour.",
+  "power · blue · BARE_TUNING": "",
+  "power · blue · TUNING": " · tide: +1 worth per 6 hexes from home",
+  "power · green · BARE_TUNING": "",
+  "power · green · TUNING": " · crowds: +1 worth per green neighbour past the first",
+  "power · red · BARE_TUNING": "",
+  "power · red · TUNING": " · ash: stone and walls beside red count as matches",
+  "power · yellow · BARE_TUNING": "",
+  "power · yellow · TUNING": " · company: +1 worth per differently-coloured neighbour",
+}
+`;

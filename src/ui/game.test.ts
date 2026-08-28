@@ -4162,3 +4162,99 @@ describe('a tip waits for you (2026-08-27)', () => {
     expect(ctx.el.toast.hidden).toBe(true);
   });
 });
+
+/**
+ * The manual, pinned word for word — the safety net the lesson-registry
+ * refactor falls into (2026-08-28, stage 0).
+ *
+ * Lives here rather than in `teaching.pin.test.ts` because the manual is only
+ * reachable through a live `Game`, and `build()` is this file's fixture. The
+ * pure surfaces — every glossary definition, the perk rows, the colour lessons,
+ * the stat notes — are pinned there instead.
+ *
+ * **The flipped tuning is the point of this block, not the default one.** Half
+ * the manual's sentences sit behind a dial: `redAshMatches` decides whether
+ * stone matches, `harvestSizeCap` adds a line to the POP fold, `costGrace`
+ * rewrites the cost curve, `holdSlots` decides whether THE STASH exists at all,
+ * `runLength` swaps the death sentence, `titheRate` and `luckPerPop` gate the
+ * purse. A default-tuning run walks ONE side of each of those, so a refactor
+ * that silently dropped the other side would be green on every test in this
+ * repository. This pass walks both.
+ *
+ * `toMatchSnapshot` rather than inline strings, and the rule that keeps that
+ * honest: a changed snapshot is never re-recorded silently. Every intended
+ * change is listed in the commit that makes it; an unintended one is a bug.
+ * These pins are DELETED when the migration lands and the registry's own tests
+ * replace them.
+ */
+describe('the manual, pinned exactly as it reads today', () => {
+  /** Every tab's heading and body text, in order, from a full ledger. */
+  const manualText = (t?: Tuning, hooks: GameHooks = {}): Record<string, string> => {
+    const dev = {
+      read: () => ({ ...EMPTY_PROGRESS, met: [...TEACH_IDS] }) as Progress,
+      write: () => undefined,
+    };
+    const ctx = build(4, t, { shop: dev, ...hooks });
+    ctx.game.start();
+    ctx.game.openHelp();
+
+    const out: Record<string, string> = {};
+    const tabs = [...ctx.el.helpPanel.querySelectorAll('.help-tab')] as HTMLButtonElement[];
+    for (const tab of tabs) {
+      const label = (tab.textContent ?? '').trim();
+      tab.click();
+      // The VISIBLE panel only. `textContent` happily reads through `hidden`,
+      // so reading `helpManual` whole gave every tab the same string — five
+      // copies of the entire manual, and a diff that could not say which tab
+      // moved. One panel per tab is the pin that is worth having.
+      const shown = [...ctx.el.helpManual.children].filter(
+        (child) => !(child as HTMLElement).hidden && !child.classList.contains('help-tabs'),
+      );
+      out[label] = shown
+        .map((panel) => panel.textContent ?? '')
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    ctx.game.destroy();
+    return out;
+  };
+
+  /**
+   * Every dial that changes a SENTENCE, flipped away from its shipped value.
+   * Not a playable economy and not meant to be — it is a walk down the other
+   * branch of every conditional the manual owns.
+   */
+  const FLIPPED: Tuning = {
+    ...TUNING,
+    redAshMatches: !TUNING.redAshMatches,
+    holdSlots: 0,
+    costGrace: 0,
+    harvestSizeCap: 0,
+    titheRate: 0,
+    luckPerPop: 0,
+    colourBiasDraws: 0,
+    burnRelics: 0,
+    luckToRelics: 0,
+    territoryTiles: 0,
+    cachePaysPerRing: 0,
+    findSense: 0,
+  };
+
+  it('pins every tab under the shipped tuning', () => {
+    expect(manualText()).toMatchSnapshot();
+  });
+
+  it('pins every tab under a tuning that flips every conditional sentence', () => {
+    expect(manualText(FLIPPED)).toMatchSnapshot();
+  });
+
+  /**
+   * A detour reads a different manual — nothing is banked, nothing is kept —
+   * and that difference is the most dangerous prose in the file: it is what
+   * stops a shared link telling its recipient about a world they do not have.
+   */
+  it('pins every tab on a detour', () => {
+    expect(manualText(undefined, { replay: true })).toMatchSnapshot();
+  });
+});
