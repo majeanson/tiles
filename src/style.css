@@ -3216,16 +3216,30 @@ button:not(:disabled):active {
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
 }
 
-.fig-hex[data-colour='yellow'] {
+.fig-hex[data-ground='yellow'] {
   background-color: var(--tile-yellow, #b8983f);
 }
 
-.fig-hex[data-colour='red'] {
+.fig-hex[data-ground='red'] {
   background-color: var(--tile-red, #a4503c);
 }
 
-.fig-hex[data-colour='blue'] {
+.fig-hex[data-ground='blue'] {
   background-color: var(--tile-blue, #3f6f96);
+}
+
+/* Spent ground and blocked ground (2026-08-28), so a figure can show what a
+   pop LEAVES and what a wall is. Both come from the theme now — see
+   `themeCssVars` — rather than being invented here, because a manual drawn in
+   colours the board does not use is an illustration of the game instead of
+   the game. Neither has baked art, which is exactly what the board does with
+   an art slot it has no PNG for: the token colour, flat. */
+.fig-hex[data-ground='stone'] {
+  background-color: var(--stone, #5a5044);
+}
+
+.fig-hex[data-ground='wall'] {
+  background-color: var(--wall, #261d16);
 }
 
 /* The tile the figure is ABOUT, said the way the board says it: the accent
@@ -3240,6 +3254,73 @@ button:not(:disabled):active {
 
 .help-figure[data-facing='flat'] .fig-ring {
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+/* The stroke ladder's own three rings (2026-08-28), each in the colour
+   `PixiRenderer#strokeFor` would use for it — ripe is the loudest thing on
+   the board by policy, legal says "you may build here", and lit is the
+   destination colour split off `accent` the same day. Default `--accent` is
+   kept above for the ripen figure, which predates the data attribute. */
+.fig-ring[data-ring='ripe'] {
+  background: var(--ripe-edge, #f7e6be);
+}
+
+.fig-ring[data-ring='legal'] {
+  background: var(--legal-edge, #c79a4b);
+}
+
+.fig-ring[data-ring='lit'] {
+  background: var(--lit, #c79a4b);
+}
+
+/* A number or a glyph printed on a cell, wearing the same ink-and-halo pair
+   the board's own labels do — `--card-text-shadow` is built from the theme's
+   `ink.halo`, so a light direction gets a pale outline and a dark one a dark
+   outline without this rule knowing light directions exist. Centred on the
+   hex by the same absolute box the ground uses. */
+.fig-mark {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display, inherit);
+  font-size: 0.9375rem;
+  color: var(--ink, #e8ecf4);
+  text-shadow: var(--card-text-shadow, 0 1px 2px rgb(0 0 0 / 65%));
+  pointer-events: none;
+}
+
+/* Faint means spent, or promised-but-not-yet — the board's own distinction
+   (`labelFor`'s `faint`), carried into the manual so the two agree. */
+.fig-mark[data-faint='true'] {
+  color: var(--ink-faint, #767d8d);
+}
+
+/* The two rarities' own voices, which the board has spoken since 2026-08-20
+   and the manual's first rare figure did not — it drew both stars in the
+   plain ink, on the one section whose entire job is telling them apart. */
+.fig-mark[data-tone='magic'] {
+  color: var(--magic, #b08fe0);
+}
+
+.fig-mark[data-tone='unique'] {
+  color: var(--unique, #f2914a);
+}
+
+/* THE STASH's figure is cards, not hexes: a scaled-down row of the real hand
+   markup. `.tile` and `.tile.hold` bring their own chrome; this only sizes
+   the row and stops it pretending to be interactive. */
+.fig-cards {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 auto 8px;
+}
+
+.fig-card {
+  flex: 0 0 auto;
+  width: 84px;
+  cursor: default;
 }
 
 .help-figure-wrap > .flag-note {

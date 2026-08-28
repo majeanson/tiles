@@ -7370,3 +7370,90 @@ clipped-text findings across all 198 shots — against 76 contrast and 351
 tap-target rows on its first run. **NOT played on a phone since, and the
 daylight repaint in particular is a palette Marc has not looked at.** The one
 gate is still Session C.
+
+---
+
+### Session 67 — the manual draws five more rules, and the board stops repeating itself (2026-08-28)
+
+**Question:** which rules does the manual explain in words that it should be
+showing with the game's own tiles — and what is the smallest vocabulary that
+draws all of them?
+
+**The chip goes first, because it is one line.** Marc, mid-session: "in the
+gameplay just below points we see world 1 of 3, remove that line." `#mode-chip`
+now renders **only on a detour**. It arrived 2026-08-26 to answer "which game
+am I in", and on a daily or a shared run it is a WARNING — this banks nothing —
+which is knowledge a player is owed. On your own world it restated the default:
+the home world is where the game opens, WORLDS is one tap away and names the
+slot, and the line spent a row of board on every ordinary run to say so. Hidden
+rather than emptied, because an empty visible element still takes its margin,
+which is the row this gives back. `smoke.spec.ts`'s assertion was **turned
+around rather than deleted** — it and the daily's test are a pair, and without
+this half a chip that had stopped rendering everywhere would sail through the
+daily's `not` assertions.
+
+**Then the figures.** Marc: "id still like more visuals with actual assets and
+tiles and stuff in the help (hand, play, etc.)" — the 2026-08-27 ask, made
+again because one figure was all that came of it. He picked the set from an
+option set: the five load-bearing rules, inline under the visible lines rather
+than inside `DETAILS`, since a fold is exactly where nobody looks for a rule.
+
+- **`#figure` became data.** It was one hardcoded function that could draw
+  exactly `ripen`: the ring array, the ripe decoration and the caption were all
+  inline. It is now a spec table — a cell is a `ground`, optionally a `ring`,
+  optionally a `mark` — and **every value in that vocabulary maps to something
+  the BOARD already paints**: the grounds are the four terrains plus stone and
+  wall, the rings are the stroke ladder's own (`legal`, `ripe`, `lit`), and a
+  mark is the glyph or number `labelFor` would print there. That is the whole
+  guard against the failure mode a manual figure has: a picture cannot show a
+  state the game does not have, because there is no way to spell one.
+- **The five.** START ▸ THE BOARD gets `destinations` — a lit `✚` and `★`
+  against an already-spent `◈`, which is what "lights out in the dark are worth
+  walking to" has always claimed and never shown, and it carries the
+  faint-means-spent rule with it. PLAY ▸ PLACE gets the glowing edge and its
+  promised faint number. PLAY ▸ POP gets three ripe tiles touching — ONE pocket
+  — with the stone a previous pop left beside them, so the section's two facts
+  share one picture. HAND ▸ RARE TILES gets the placed star. HAND ▸ THE STASH
+  gets the dashed HOLD slot.
+- **Five new theme vars**, so a figure is drawn in the direction's own colours
+  rather than in hand-typed ones: `--stone`, `--wall`, `--legal-edge`,
+  `--ripe-edge`, `--lit`. Asserted in `theme.test.ts` as real colours rather
+  than merely present — a var that resolves to nothing falls back to
+  `style.css`'s defaults, which are TORCHLIT's, so a missing one would not
+  break the page, it would quietly draw daylight's manual in torchlit's greys.
+  That is precisely the class of bug Session 66 was spent on.
+
+**Two of the five were wrong when first drawn, and the screenshots are what
+said so.** The rare figure gave both stars the plain ink — on the one section
+whose entire job is telling MAGIC and UNIQUE apart, and after those two were
+given their own colours on 2026-08-20 for exactly that reason. A cell's mark
+now carries a `tone`. And THE STASH's cards came out as naked hexes with words
+under them: `.tile` styles a card's INSIDE — layout, ink, halo — while every
+bit of chrome that makes it look like a card comes from the global `button`
+rule, so a `<div class="tile">` is not a card. They are buttons now, in an
+`inert` row: a picture of controls, untabbable and invisible to the audit's
+tap-target check.
+
+**And one thing that looked like a bug was the design working.** THE STASH
+section is absent from the very-played device's manual, which looked like the
+gate had broken. It had not: that fixture wears OPEN HAND, and the perk sets
+`holdSlots: 0` — it trades the stash away for a wider draft. The section is
+gated on the slots, so the manual correctly stops describing a control that
+device does not have. The dial-form contract from `CLAUDE.md`, visible in a
+screenshot.
+
+**The figure test was rewritten rather than repaired.** It took
+`querySelector('.help-figure')` — "the first figure on the page" — and passed
+for a year because there was only one; the moment START gained a figure above
+it, the test was silently asserting six-around-one about a different picture.
+It finds the ripen figure by its caption now, and a second test walks EVERY
+figure for the contract all of them keep. Deliberately not an exact count:
+RARE and STASH are gated on a ledger and on `holdSlots`, so a fresh device has
+four figures and a grown one has six, and pinning the number would make the
+test a test of the fixture.
+
+**Verified:** 881 unit tests (+1), 33 e2e, typecheck / lint / format / build
+clean, and the screen audit still reporting **zero** contrast, tap-target,
+overflow and clipped-text findings across all 198 shots with the new figures in
+them. Every figure read at 390×844 in torchlit and daylight before it was
+called done. **NOT played on a phone.** The one gate is still Session C.

@@ -1578,14 +1578,26 @@ async function buildSession(route: Route): Promise<Session> {
   // world"). One quiet line under the stats, on from the first frame — a
   // daily and a home run used to be told apart only by what the ? panel
   // said when asked.
+  //
+  // The HOME world stopped saying it on 2026-08-28 (Marc: "in the gameplay
+  // just below points we see world 1 of 3, remove that line"). The chip
+  // earns its pixels on a DETOUR, where it is a warning — this run banks
+  // nothing, and a player who does not know that is being cheated of the
+  // knowledge. On your own world it was answering a question nobody was
+  // asking: the home world is where the game opens, WORLDS is one tap away
+  // and names the slot, and the line cost a row of board on every ordinary
+  // run to restate the default. So the detour keeps its chip, the home run
+  // gets the pixels back, and `#mode-chip` stays hidden rather than empty —
+  // an empty visible element still takes its margin.
   const modeChip = required('mode-chip');
-  modeChip.hidden = false;
-  modeChip.textContent =
+  const chipText =
     dailyDate !== null
       ? `THE DAILY · ${dailyName(dailyDate)} — points only, nothing banks`
       : sharedSeed !== null
         ? 'A SHARED RUN — nothing banks'
-        : `WORLD ${slot} OF 3`;
+        : null;
+  modeChip.hidden = chipText === null;
+  modeChip.textContent = chipText ?? '';
 
   // THE SHOP, from the door (Marc, 2026-08-26: "a way to access our relic
   // and shop outside the main game") — the same shelf the end screen shows,

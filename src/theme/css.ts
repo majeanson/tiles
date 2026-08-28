@@ -61,6 +61,24 @@ export function themeCssVars(theme: Theme): CssVars {
     out[`--tile-${colour}-to`] = hex(surface.fillTo ?? surface.fill);
   }
 
+  // The rest of the board's vocabulary, for the manual's figures (2026-08-28,
+  // Marc: "id still like more visuals with actual assets and tiles and stuff
+  // in the help").
+  //
+  // The four terrains have been here since the draft card needed them; a
+  // figure that teaches PLACE or POP needs the grounds and the edges too —
+  // spent stone, blocked ground, the legal edge that says "you may build
+  // here", the ripe edge that is the whole harvest decision, and the lit
+  // colour a destination wears. Exported rather than hand-typed into
+  // `style.css` for the reason the card's own halo was: a figure drawn in
+  // colours the board does not use is an illustration OF the game instead of
+  // the game, and it silently stops matching the first time a direction moves.
+  out['--stone'] = hex(theme.stone.fill);
+  out['--wall'] = hex(theme.wall.fill);
+  out['--legal-edge'] = hex(theme.board.legalEdge);
+  out['--ripe-edge'] = hex(theme.board.ripeEdge);
+  out['--lit'] = hex(theme.ink.lit);
+
   return out;
 }
 

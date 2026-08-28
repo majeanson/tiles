@@ -4,7 +4,38 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-28 — the screens are looked at, in all three skins,
+Last checkpoint: **2026-08-28, later — the manual draws five more rules, and
+the board stops repeating itself.** Two asks from the phone. **The chip:**
+`#mode-chip` renders only on a DETOUR now (Marc: "in the gameplay just below
+points we see world 1 of 3, remove that line"). On a daily or a shared run it
+is a warning — this banks nothing — which a player is owed; on your own world
+it restated the default and spent a row of board doing it. Hidden rather than
+emptied, because an empty visible element still takes its margin.
+`smoke.spec.ts`'s assertion was turned around rather than deleted: it and the
+daily's test are a pair, and without this half a chip that had stopped
+rendering everywhere would pass the daily's `not`. **The figures:** Marc's
+2026-08-27 ask, made again — "id still like more visuals with actual assets and
+tiles and stuff in the help (hand, play, etc.)" — and answered properly this
+time. `#figure` was one hardcoded function that could draw exactly one picture;
+it is a **spec table** now, whose whole vocabulary maps to things the BOARD
+already paints (grounds = four terrains + stone + wall, rings = the stroke
+ladder's own `legal`/`ripe`/`lit`, marks = what `labelFor` would print). A
+figure therefore cannot show a state the game does not have. **Five new
+figures**, his pick from an option set: DESTINATIONS (a lit `✚` and `★` against
+a spent `◈` — what START has always claimed and never shown), PLACE, POP, RARE
+TILES and THE STASH. **Five new theme vars** (`--stone`, `--wall`,
+`--legal-edge`, `--ripe-edge`, `--lit`) so a figure wears the live direction's
+colours; asserted as real colours rather than merely present, since a missing
+one falls back to `style.css`'s torchlit defaults and would draw daylight's
+manual in torchlit's greys. **Two of the five were wrong when first drawn and
+the screenshots caught both**: the rare figure gave MAGIC and UNIQUE the same
+star, and THE STASH's cards were divs, which get a card's insides but none of
+the chrome the global `button` rule supplies. **881 tests (+1), 33 e2e,
+typecheck / lint / format / build clean, and the screen audit still at zero
+findings across all 198 shots** with the figures in them. **NOT played on a
+phone.** The one gate is still Session C.
+
+Previous checkpoint: **2026-08-28 — the screens are looked at, in all three skins,
 on a device that has actually played.** Two harnesses and six fixes. **The
 harnesses:** `pnpm fixtures` plays real runs through the real reducer and folds
 each into the world, the record book, the purse and the diary the way

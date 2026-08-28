@@ -647,21 +647,72 @@ describe('the camera, and staying oriented', () => {
    */
   it('draws the six-around-one rule as a figure, in the theme’s own facing', () => {
     ctx.el.help.click();
-    const figure = ctx.el.helpPanel.querySelector('.help-figure');
-    expect(figure).not.toBeNull();
+    // BY ITS CAPTION, not "the first figure on the page" (2026-08-28). This
+    // used to take `querySelector('.help-figure')` and got the ripen figure
+    // because it was the only one; the moment START gained a figure above it
+    // the test was silently asserting six-around-one about a different
+    // picture. A figure is identified by what it claims, like every other
+    // assertion in this file.
+    const wrap = [...ctx.el.helpPanel.querySelectorAll('.help-figure-wrap')].find((w) =>
+      (w.textContent ?? '').includes('the middle tile is ripe'),
+    );
+    expect(wrap, 'the ripen figure is gone from the manual').not.toBeUndefined();
+    const figure = wrap?.querySelector('.help-figure');
     expect(['pointy', 'flat']).toContain(figure?.getAttribute('data-facing'));
 
     const hexes = [...(figure?.querySelectorAll('.fig-hex') ?? [])] as HTMLElement[];
     expect(hexes).toHaveLength(7);
     for (const hex of hexes) {
-      expect(COLOURS).toContain(hex.dataset['colour']);
+      expect(COLOURS).toContain(hex.dataset['ground']);
       // Positioned, not stacked: the board's geometry put each one somewhere.
       expect(hex.style.left).not.toBe('');
       expect(hex.style.width).not.toBe('');
     }
     // Exactly one ripe ring, and it is the tile the caption is about.
     expect(figure?.querySelectorAll('.fig-ring')).toHaveLength(1);
-    expect(figure?.parentElement?.textContent).toContain('the middle tile is ripe');
+  });
+
+  /**
+   * The rest of the drawn figures (2026-08-28, Marc: "id still like more
+   * visuals with actual assets and tiles and stuff in the help (hand, play,
+   * etc.)").
+   *
+   * Deliberately NOT an exact count: RARE TILES and THE STASH are gated on a
+   * ledger and on `holdSlots`, so a fresh context has four figures and a
+   * grown one has six, and pinning the number would make this test a test of
+   * the fixture. What it pins is the contract every figure has to keep —
+   * a caption, real geometry, and only grounds and rings the BOARD can
+   * actually paint. That last one is the whole point of the figures: a
+   * picture that shows a state the game does not have teaches a rule the game
+   * does not have.
+   */
+  it('draws every manual figure from the board’s own vocabulary', () => {
+    ctx.el.help.click();
+    const wraps = [...ctx.el.helpPanel.querySelectorAll('.help-figure-wrap')];
+    // START's two and PLAY's two are unconditional; the HAND pair is gated.
+    expect(wraps.length).toBeGreaterThanOrEqual(4);
+
+    const GROUNDS = [...COLOURS, 'stone', 'wall'];
+    const RINGS = ['legal', 'ripe', 'lit', 'spent'];
+
+    for (const wrap of wraps) {
+      expect(wrap.querySelector('.flag-note')?.textContent ?? '').not.toBe('');
+
+      // A figure is hexes or cards, never neither.
+      const hexes = [...wrap.querySelectorAll('.fig-hex')] as HTMLElement[];
+      const cards = [...wrap.querySelectorAll('.fig-card')] as HTMLElement[];
+      expect(hexes.length + cards.length).toBeGreaterThan(0);
+
+      for (const hex of hexes) {
+        expect(GROUNDS).toContain(hex.dataset['ground']);
+        expect(hex.style.left).not.toBe('');
+      }
+      for (const ring of [...wrap.querySelectorAll('.fig-ring')] as HTMLElement[]) {
+        // The ripen figure's ring predates the attribute and wears the
+        // accent; every ring that names itself must name one of the board's.
+        if (ring.dataset['ring'] !== undefined) expect(RINGS).toContain(ring.dataset['ring']);
+      }
+    }
   });
 
   it('keeps the arithmetic folded away, and reads it from the live tuning', () => {

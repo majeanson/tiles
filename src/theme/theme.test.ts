@@ -302,6 +302,15 @@ describe.each(THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme: Them
       expect(vars[`--tile-${colour}`]).toMatch(/^#[0-9a-f]{6}$/);
       expect(vars[`--tile-${colour}-to`]).toMatch(/^#[0-9a-f]{6}$/);
     }
+    // The rest of the board's vocabulary (2026-08-28), which the manual's
+    // figures draw with. Asserted as real colours rather than merely present:
+    // a var that resolves to `undefined` falls back to the hand-typed default
+    // in `style.css`, which is torchlit's — so a missing one here would not
+    // break the page, it would quietly draw daylight's manual in torchlit's
+    // greys, which is precisely the class of bug this session was spent on.
+    for (const name of ['--stone', '--wall', '--legal-edge', '--ripe-edge', '--lit']) {
+      expect(vars[name], name).toMatch(/^#[0-9a-f]{6}$/);
+    }
   });
 
   it('keeps the rarities’ colours their own — never the accent, never the selected ring', () => {

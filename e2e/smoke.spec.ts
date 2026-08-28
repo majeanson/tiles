@@ -132,11 +132,22 @@ test('boots, begins, places, reads the manual, works the camera — no errors', 
 });
 
 /**
- * The home board says WHICH world it is (2026-08-26). The daily's half of
- * this contract is asserted in the test below; both sides are needed, or a
- * chip that had simply stopped rendering would pass the daily's `not`.
+ * The home board says NOTHING (2026-08-28, Marc: "in the gameplay just below
+ * points we see world 1 of 3, remove that line").
+ *
+ * This test used to assert the opposite — the chip reading `WORLD n OF 3` —
+ * and it is turned around rather than deleted, because the pair it belongs to
+ * is what makes either half mean anything: the daily's test below asserts the
+ * chip IS there and says "nothing banks", and this one asserts it is absent
+ * on your own world. Without this side, a chip that had simply stopped
+ * rendering everywhere would sail through the daily's `not` assertions. The
+ * chip earns its row of board on a detour, where it is a warning; on the home
+ * world it restated the default.
+ *
+ * `toBeHidden`, not "is empty": an empty visible element still takes its
+ * margin, which is the row of board this change exists to give back.
  */
-test('the home board names the world it is, on the board itself', async ({ page }) => {
+test('the home board says nothing under the stats — the chip is for detours', async ({ page }) => {
   const errors = watchErrors(page);
 
   await page.goto('/');
@@ -144,11 +155,7 @@ test('the home board names the world it is, on the board itself', async ({ page 
   await expect(page.locator('#front-door')).toBeHidden();
   await expect(page.locator('#board canvas')).toBeVisible();
 
-  const chip = page.locator('#mode-chip');
-  await expect(chip).toBeVisible();
-  await expect(chip).toContainText(/WORLD \d OF 3/);
-  await expect(chip).not.toContainText('THE DAILY');
-  await expect(chip).not.toContainText('SHARED RUN');
+  await expect(page.locator('#mode-chip')).toBeHidden();
 
   expect(errors).toEqual([]);
 });
