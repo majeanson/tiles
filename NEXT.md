@@ -72,6 +72,50 @@ The four checks worth being deliberate about, in risk order:
   from an opening board, and 16.8ms under 6× CPU throttling). Whether it feels
   smooth on a weak GPU is not a thing a desktop can report.
 
+## 3b. The teaching registry, and what is left of it — no one blocked
+
+Session 68 built `src/ui/lessons.ts`: one registry every teaching surface reads,
+with the game's own art travelling on the lesson. Marc's sequencing for the rest
+is recorded and settled — **help refactor → Sessions A–C → tag 1.0 → then
+React.** Nothing below displaces §1.
+
+Done: the registry and its ten invariants; `figure.ts` extracted so a card and
+the term card can draw what the manual draws; the RIPE / MAGIC / UNIQUE / LUCK /
+RELICS cards, the RIPEN / RARE TILES / THE STASH manual sections, and the term
+card all reading it; `glossary.ts` deleted.
+
+Still open, in the order they are worth doing:
+
+- **Visuals for the shop's upgrade rows and the perk cards.** The two surfaces
+  where a player most needs to recognise a thing on the board, and the two with
+  the least visual signal — both still text only. `Lesson.rows` is declared and
+  unused precisely as the seam these land on. This is the next-best
+  "in-game displays" win and it needs no prose decisions.
+- **The five-way colour prose fold** (`COLOUR_HELP` · `colourLesson` ·
+  `powerOf` · `POWER_NAMES` · the manual's DETAILS). Three layers of wording —
+  short, short-plus-number, number-only — that Marc tuned himself, so folding
+  them is a prose decision rather than a mechanical one. The one RULE they
+  shared is already folded (`groundHead`), which was where the live bug was.
+- **The remaining toasts** (`costRise`, `wall`, `field`, `lastGasp`, `glow`,
+  `lens`) and the manual's COMPOSED sections (POP, THE WORLD, THE SCREEN).
+  Each is reachable through `#say`/`#core` whenever it earns a commit; none is
+  duplicated in a way that is currently biting.
+- **A LESSONS tab** — an explicit "everything you have been taught" list. Marc
+  has not asked for one, and the manual arguably already IS it (it grows with
+  the ledger, every lesson carries its picture and its tappable term). Under
+  the one-question-per-prototype rule this needs a written question and his
+  sign-off; the registry makes it ~30 lines whenever he says yes. **Design it,
+  do not build it uninvited.**
+
+**React** is `ROADMAP.md` parking-lot work now, to be done against a tag rather
+than before one. `LOG.md` Session 68 carries the measured surface so the
+estimate does not have to be re-derived: ~8,675 lines of DOM-producing code,
+`style.css`'s 3,329 id-keyed lines and 5,954 lines of DOM-coupled tests at
+risk — against `view.ts` (1,913 lines, zero DOM) already being the props layer,
+Pixi behind a 14-method interface on one stable host div, and four hand-rolled
+components already in place. The honest argument for it is `resetShell()`'s
+30-id list, which React deletes rather than ports.
+
 ## 4. Known and deliberately not done — no one blocked
 
 - **`src/main.ts` has no unit tests** — largely overtaken: it is ~90 lines

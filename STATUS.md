@@ -4,7 +4,41 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-28, later — the manual draws five more rules, and
+Last checkpoint: **2026-08-28, later — one lesson, one source, drawn with the
+real game.** Marc: "the world, the screen, etc. should be from in-game too, not
+just text ... a single source: when you get helped in game, its help you can
+review there." Plus his sequencing: **help refactor → Sessions A–C → tag 1.0 →
+then React.** (React is answered "not before the tag", not "no": the only open
+box is the stranger test, and `POLISH.md`'s rule for this window is whether a
+change raises the odds a stranger finishes. Better teaching does; a framework
+migration is invisible to them. The measured cost is recorded in `LOG.md` for
+whenever it happens.) **The evidence:** the ripening rule stated six times from
+four literals, "relics travel" five times having already silently DRIFTED twice
+by `session.ts`'s own admission, five parallel tables for four colours, ten more
+concepts said three-to-five times each. **`src/ui/lessons.ts` is the registry**,
+and its shape is the argument: not three prose fields — those drift because they
+are three arbitrary LENGTHS — but a **sentence with a weight**, so "shorter" is
+a filter and a filter cannot drift from what it filters. A beat sees
+`(Tuning, Theme)` and nothing else, which structurally excludes the
+session-fact prose Marc tuned on 2026-08-27. **`src/ui/figure.ts`** took the
+figures out of `Game`, so the teaching card and the term card draw the same
+picture the manual does — tapping RIPENS now shows the six-around-one that the
+RIPE card showed at first contact. **`glossary.ts` is deleted**; four registries
+are one. **Two live defects fell out of asking "who else says this?", both
+shipping in every skin:** the manual read **"■ ASH — ash." and "● TIDE —
+tide."** because the 2026-08-27 stutter rule reached the card and never the
+manual's own table; and the four-grounds CARD — where a stranger meets the
+grounds on their first placement — drew flat CSS squares while the manual drew
+the real baked hex. **And a hole in the new pins, found by the first:** every
+manual assertion this project has written runs on the `placeholder` theme,
+whose grounds collide with nothing, so a full-green suite watched the stutter
+ship; there is a TORCHLIT manual pin now, verified to fail when the fix is
+reverted. **898 tests, 33 e2e, typecheck / lint / format / build clean, `pnpm
+sim` byte-identical at every one of eight commits, and the screen audit still at
+zero findings across 198 shots.** **NOT played on a phone.** The one gate is
+still Session C.
+
+Previous checkpoint: **2026-08-28, later — the manual draws five more rules, and
 the board stops repeating itself.** Two asks from the phone. **The chip:**
 `#mode-chip` renders only on a DETOUR now (Marc: "in the gameplay just below
 points we see world 1 of 3, remove that line"). On a daily or a shared run it

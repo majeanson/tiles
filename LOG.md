@@ -7457,3 +7457,130 @@ clean, and the screen audit still reporting **zero** contrast, tap-target,
 overflow and clipped-text findings across all 198 shots with the new figures in
 them. Every figure read at 390×844 in torchlit and daylight before it was
 called done. **NOT played on a phone.** The one gate is still Session C.
+
+---
+
+### Session 68 — one lesson, one source, drawn with the real game (2026-08-28)
+
+**Question:** the same rule is written in as many places as it has doors, and
+only one of those doors draws a picture. Can every surface that teaches read
+from ONE registry, and can every lesson carry the game's own art?
+
+Marc: _"the world, the screen, etc. should be from in-game too, not just text.
+lets think of a fresh new idea that agglomerates all concept. a single source:
+when you get helped in game, its help you can review there. they all use
+in-game displays."_ And then the sequencing, which is his: **refactor help →
+clear Sessions A–C → tag 1.0 → then React.**
+
+**On React, since he asked it a second time.** The answer is not "no", it is
+"not before the tag". The 1.0 checklist is 6/7 and the only open box is the
+stranger test; `POLISH.md`'s rule for this window is _"does this raise the odds
+that one stranger, unaided, finishes a run and starts another? If not, it is
+week 2."_ Better first-minute teaching **is** that gate; a framework migration
+is invisible to that stranger. The measured surface is recorded in the plan for
+whenever it happens: ~8,675 lines of DOM-producing code, `style.css`'s 3,329
+id-and-class-keyed lines, and 5,954 lines of DOM-coupled tests — against
+`view.ts`'s 1,913 already-pure lines that are the props layer, Pixi behind a
+14-method interface on one stable host div, and `dialog.ts`/`panelDoor`/
+`shopParts`/`tipRows` already being the four components. The honest argument
+FOR it is `resetShell()`'s hand-maintained 30-id list, which React deletes
+rather than ports.
+
+**The evidence the refactor was built on.** The ripening rule stated six times
+from four independent literals. "Relics travel, what you buy stays" in five
+places — and `session.ts`'s own comments record that it had already silently
+DRIFTED twice. Five parallel tables for four colours. POCKET, STASH, MAGIC,
+UNIQUE, CACHE, SITE, TERRITORY, SHRINE, STONE and SIZE BONUS each said three to
+five times.
+
+**The shape, which is the part worth arguing about.** The obvious registry is
+`{ short, card, detail }` — three prose fields — and that is today's bug with a
+nicer type: **three prose fields drift because they are three arbitrary
+LENGTHS.** Nobody holds the forty-word ripening rule and the twenty-five-word
+one and the fifteen-word one in their head, so when one is edited the others
+rot. So the unit is a **sentence with a weight** (`core` · `more` · `card` ·
+`detail`), "shorter" is a FILTER over one list, and a filter cannot drift from
+what it filters. A beat sees `(Tuning, Theme)` and nothing else, which draws the
+migration line for free: prose needing a session fact — WHY, WHICH GAME, WHAT
+REMAINS, THIS BUILD, WHAT YOU CARRY, HOW A RUN ENDS — cannot move, and that is
+exactly the copy Marc tuned on 2026-08-27 and exactly the copy duplicated
+nowhere.
+
+**Eight commits, each green, each leaving the game whole.**
+
+1. **The pins** (`teaching.pin.test.ts` + three manual snapshots). No
+   production change; sim byte-identical by construction. The **flipped-tuning
+   pass** is the artefact: half the manual sits behind a dial, a default run
+   walks one side of each, and nothing in this repository walked the others —
+   `"none of them match"` is now asserted once, in that pass, and never had
+   been. Snapshots, where this repo had only ever used inline `toBe`, with the
+   rule written into the file: **a changed snapshot is never re-recorded
+   silently.**
+2. **`figure.ts`.** `#figure` was private to `Game`, so the only surface that
+   could show a picture was the manual — while the CARD stating the same rule
+   at first contact could show nothing. Pure move; the two existing figure
+   tests passed unedited.
+3. **A card draws its rule.** `#event-card-figure`, one card wired (RIPE), the
+   figure-or-rows-never-both rule, measured at 546px of an 844px viewport.
+4. **`lessons.ts`.** Deliberately inert: every definition moved across verbatim
+   as one beat, so the derived `GLOSSARY` handed back byte-identical strings.
+   Ten invariants, not pins — whole sentences under every tuning and direction,
+   never silent, figure XOR rows, glyphs borrowed never invented, terms
+   uppercase and longest-first, and the definition built out of exactly the
+   lines shown.
+5. **The prose stage**, one lesson per commit, under one rule: **where a card
+   and the manual say a rule differently, the manual's sentence wins** — its
+   prose is Marc's 2026-08-27 concision pass; the cards were written a week
+   earlier and revised piecemeal. `ripe`, then the rarities, luck and relic.
+   **`RELIC_LESSON` deleted**: a module-level constant built with the DEFAULT
+   tuning and the PLACEHOLDER theme, frozen at import, harmless only because
+   that one definition ignores both arguments.
+6. **The manual reads the registry** — and the designed property held. Across
+   the whole manual, three tabs, two tunings and a detour, the snapshots moved
+   in exactly one place, and that place was a bug: RIPEN hardcoded `"ASH"`
+   where every other section names the colour through the theme, so on the
+   `placeholder` direction the manual contradicted itself on one screen.
+7. **The term card draws the lesson's picture.** Tapping RIPENS shows the same
+   figure the teaching card showed — which is "help you can review there" at
+   full strength.
+8. **The rename.** `glossary.ts` deleted; `terms.test.ts` keeps only what needs
+   a live manual.
+
+**Two live defects the registry's question — _who else says this?_ — surfaced,
+both shipping in every skin.**
+
+- **The manual stuttered.** On 2026-08-27 `colourLesson` grew a rule with a
+  comment explaining it: a direction may name its ground after its personality,
+  so torchlit's red is ASH and a name-dash-word line reads "ASH — ASH." The fix
+  reached the card and never the MANUAL, which builds the same four lines from
+  its own table — so **"■ ASH — ash." and "● TIDE — tide." have been in THE
+  COLOURS on every shipped direction.** One exported `groundHead` now, called
+  by both, case-insensitive because the two tables disagreed about capitals.
+- **The four-grounds card drew flat squares.** `#groundRows` omitted `art`, so
+  the card where a stranger MEETS the grounds on their first placement showed
+  CSS swatches while the manual section teaching the identical fact showed the
+  baked hex — whose own comment says the two should be "one object rather than
+  two things that resemble each other". Both had `this.#art` in scope.
+
+**And a hole in my own pins, found by the first of those.** Every manual
+assertion this project has written runs through `build()`, which defaults to
+`placeholder` — whose grounds are GREEN/YELLOW/RED/BLUE, none colliding with a
+personality word. A full-green suite watched the stutter ship. There is a
+fourth manual pin on TORCHLIT now; reverting the fix makes it fail, which is
+how I know it works.
+
+**Verified:** 898 tests, 33 e2e, typecheck / lint / format / build clean,
+`pnpm sim` byte-identical at every one of the eight commits, and the screen
+audit still reporting **zero** contrast, tap-target, overflow and clipped-text
+findings across all 198 shots. Every figure read by eye at 390×844 in torchlit
+and daylight. **NOT played on a phone.** The one gate is still Session C.
+
+**Left undone, deliberately and with reasons.** The five-way colour PROSE fold
+(short / short-plus-number / number-only) is three layers of wording Marc tuned
+himself, and folding it is a prose decision rather than a mechanical one. The
+remaining toasts (`costRise`, `wall`, `field`, `lastGasp`, `glow`, `lens`) and
+the manual's composed sections (POP, THE WORLD, THE SCREEN) still hold their
+literals — each is reachable through `#say`/`#core` whenever it earns a commit.
+Visuals for the shop's upgrade rows and the perk cards are still open, and are
+the next-best in-game-displays win. `lessons.ts`'s `rows` field is declared and
+unused for that reason; it is the seam those two land on.
