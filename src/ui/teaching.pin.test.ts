@@ -5,9 +5,14 @@ import { PERKS, UPGRADES } from '@meta/progress';
 import { DAYLIGHT } from '@theme/themes/daylight';
 import { TORCHLIT } from '@theme/themes/torchlit';
 import type { Theme } from '@theme/tokens';
-import { GLOSSARY } from './glossary';
+import { LESSONS, lessonDefine, type Lesson } from './lessons';
 import { perkRows } from './tips';
 import { colourLesson, powerOf, statNote, toHudView } from './view';
+
+/** The lessons with a tappable word — what the derived `GLOSSARY` used to be,
+ *  restated here so these pins keep the exact keys they were first recorded
+ *  under and the rename cannot masquerade as a prose change. */
+const TERMED: readonly Lesson[] = LESSONS.filter((l) => l.terms.length > 0);
 
 /**
  * The pins, written BEFORE the lesson registry moves a single string.
@@ -57,8 +62,8 @@ describe('the teaching pins — every word, exactly as it reads today', () => {
     const out: Record<string, string> = {};
     for (const [tName, t] of TUNINGS) {
       for (const [themeName, theme] of THEMES) {
-        for (const entry of GLOSSARY) {
-          out[`${entry.id} · ${tName} · ${themeName}`] = entry.define(t, theme);
+        for (const entry of TERMED) {
+          out[`${entry.id} · ${tName} · ${themeName}`] = lessonDefine(entry, t, theme);
         }
       }
     }
@@ -67,7 +72,7 @@ describe('the teaching pins — every word, exactly as it reads today', () => {
 
   it('pins every glossary entry’s terms, glyph and ink', () => {
     expect(
-      GLOSSARY.map((e) => ({
+      TERMED.map((e) => ({
         id: e.id,
         terms: e.terms,
         glyph: e.glyph ?? null,

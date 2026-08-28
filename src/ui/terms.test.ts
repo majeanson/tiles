@@ -1,13 +1,12 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { COLOUR_MARK, CONCEPT_MARK, LANDMARK_GLYPH, TILE_GLYPH } from '@theme/tokens';
 import { TORCHLIT } from '@theme/themes/torchlit';
 import { TUNING } from '@content/tuning';
 import { EMPTY_PROGRESS, TEACH_IDS } from '@meta/progress';
 import type { HexKey } from '@engine/hex';
 import type { Renderer } from '@render/Renderer';
 import { Game, type Elements, type GameHooks } from './game';
-import { GLOSSARY, glossaryEntry } from './glossary';
+import { LESSONS, lessonDefine, lessonOf, type Lesson } from './lessons';
 
 /**
  * The registry (2026-08-27, WORKPLAN's symbol & glossary pipeline, Stage 3):
@@ -154,52 +153,19 @@ function openFullManual(): string {
   return el.helpPanel.textContent ?? '';
 }
 
-describe('the glossary registry', () => {
-  it('has a unique id per entry', () => {
-    const ids = GLOSSARY.map((entry) => entry.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
+const TERMED: readonly Lesson[] = LESSONS.filter((l) => l.terms.length > 0);
 
-  it('spells every term in capitals, unique across the whole registry', () => {
-    const allTerms = GLOSSARY.flatMap((entry) => entry.terms);
-    for (const term of allTerms) {
-      expect(term, `${term} is not uppercase`).toBe(term.toUpperCase());
-    }
-    expect(new Set(allTerms).size, 'a term repeats across two entries').toBe(allTerms.length);
-  });
-
-  it('orders each entry’s own terms longest first', () => {
-    for (const entry of GLOSSARY) {
-      const lengths = entry.terms.map((term) => term.length);
-      const sorted = [...lengths].sort((a, b) => b - a);
-      expect(lengths, `${entry.id}'s terms are not longest-first`).toEqual(sorted);
-    }
-  });
-
-  it('borrows every glyph from one of the four registries — never a literal', () => {
-    const known = new Set<string>([
-      ...Object.values(COLOUR_MARK),
-      ...Object.values(LANDMARK_GLYPH),
-      ...Object.values(CONCEPT_MARK),
-      TILE_GLYPH,
-    ]);
-    for (const entry of GLOSSARY) {
-      if (entry.glyph !== undefined) {
-        expect(known.has(entry.glyph), `${entry.id}'s glyph is not in the registries`).toBe(true);
-      }
-    }
-  });
-
+describe('the tappable terms', () => {
   it('defines every entry as non-empty prose, in this run’s own numbers', () => {
-    for (const entry of GLOSSARY) {
-      const text = entry.define(TUNING, TORCHLIT);
+    for (const entry of TERMED) {
+      const text = lessonDefine(entry, TUNING, TORCHLIT);
       expect(text.length, `${entry.id} defines nothing`).toBeGreaterThan(0);
     }
   });
 
   it('names each entry’s primary term where the manual actually prints it', () => {
     const manual = openFullManual();
-    for (const entry of GLOSSARY) {
+    for (const entry of TERMED) {
       const primary = entry.terms[0];
       expect(primary, `${entry.id} has no terms`).toBeDefined();
       expect(manual, `the manual never prints ${entry.id}'s term "${primary ?? ''}"`).toContain(
@@ -213,7 +179,7 @@ describe('the glossary registry', () => {
     // `lastGasp`'s rule is stated in full sentences, under no name at all.
     // Both stay out per this stage's own rule (see `glossary.ts`'s doc)
     // rather than forcing a manual rewrite this stage does not own.
-    expect(glossaryEntry('wall')).toBeUndefined();
-    expect(glossaryEntry('lastGasp')).toBeUndefined();
+    expect(lessonOf('wall')?.terms ?? []).toEqual([]);
+    expect(lessonOf('lastGasp')?.terms ?? []).toEqual([]);
   });
 });

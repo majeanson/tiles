@@ -1,5 +1,5 @@
 import type { Perk } from '@meta/progress';
-import { GLOSSARY, type GlossaryId } from './glossary';
+import { LESSONS, type LessonId } from './lessons';
 import type { TipRow } from './view';
 
 /**
@@ -59,16 +59,16 @@ export function rarityInked(text: string): (Node | string)[] {
 /**
  * Every term the glossary answers to, longest first — so RELICS is never cut
  * short into RELIC and SIZE BONUS is never split at its own space — mapped
- * back to the entry it opens. Built from `GLOSSARY` itself, which is where
+ * back to the entry it opens. Built from LESSONS itself, which is where
  * MAGIC and UNIQUE already live as its `rare`/`rareUnique` entries, so this
  * needs no second list to keep in sync with the ink `rarityInked` gives them.
  * `glossary.test.ts` is what guarantees no two entries share a term.
  */
 const CONCEPT_TERM = new Map<
   string,
-  { readonly id: GlossaryId; readonly ink?: 'ink-magic' | 'ink-unique' }
+  { readonly id: LessonId; readonly ink?: 'ink-magic' | 'ink-unique' }
 >();
-for (const entry of GLOSSARY) {
+for (const entry of LESSONS) {
   for (const term of entry.terms) {
     CONCEPT_TERM.set(
       term,
@@ -88,19 +88,19 @@ const CONCEPT_PATTERN = new RegExp(
  * definitions, rather than a reader hunting the sentence that first used
  * one. Same shape as `rarityInked` — one regex, longest term first, `\b`
  * boundaries — but every match becomes a `button` instead of a `span`, and
- * MAGIC/UNIQUE (already two of `GLOSSARY`'s own entries) wear the same ink
+ * MAGIC/UNIQUE (already two of the registry's own lessons) wear the same ink
  * class `rarityInked` gives them on top of it.
  *
- * This file attaches no listener itself. Every `addEventListener` in the
+ * This file attaches no listeners. Every `addEventListener` in the
  * game goes through the signalled `on`/`#on` helpers so a dead session can
  * never still be wired to the DOM — and this file has no session of its own
  * to be signalled by. `on` is the caller's own binder (`Game#on`); this
  * function only decides WHICH button gets wired and to WHAT, never how the
- * listener itself is attached or torn down.
+ * listeners are attached or torn down.
  */
 export function conceptInked(
   text: string,
-  open: (id: GlossaryId, anchor: HTMLButtonElement) => void,
+  open: (id: LessonId, anchor: HTMLButtonElement) => void,
   on: (target: HTMLElement, type: 'click', handler: (event: MouseEvent) => void) => void,
 ): (Node | string)[] {
   return inkSplit(text, CONCEPT_PATTERN, (m) => {

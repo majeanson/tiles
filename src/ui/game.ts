@@ -32,13 +32,14 @@ import {
   type TeachId,
 } from '@meta/progress';
 import { drawFigure, type FigureId } from './figure';
-import { glossaryEntry, type GlossaryEntry, type GlossaryId } from './glossary';
 import {
   lessonCardText,
   lessonCore,
+  lessonDefine,
   lessonLines,
   lessonOf,
   RARE_STAR,
+  type Lesson,
   type LessonId,
 } from './lessons';
 import { shopParts } from './shop';
@@ -1469,17 +1470,17 @@ export class Game {
    * stack already keeps, so a reader who tapped RIPENS lands back on the word
    * RIPENS rather than the top of the manual.
    */
-  #openTermCard(entry: GlossaryEntry, opener: HTMLButtonElement): void {
-    this.#el.termCardGlyph.textContent = entry.glyph ?? '';
-    // No mark invented for an entry that has none (`stash`, `sizeBonus`…) —
+  #openTermCard(lesson: Lesson, opener: HTMLButtonElement): void {
+    this.#el.termCardGlyph.textContent = lesson.glyph ?? '';
+    // No mark invented for a lesson that has none (`stash`, `sizeBonus`…) —
     // a blank glyph node would still take the vertical space `:empty` CSS
     // hides it for.
-    this.#el.termCardGlyph.hidden = entry.glyph === undefined;
-    this.#el.termCardName.textContent = entry.terms[0] ?? '';
+    this.#el.termCardGlyph.hidden = lesson.glyph === undefined;
+    this.#el.termCardName.textContent = lesson.terms[0] ?? '';
     // Through `rarityInked`, not `conceptInked` — a definition that could
     // open ANOTHER card mid-read is a rabbit hole, not an answer.
     this.#el.termCardText.replaceChildren(
-      ...rarityInked(entry.define(this.#state.tuning, this.#theme)),
+      ...rarityInked(lessonDefine(lesson, this.#state.tuning, this.#theme)),
     );
     // ...and the lesson's own picture, where it has one (2026-08-28). The
     // same figure the manual draws and the teaching card draws, because it
@@ -1487,7 +1488,6 @@ export class Game {
     // of "when you get helped in game, its help you can review there".
     // Captionless for the same reason a card is: the definition above it has
     // just stated the rule in full.
-    const lesson = lessonOf(entry.id);
     this.#el.termCardFigure.replaceChildren(
       ...(lesson?.figure === undefined
         ? []
@@ -2004,8 +2004,8 @@ export class Game {
     // all stay plain `rarityInked`, per the brief that shipped this. `open`
     // and `bind` are shared by both `lines` and `detail` below so a term that
     // appears in both opens the same card the same way.
-    const open = (id: GlossaryId, anchor: HTMLButtonElement): void => {
-      const entry = glossaryEntry(id);
+    const open = (id: LessonId, anchor: HTMLButtonElement): void => {
+      const entry = lessonOf(id);
       // The matcher `conceptInked` builds is drawn from terms that exist, so
       // this should never arise — guarded anyway, because a card that opens
       // on `undefined` is a crash, not a missing definition.
