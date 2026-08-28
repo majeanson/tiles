@@ -787,6 +787,59 @@ export const LANDMARK_GLYPH: Readonly<
 export const TILE_GLYPH = '⬢';
 
 /**
+ * The fourth registry (2026-08-27, WORKPLAN's symbol & glossary pipeline,
+ * Stage 1): cross-screen CONCEPTS, as distinct from the four colours
+ * (`COLOUR_MARK`), the five destinations (`LANDMARK_GLYPH`) and the game's
+ * own voice (`TILE_GLYPH`). Moderate vocabulary, Marc's own ruling on option
+ * sets (2026-08-27) — marks only for ideas that recur across screens, stats
+ * stay words:
+ *
+ *   - `relic` ◉ and `luck` ✤ — the two currencies that follow a player
+ *     between the board, the shop and the end screen, and had no character
+ *     of their own before this stage (Stage 2 puts them on screen).
+ *   - `wall` ▦ and `stone` ▨ — the two grounds that are never playable,
+ *     spoken today only in prose (Stage 2 gives `describeHexOf` and the
+ *     manual their lead).
+ *   - `fame` ❋ **retires `✦` as a highlight mark** — its sixth meaning. `✦`
+ *     was already `LANDMARK_GLYPH.find` (a hidden find on the board) AND the
+ *     hall of fame's own diary mark (a NEW BEST, a perk found, a shrine
+ *     woken) at once, so one glyph answered two different questions
+ *     depending which screen you were reading it on. `❋` is fame and only
+ *     fame now: the timeline's run rows, the perk shelf, every highlight.
+ *     `✦` goes back to meaning one thing — a find, on the board or in
+ *     `describeHexOf`'s prose — which is what Stage 1's question is asking:
+ *     can a player tell the two apart at arm's length.
+ *   - `met` ✓ and `notYet` ◇ formalize a ruling already made in code
+ *     (2026-08-26, see `session.ts`'s survey ledger): a goal met used to
+ *     borrow the shrine's own `◈`, so one mark meant two different
+ *     earned-things (a shrine woken, a goal met) depending on which ledger
+ *     you were reading. `✓`/`◇` already existed as literals at that call
+ *     site; this registry is that ruling, named, so every ledger — shrines,
+ *     goals, whatever comes next — draws from the same two marks instead of
+ *     re-deciding it.
+ *
+ * Fallbacks, if Marc's phone shows tofu or a lookalike for any of the new
+ * five: `relic` ◉ → ▣, `luck` ✤ → ✥, `fame` ❋ → ✻, `stone` ▨ → ▤. `wall`,
+ * `met` and `notYet` are already in wide use elsewhere in the registry's
+ * neighbourhood and are not expected to need one.
+ *
+ * Same collision rule as the other three: no glyph here may repeat one
+ * already spoken by `COLOUR_MARK`, `LANDMARK_GLYPH` or `TILE_GLYPH` —
+ * `tokens.test.ts`'s one-symbol-language test checks all four together.
+ */
+export const CONCEPT_MARK: Readonly<
+  Record<'relic' | 'luck' | 'wall' | 'stone' | 'fame' | 'met' | 'notYet', string>
+> = {
+  relic: '◉',
+  luck: '✤',
+  wall: '▦',
+  stone: '▨',
+  fame: '❋',
+  met: '✓',
+  notYet: '◇',
+};
+
+/**
  * How much one elevation band lifts a hex's light, multiplicatively.
  *
  * Deliberately gentle: elevation is Marc's purely-cosmetic call, and a slope

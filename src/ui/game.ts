@@ -37,7 +37,14 @@ import { perkRows, rarityInked, tipRows } from './tips';
 import type { Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
-import { COLOUR_MARK, depthOf, LANDMARK_GLYPH, TILE_GLYPH, type Theme } from '@theme/tokens';
+import {
+  COLOUR_MARK,
+  CONCEPT_MARK,
+  depthOf,
+  LANDMARK_GLYPH,
+  TILE_GLYPH,
+  type Theme,
+} from '@theme/tokens';
 import { ICON_DATA_URI, NAME } from '@meta/identity';
 import { closeDialog, openDialog, siblingsOf } from './dialog';
 import {
@@ -1570,7 +1577,7 @@ export class Game {
             // a number several times what it actually banked. The SITE
             // banner just below always passed it — this one was missed,
             // which is the exact disagreement the helper exists to prevent.
-            text: `+  CACHE CLAIMED\n+${cachePaysAt(k, t, homeOf(after))} tiles, on the spot.`,
+            text: `${LANDMARK_GLYPH.cache}  CACHE CLAIMED\n+${cachePaysAt(k, t, homeOf(after))} tiles, on the spot.`,
           });
           break;
         case 'site':
@@ -1585,7 +1592,7 @@ export class Game {
             // arithmetic the engine just paid: sitePays × the distance
             // multiplier at this hex.
             text:
-              `★  SITE CLAIMED\n+${t.sitePays * distanceMultiplierAt(k, t, homeOf(after))} pts banked — and this star has set a BOUNTY: ` +
+              `${LANDMARK_GLYPH.site}  SITE CLAIMED\n+${t.sitePays * distanceMultiplierAt(k, t, homeOf(after))} pts banked — and this star has set a BOUNTY: ` +
               `pop a pocket of ${t.questNeed}+ within ${t.questRadius} hexes of it for ×${t.questBonus}.`,
           });
           break;
@@ -1595,7 +1602,7 @@ export class Game {
             cell.colour === undefined ? 'its colour' : this.#theme.terrainNames[cell.colour];
           notes.push({
             rank: RANK.territory,
-            text: `❖  TERRITORY CLAIMED\nGround within ${t.territoryRadius} hexes is native to ${owns} now — and it stays yours between runs.`,
+            text: `${LANDMARK_GLYPH.territory}  TERRITORY CLAIMED\nGround within ${t.territoryRadius} hexes is native to ${owns} now — and it stays yours between runs.`,
           });
           break;
         }
@@ -1612,7 +1619,7 @@ export class Game {
           if (this.#detour) {
             notes.push({
               rank: RANK.shrine,
-              text: '◈  SHRINE WOKEN\nOn your own world a shrine switches a system on, for good. A shared run keeps nothing — but it still counts the claim.',
+              text: `${LANDMARK_GLYPH.shrine}  SHRINE WOKEN\nOn your own world a shrine switches a system on, for good. A shared run keeps nothing — but it still counts the claim.`,
             });
             break;
           }
@@ -1634,7 +1641,7 @@ export class Game {
             notes.push({
               rank: RANK.shrine,
               text:
-                '◈  THE WORLD IS AWAKE\nEvery unlock is yours — and this shrine is a way onward. ' +
+                `${LANDMARK_GLYPH.shrine}  THE WORLD IS AWAKE\nEvery unlock is yours — and this shrine is a way onward. ` +
                 `Cross to a NEW WORLD carrying ${dowry} relics for what you leave` +
                 (carried > 0 ? `, plus the ${carried} this run earned` : '') +
                 '. ' +
@@ -1651,8 +1658,8 @@ export class Game {
             rank: RANK.shrine,
             text:
               label === null
-                ? '◈  SHRINE WOKEN\nThis world is fully awake — every unlock is yours.'
-                : `◈  SHRINE WOKEN\n${label}\nYours from your next run on, in this world for good.`,
+                ? `${LANDMARK_GLYPH.shrine}  SHRINE WOKEN\nThis world is fully awake — every unlock is yours.`
+                : `${LANDMARK_GLYPH.shrine}  SHRINE WOKEN\n${label}\nYours from your next run on, in this world for good.`,
           });
           break;
         }
@@ -1677,8 +1684,8 @@ export class Game {
             rank: RANK.find,
             text:
               label === null
-                ? '✦  A HIDDEN FIND\nNothing new inside — a find grants only what you do not already carry, and only on your own world.'
-                : `✦  FOUND — ${label}\n` +
+                ? `${LANDMARK_GLYPH.find}  A HIDDEN FIND\nNothing new inside — a find grants only what you do not already carry, and only on your own world.`
+                : `${LANDMARK_GLYPH.find}  FOUND — ${label}\n` +
                   (worn
                     ? 'Already worn — it works from here on.'
                     : 'Yours for good, in THIS world. WEAR it in THE SHOP, on the end screen.'),
@@ -3340,7 +3347,7 @@ export class Game {
       const worth = hud.showPoints ? `${hud.harvestPoints} pts` : `×${hud.harvestDepth} deep`;
       actButton(
         this.#el.harvestTiles,
-        hud.questPays ? '★ POP' : 'POP',
+        hud.questPays ? `${LANDMARK_GLYPH.site} POP` : 'POP',
         `${hud.harvestTiles} tiles · ${worth}`,
       );
       this.#el.harvestTiles.classList.toggle('bounty', hud.questPays);
@@ -3352,7 +3359,7 @@ export class Game {
       // shown — the reason to press a button belongs on the button.
       actButton(
         this.#el.harvestPoints,
-        hud.questPays ? '★ POP' : 'POP',
+        hud.questPays ? `${LANDMARK_GLYPH.site} POP` : 'POP',
         `${hud.harvestPoints} pts`,
       );
       this.#el.harvestPoints.classList.toggle('bounty', hud.questPays);
@@ -3983,7 +3990,7 @@ export class Game {
         ),
       );
       if (this.#foundThisRun !== null) {
-        carried.append(line('end-facts', `✦ found — ${this.#foundThisRun}`));
+        carried.append(line('end-facts', `${LANDMARK_GLYPH.find} found — ${this.#foundThisRun}`));
       }
       if (world !== undefined) {
         carried.append(
@@ -3997,7 +4004,7 @@ export class Game {
       // The survey: a world goal met THIS run, named once — the ledger
       // itself (met vs unmet, every goal) lives in SETTINGS' YOUR WORLD.
       if (this.#goalMetThisRun !== null) {
-        carried.append(line('end-facts', `✓ goal met — ${this.#goalMetThisRun}`));
+        carried.append(line('end-facts', `${CONCEPT_MARK.met} goal met — ${this.#goalMetThisRun}`));
       }
       parts.push(carried);
     }

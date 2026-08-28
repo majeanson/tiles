@@ -45,7 +45,7 @@ distinguishable from ✦ (find) at phone sizes?
    with a docstring recording that ❋ retires ✦-as-highlight (its sixth
    meaning) and that met/notYet formalize the ✓-not-◈ ruling:
    `CONCEPT_MARK = { relic:'◉', luck:'✤', wall:'▦', stone:'▨', fame:'❋',
-   met:'✓', notYet:'◇' }`. Fallbacks if Marc's phone shows tofu or
+met:'✓', notYet:'◇' }`. Fallbacks if Marc's phone shows tofu or
    lookalikes: relic→▣, luck→✥, fame→✻, stone→▤.
 2. `src/theme/tokens.test.ts`: the one-symbol-language union test gains
    `Object.values(CONCEPT_MARK)` — no duplicate glyph across all four
@@ -96,11 +96,11 @@ Phone check: HUD row width with the ✤ mark, in portrait.
 1. New `src/ui/glossary.ts` (`src/content/` is ESLint-restricted to balance
    data; `ui/` may import content/engine/theme/meta):
    - `GlossaryId = TeachId | 'pocket' | 'worth' | 'bounty' | 'stash' |
-     'sizeBonus' | 'stone'` (`TeachId` from `src/meta/progress.ts`).
+'sizeBonus' | 'stone'` (`TeachId` from `src/meta/progress.ts`).
    - `GlossaryEntry { id, terms (UPPERCASE, longest first, e.g.
-     ['RELICS','RELIC'], ['LAST GASP']), glyph? (from the four registries
-     only), ink? ('ink-magic'|'ink-unique'), define: (t: Tuning, theme:
-     Theme) => string (2-3 lines, live numbers, like the manual) }`.
+['RELICS','RELIC'], ['LAST GASP']), glyph? (from the four registries
+only), ink? ('ink-magic'|'ink-unique'), define: (t: Tuning, theme:
+Theme) => string (2-3 lines, live numbers, like the manual) }`.
    - ~18 entries: ripe, pop, pocket, worth, cache ✚, site ★, shrine ◈,
      territory ❖, wall ▦, stone ▨, rare→MAGIC, rareUnique→UNIQUE, luck ✤,
      relic ◉, bounty ★, stash, lastGasp, sizeBonus.
@@ -113,7 +113,7 @@ Phone check: HUD row width with the ✤ mark, in portrait.
 3. New `src/ui/glossary.test.ts` pins: unique ids · terms uppercase and
    unique across the registry · every glyph ∈ the four registries' union
    (the glossary may not invent a symbol) · `define(DEFAULT_TUNING,
-   torchlit)` non-empty, ≤ ~3 sentences · every glossary term occurs in
+torchlit)` non-empty, ≤ ~3 sentences · every glossary term occurs in
    the full-ledger manual text (reuse `game.test.ts`'s `openFullManual`
    pattern) — no dead definitions nobody can tap.
 
@@ -123,7 +123,7 @@ Phone check: HUD row width with the ✤ mark, in portrait.
    add `conceptInked(text, open)` — one regex from all glossary terms +
    MAGIC/UNIQUE, longest-first alternation, `\b` boundaries; each match →
    `<button type="button" class="term" data-term="{id}"
-   aria-haspopup="dialog">`, MAGIC/UNIQUE also wearing their ink class.
+aria-haspopup="dialog">`, MAGIC/UNIQUE also wearing their ink class.
    `rarityInked` keeps its exact behavior and ALL its callers (it runs
    inside buttons — must never nest buttons).
 2. `Game#helpSection` uses `conceptInked` for section `lines` and `detail`
@@ -137,7 +137,7 @@ Phone check: HUD row width with the ✤ mark, in portrait.
    `#term-card-dismiss` (GOT IT).
 4. `src/style.css`: SHARE the event-card skin by widening selectors
    (`#event-card, #term-card {…}`), don't duplicate; `#term-card
-   { z-index: 7 }`; update the layer-map comment (~160-176); `.term`
+{ z-index: 7 }`; update the layer-map comment (~160-176); `.term`
    inherits currentColor and font, dotted underline, tap-target padding.
    (`#event-card` itself can't be reused — it lives inside `#game-shell`
    at z-index 2, under the manual at 5, entangled with `#eventAction`.)

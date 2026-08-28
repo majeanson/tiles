@@ -6888,3 +6888,62 @@ which is what the unit test runs against.
 build clean, screenshotted at 390×844 in torchlit. **Committed alongside
 another session's in-flight theme and tuning work, on Marc's "go now"** — the
 tree was green as a whole when the gate ran. The one gate is still Session C.
+
+---
+
+### Session 61 — the symbol pipeline opens: CONCEPT_MARK, and every glyph literal routed through a registry (2026-08-27)
+
+**Question:** when every glyph the game speaks comes from one of four
+registries, does any surface change its meaning — and is ❋ (fame) instantly
+distinguishable from ✦ (find) at phone sizes?
+
+Marc green-lit the symbol & glossary pipeline on 2026-08-27, on option sets:
+Unicode glyphs extended (no icon library), a moderate vocabulary (marks only
+for cross-screen concepts), a TS-only glossary, a tappable definition card in
+the manual. WORKPLAN.md carries all four stages; this is the first.
+
+**Answer: no surface's meaning moved, and the fourth registry closes the one
+real collision the first three had left standing.** `COLOUR_MARK`,
+`LANDMARK_GLYPH` and `TILE_GLYPH` already spoke for colours, destinations and
+the game's own voice; nothing spoke for the ideas that recur across screens
+without being either — a relic, a point of luck, wall and stone ground, a
+fame moment, a met-or-not fact on a ledger. `CONCEPT_MARK` is that fourth
+registry: `{ relic:'◉', luck:'✤', wall:'▦', stone:'▨', fame:'❋', met:'✓',
+notYet:'◇' }`, with fallbacks recorded in its own docstring against tofu on
+Marc's phone (`relic`→▣, `luck`→✥, `fame`→✻, `stone`→▤).
+
+Two of those seven were not new ink so much as a name put on a ruling already
+made. `met`/`notYet` formalize 2026-08-26's fix to `session.ts`'s survey
+ledger — a goal met used to borrow the shrine's own `◈`, so one glyph meant
+two different earned-things depending which ledger you read it on; `✓`/`◇`
+already lived there as literals, unregistered. `fame` is the one that
+actually changes a screen: `✦` was carrying two jobs at once — `find` on the
+board (`LANDMARK_GLYPH`) and every "worth remembering" row in the hall of
+fame (a NEW BEST, a shrine woken, a perk found) — the same collision
+`LANDMARK_GLYPH`'s own doc warns about for `◆`, just not caught the first
+time because the two `✦`s never appeared on the same screen. `❋` retires
+`✦`-as-highlight; `✦` goes back to meaning one thing, a find.
+
+**The routing.** `view.ts` did not import the theme registries at all before
+this stage, despite drawing five destination sentences and two bounty lines
+in bare literals (`describeHexOf`, `pocketNote`, `harvestNote`) — now all
+seven route through `LANDMARK_GLYPH`. `game.ts`'s claim notes told the same
+story with one extra wrinkle: the cache claim alone led with an ASCII `+`
+rather than `LANDMARK_GLYPH.cache`'s `✚`, a plain plus sign nobody had
+noticed sitting next to four registry-sourced siblings — the one place this
+stage changes what a player actually sees, besides fame. `session.ts`'s
+unlock ledger, survey ledger and every fame/highlight row across the diary,
+the perk shelf and the timeline's run rows now draw from `CONCEPT_MARK` and
+`LANDMARK_GLYPH` instead of typing the character in. Comments that quote a
+glyph in prose were left exactly as they were — a comment is not a surface a
+player reads.
+
+**Verified:** 852 tests (no new cases — this stage widened two existing
+tests, the one-symbol-language union and the claim-note assertions, rather
+than adding fresh ones), 29 e2e (`menu.spec.ts`'s NEW BEST expectation now
+reads `❋`), typecheck / lint / format clean, build clean, `pnpm sim` table
+byte-identical before and after — this pipeline is glyphs and prose, no
+number moved. **Not checked on a phone**, which is Stage 1's own stated gate:
+the five characters that changed voice (`◉ ✤ ▦ ▨ ❋`) and the one that changed
+its lead (`✚` on the cache claim, replacing a bare `+`) are Marc's call to
+make by looking, not something a test can verify.

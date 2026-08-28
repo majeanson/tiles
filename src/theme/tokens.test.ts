@@ -4,6 +4,7 @@ import { THEMES } from './index';
 import {
   brightness,
   COLOUR_MARK,
+  CONCEPT_MARK,
   fieldDots,
   fieldGround,
   fieldOverlayPattern,
@@ -26,18 +27,20 @@ describe('one mark per colour', () => {
   });
 });
 
-describe('one symbol language (2026-08-26)', () => {
+describe('one symbol language (2026-08-26, extended 2026-08-27)', () => {
   /**
    * The vocabulary shipped a collision once: `◆` was both yellow's colour
    * mark and the territory landmark, so one shape meant two things wherever
-   * board and cards met. Every glyph across the three registries — colours,
-   * landmarks, and the teaching cards' own voice — must be its own.
+   * board and cards met. Every glyph across the four registries — colours,
+   * landmarks, the teaching cards' own voice, and cross-screen concepts —
+   * must be its own.
    */
-  it('never gives two meanings the same glyph, across all three registries', () => {
+  it('never gives two meanings the same glyph, across all four registries', () => {
     const all = [
       ...COLOURS.map((c) => COLOUR_MARK[c]),
       ...Object.values(LANDMARK_GLYPH),
       TILE_GLYPH,
+      ...Object.values(CONCEPT_MARK),
     ];
     expect(new Set(all).size).toBe(all.length);
   });

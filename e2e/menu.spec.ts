@@ -406,7 +406,7 @@ test('the hall of fame opens tabbed, and a run row unfolds its night', async ({ 
   await expect(panel.locator('.fame-score').first()).toHaveText('312 pts');
   await expect(panel).toContainText('Out of tiles on the plane');
   await expect(panel).toContainText('121 placements');
-  await expect(panel).toContainText('✦ NEW BEST');
+  await expect(panel).toContainText('❋ NEW BEST');
 
   // TOTALS is the original flat ledger: three worlds, the daily, perks.
   await tabs.nth(2).click();

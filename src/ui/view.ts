@@ -34,7 +34,14 @@ import {
   findsWithin,
   terrainAt,
 } from '@engine/world';
-import { brightness, COLOUR_MARK, TILE_GLYPH, type Light, type Theme } from '@theme/tokens';
+import {
+  brightness,
+  COLOUR_MARK,
+  LANDMARK_GLYPH,
+  TILE_GLYPH,
+  type Light,
+  type Theme,
+} from '@theme/tokens';
 import type { BoardView, CellKind, CellView } from '@render/Renderer';
 
 /** A direction that wants no falloff at all — and every test that has no theme. */
@@ -1437,7 +1444,9 @@ export function pocketNote(state: GameState, at: HexKey): string {
   if (value.questPays)
     // Every pop scores under the single payout, so the bounty rides on any
     // of them — this rider named a button that no longer exists.
-    lines.push(`★ This pocket collects the bounty: ×${t.questBonus} on its score.`);
+    lines.push(
+      `${LANDMARK_GLYPH.site} This pocket collects the bounty: ×${t.questBonus} on its score.`,
+    );
   if (rares > 0) {
     lines.push(`${rares} rare tile${rares === 1 ? '' : 's'} in here will be spent by popping it.`);
   }
@@ -1478,8 +1487,8 @@ export function harvestNote(
     before.quest === null || choice === 'treasure' || choice === 'burn'
       ? ''
       : value.questPays
-        ? `\n★ Bounty ×${before.quest.bonus} — COLLECTED.`
-        : `\n★ Bounty ×${before.quest.bonus} — missed (+0). Pop ${before.quest.need}+ tiles within ${before.quest.radius} of the ★.`;
+        ? `\n${LANDMARK_GLYPH.site} Bounty ×${before.quest.bonus} — COLLECTED.`
+        : `\n${LANDMARK_GLYPH.site} Bounty ×${before.quest.bonus} — missed (+0). Pop ${before.quest.need}+ tiles within ${before.quest.radius} of the ${LANDMARK_GLYPH.site}.`;
 
   if (choice === 'tiles') {
     // The true gain, matching `reduce.ts`'s own arithmetic exactly (flat
@@ -1774,42 +1783,43 @@ export function describeHexOf(ctx: DescribeContext, hex: HexKey): string {
   const destination = (reward: LandmarkReward, colour: Colour | null, claimed: boolean): string => {
     if (reward === 'cache') {
       return claimed
-        ? '✚ CACHE — already claimed. It gave its tiles.'
-        : `✚ CACHE — build a tile touching it to claim ${cachePaysAt(hex, t, homeOf(state))} tiles on the spot.`;
+        ? `${LANDMARK_GLYPH.cache} CACHE — already claimed. It gave its tiles.`
+        : `${LANDMARK_GLYPH.cache} CACHE — build a tile touching it to claim ${cachePaysAt(hex, t, homeOf(state))} tiles on the spot.`;
     }
     if (reward === 'site') {
       return claimed
-        ? '★ SITE — already claimed.'
-        : `★ SITE — claim it for ${t.sitePays} pts × its distance, and it opens a bounty worth ×${t.questBonus}.`;
+        ? `${LANDMARK_GLYPH.site} SITE — already claimed.`
+        : `${LANDMARK_GLYPH.site} SITE — claim it for ${t.sitePays} pts × its distance, and it opens a bounty worth ×${t.questBonus}.`;
     }
     if (reward === 'shrine') {
       // A detour has no ledger to narrate (fresh-eyes finding 5): say what
       // shrines ARE, not what the home world would have unlocked.
       if (ctx.detour) {
         return claimed
-          ? '◈ SHRINE — woken. On your own world, this switches a system on for good.'
-          : '◈ SHRINE — touch it with a tile. On your own world, waking one switches a system on for good.';
+          ? `${LANDMARK_GLYPH.shrine} SHRINE — woken. On your own world, this switches a system on for good.`
+          : `${LANDMARK_GLYPH.shrine} SHRINE — touch it with a tile. On your own world, waking one switches a system on for good.`;
       }
       const next = ctx.unlockLabel?.(ctx.shrinesClaimed) ?? null;
-      if (claimed) return '◈ SHRINE — woken. It switched a system on for this world.';
+      if (claimed)
+        return `${LANDMARK_GLYPH.shrine} SHRINE — woken. It switched a system on for this world.`;
       // Fully awake with the crossing available: the shrine's remaining
       // gift is the way onward, and its tap explanation says so.
       if (next === null && ctx.crossingDowry !== undefined) {
-        return `◈ SHRINE — this world is fully awake, so reaching it offers the crossing: a NEW WORLD, with ${ctx.crossingDowry()} relics carried for what you leave.`;
+        return `${LANDMARK_GLYPH.shrine} SHRINE — this world is fully awake, so reaching it offers the crossing: a NEW WORLD, with ${ctx.crossingDowry()} relics carried for what you leave.`;
       }
-      return `◈ SHRINE — claim it to unlock ${next ?? 'a system'} for this world, permanently.`;
+      return `${LANDMARK_GLYPH.shrine} SHRINE — claim it to unlock ${next ?? 'a system'} for this world, permanently.`;
     }
     if (reward === 'find') {
       // Mysterious but honest: what a find gives is the one thing the
       // board never says out loud.
       return claimed
-        ? '✦ A hidden find — spent. It gave what it had.'
-        : '✦ Something is here. Touch it with a tile.';
+        ? `${LANDMARK_GLYPH.find} A hidden find — spent. It gave what it had.`
+        : `${LANDMARK_GLYPH.find} Something is here. Touch it with a tile.`;
     }
     const owns = colour === null ? 'a colour' : name(colour);
     return claimed
-      ? `❖ TERRITORY — yours. The ground within ${t.territoryRadius} hexes is native to ${owns}.`
-      : `❖ TERRITORY — claim it and the ground within ${t.territoryRadius} hexes becomes native to ${owns}, for good.`;
+      ? `${LANDMARK_GLYPH.territory} TERRITORY — yours. The ground within ${t.territoryRadius} hexes is native to ${owns}.`
+      : `${LANDMARK_GLYPH.territory} TERRITORY — claim it and the ground within ${t.territoryRadius} hexes becomes native to ${owns}, for good.`;
   };
 
   if (cell === undefined) {

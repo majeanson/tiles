@@ -56,7 +56,7 @@ import { PixiRenderer } from '@render/PixiRenderer';
 import type { Renderer } from '@render/Renderer';
 import { applyTheme } from '@theme/apply';
 import { assetPath, resolveTheme, AUTO_THEME_ID, DEFAULT_THEME_ID } from '@theme/index';
-import type { Theme } from '@theme/tokens';
+import { CONCEPT_MARK, LANDMARK_GLYPH, type Theme } from '@theme/tokens';
 import { Sound } from '@ui/audio';
 import { closeDialog, openDialog, resetDialogs, siblingsOf } from '@ui/dialog';
 import { Game, type Elements, type GameHooks } from '@ui/game';
@@ -562,7 +562,7 @@ function mountSettings(
       const row = document.createElement('p');
       const found = i < w.shrines.length;
       row.className = found ? 'unlock found' : 'unlock';
-      row.textContent = `${found ? '◈' : '◇'} ${unlock.label}`;
+      row.textContent = `${found ? LANDMARK_GLYPH.shrine : CONCEPT_MARK.notYet} ${unlock.label}`;
       return row;
     }),
   );
@@ -572,7 +572,7 @@ function mountSettings(
   shrineHint.textContent =
     w.shrines.length >= UNLOCKS.length
       ? 'Every shrine in the ledger has been found. This world is fully awake.'
-      : `Reach a shrine (◈ in the fog) to unlock the next one. ${w.shrines.length} of ${UNLOCKS.length} found.`;
+      : `Reach a shrine (${LANDMARK_GLYPH.shrine} in the fog) to unlock the next one. ${w.shrines.length} of ${UNLOCKS.length} found.`;
 
   // Perks are FOUND, never bought (2026-08-18) — a count, never a name: an
   // unfound perk stays a mystery even here, so this line never says which
@@ -617,7 +617,7 @@ function mountSettings(
       // ✓, not ◈ (2026-08-26): the shrine's own glyph was standing in for
       // "goal met", so one mark meant two earned-things. ◇ stays the shared
       // "not yet" slot both ledgers speak.
-      row.textContent = `${met ? '✓' : '◇'} ${goal.label}`;
+      row.textContent = `${met ? CONCEPT_MARK.met : CONCEPT_MARK.notYet} ${goal.label}`;
       return row;
     }),
   );
@@ -1883,7 +1883,10 @@ async function buildSession(route: Route): Promise<Session> {
         anyPerks = true;
         for (const perk of PERKS.filter((p) => w.perks.includes(p.id))) {
           rows.push(
-            fameRow('fame-row', `✦ W${s} · ${perk.name}${w.worn === perk.id ? ' — worn' : ''}`),
+            fameRow(
+              'fame-row',
+              `${CONCEPT_MARK.fame} W${s} · ${perk.name}${w.worn === perk.id ? ' — worn' : ''}`,
+            ),
           );
         }
       }
@@ -2008,7 +2011,7 @@ async function buildSession(route: Route): Promise<Session> {
       const text =
         `${fameDate(e.at)} · W${e.slot} · ${e.score} pts · reach ${e.reach}` +
         (e.arc === '' ? '' : ` · ${e.arc}`) +
-        (e.highlights.length === 0 ? '' : ` · ✦ ${e.highlights.length}`);
+        (e.highlights.length === 0 ? '' : ` · ${CONCEPT_MARK.fame} ${e.highlights.length}`);
       const d = e.detail;
       return fameFoldRow(text, [
         fameRow('fame-score', `${e.score} pts`),
@@ -2017,7 +2020,9 @@ async function buildSession(route: Route): Promise<Session> {
         fameRow('fame-row', `REACH ${e.reach} · WORLD ${e.slot} · ${fameDate(e.at)}`),
         ...(e.arc === '' ? [] : [fameRow('fame-arc', e.arc)]),
         ...(d === undefined ? [] : foldFacts(d, true)),
-        ...e.highlights.map((h) => fameRow('fame-row', `✦ ${highlightWords(h, e)}`)),
+        ...e.highlights.map((h) =>
+          fameRow('fame-row', `${CONCEPT_MARK.fame} ${highlightWords(h, e)}`),
+        ),
       ]);
     };
 
