@@ -782,16 +782,27 @@ function ending(state: GameState, death: DeathCause): GameState {
   return endingBonus(state, death);
 }
 
-/** The end-of-run payout, split out so Second Wind can reach it either way. */
-function endingBonus(state: GameState, death: DeathCause): GameState {
+/**
+ * The end-of-run payout's arithmetic alone, with no `death` and no `phase` —
+ * split out (2026-08-28) so the crossing can pay it too. A crossing is the
+ * only way a run ends without ever calling `ending`, and before this its
+ * unspent luck and reach/claim bonus simply never happened: a player who
+ * walked to the shrine rich crossed poor, uncounted, exactly as if the run
+ * had scored nothing. `shell/keeper.ts`'s `cross` calls this directly, pure
+ * function to pure function, rather than re-deriving the same two numbers.
+ */
+export function endingPayout(state: GameState): {
+  readonly relics: number;
+  readonly points: number;
+} {
   const t = state.tuning;
   // Unspent luck is worth something on the way out — hoarding the purse is a
   // real alternative to spending it, which is the third of Marc's three relic
   // sources.
-  const banked = state.relics + Math.floor(state.luck * t.luckToRelics);
+  const relics = state.relics + Math.floor(state.luck * t.luckToRelics);
 
   if (t.endReachBonus <= 0 && t.endClaimBonus <= 0) {
-    return { ...state, phase: 'ended', death, relics: banked };
+    return { relics, points: state.points };
   }
 
   // reachOf measures from homeOf(state) — true origin in every shipped run,
@@ -803,11 +814,11 @@ function endingBonus(state: GameState, death: DeathCause): GameState {
     if (cell.kind === 'landmark' && cell.claimed) claims++;
   }
 
-  return {
-    ...state,
-    phase: 'ended',
-    death,
-    relics: banked,
-    points: state.points + reach * t.endReachBonus + claims * t.endClaimBonus,
-  };
+  return { relics, points: state.points + reach * t.endReachBonus + claims * t.endClaimBonus };
+}
+
+/** The end-of-run payout, split out so Second Wind can reach it either way. */
+function endingBonus(state: GameState, death: DeathCause): GameState {
+  const { relics, points } = endingPayout(state);
+  return { ...state, phase: 'ended', death, relics, points };
 }

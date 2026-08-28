@@ -61,8 +61,18 @@ export type WorldMemory = {
    * (2026-08-26, Marc's phone ruling: "uniques are per world, not shared" —
    * a shrine promising a fourth draft card beside an Open Hand found in
    * another world was the bug). They live on the world so they travel with
-   * it, die with it, and a crossing or a settle starts the hunt fresh; the
-   * device blob (`meta/progress.ts`) no longer carries either field.
+   * it and die with it; the device blob (`meta/progress.ts`) no longer
+   * carries either field.
+   *
+   * **Amended 2026-08-28.** This used to end "...and a crossing or a settle
+   * starts the hunt fresh" — true for a SETTLE (a shared seed's geography,
+   * played as somebody else's fresh build) but not, on the evidence, for a
+   * crossing: Marc walked out of a fully-awake world with 75 relics and
+   * without the two perks he had found in it, and called the trade "not
+   * worth it". A crossing now carries both fields whole into the new world's
+   * memory (`newWorld`'s `carry` argument, seeded at `shell/keeper.ts`'s
+   * `cross` — see LOG.md 2026-08-28); a NEW WORLD or a SETTLE still starts
+   * every perk unfound, exactly as before.
    */
   readonly perks: readonly PerkId[];
   readonly worn: PerkId | null;
@@ -72,15 +82,27 @@ export type WorldMemory = {
   readonly farthestReach: number;
 };
 
-export const newWorld = (worldSeed: number): WorldMemory => ({
+/**
+ * `carry` is the crossing's own seam (2026-08-28): a departing world's perk
+ * shelf, threaded straight into the fresh one at the moment it is minted —
+ * see `shell/store.ts`'s `createWorld` and `shell/keeper.ts`'s `cross`. Every
+ * other caller (a fresh boot, NEW WORLD, SETTLE) omits it, and the shelf
+ * starts empty exactly as it always has. `finds` is never carried — a find
+ * is a fact about GEOGRAPHY, and the new world's is unrelated to the old
+ * one's, so its hunt is un-claimed everywhere even for a perk already held.
+ */
+export const newWorld = (
+  worldSeed: number,
+  carry?: { readonly perks: readonly PerkId[]; readonly worn: PerkId | null },
+): WorldMemory => ({
   worldSeed,
   revealed: [],
   territories: [],
   shrines: [],
   finds: [],
   goalsMet: [],
-  perks: [],
-  worn: null,
+  perks: carry?.perks ?? [],
+  worn: carry?.worn ?? null,
   runs: 0,
   bestPoints: 0,
   farthestReach: 0,

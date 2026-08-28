@@ -5,12 +5,13 @@
  * themselves are @shell/store's.
  */
 import { CROSSING, GOALS } from '@content/goals';
+import { endingPayout } from '@engine/reduce';
 import { reachOf } from '@engine/rules';
 import type { GameState } from '@engine/state';
 import { arcSparkline, recordDaily } from '@meta/daily';
 import { newlyMetGoals } from '@meta/goals';
 import { NAME } from '@meta/identity';
-import { grantFind, withWorldPerks, PERKS } from '@meta/progress';
+import { grantFind, withWorldPerks, PERKS, type PerkId } from '@meta/progress';
 import {
   decodeRecords,
   encodeRecords,
@@ -34,6 +35,8 @@ import {
   askPersistence,
   bankRelics,
   clearDailyRun,
+  createWorld,
+  freshWorldSeed,
   readDailyBook,
   readDailyRun,
   readProgress,
@@ -124,7 +127,7 @@ export function runKeeping(
   goHome: () => void,
 ): GameHooks & {
   savedSeed: number | null;
-  dropWorld: () => void;
+  dropWorld: (carry?: { readonly perks: readonly PerkId[]; readonly worn: PerkId | null }) => void;
   flush: () => void;
   detach: () => void;
 } {
@@ -243,13 +246,25 @@ export function runKeeping(
    * `pagehide`, and the flush re-saved a dirty world AFTER its own funeral —
    * which un-crossed every crossing and made the dowry an infinite relic
    * farm (claim shrine, cross, land in the same world, repeat).
+   *
+   * `carry` (2026-08-28, the crossing's own ruling): the perk shelf being
+   * left behind, for the door that keeps it. NEW WORLD never passes one — a
+   * player choosing to abandon a world is choosing to start hunting again —
+   * so this stays the one place both doors' behaviour can diverge without
+   * duplicating the wipe above it. When it IS passed, the fresh world for
+   * this slot is minted right here, in the same synchronous call, BEFORE the
+   * latch below — the same discipline `cross` below keeps for the dowry
+   * itself, so there is no tick where a reload could see the old world gone
+   * and the new one not yet written.
    */
-  const dropWorld = (): void => {
+  const dropWorld = (carry?: {
+    readonly perks: readonly PerkId[];
+    readonly worn: PerkId | null;
+  }): void => {
     // Latched, not merely cleared (2026-08-27): see `dropped` above.
     dropped = true;
     worldDirty = false;
     try {
-      localStorage.removeItem(keys.world);
       localStorage.removeItem(keys.run);
       localStorage.removeItem(keys.receipt);
       // The build goes with the world it was bought for (2026-08-20). Left
@@ -257,6 +272,15 @@ export function runKeeping(
       // slot whose shop key is absent reads as "older than the split", which
       // would hand it the device's legacy levels instead of a fresh start.
       localStorage.removeItem(keys.shop);
+      if (carry === undefined) {
+        localStorage.removeItem(keys.world);
+      } else {
+        // Written now rather than left for the next `loadWorld` to mint
+        // lazily: the perk shelf has nowhere else to ride between this tap
+        // and the next session's boot, and a world already on disk is one
+        // `loadWorld` simply reads back, same as any other.
+        createWorld(keys, freshWorldSeed(), carry);
+      }
     } catch {
       // A storage that refuses the wipe starts the next session in the old
       // world — with anything already banked kept, which errs kind.
@@ -429,13 +453,32 @@ export function runKeeping(
               CROSSING.baseRelics + current.territories.length * CROSSING.relicsPerTerritory;
             return {
               dowry: dowryOf,
-              cross: (carried: number) => {
-                // The dowry AND what the run was carrying (2026-08-20). A
-                // crossing is the only way a run ends without `finish`, so
-                // `bankRelics` never ran for it and the run's own earnings
-                // died with the world — a player who walked to the shrine
-                // rich arrived poor, and nothing said so.
+              cross: (state: GameState) => {
+                // A dead or already-dropped keeper crosses nothing a second
+                // time — the same belt-and-brace `finish` keeps, and the one
+                // thing standing between a slow double-tap and a double-paid
+                // dowry (2026-08-28: `dropped` is now latched by the time
+                // this returns, so a second call reaches exactly here).
+                if (dropped || !alive) return;
+
+                // The dowry AND the run's own economy, settled like any
+                // other ending (2026-08-20, widened 2026-08-28 on Marc's
+                // evidence — 75 relics for losing two hard-found perks was
+                // "not worth it"). A crossing is the only way a run ends
+                // without `finish`, so before this its unspent luck and any
+                // reach/claim bonus simply never happened. `endingPayout` is
+                // the engine's own end-of-run arithmetic (`reduce.ts`),
+                // reused here rather than re-derived — a crossing pays what
+                // walking to the shrine and STOPPING would have paid.
                 const dowry = dowryOf();
+                const { relics: settledRelics, points: settledPoints } = endingPayout(state);
+                const carried = Math.max(0, settledRelics);
+                const settled: GameState = {
+                  ...state,
+                  relics: settledRelics,
+                  points: settledPoints,
+                };
+
                 // The diary's entry FIRST, synchronously, before the world
                 // it names is dropped and the page navigates — a crossing
                 // that outran its own record would leave no trace of the
@@ -446,14 +489,38 @@ export function runKeeping(
                   event: 'crossed',
                   slot,
                   worldSeed: world.worldSeed,
-                  n: dowry + Math.max(0, carried),
+                  n: dowry + carried,
                 });
+
+                // The run lands in the record book the way a finished run
+                // does (2026-08-28): score, reach and Gate B's own harvest
+                // tally. `finish` is not called — a crossing keeps its
+                // world, so the world-remembering half of `finish` does not
+                // apply — but the book is the one seam `finish` and `cross`
+                // can share without pulling either into the other.
+                let book: RecordBook;
+                try {
+                  book = decodeRecords(localStorage.getItem(BEST_STORAGE_KEY));
+                } catch {
+                  book = {};
+                }
+                try {
+                  localStorage.setItem(BEST_STORAGE_KEY, encodeRecords(recordRun(book, settled)));
+                } catch {
+                  // A record that cannot be written is still a run that happened.
+                }
+
                 const progress = readProgress();
                 writeProgress({
                   ...progress,
-                  relics: progress.relics + dowry + Math.max(0, carried),
+                  relics: progress.relics + dowry + carried,
                 });
-                dropWorld();
+
+                // All found perks travel (Marc, 2026-08-28): the departing
+                // world's shelf is threaded straight into the fresh world
+                // `dropWorld` mints below, read here before the latch like
+                // everything else this crossing writes.
+                dropWorld({ perks: current.perks, worn: current.worn });
                 // In place since 2026-08-27. `dropWorld` has already latched
                 // this world shut, so the session that ends on the way out
                 // cannot write it back — which is the same guarantee the

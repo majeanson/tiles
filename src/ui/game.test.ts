@@ -4,7 +4,7 @@ import { COLOUR_MARK, CONCEPT_MARK, LANDMARK_GLYPH } from '@theme/tokens';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { BARE_TUNING, COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { distance, key, neighbourKeys, parse, type HexKey } from '@engine/hex';
-import { newRun, reduce } from '@engine/reduce';
+import { endingPayout, newRun, reduce } from '@engine/reduce';
 import { ripeKeys } from '@engine/rules';
 import { destinationAt } from '@engine/world';
 import type { Cell, GameState, LandmarkReward, Rarity } from '@engine/state';
@@ -2891,13 +2891,13 @@ describe('the crossing (2026-08-19)', () => {
     document.getElementById('event-card-action') as HTMLButtonElement;
 
   it('offers the crossing on a fully-awake shrine — priced, armed, refusable', () => {
-    const carriedOut: number[] = [];
+    const carriedOut: GameState[] = [];
     const ctx = shrineAt({
       unlockLabel: () => null, // every rung woken: the ledger is done
       crossing: {
         dowry: () => 100,
-        cross: (carried) => {
-          carriedOut.push(carried);
+        cross: (state) => {
+          carriedOut.push(state);
         },
       },
     });
@@ -2907,17 +2907,21 @@ describe('the crossing (2026-08-19)', () => {
     expect(text).toMatch(/THE WORLD IS AWAKE/);
     expect(text).toMatch(/100 relics/);
     expect(text).toMatch(/NEW WORLD/);
-    // The honest half (2026-08-20): a world's shop is its own now, so
-    // crossing spends it, and this card is the last place to say so.
-    expect(text).toMatch(/BOUGHT in this world stay behind/);
-    expect(text).toMatch(/perks come with you/);
+    // The honest half (2026-08-20, rewritten 2026-08-28): a world's shop is
+    // its own now, so crossing spends it, and this card is the last place to
+    // say so — but the perk shelf is no longer part of that list.
+    expect(text).toMatch(/everything you have BOUGHT stay behind/);
+    expect(text).toMatch(/every perk you have found comes with you/);
+    expect(text).toMatch(/This run is recorded/);
 
     // The card grew its choice: CROSS acts, and the dismiss reads as STAY.
     const act = actionButton();
     expect(act.hidden).toBe(false);
-    // The button names the TOTAL — dowry plus what the run is carrying — so
-    // the number on it is the number that lands in the purse.
-    expect(act.textContent).toContain(String(100 + ctx.game.state.relics));
+    // The button names the TOTAL — dowry plus what the run is carrying,
+    // settled exactly as any other ending pays it (2026-08-28: unspent luck
+    // converted in) — so the number on it is the number that lands.
+    const { relics: settled } = endingPayout(ctx.game.state);
+    expect(act.textContent).toContain(String(100 + settled));
     expect(ctx.el.eventCardDismiss.textContent).toBe('STAY');
 
     // ARMED, since 2026-08-20: crossing forgets a world, and every other
@@ -2929,10 +2933,12 @@ describe('the crossing (2026-08-19)', () => {
     expect(ctx.el.eventCard.hidden).toBe(false);
 
     act.click();
-    // It carries the run's own relics out, not only the dowry: the crossing
+    // It hands `cross` the run's own STATE, not only the dowry: the crossing
     // is the one run-ending that never goes through `finish`, so before this
-    // the run's earnings died with the world.
-    expect(carriedOut).toEqual([ctx.game.state.relics]);
+    // the run's earnings — and since 2026-08-28 its unspent luck — died with
+    // the world.
+    expect(carriedOut).toHaveLength(1);
+    expect(carriedOut[0]?.relics).toBe(ctx.game.state.relics);
     // The same bubbling click that dismisses every card closed this one too.
     expect(ctx.el.eventCard.hidden).toBe(true);
   });

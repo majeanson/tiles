@@ -7139,3 +7139,72 @@ un-popped for a moment; recovered with a plain `git stash pop` before
 anything else touched the tree, but worth saying out loud rather than
 burying), `pnpm build` clean, `pnpm exec playwright test` 31/31 against the
 built `dist/`.
+
+---
+
+### Session 65 — a crossing is a reward, not a trap (2026-08-28)
+
+**Question:** is a crossing a reward or a trap — what must travel for
+walking through the door to be worth it? The freeze-lifted rule (D10's
+amendment) is that a retune needs evidence, and Marc brought it: he crossed a
+fully-awake world, gained 75 relics (the dowry, per `CROSSING` in
+`content/goals.ts`), and lost the two FOUND perks that world had given him —
+"the carry on to new world should keep our uniques or gain more relics,
+otherwise it's not worth it." Worse, the card he read on the way out still
+said "your perks come with you", which has been false since perks moved onto
+`WorldMemory` on 2026-08-26 (Session before-launch's per-world split) — a
+crossing was quietly taking back exactly what it promised to keep, and the
+run's own unspent luck and score died with the world too, because `cross()`
+is the one way a run ends without ever calling `finish`.
+
+**Answer: a reward.** Three things changed, all inside the one guarded path
+`dropWorld`/`cross` already latches shut:
+
+- **All found perks travel.** `meta/world.ts`'s `newWorld` takes an optional
+  `carry: { perks, worn }`, threaded through `shell/store.ts`'s `createWorld`
+  and written by `shell/keeper.ts`'s `dropWorld` — which, given a carry, no
+  longer just removes the world key for the next boot to lazily replace, but
+  MINTS the fresh world right there, in the same synchronous call, before the
+  `dropped` latch. No pending-carry field, no reload window where a saved
+  scrap could go stale: `loadWorld` on the next session simply reads back a
+  world that already exists. `grantFind`'s existing unowned-perk filter
+  needed no fix — it reads `progress.found`, which is `current.perks` on the
+  new world, already seeded. SETTLE and NEW WORLD (`abandon`) call
+  `dropWorld()` with no carry and start every perk unfound, exactly as
+  before; `meta/world.ts`'s docblock is amended in place (not silently
+  rewritten) to say so, since "a crossing or a settle starts the hunt fresh"
+  is no longer true of the first half.
+- **The crossing settles the run like an ending.** `engine/reduce.ts`'s
+  `endingBonus` had its arithmetic pulled into a new exported pure function,
+  `endingPayout(state)` — unspent luck at `luckToRelics` (5%, unchanged) plus
+  any reach/claim bonus the tuning prices — so `endingBonus` itself is
+  unchanged behaviour and `cross()` can call the same function rather than
+  re-deriving it. `keeper.ts`'s `cross` now takes the run's own `GameState`
+  (not a bare `carried: number`), settles it through `endingPayout`, writes
+  the settled run into the SAME record book `finish` writes
+  (`recordRun`/`BEST_STORAGE_KEY`) — a crossing was never counted there
+  before — and only then computes the dowry-plus-carried total, in the same
+  order the timeline entry, the progress write and `dropWorld` already kept.
+  No dowry number moved (still `baseRelics: 25`, `relicsPerTerritory: 10`).
+- **The card tells the truth.** The crossing event card in `ui/game.ts` now
+  reads: what carries (the settled total, named as luck-converted; every
+  perk found; the run recorded) and what stays (the ground, the territories,
+  the shrines, everything bought, the hand and the stash). The button's own
+  number is computed with the same `endingPayout` call `cross` makes, so the
+  figure on screen is the figure that lands.
+
+**The farm-loop guard widened with it, on purpose.** `cross` now starts with
+the same `if (dropped || !alive) return;` every other write hook already
+carries — a crossing was the one hook without it — so a queued double-tap
+lands on the latch instead of paying twice; pinned by a new keeper test that
+crosses the same state object twice and checks the purse and the record book
+both moved once.
+
+**Verified:** 872 tests (+4, `shell/keeper.test.ts`: perks and the worn slot
+carry whole into the fresh world; unspent luck converts at the tuning's own
+5%; the run lands in the record book; crossing twice cannot double-pay),
+`src/ui/game.test.ts`'s crossing suite retargeted to the new copy and the new
+`cross(state)` signature rather than weakened, 31 e2e (unchanged — none pin
+the crossing card's exact prose), typecheck / lint / format clean, `pnpm
+sim`'s table byte-identical before and after (stash-and-rerun), `pnpm build`
+clean, `pnpm exec playwright test` 31/31 against the built `dist/`.

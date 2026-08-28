@@ -20,7 +20,13 @@ import {
   withOverrides,
   type FeatureSet,
 } from '@meta/features';
-import { decodeProgress, encodeProgress, EMPTY_PROGRESS, type Progress } from '@meta/progress';
+import {
+  decodeProgress,
+  encodeProgress,
+  EMPTY_PROGRESS,
+  type PerkId,
+  type Progress,
+} from '@meta/progress';
 import { decodeRun, encodeRun } from '@meta/save';
 import { inheritShopLevels, parseShopLevels } from '@meta/shopLevels';
 import {
@@ -539,6 +545,13 @@ export function rememberTheme(id: string): void {
 }
 
 /**
+ * A worldSeed for a world nobody has played yet — a fresh boot, NEW WORLD, a
+ * crossing. Its own function so every minting site rolls the same way; it
+ * used to be `Date.now() & 0x7fffffff` inlined at each call.
+ */
+export const freshWorldSeed = (): number => Date.now() & 0x7fffffff;
+
+/**
  * The world this device plays (P4a): rolled once, kept, and abandonable.
  *
  * `?seed=` still means "replay this exact run", which deliberately bypasses
@@ -552,7 +565,7 @@ export function loadWorld(keys: SlotKeys): WorldMemory {
   } catch {
     // Private mode: every visit is a new world, which is a fine game too.
   }
-  return createWorld(keys, Date.now() & 0x7fffffff);
+  return createWorld(keys, freshWorldSeed());
 }
 
 /**
@@ -563,9 +576,17 @@ export function loadWorld(keys: SlotKeys): WorldMemory {
  * the split, inherit the device's levels", so a world created without one
  * would arrive wearing the build of the world it was started to get away
  * from. Every place a world is born goes through here for that reason.
+ *
+ * `carry` (2026-08-28) is the crossing's own seam: a departing world's perk
+ * shelf, threaded straight into the freshly minted world — see
+ * `meta/world.ts`'s `newWorld`. Every other caller omits it.
  */
-export function createWorld(keys: SlotKeys, worldSeed: number): WorldMemory {
-  const world = newWorld(worldSeed);
+export function createWorld(
+  keys: SlotKeys,
+  worldSeed: number,
+  carry?: { readonly perks: readonly PerkId[]; readonly worn: PerkId | null },
+): WorldMemory {
+  const world = newWorld(worldSeed, carry);
   saveWorld(keys, world);
   writeShopLevels(keys, {});
   return world;

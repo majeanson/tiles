@@ -1,6 +1,6 @@
 import { COLOURS, TUNING, type Colour, type Tuning } from '@content/tuning';
 import { key, type HexKey } from '@engine/hex';
-import { newRun, reduce, startingPerk } from '@engine/reduce';
+import { endingPayout, newRun, reduce, startingPerk } from '@engine/reduce';
 import {
   cachePaysAt,
   distanceMultiplierAt,
@@ -386,11 +386,14 @@ export type GameHooks = {
   readonly crossing?: {
     readonly dowry: () => number;
     /**
-     * `carried` is what the RUN earned and has not banked — the crossing is
-     * the one way a run ends without going through `finish`, so before
-     * 2026-08-20 those relics were simply destroyed along with the world.
+     * The run's own state at the moment of crossing (2026-08-28, widened
+     * from a bare `carried: number`) — the crossing is the one way a run
+     * ends without going through `finish`, so it settles the run itself:
+     * unspent luck converts to relics and any reach/claim bonus prices in,
+     * the same `endingPayout` arithmetic a real ending pays, before those
+     * numbers and the world they came from are gone for good.
      */
-    readonly cross: (carried: number) => void;
+    readonly cross: (state: GameState) => void;
   };
   /**
    * The three sounded moments (`ideas/sound.md`, behind `ui.sound`): the
@@ -1699,16 +1702,19 @@ export class Game {
           const crossing = this.#hooks.crossing;
           if (label === null && crossing !== undefined) {
             const dowry = crossing.dowry();
-            // What the run itself is carrying, banked by the crossing since
-            // 2026-08-20 — before that it was simply lost, because `cross`
-            // never went through `finish` and so never banked anything.
-            const carried = after.relics;
+            // What the run itself is carrying, settled exactly as any other
+            // ending pays it (2026-08-28: unspent luck converts to relics,
+            // any reach/claim bonus prices in) — `endingPayout` is the same
+            // arithmetic `cross` itself calls, so the button's own number is
+            // the number that lands. Before 2026-08-20 this was simply lost;
+            // before 2026-08-28 it was only the relics on hand, luck and all.
+            const { relics: carried } = endingPayout(after);
             const cross = crossing.cross;
             action = {
               label: `CROSS — carry ${dowry + carried} relics`,
               arm: 'TAP AGAIN — this world is forgotten',
               run: () => {
-                cross(carried);
+                cross(after);
               },
             };
             notes.push({
@@ -1716,14 +1722,19 @@ export class Game {
               text:
                 `${LANDMARK_GLYPH.shrine}  THE WORLD IS AWAKE\nEvery unlock is yours — and this shrine is a way onward. ` +
                 `Cross to a NEW WORLD carrying ${dowry} relics for what you leave` +
-                (carried > 0 ? `, plus the ${carried} this run earned` : '') +
-                '. ' +
-                // The honest half, added the day the economy split: what stays
-                // behind is no longer just the ground. A world's SHOP is its
-                // own now, so crossing spends it — and this card is the last
-                // place a player can be told before it happens.
-                'The ground, the territories and everything you have BOUGHT in this world stay behind; your perks come with you. ' +
-                'This run ends at the crossing. Or stay, and keep building this world.',
+                (carried > 0
+                  ? `, plus ${carried} from this run — luck converted in, same as any ending`
+                  : '') +
+                '. This run is recorded, and every perk you have found comes with you. ' +
+                // The honest half, added the day the economy split and rewritten
+                // 2026-08-28 (Marc, from play: losing his perks for 75 relics was
+                // "not worth it" — and this card had been saying the opposite
+                // since perks moved onto the world, 2026-08-26). What stays is
+                // the PLACE, not the ledger: the ground, the territories and the
+                // shrines you woke here, everything you BOUGHT, and the hand and
+                // stash this run is holding.
+                'The ground, the territories, the shrines and everything you have BOUGHT stay behind — and so do your hand and stash. ' +
+                'Or stay, and keep building this world.',
             });
             break;
           }
