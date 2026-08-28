@@ -1,6 +1,6 @@
 import type { Tuning } from '@content/tuning';
 import type { TeachId } from '@meta/progress';
-import { CONCEPT_MARK, LANDMARK_GLYPH, type Theme } from '@theme/tokens';
+import { CONCEPT_MARK, LANDMARK_GLYPH, TILE_GLYPH, type Theme } from '@theme/tokens';
 import type { FigureId } from './figure';
 import type { TipRow } from './view';
 
@@ -39,7 +39,15 @@ import type { TipRow } from './view';
  *
  * - `core`   — the lesson in one sentence. Every door prints it.
  * - `more`   — the rest of the visible lesson.
+ * - `card`   — a sentence only the TEACHING CARD prints.
  * - `detail` — the manual's DETAILS fold, and nowhere else.
+ *
+ * `card` is not the three-fields door reopening, and the difference is the
+ * whole point of the model: a sentence still exists exactly ONCE, and its
+ * weight only says which doors print it. It exists because a card fires at
+ * FIRST CONTACT, where the manual has four other sections to lean on — the
+ * RIPE card must say what to do next, because the player meeting it has not
+ * read POP yet and may never open the manual at all.
  *
  * A door that has room for one sentence takes `core` and appends its own live
  * clause, which is what `statNote('luck')` already does by hand. That
@@ -71,7 +79,7 @@ import type { TipRow } from './view';
 export type LessonId = TeachId | 'pocket' | 'worth' | 'bounty' | 'stash' | 'sizeBonus' | 'stone';
 
 /** How heavy a sentence is. Absent means `more`. */
-export type Weight = 'core' | 'more' | 'detail';
+export type Weight = 'core' | 'more' | 'card' | 'detail';
 
 /**
  * One sentence of a lesson, in this run's own numbers.
@@ -173,6 +181,21 @@ export function lessonDefine(lesson: Lesson, t: Tuning, theme: Theme): string {
 }
 
 /**
+ * The teaching card's whole text: the glyph and the name on their own line —
+ * the shape `EVENT_GLYPH` parses back out — then the visible lesson plus
+ * whatever this lesson keeps for the moment of first contact.
+ *
+ * The card and the manual therefore open on the same sentence, always, and
+ * differ only by what the card adds. Before this they opened on two sentences
+ * written six days apart.
+ */
+export function lessonCardText(lesson: Lesson, t: Tuning, theme: Theme): string {
+  const lead = lesson.glyph === undefined ? lesson.name : `${lesson.glyph}  ${lesson.name}`;
+  const body = [...lessonLines(lesson, t, theme), ...beatsAt(lesson, 'card', t, theme)];
+  return `${lead}\n${body.join(' ')}`;
+}
+
+/**
  * The lessons themselves.
  *
  * **Stage 3 is deliberately inert.** Every entry here is one of `glossary.ts`'s
@@ -189,16 +212,48 @@ export function lessonDefine(lesson: Lesson, t: Tuning, theme: Theme): string {
  * rather than single concepts and stay on the manual until stage 5.
  */
 export const LESSONS: readonly Lesson[] = [
+  /**
+   * The first lesson migrated for real (stage 4), and the worked example of
+   * the rule the whole stage runs on: **where a card and the manual say one
+   * rule differently, the manual's sentence wins.** Its prose is Marc's own
+   * 2026-08-27 concision pass ("be more concise and simple, straight to the
+   * point, less words"); the cards were written 2026-08-19/20 and revised
+   * piecemeal, and the newer human-reviewed wording is the one to keep.
+   *
+   * So the core and the stone beat below are the manual's PLAY ▸ RIPEN lines,
+   * verbatim — which is also what lets stage 5 point that section here and
+   * produce no diff at all. What the CARD used to open with ("a tile RIPENS
+   * and lights up — stone and walls surround too") is gone: it said less,
+   * vaguely, and never named WORTH.
+   */
   {
     id: 'ripe',
-    name: 'RIPENS',
+    name: 'RIPE',
     terms: ['RIPENS'],
+    glyph: TILE_GLYPH,
     figure: 'ripen',
     beats: [
       {
         at: 'core',
         say: () =>
-          'A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.',
+          'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it.',
+      },
+      {
+        say: (t, theme) =>
+          t.redAshMatches
+            ? `Stone, walls and the map’s edge all surround. Only ${theme.terrainNames.red} counts stone as a match.`
+            : 'Stone, walls and the map’s edge all surround; none of them match.',
+      },
+      {
+        // Card only. The timing fork belongs at DISCOVERY (Marc, Day 2: "the
+        // early vs pop explanation should come before our first pop success")
+        // — the manual states it under POP, which a player meeting their first
+        // ripe tile has not read.
+        at: 'card',
+        say: (t) =>
+          t.luckPerPop > 0 && t.colourBiasDraws > 0
+            ? 'Tap it to price its pocket, then choose: POP now (pays sooner, and your next draws lean toward the colour you popped) or keep growing it (a bigger pocket pays more than its pieces).'
+            : 'Tap it to price its pocket, then choose: POP now, or keep growing it — a bigger pocket pays more than its pieces.',
       },
     ],
   },

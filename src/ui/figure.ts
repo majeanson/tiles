@@ -186,9 +186,14 @@ export const FIGURES: Record<FigureId, FigureSpec> = {
  * terrain colour, and the art is a background IMAGE on top of that. The
  * shape and the colour are CSS; only the texture is a canvas.
  */
-export function drawFigure(kind: FigureId, ctx: FigureContext): HTMLElement {
+export function drawFigure(
+  kind: FigureId,
+  ctx: FigureContext,
+  opts: { readonly caption?: boolean } = {},
+): HTMLElement {
   const spec = FIGURES[kind];
-  if (spec.cards !== undefined) return cardFigure(spec, ctx);
+  const caption = opts.caption === false ? null : spec.caption;
+  if (spec.cards !== undefined) return cardFigure(spec, ctx, caption);
 
   const figure = document.createElement('div');
   figure.className = 'help-figure';
@@ -253,7 +258,7 @@ export function drawFigure(kind: FigureId, ctx: FigureContext): HTMLElement {
     figure.append(mark);
   }
 
-  return captioned(figure, spec.caption);
+  return captioned(figure, caption);
 }
 
 /**
@@ -266,7 +271,7 @@ export function drawFigure(kind: FigureId, ctx: FigureContext): HTMLElement {
  * same baked art, the same CSS. `inert` rather than disabled buttons —
  * these are a picture of controls, and nothing here should be tabbable.
  */
-function cardFigure(spec: FigureSpec, ctx: FigureContext): HTMLElement {
+function cardFigure(spec: FigureSpec, ctx: FigureContext, caption: string | null): HTMLElement {
   const row = document.createElement('div');
   row.className = 'fig-cards';
   row.inert = true;
@@ -317,13 +322,17 @@ function cardFigure(spec: FigureSpec, ctx: FigureContext): HTMLElement {
     row.append(tile);
   }
 
-  return captioned(row, spec.caption);
+  return captioned(row, caption);
 }
 
 /** A figure and the one line that says what it shows. */
-function captioned(art: HTMLElement, text: string): HTMLElement {
+function captioned(art: HTMLElement, text: string | null): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'help-figure-wrap';
+  if (text === null) {
+    wrap.append(art);
+    return wrap;
+  }
   const caption = document.createElement('p');
   caption.className = 'flag-note';
   caption.textContent = text;

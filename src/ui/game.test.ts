@@ -2484,7 +2484,11 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     tap(s.el.board);
 
     expect(s.el.eventCard.hidden).toBe(false);
-    expect(s.el.eventCardText.textContent).toMatch(/RIPENS and lights up/);
+    // The manual's own sentence since 2026-08-28 (stage 4), where this card
+    // used to open on "RIPENS and lights up — stone and walls surround too".
+    // That said less, said it vaguely, and never named WORTH; the rule when a
+    // card and the manual disagree is that the manual's wording wins.
+    expect(s.el.eventCardText.textContent).toMatch(/RIPENS and shows its WORTH/);
     expect(s.dev.current().met).toContain('ripe');
 
     // The same moment on a taught device says nothing of the sort — and the
@@ -3357,8 +3361,13 @@ describe('a glossary term inside the manual opens its own card', () => {
 
   it('shows the registry glyph where an entry has one, and hides it where none exists', () => {
     const ctx = openStart();
-    // LUCK's own entry carries CONCEPT_MARK.luck; RIPENS's does not.
-    findTerm(ctx, 'RIPENS').click();
+    // POCKET carries no mark; LUCK's own entry carries CONCEPT_MARK.luck.
+    //
+    // This used to ask RIPENS for the mark-less half, and RIPENS grew one on
+    // 2026-08-28 when its lesson took over the RIPE teaching card — a card
+    // leads with a glyph, and one concept wears ONE mark at every door it has.
+    // The example moved; what is under test did not.
+    findTerm(ctx, 'POCKET').click();
     expect(ctx.el.termCardGlyph.hidden).toBe(true);
     expect(ctx.el.termCardGlyph.textContent).toBe('');
     ctx.el.termCardDismiss.click();

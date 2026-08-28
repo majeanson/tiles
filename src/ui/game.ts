@@ -33,6 +33,7 @@ import {
 } from '@meta/progress';
 import { drawFigure, type FigureId } from './figure';
 import { glossaryEntry, type GlossaryEntry, type GlossaryId } from './glossary';
+import { lessonCardText, lessonOf, type LessonId } from './lessons';
 import { shopParts } from './shop';
 import { conceptInked, perkRows, rarityInked, tipRows } from './tips';
 import type { Renderer } from '@render/Renderer';
@@ -2971,8 +2972,26 @@ export class Game {
     // the same `drawFigure` the manual uses, from the same table, so the card
     // that first teaches a rule and the page you re-read it on cannot show
     // two different things.
+    // No caption here, unlike the manual. A figure's caption says what you
+    // are looking at, which earns its place on a manual section whose lines
+    // are short — and repeats the body word for word on a card that has just
+    // stated the whole rule. The screenshot of the RIPE card after stage 4
+    // said "shows its WORTH: how many neighbours match it" in the body and
+    // "worth what matches it" in the caption, two lines apart.
     this.#el.eventCardFigure.replaceChildren(
-      ...(figure === undefined ? [] : [this.#figure(figure)]),
+      ...(figure === undefined
+        ? []
+        : [
+            drawFigure(
+              figure,
+              {
+                art: this.#art,
+                orientation: this.#theme.orientation,
+                names: this.#theme.terrainNames,
+              },
+              { caption: false },
+            ),
+          ]),
     );
     this.#el.eventCardRows.replaceChildren(...tipRows(rows));
     // A card with a choice grows its second button; GOT IT reads as staying.
@@ -3057,6 +3076,26 @@ export class Game {
     return this.#hooks.replay === true;
   }
 
+  /**
+   * One lesson, as a teaching moment's id, text and picture (2026-08-28).
+   *
+   * The seam every migrated moment goes through: `#teachCheck` decides WHEN a
+   * lesson fires and this decides what it SAYS, by asking the registry. A
+   * moment that has not been migrated yet keeps its literal and simply does
+   * not call this — which is what lets stage 4 run one lesson per commit.
+   */
+  #teach(id: LessonId): { id: TeachId; text: string; figure?: FigureId } {
+    const lesson = lessonOf(id);
+    // Every id passed here is a lesson that exists; the throw is for the day
+    // somebody deletes one and expects the compiler to have noticed.
+    if (lesson === undefined) throw new Error(`no lesson for ${id}`);
+    return {
+      id: id as TeachId,
+      text: lessonCardText(lesson, this.#state.tuning, this.#theme),
+      ...(lesson.figure === undefined ? {} : { figure: lesson.figure }),
+    };
+  }
+
   #metSet(): ReadonlySet<TeachId> | null {
     const store = this.#hooks.shop;
     return store === undefined ? null : new Set(store.read().met);
@@ -3107,18 +3146,11 @@ export class Game {
     if (met === null) return null;
 
     if (!met.has('ripe') && Object.keys(next.cells).some((k) => isRipe(next.cells, k))) {
-      return {
-        tier: 'card',
-        id: 'ripe',
-        // The pop's timing FORK lives here, at discovery (Marc, Day 2:
-        // "the early vs pop explanation should come before our first pop
-        // success") — in plain words, since luck has not been met yet.
-        // The colour-bias rule said plainly, not in metaphor (2026-08-21):
-        // "the plane sends more of what you pop" is a nice sentence that
-        // does not tell a first-time player what actually happens.
-        text: `${TILE_GLYPH}  RIPE\nSurrounded on all six sides, a tile RIPENS and lights up — stone and walls surround too. Tap it to price its pocket, then choose: POP now (pays sooner, and your next draws lean toward the colour you popped) or keep growing it (a bigger pocket pays more than its pieces).`,
-        figure: 'ripen',
-      };
+      // The first card to read the registry (2026-08-28, stage 4). Its words,
+      // its glyph and its picture all come from the `ripe` lesson now, so this
+      // card and the manual's RIPEN section cannot say the rule differently —
+      // which they did, in two sentences written six days apart.
+      return { tier: 'card', ...this.#teach('ripe') };
     }
 
     // Each rarity teaches ITSELF now (Marc's rehearsal find, 2026-08-20:

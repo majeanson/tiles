@@ -34,10 +34,10 @@ exports[`the teaching pins — every word, exactly as it reads today > pins ever
   "relic · BARE_TUNING · torchlit": "Relics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.",
   "relic · TUNING · daylight": "Relics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.",
   "relic · TUNING · torchlit": "Relics are not points — they buy the NEXT run. They follow you out when a run ends, and THE SHOP on the end screen spends them: every run makes the next one start stronger.",
-  "ripe · BARE_TUNING · daylight": "A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.",
-  "ripe · BARE_TUNING · torchlit": "A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.",
-  "ripe · TUNING · daylight": "A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.",
-  "ripe · TUNING · torchlit": "A tile RIPENS once every one of its six sides is covered — by another tile, by stone, by a wall, or by the map’s edge. A ripe tile shows its WORTH and can be popped.",
+  "ripe · BARE_TUNING · daylight": "Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround; none of them match.",
+  "ripe · BARE_TUNING · torchlit": "Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround; none of them match.",
+  "ripe · TUNING · daylight": "Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround. Only ASH counts stone as a match.",
+  "ripe · TUNING · torchlit": "Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround. Only ASH counts stone as a match.",
   "shrine · BARE_TUNING · daylight": "A SHRINE switches a system on for your world, permanently, the moment you claim it. Once every shrine unlock is woken, the next one offers a crossing to a new world instead.",
   "shrine · BARE_TUNING · torchlit": "A SHRINE switches a system on for your world, permanently, the moment you claim it. Once every shrine unlock is woken, the next one offers a crossing to a new world instead.",
   "shrine · TUNING · daylight": "A SHRINE switches a system on for your world, permanently, the moment you claim it. Once every shrine unlock is woken, the next one offers a crossing to a new world instead.",
@@ -72,7 +72,7 @@ exports[`the teaching pins — every word, exactly as it reads today > pins ever
 exports[`the teaching pins — every word, exactly as it reads today > pins every glossary entry’s terms, glyph and ink 1`] = `
 [
   {
-    "glyph": null,
+    "glyph": "⬢",
     "id": "ripe",
     "ink": null,
     "terms": [
