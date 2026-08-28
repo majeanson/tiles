@@ -140,7 +140,8 @@ export const LUCK_CORE = 'LUCK — a purse, not a score.';
 /** What MAGIC and UNIQUE both do once placed. Shared the way `LUCK_CORE` is:
  *  one sentence, two lessons, so the two rarity cards cannot come to disagree
  *  about the mark they both wear. */
-const RARE_STAR = 'A placed rare tile wears a star, so its power stays findable on a full map.';
+export const RARE_STAR =
+  'A placed rare tile wears a star, so its power stays findable on a full map.';
 
 const weightOf = (beat: Beat): Weight => beat.at ?? 'more';
 
@@ -466,8 +467,15 @@ export const LESSONS: readonly Lesson[] = [
         at: 'core',
         say: (t) =>
           t.holdSlots > 1
-            ? `The dashed HOLD cards keep ${t.holdSlots} tiles for later. Tap one to stash the selected card; tap a held card to trade that tile back. Held tiles survive a redraw.`
-            : 'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap it again to trade that tile back. Held tiles survive a redraw.',
+            ? `The dashed HOLD cards keep ${t.holdSlots} tiles for later. Tap one to stash the selected card; tap a held card to trade that tile back.`
+            : 'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap it again to trade that tile back.',
+      },
+      // The manual's second line, which the glossary's version had shortened
+      // to "Held tiles survive a redraw." — true, and missing the reason
+      // anybody would care.
+      {
+        say: () =>
+          'Held tiles survive a redraw — save a rare, or the colour a pocket is waiting for.',
       },
     ],
   },

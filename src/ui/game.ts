@@ -33,7 +33,14 @@ import {
 } from '@meta/progress';
 import { drawFigure, type FigureId } from './figure';
 import { glossaryEntry, type GlossaryEntry, type GlossaryId } from './glossary';
-import { lessonCardText, lessonOf, type LessonId } from './lessons';
+import {
+  lessonCardText,
+  lessonCore,
+  lessonLines,
+  lessonOf,
+  RARE_STAR,
+  type LessonId,
+} from './lessons';
 import { shopParts } from './shop';
 import { conceptInked, perkRows, rarityInked, tipRows } from './tips';
 import type { Renderer } from '@render/Renderer';
@@ -2140,15 +2147,13 @@ export class Game {
         },
         {
           title: 'RIPEN',
-          lines: [
-            'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it.',
-            // "None of them match" is false under the shipped `redAshMatches`
-            // (2026-08-21) — the same sentence in THE COLOURS gets it right,
-            // and this one is the copy a stranger reads first.
-            t.redAshMatches
-              ? 'Stone, walls and the map’s edge all surround. Only ASH counts stone as a match.'
-              : 'Stone, walls and the map’s edge all surround; none of them match.',
-          ],
+          // The `ripe` lesson's own lines (2026-08-28, stage 5) — the same two
+          // sentences the RIPE teaching card opens with, because they are now
+          // literally the same two sentences. The stone line still branches on
+          // `redAshMatches` ("none of them match" is false under the shipped
+          // dial, 2026-08-21); it just names the colour from the THEME rather
+          // than hardcoding "ASH", which is what the rest of the manual does.
+          lines: this.#say('ripe'),
         },
         {
           title: 'POP',
@@ -2366,13 +2371,14 @@ export class Game {
           ? ([
               {
                 title: 'RARE TILES',
-                lines: [
-                  'MAGIC is wild: it matches every neighbour whatever the colour, and they match it back.',
-                  'UNIQUE is wild and heavy: every match it makes counts DOUBLE, for both sides.',
-                  // "points" here meant the star's geometry, not the SCORE
-                  // stat at the top of the screen (2026-08-21).
-                  'A placed rare tile wears a star, so its power stays findable on a full map.',
-                ],
+                // COMPOSED of two lessons (2026-08-28, stage 5): each rarity's
+                // own sentence, then the one they share. Both lessons carry
+                // that shared sentence — a MAGIC card that did not say it
+                // would teach half a rule — so the section takes each core and
+                // the star line once, rather than printing it twice.
+                // ("points" there meant the star's geometry, not the SCORE
+                // stat at the top of the screen — 2026-08-21.)
+                lines: [this.#core('rare'), this.#core('rareUnique'), RARE_STAR],
                 figure: 'rare',
               },
             ] as HelpSection[])
@@ -2386,12 +2392,7 @@ export class Game {
           ? ([
               {
                 title: 'THE STASH',
-                lines: [
-                  t.holdSlots > 1
-                    ? `The dashed HOLD cards keep ${t.holdSlots} tiles for later. Tap one to stash the selected card; tap a held card to trade that tile back.`
-                    : 'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap it again to trade that tile back.',
-                  'Held tiles survive a redraw — save a rare, or the colour a pocket is waiting for.',
-                ],
+                lines: this.#say('stash'),
                 figure: 'stash',
               },
             ] as HelpSection[])
@@ -3074,6 +3075,22 @@ export class Game {
    * moment that has not been migrated yet keeps its literal and simply does
    * not call this — which is what lets stage 4 run one lesson per commit.
    */
+  /** A lesson in one sentence, for a manual section COMPOSED of several —
+   *  RARE TILES is MAGIC and UNIQUE and the sentence they share, not one
+   *  lesson, and sections were never one-lesson-shaped. */
+  #core(id: LessonId): string {
+    const lesson = lessonOf(id);
+    if (lesson === undefined) throw new Error(`no lesson for ${id}`);
+    return lessonCore(lesson, this.#state.tuning, this.#theme);
+  }
+
+  /** A lesson's visible lines, for a manual section built out of it. */
+  #say(id: LessonId): string[] {
+    const lesson = lessonOf(id);
+    if (lesson === undefined) throw new Error(`no lesson for ${id}`);
+    return lessonLines(lesson, this.#state.tuning, this.#theme);
+  }
+
   #teach(id: LessonId): { id: TeachId; text: string; figure?: FigureId } {
     const lesson = lessonOf(id);
     // Every id passed here is a lesson that exists; the throw is for the day
