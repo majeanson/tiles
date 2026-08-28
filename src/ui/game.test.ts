@@ -601,7 +601,7 @@ describe('the camera, and staying oriented', () => {
     const panels = [...ctx.el.helpPanel.querySelectorAll('.help-panel-body')] as HTMLElement[];
     expect(panels.filter((p) => !p.hidden)).toHaveLength(1);
     expect(panels[0]?.hidden).toBe(false);
-    expect(panels[0]?.textContent).toContain('WHAT YOU SEE');
+    expect(panels[0]?.textContent).toContain('THE BOARD');
 
     // Tapping a tab swaps the panel and moves the marker, and does NOT close
     // the manual on the way past — the panel closes on any tap, so a control
@@ -627,7 +627,7 @@ describe('the camera, and staying oriented', () => {
     ] as HTMLDetailsElement[];
     expect(folds.length).toBeGreaterThan(4);
     expect(folds.every((fold) => !fold.open)).toBe(true);
-    expect(folds.every((fold) => fold.querySelector('summary')?.textContent === 'NUMBERS')).toBe(
+    expect(folds.every((fold) => fold.querySelector('summary')?.textContent === 'DETAILS')).toBe(
       true,
     );
 
@@ -2459,19 +2459,19 @@ describe('teaching, drop by drop (2026-08-19)', () => {
     s.game.openHelp();
     const fresh = s.el.helpManual.textContent ?? '';
     expect(fresh).not.toContain('RARE TILES');
-    expect(fresh).not.toContain('LUCK IS A PURSE');
+    expect(fresh).not.toContain('THE LUCK PURSE');
     expect(fresh).not.toContain('RELICS AND THE SHOP');
     expect(fresh).not.toContain('✚ CACHE');
     expect(fresh).toContain('More appears here as you meet it.');
     // START stays whole — it is the stranger's tab.
-    expect(fresh).toContain('WHAT YOU SEE');
+    expect(fresh).toContain('THE BOARD');
 
     // Met everything: today's manual, whole, no foot line.
     s.dev.shop.write({ ...s.dev.current(), met: [...TEACH_IDS] });
     s.game.openHelp();
     const grown = s.el.helpManual.textContent ?? '';
     expect(grown).toContain('RARE TILES');
-    expect(grown).toContain('LUCK IS A PURSE');
+    expect(grown).toContain('THE LUCK PURSE');
     expect(grown).toContain('RELICS AND THE SHOP');
     // The destination rows wear the glyph the BOARD draws, read from the
     // registry rather than typed in (2026-08-27): the mark is its own
@@ -2638,7 +2638,7 @@ describe('teaching, drop by drop (2026-08-19)', () => {
 
     ctx.game.openHelp();
     const manual = ctx.el.helpManual.textContent ?? '';
-    expect(manual).toContain('LUCK IS A PURSE');
+    expect(manual).toContain('THE LUCK PURSE');
     expect(manual).not.toContain('More appears here as you meet it.');
   });
 
@@ -3743,27 +3743,29 @@ describe('which game this is — your world, the daily, a shared run (2026-08-26
   const shared = (): string => manualOf(DETOUR_TUNING, { replay: true, fromLink: true });
 
   it('names the mode on the screen, and never a second one beside it', () => {
-    expect(home()).toContain('RIGHT NOW you are playing YOUR OWN WORLD');
-    expect(daily()).toContain('RIGHT NOW you are playing THE DAILY');
-    expect(shared()).toContain('RIGHT NOW you are playing A SHARED RUN');
+    expect(home()).toContain('RIGHT NOW: YOUR OWN WORLD');
+    expect(daily()).toContain('RIGHT NOW: THE DAILY');
+    expect(shared()).toContain('RIGHT NOW: A SHARED RUN');
 
     // Exactly ONE of the three is ever claimed. A screen naming two is the
     // confusion this whole split exists to end.
     for (const text of [home(), daily(), shared()]) {
       const named = ['YOUR OWN WORLD', 'THE DAILY', 'A SHARED RUN'].filter((mode) =>
-        text.includes(`RIGHT NOW you are playing ${mode}`),
+        text.includes(`RIGHT NOW: ${mode}`),
       );
       expect(named).toHaveLength(1);
     }
   });
 
   it('promises the climb at home, and an honest visit on a detour', () => {
+    // The words moved on 2026-08-27 (the concision pass) and the promise did
+    // not: at home the run feeds the next one, on a detour it feeds nothing.
     expect(home()).toContain('Your world remembers');
-    expect(home()).toContain('playing the climb');
+    expect(home()).toContain('the next run starts stronger');
     for (const text of [daily(), shared()]) {
       expect(text).not.toContain('Your world remembers');
-      expect(text).not.toContain('playing the climb');
-      expect(text).toContain('this run is a visit');
+      expect(text).not.toContain('the next run starts stronger');
+      expect(text).toContain('This run is a visit');
     }
   });
 
@@ -3771,7 +3773,7 @@ describe('which game this is — your world, the daily, a shared run (2026-08-26
     expect(home()).toContain('stays drawn faint on later runs');
     for (const text of [daily(), shared()]) {
       expect(text).not.toContain('stays drawn faint on later runs');
-      expect(text).toContain('Nothing here is remembered');
+      expect(text).toContain('last exactly as long as this run');
     }
   });
 
@@ -3835,7 +3837,7 @@ describe('which game this is — your world, the daily, a shared run (2026-08-26
     ctx.game.openHelp();
     const text = ctx.el.helpManual.textContent ?? '';
     expect(text).toContain('WHAT YOU CARRY');
-    expect(text).toContain('Found out in THIS world');
+    expect(text).toContain('belongs to the world that hid it');
     expect(text).not.toContain('yours for good. One perk');
     expect(text).not.toContain('on every world. WEAR it');
   });

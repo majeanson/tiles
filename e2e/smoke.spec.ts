@@ -106,7 +106,7 @@ test('boots, begins, places, reads the manual, works the camera — no errors', 
   await page.locator('#help').click();
   await expect(page.locator('#help-panel')).toBeVisible();
   await expect(page.locator('#help-menu')).toContainText('A SHARED RUN');
-  await expect(page.locator('#help-manual')).toContainText('WHAT YOU SEE');
+  await expect(page.locator('#help-manual')).toContainText('THE BOARD');
   // Tapped on PROSE, deliberately: the controls swallow their own taps (a
   // panel closing under an arming button could never be tapped twice), so
   // clicking the panel's bare centre is a coin toss about which half of it

@@ -78,8 +78,11 @@ test('WORLDS holds all three slots, and NOW begins the run BEGIN would', async (
   const panel = page.locator('#worlds-panel');
   await expect(panel).toBeVisible();
   // What a world IS, said where the choice is made — it was on no screen at
-  // all while the slots sat unexplained on the door.
-  await expect(panel).toContainText('Relics and the perks you find travel');
+  // all while the slots sat unexplained on the door. Only RELICS travel
+  // (2026-08-27): this line, and the test pinning it, had both outlived the
+  // 2026-08-26 split that made a perk the world's own.
+  await expect(panel).toContainText('Relics travel between them');
+  await expect(panel).toContainText('the perks you find');
 
   const worlds = page.locator('#worlds-list button');
   await expect(worlds).toHaveCount(3);
@@ -167,6 +170,52 @@ test('SETTINGS opens from the door and from the MENU tab, and stacks over both',
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
   // Escape reaches the TOP panel only — the manual it opened over is still up.
+  await expect(page.locator('#help-panel')).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
+/**
+ * The MENU tab, after the 2026-08-27 concision pass: every way out of a run
+ * above the fold, the world's own ledger behind DETAILS — and the NEW WORLD
+ * label telling the truth about what survives.
+ *
+ * That label is pinned because it has now gone stale TWICE under the same
+ * storage split: shop levels became a world's own on 2026-08-20 and it still
+ * promised them, perks became a world's own on 2026-08-26 and it still
+ * promised those. It is read one second before it is obeyed, on the one
+ * control in the game that cannot be undone.
+ */
+test('MENU offers the exits first, folds the world’s ledger, and says only relics travel', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.goto('/');
+  await begin(page);
+  await page.locator('#help').click();
+
+  const menu = page.locator('#help-menu');
+  await expect(menu).toBeVisible();
+  // The exits are on screen without opening anything.
+  await expect(page.locator('#to-main-menu')).toBeVisible();
+  await expect(page.locator('#to-settings')).toBeVisible();
+  await expect(page.locator('#new-run')).toBeVisible();
+
+  // The atlas is behind DETAILS, and comes out when it is asked for.
+  const fold = page.locator('#world-details');
+  await expect(page.locator('#atlas')).toBeHidden();
+  await fold.locator('summary').click();
+  await expect(page.locator('#atlas')).toBeVisible();
+  await expect(menu).toContainText('SEED');
+  // Opening a fold must not close the panel under it.
+  await expect(page.locator('#help-panel')).toBeVisible();
+
+  // NEW WORLD arms rather than fires, and the armed words are the ledger of
+  // what survives it.
+  const abandon = page.locator('#abandon-world');
+  await abandon.click();
+  await expect(abandon).toContainText('only relics travel');
+  await expect(abandon).toContainText('perks you found here stay behind');
   await expect(page.locator('#help-panel')).toBeVisible();
 
   expect(errors).toEqual([]);
@@ -374,7 +423,7 @@ test('HOW TO PLAY opens on the tutorial, and the in-run ? opens on MENU', async 
   await expect(page.locator('#help-panel')).toBeVisible();
   // The visible panel body is START's — the first lesson, not the atlas.
   const shown = page.locator('.help-panel-body:not([hidden])');
-  await expect(shown).toContainText('WHAT YOU SEE');
+  await expect(shown).toContainText('THE BOARD');
   await expect(shown).not.toContainText('YOUR WORLD ·');
   await page.locator('#help-name').click();
   await expect(page.locator('#help-panel')).toBeHidden();

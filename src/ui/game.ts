@@ -37,7 +37,7 @@ import type { Renderer } from '@render/Renderer';
 import type { ShareCardData } from '@render/shareCard';
 import { PLACEHOLDER } from '@theme/themes/placeholder';
 import { COLOUR_MARK, depthOf, LANDMARK_GLYPH, TILE_GLYPH, type Theme } from '@theme/tokens';
-import { ICON_DATA_URI, NAME, TAGLINE } from '@meta/identity';
+import { ICON_DATA_URI, NAME } from '@meta/identity';
 import { closeDialog, openDialog, siblingsOf } from './dialog';
 import {
   arcNote,
@@ -1368,10 +1368,11 @@ export class Game {
       this.#closeHelp();
     });
     head.append(title, back);
-    const tagline = document.createElement('p');
-    tagline.className = 'flag-note';
-    tagline.textContent = TAGLINE;
-    this.#el.helpManual.replaceChildren(head, tagline, ...this.#buildManual(tab));
+    // No tagline under the header since 2026-08-27. It is the front door's
+    // line, and the door is where it was read a tap ago; repeating it here
+    // spent the first line of the manual saying something the reader had just
+    // been told, and pushed the tab bar down a row on a phone.
+    this.#el.helpManual.replaceChildren(head, ...this.#buildManual(tab));
   }
 
   #closeHelp(): void {
@@ -1769,7 +1770,16 @@ export class Game {
    * The old manual was fourteen sections of paragraphs — everything true and
    * nothing findable. Two rules replace it. Each section says what a thing IS
    * in a line or two; every formula, price and threshold moves behind a
-   * NUMBERS toggle, so the manual is short by default and complete on demand.
+   * DETAILS toggle, so the manual is short by default and complete on demand.
+   *
+   * The toggle was called NUMBERS until 2026-08-27 (Marc: "inside NUMBERS,
+   * change it for DETAILS — if people want more detail or numbers they click
+   * on it, otherwise you can still understand most without expanding
+   * anything"). The word was narrower than the job: half of what belongs
+   * behind it is a rule, a mode or an edge case rather than arithmetic, and a
+   * fold labelled NUMBERS is a fold nobody opens for a rule. What the label
+   * changed is the CONTRACT — the visible lines now have to stand alone, and
+   * anything a player can play without goes under the fold.
    *
    * The panel closes on any tap, which is right for prose and wrong for a
    * control — so the tabs and the toggles swallow their own taps, the same
@@ -1833,7 +1843,7 @@ export class Game {
     return [bar, ...panels];
   }
 
-  /** One section: a heading, its short lines, and its numbers folded away. */
+  /** One section: a heading, its short lines, its rows, and the rest folded. */
   #helpSection(section: HelpSection): HTMLElement[] {
     const heading = document.createElement('p');
     heading.className = 'help-title';
@@ -1855,7 +1865,7 @@ export class Game {
     const fold = document.createElement('details');
     fold.className = 'help-more';
     const summary = document.createElement('summary');
-    summary.textContent = 'NUMBERS';
+    summary.textContent = 'DETAILS';
     // A summary that let its tap through would open the fold and close the
     // panel in the same gesture, which reads as the button not working.
     this.#on(summary, 'click', (event) => {
@@ -1903,73 +1913,71 @@ export class Game {
     // The quick start (Marc, 2026-08-18: "here is what you see, here is what
     // you do, here is how you make points — then the advanced sections", and
     // later the same day: "explain the whys and how the full game vs seed
-    // works in START"). Short sections, no NUMBERS fold: the one tab a
-    // stranger reads before their first placement. Everything mechanical it
-    // says is said again, properly, in the tabs after it.
+    // works in START").
+    //
+    // Cut to the bone on 2026-08-27 (Marc: "be more concise and simple,
+    // straight to the point, less words"): three sections of three short
+    // lines, and the one section that has to name three modes says which one
+    // you are in and folds the other two into DETAILS. A stranger's first
+    // screen of a manual is not the place to enumerate a taxonomy.
     const start: HelpTab = {
       id: 'start',
       label: 'START',
       sections: [
         {
-          title: 'WHAT YOU SEE',
+          title: 'THE BOARD',
           lines: [
-            'The board is your land. The cards below are tiles you can place.',
-            'Glowing edges are where you may build. Faint numbers show what a tile pays there.',
-            'Lights beyond your land are places worth walking to. They pay when you reach them.',
+            'The board is your land. The cards below are tiles to place.',
+            'Glowing edges are where you can build. The faint number is what a tile pays there.',
+            'Lights out in the dark are worth walking to.',
           ],
         },
         {
-          title: 'WHAT YOU DO',
+          title: 'YOUR TURN',
           lines: [
             'Tap a card, then tap a glowing hex.',
-            'Surround a tile on all six sides and it ripens — it lights up.',
-            'Tap a ripe tile, then POP. Popping pays the tiles that keep you going.',
+            'Ring a tile on all six sides and it RIPENS.',
+            'Tap a ripe tile, then POP. Pops pay the TILES that keep you placing.',
           ],
         },
         {
           title: 'WHY',
           lines: [
-            'The goal is DEPTH. The same pocket scores far more the farther from home you pop it — your score is how deep you dared to build.',
+            'Go DEEP. The same pocket scores far more the farther from home you pop it.',
             // The climb belongs to the HOME world and only to it (2026-08-26,
             // Marc: "make sure ... world is world only"). On a detour these
-            // two lines described a game the player is not in — and START is
+            // lines described a game the player is not in — and START is
             // exactly where a shared link's recipient begins reading, which
             // made them the most-read false sentences the game had.
             ...(this.#detour
               ? [
-                  'Runs end. Here that is the whole shape: this run is a visit. Nothing it earns is banked, nothing it reveals is kept, and your own world is untouched by it.',
-                  'What you are chasing is the SCORE — one board, one sitting, on the plain economy everybody else gets.',
+                  'This run is a visit: nothing is banked, nothing is kept, your own world is untouched.',
+                  'So play for the SCORE — one board, one sitting, on the plain economy everybody gets.',
                 ]
               : [
-                  'Runs end. That is normal: what you carry out buys permanent upgrades, so every run makes the next one start stronger.',
-                  'Your world remembers — ground stays revealed, territories stay yours. You are not playing a run; you are playing the climb.',
+                  'Runs end. What you carry out buys upgrades, so the next run starts stronger.',
+                  'Your world remembers: ground stays revealed, territories stay yours.',
                 ]),
           ],
         },
         {
-          title: 'WHICH GAME THIS IS',
+          // Which of the three you are in RIGHT NOW, and nothing else on the
+          // visible line (Marc, 2026-08-26: "make sure its clear which one is
+          // which and which one is the current world"). The other two modes
+          // are a reference, not a lesson, so they fold.
+          title: 'WHICH GAME',
           lines: [
-            // Which of the three you are in RIGHT NOW, first (Marc,
-            // 2026-08-26: "make sure its clear which one is which and which
-            // one is the current world"). The section described all three
-            // modes and named none of them as the one on the screen, so the
-            // one question it could not answer was the one being asked.
             this.#detour
               ? this.#hooks.daily !== undefined
-                ? 'RIGHT NOW you are playing THE DAILY — not your own world. Nothing below about keeping, buying or remembering applies here.'
-                : 'RIGHT NOW you are playing A SHARED RUN — not your own world. Nothing below about keeping, buying or remembering applies here.'
-              : 'RIGHT NOW you are playing YOUR OWN WORLD — everything below applies to the run you are in.',
-            // THREE worlds, not one (2026-08-21): slots shipped 2026-08-19 and
-            // this sentence never followed. The front door says "WORLD 1 OF
-            // 3" three lines from where a stranger reads this.
-            'The plain link opens YOUR world — one of three this device keeps, remembered between runs and played with everything you have bought and found.',
-            'A link with a seed in it is somebody else’s run — the same world, but no shop upgrades and no perk, and nothing you do there is kept.',
-            // The third mode was missing entirely (2026-08-21). The daily is
-            // a button on the front door and a whole tab in the hall of
-            // fame, and the only place the manual described it was the MENU
-            // tab — visible only while you were already inside one.
-            'THE DAILY is one world everybody gets, the same for that date on every phone. Played plain like a shared run; your tries are counted and your own world is untouched.',
-            'SHARE on the end screen makes such a link from your own run, so “beat my run” is always a fair fight.',
+                ? 'RIGHT NOW: THE DAILY. Nothing below about keeping or buying applies here.'
+                : 'RIGHT NOW: A SHARED RUN. Nothing below about keeping or buying applies here.'
+              : 'RIGHT NOW: YOUR OWN WORLD — everything in this manual applies.',
+          ],
+          detail: [
+            'YOUR WORLD — one of three this device keeps. Remembered between runs, played with everything you have bought and found.',
+            'A SHARED RUN — a link with a seed in it. Somebody else’s world, played plain: no upgrades, no perk, nothing kept.',
+            'THE DAILY — one world everybody gets for that date. Played plain, your tries counted, your own world untouched.',
+            'SHARE, on the end screen, turns your run into such a link.',
           ],
         },
       ],
@@ -1978,34 +1986,25 @@ export class Game {
     const colourPowers =
       t.greenCrowdBonus + t.yellowCompanyBonus + t.blueTideEvery > 0 || t.redAshMatches;
 
-    // Reordered 2026-08-18 (Marc: "less sections, more info per words read"):
-    // six tabs and nineteen sections became four and thirteen. Nothing was
-    // deleted — sections that said one thing each were merged into sections
-    // that say one SUBJECT each, and the arithmetic stayed in its folds.
-    // The NUMBERS folds were pruned on Marc's 2026-08-19 ruling ("only the
-    // relevant real ones that matter and are numbers, otherwise prose"): a
-    // fold keeps only numbers that price a DECISION and have no on-screen
-    // referent — the cost curve, the depth step, the between-runs numbers,
-    // the spend prices a phone cannot hover for. Everything a button, a
-    // receipt or a tapped symbol already prices lives THERE, not here.
+    // Reordered 2026-08-18 (Marc: "less sections, more info per words read");
+    // rewritten shorter again 2026-08-27, when the split PLACE ▸ RIPEN ▸ POP
+    // replaced two long sections that each carried two subjects. One heading
+    // per thing you do, in the order you do it.
+    //
+    // The DETAILS folds (NUMBERS until 2026-08-27) keep only numbers that
+    // price a DECISION and have no on-screen referent — the cost curve, the
+    // depth step, the spend prices a phone cannot hover for. Everything a
+    // button, a receipt or a tapped symbol already prices lives THERE.
     const play: HelpTab = {
       id: 'play',
       label: 'PLAY',
       grows: grew('field', 'wall', 'cache', 'site', 'territory', 'shrine'),
       sections: [
         {
-          title: 'PLACE AND RIPEN',
+          title: 'PLACE',
           lines: [
-            'Tap a card, then tap a hex with a glowing edge. A tile must touch something already built, and the faint number is exactly what it will be worth there — a promise, not an estimate.',
-            // "None of them match" is false under the shipped `redAshMatches`
-            // (2026-08-21) — the same sentence in THE COLOURS gets it right,
-            // and this one is the copy a stranger reads first.
-            t.redAshMatches
-              ? 'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround, and only ASH counts stone as a match.'
-              : 'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it. Stone, walls and the map’s edge all surround; none of them match.',
-            t.singlePayout
-              ? 'Tiles are the only thing keeping you alive, and every placement spends them — so what you decide is WHERE and WHEN, never which button.'
-              : 'Tiles keep you going; points are the score. You POP for one or the other, never both.',
+            'Every tile must touch what you have already built — that is what the glowing edges mark.',
+            'The faint number is exactly what the tile pays there. A promise, not an estimate.',
           ],
           detail: [
             t.costGrace > 0
@@ -2015,69 +2014,65 @@ export class Game {
           ],
         },
         {
+          title: 'RIPEN',
+          lines: [
+            'Surrounded on all six sides, a tile RIPENS and shows its WORTH: how many neighbours match it.',
+            // "None of them match" is false under the shipped `redAshMatches`
+            // (2026-08-21) — the same sentence in THE COLOURS gets it right,
+            // and this one is the copy a stranger reads first.
+            t.redAshMatches
+              ? 'Stone, walls and the map’s edge all surround. Only ASH counts stone as a match.'
+              : 'Stone, walls and the map’s edge all surround; none of them match.',
+          ],
+        },
+        {
           title: 'POP',
           lines: [
             // POCKET is the manual's most-used noun and was never defined
-            // (2026-08-21) — used from here on as if already known, and only
-            // ever printed by the tapped-pocket note, which you have to have
-            // already found. One clause, at first use.
-            'A POCKET is a ripe tile and every ripe tile touching it — they pop together, as one.',
-            'Tap any ripe tile to price its pocket — the board outlines it and the buttons show what it pays. The biggest pocket is priced by default.',
-            'Popped tiles turn to STONE: still surrounds, never matches. Every pop makes that ground poorer, which is the pressure to keep moving.',
-            // The timing decision, stated as its two sides (Marc, 2026-08-20:
+            // (2026-08-21) — used from here on as if already known.
+            'A POCKET is a ripe tile and every ripe tile touching it. They pop together, as one.',
+            'Tap any ripe tile to price its pocket. The buttons show what it pays; the biggest is priced by default.',
+            'Popped tiles turn to STONE: still surrounds, never matches. Every pop makes that ground poorer.',
+            // The timing decision, as its two sides (Marc, 2026-08-20:
             // "explain why to pop now or why to wait to pop too") — the
             // now-side only where the luck and steering dials are live.
+            'WAIT and it pays more: every tile added raises its neighbours’ worth.',
             ...(t.luckPerPop > 0 && t.colourBiasDraws > 0
               ? [
-                  'Why pop NOW: luck and steering. Luck arrives mostly per pop — many small pops out-earn one monster — and every pop tilts your next draws toward its own colour, so cashing a colour is how you draw more of it.',
+                  'POP NOW for luck and steering: luck arrives mostly per pop, and each pop tilts your next draws toward its own colour.',
                 ]
               : []),
-            'Why WAIT: tiles and score. Every tile added to a pocket raises its neighbours’ worth, so a big pop pays more than the same tiles popped piecemeal.',
             t.runLength > 0
               ? 'Wait too long and the expedition ends around your unfinished pocket.'
-              : 'But wait too long and you can die broke with a fortune still in the ground.',
+              : 'Wait too long and you die broke, with a fortune still in the ground.',
           ],
           detail: [
-            // What a pop PAYS is printed on the buttons and said again by the
-            // receipt every pop leaves — the fold keeps only the numbers a
-            // player steers a run by, not the arithmetic the game already
-            // shows at the moment it happens.
             // Names the SIZE BONUS before using it (2026-08-21) — the term was
-            // used here and two lines down as if defined somewhere, and it
-            // never was.
-            `It scores the pocket’s summed worth × its SIZE BONUS — one per tile in the pocket — × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`,
+            // used as if defined somewhere, and it never was.
+            `A pop scores the pocket’s summed worth × its SIZE BONUS — one per tile in the pocket — × the distance multiplier, which rises by 1 every ${t.distanceStep} hexes from home.`,
             ...(t.harvestSizeCap > 0
               ? [
-                  `The size bonus stops growing past ${t.harvestSizeCap} tiles — a bigger pocket pays more worth but no more multiplier.`,
+                  `The size bonus stops growing past ${t.harvestSizeCap} tiles: a bigger pocket pays more worth, but no more multiplier.`,
                 ]
               : []),
           ],
         },
         // TREASURE, out of the fold (2026-08-21). It is a THIRD thing a
-        // pocket can be spent on — a decision, not an arithmetic footnote —
-        // and it had no card, no toast, and a button that never says the
-        // word (it reads "TAKE 1 UNIQUE"). A fold is where numbers go, not
-        // where a choice is introduced.
-        // Gated on the STASH too (2026-08-21), because `treasureFor` is:
-        // OPEN HAND sets `holdSlots` to 0, and a treasure with nowhere to
-        // land is refused outright. The manual was promising a button that
-        // the perk had already taken away.
+        // pocket can be spent on — a decision, not an arithmetic footnote.
+        // Gated on the STASH too, because `treasureFor` is: OPEN HAND sets
+        // `holdSlots` to 0, and a treasure with nowhere to land is refused.
         ...(t.treasureNeed > 0 && t.holdSlots > 0
           ? [
               {
                 // The second half of the title only where SACRIFICE exists —
-                // a detour's tuning zeroes `burnRelics` (2026-08-26), and a
-                // heading naming a button the mode does not have is the
-                // manual describing an economy it is not playing.
-                title: t.burnRelics > 0 && show('relic') ? 'TREASURE, AND SACRIFICE' : 'TREASURE',
+                // a detour's tuning zeroes `burnRelics` (2026-08-26).
+                title: t.burnRelics > 0 && show('relic') ? 'TREASURE AND SACRIFICE' : 'TREASURE',
                 lines: [
-                  `A pocket of ${t.treasureNeed}+ can be taken as TREASURE instead: a MAGIC tile straight into your stash, or a UNIQUE one from ${t.treasureUnique}+.`,
-                  'You give up the tiles and the score for it — that is the price of choosing a rare tile instead of waiting for one to be dealt.',
+                  `Instead of popping, a pocket of ${t.treasureNeed}+ can be taken as TREASURE: a MAGIC tile into your stash, or a UNIQUE one from ${t.treasureUnique}+.`,
                   ...(t.burnRelics > 0 && show('relic')
-                    ? [
-                        'SACRIFICE spends a pocket the other way: no tiles, no score, relics for the shop. Both buttons destroy the pocket, so read them before you tap.',
-                      ]
+                    ? ['SACRIFICE spends it a third way: no tiles, no score, relics for the shop.']
                     : []),
+                  'Every one of these destroys the pocket. Read the buttons before you tap.',
                 ],
               },
             ]
@@ -2086,12 +2081,11 @@ export class Game {
           ? [
               {
                 title: 'THE COLOURS',
-                lines: ['Every card is one of these four, and each one scores its own way.'],
+                lines: ['Four grounds, four ways to score.'],
                 // The manual's counterpart to the four-grounds card, wearing
-                // the same rows since 2026-08-27 — it was four bare sentences
-                // about colour with no colour anywhere on them. Name, hue AND
-                // symbol, the draft card's own three channels, so no single
-                // one of them has to carry the fact.
+                // the same rows since 2026-08-27 — name, hue AND symbol, the
+                // draft card's own three channels, so no single one of them
+                // has to carry the fact.
                 rows: COLOURS.map((colour) => ({
                   colour,
                   text: `${COLOUR_MARK[colour]} ${COLOUR_HELP[colour](name(colour))}`,
@@ -2111,46 +2105,31 @@ export class Game {
           : []),
         {
           title: 'THE WORLD',
-          // Each destination kind earns its line when it is first CLAIMED —
+          // Each destination kind earns its row when it is first CLAIMED —
           // its claim note carries the same fact at the moment it happens —
           // and the hidden-find tease stays always: the mystery is the design.
-          // Site pay, bounty numbers and the territory radius left the fold
-          // for the places that already price them where they sit: the claim
-          // notes, and a tap on the symbol itself.
           lines: [
-            'The plane only exists where you have grown it — every placement reveals the ground around itself.',
+            'The plane exists only where you have grown it. Every placement reveals the ground around itself.',
             ...(show('field')
               ? [
-                  // "Dotted", the word the toast uses and the word the board draws
-                  // (2026-08-21) — the manual said "Textured" and nothing on
-                  // screen ever says that.
-                  'Dotted ground is a NATIVE FIELD — a tile of that colour placed there gains one extra match. Whole regions of one colour are BIOMES: chasing a colour means walking to where it grows.',
+                  // "Dotted", the word the toast uses and the word the board
+                  // draws (2026-08-21).
+                  'Dotted ground is a NATIVE FIELD: a tile of that colour there gains one extra match. Whole regions of one colour are BIOMES.',
                 ]
               : []),
             ...(show('wall')
               ? [
                   t.wallBuildCostMult > 0
-                    ? 'Walls surround but never match — and your perk lets you build ON them, at a price.'
-                    : 'Walls cannot be built on. They surround but never match, and a frontier that is all wall can end a run.',
+                    ? 'Walls surround but never match — and your perk lets you build on them, at a price.'
+                    : 'Walls surround but never match, and cannot be built on. A frontier that is all wall ends a run.',
                 ]
               : []),
-            'The glows beyond your ground are destinations, shining through land you have not reached. Touch one with a tile to claim it; each pays once.',
-            ...(t.destinationRampBlocks > 0
-              ? [
-                  'The near world is deliberately sparse. The deeper you push, the thicker the lights — and the richer the caches.',
-                ]
-              : []),
-            ...(t.findEvery > 0 && t.findChance > 0
-              ? [
-                  'And something else is hidden out there, deep and unmarked. It never glows. You stumble onto it, or you never know it was there.',
-                ]
-              : []),
+            'The glows beyond your ground are destinations. Touch one with a tile to claim it; each pays once.',
           ],
           // The destinations as a marked LIST (2026-08-27), each wearing the
           // glyph the board actually draws for it — read from `LANDMARK_GLYPH`
-          // rather than typed in as literals, which is how `✚` came to need a
-          // hand-edit when the cache mark changed on 2026-08-26. One registry,
-          // one place to change it.
+          // rather than typed in as literals. One registry, one place to
+          // change it.
           rows: [
             ...(show('cache')
               ? [
@@ -2158,20 +2137,19 @@ export class Game {
                     glyph: LANDMARK_GLYPH.cache,
                     text:
                       t.cachePaysPerRing > 0
-                        ? `CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} more per ring out. Caches and sites re-arm every run, so ground you know stays worth walking.`
-                        : `CACHE — ${t.cachePays} tiles on the spot. Caches and sites re-arm every run, so ground you know stays worth walking.`,
+                        ? `CACHE — ${t.cachePays} tiles on the spot, +${t.cachePaysPerRing} per ring out.`
+                        : `CACHE — ${t.cachePays} tiles on the spot.`,
                   },
                 ]
               : []),
             // The bounty's RULE, not just its name (2026-08-21). It lived
-            // only in the claim toast — five seconds, once, on the run you
-            // happened to claim your first site — and in the miss-note. A
-            // player who looked away never learned what a bounty asks for.
+            // only in the claim toast — five seconds, once — and in the
+            // miss-note. A player who looked away never learned it.
             ...(show('site')
               ? [
                   {
                     glyph: LANDMARK_GLYPH.site,
-                    text: `SITE — points on the spot, and it opens a BOUNTY: pop a pocket of ${t.questNeed}+ tiles within ${t.questRadius} hexes of that star and the pop scores ×${t.questBonus}. One at a time; a new site replaces it.`,
+                    text: `SITE — points, and a BOUNTY: pop ${t.questNeed}+ tiles within ${t.questRadius} hexes of the star and that pop scores ×${t.questBonus}.`,
                   },
                 ]
               : []),
@@ -2192,38 +2170,46 @@ export class Game {
                 ]
               : []),
           ],
-          ...(t.findSense > 0
-            ? {
-                detail: [
-                  `Hidden things shimmer faintly when your ground grows within ${t.findSense} hexes of them.`,
-                ],
-              }
-            : {}),
+          detail: [
+            ...(show('cache') || show('site')
+              ? ['Caches and sites re-arm every run, so ground you know stays worth walking.']
+              : []),
+            ...(t.destinationRampBlocks > 0
+              ? [
+                  'The near world is deliberately sparse. The deeper you push, the thicker the lights and the richer the caches.',
+                ]
+              : []),
+            ...(t.findEvery > 0 && t.findChance > 0
+              ? [
+                  'Something else is hidden out there, deep and unmarked. It never glows — you stumble onto it, or you never know it was there.',
+                ]
+              : []),
+            ...(t.findSense > 0
+              ? [
+                  `Your perk makes hidden things shimmer faintly once your ground grows within ${t.findSense} hexes of them.`,
+                ]
+              : []),
+          ],
         },
         {
           title: 'THE SCREEN',
-          // The fold dissolved (2026-08-19): nothing here was a number to
-          // steer by — the score-off-screen line matters to everyone and
-          // moved up; the hint-line anatomy described chrome that already
-          // explains itself. The stat line names LUCK only once luck exists.
           lines: [
-            // Every stat on the row, including the two it used to skip
-            // (2026-08-21): LEFT was omitted entirely, and REACH was called
-            // "how far you have built" without saying that it also SCORES at
-            // the end — a payout row on the end screen nothing prepares you
-            // for. Built from the same conditions the row itself uses, so a
-            // stat that is not on screen is not described.
+            // Every stat on the row, built from the same conditions the row
+            // itself uses — a stat that is not on screen is not described.
             [
               'TILES keeps you alive',
               ...(t.hidePoints ? [] : ['POINTS is your score so far']),
               ...(show('luck') ? ['LUCK is what pops pay and the shop spends'] : []),
               t.endReachBonus > 0
-                ? 'REACH is how far you have built — and it pays at the end'
+                ? 'REACH is how far you have built, and it pays at the end'
                 : 'REACH is how far you have built',
               'COST is the next placement',
               ...(t.runLength > 0 ? ['LEFT is the placements remaining'] : []),
             ].join(' · ') + '.',
-            'Zoom with + and −, pinch, or drag to pan. FIT shows everything. Tapping any symbol on the map — or any stat up top — explains it where it sits.',
+            'Tap anything — a stat, a symbol on the map, a card — and it explains itself where it sits.',
+            'Pinch or drag to move. FIT shows everything; HERE jumps back to your last tile.',
+          ],
+          detail: [
             // The lens was taught by one toast, once ever, and appeared
             // nowhere a player could look it up (2026-08-21).
             'Tap remembered ground in the fog and every known patch of that colour lights at once — the cheapest way to see where a colour grows.',
@@ -2244,31 +2230,35 @@ export class Game {
       grows: grew('rare', 'luck'),
       sections: [
         // Rare tiles earn their section when the first one reaches the hand —
-        // the moment's own card says the same words. The old fold dissolved
-        // into prose (no number in it priced anything); the OPEN HAND perk
-        // line moved to WHAT YOU CARRY, where every worn perk speaks now.
+        // the moment's own card says the same words.
         ...(show('rare')
           ? [
               {
-                title: 'RARE TILES AND THE STASH',
+                title: 'RARE TILES',
                 lines: [
                   'MAGIC is wild: it matches every neighbour whatever the colour, and they match it back.',
                   'UNIQUE is wild and heavy: every match it makes counts DOUBLE, for both sides.',
-                  // "points" here meant the star's geometry, not the SCORE stat that
-                  // sits at the top of the screen (2026-08-21). Said as what it is.
-                  'The card says which it is, and a placed rare tile wears a star on the board so its power stays findable on a full map. A unique’s ground match counts double too.',
-                  ...(t.holdSlots > 0
-                    ? [
-                        // Reads the world's OWN slot count (2026-08-21), so
-                        // the sentence follows the shrine that grants the
-                        // second one instead of describing a stash nobody
-                        // has any more.
-                        t.holdSlots > 1
-                          ? `The dashed HOLD cards under your hand keep ${t.holdSlots} tiles for later. Tap one to stash the selected card; tap a held card to trade that tile back.`
-                          : 'The dashed HOLD card under your hand keeps one tile for later. Tap to stash the selected card; tap again to trade it back.',
-                        'Held tiles survive rerolls — save a rare tile, or the right colour, for the moment it is worth something.',
-                      ]
-                    : []),
+                  // "points" here meant the star's geometry, not the SCORE
+                  // stat at the top of the screen (2026-08-21).
+                  'A placed rare tile wears a star, so its power stays findable on a full map.',
+                ],
+              },
+            ]
+          : []),
+        // The stash is its own section since 2026-08-27, and gated on the
+        // SLOTS rather than on rare tiles: the hold cards are under the hand
+        // from the first frame, whatever the ledger has met, and the lines
+        // that explain them were riding inside RARE TILES where a player
+        // looking at a dashed card would never think to look.
+        ...(t.holdSlots > 0
+          ? [
+              {
+                title: 'THE STASH',
+                lines: [
+                  t.holdSlots > 1
+                    ? `The dashed HOLD cards keep ${t.holdSlots} tiles for later. Tap one to stash the selected card; tap a held card to trade that tile back.`
+                    : 'The dashed HOLD card keeps one tile for later. Tap to stash the selected card; tap it again to trade that tile back.',
+                  'Held tiles survive a redraw — save a rare, or the colour a pocket is waiting for.',
                 ],
               },
             ]
@@ -2276,11 +2266,10 @@ export class Game {
         ...(t.luckRerollCost > 0 && show('luck')
           ? [
               {
-                title: 'LUCK IS A PURSE',
+                title: 'THE LUCK PURSE',
                 lines: [
                   'Luck buys nothing by itself. You spend it, on the row under your hand.',
-                  `Every pop pays about ${t.luckPerPop} luck flat plus a little per tile — so many small pops earn far more luck than one monster, while the monster wins on tiles.`,
-                  'So popping early is about affording what you need next, not about odds.',
+                  `Every pop pays about ${t.luckPerPop} luck flat plus a little per tile, so many small pops earn far more luck than one monster.`,
                 ],
                 detail: [
                   `REDRAW (${t.luckRerollCost}) — throw this hand away for a new one.`,
@@ -2288,8 +2277,6 @@ export class Game {
                   `FORGE (${t.luckForgeCost}) — turn the selected card UNIQUE. The only way to have a rare exactly when you want one.`,
                   ...(t.titheRate > 0 && t.titheMin > 0
                     ? [
-                        // Cut from ~44 words to two clauses (2026-08-21): the middle one
-                        // said the same thing twice, and "a trap" was doing no work.
                         `SACRIFICE LUCK — turn your whole purse into relics now, at ${Math.round(t.titheRate * 100)}%. Three times what unspent luck banks if you die on it. Needs ${t.titheMin} luck.`,
                       ]
                     : []),
@@ -2298,17 +2285,16 @@ export class Game {
             ]
           : []),
         // WHAT YOU CARRY (the 2026-08-19 debrief's fix): the worn perk, its
-        // own sentence, and where it changes — readable MID-RUN, in the one
-        // place a player already looks for answers, instead of a whole run
-        // away behind the end screen. Absent while nothing is worn; absent
-        // on a replay, which plays the plain economy.
+        // own sentence, readable MID-RUN instead of a whole run away behind
+        // the end screen. Absent while nothing is worn; absent on a replay,
+        // which plays the plain economy.
         ...(wornPerk !== undefined
           ? [
               {
                 title: 'WHAT YOU CARRY',
                 lines: [
                   `${wornPerk.name} — ${wornPerk.note}`,
-                  'Found out in THIS world, and it stays with this world — a perk belongs to the map that hid it, not to the device. One is worn at a time; THE SHOP, on the end screen, is where it changes.',
+                  'A perk belongs to the world that hid it, not to the device. One is worn at a time; THE SHOP is where it changes.',
                 ],
               },
             ]
@@ -2322,81 +2308,68 @@ export class Game {
       grows: t.burnRelics > 0 && grew('relic'),
       sections: [
         // Relics earn their section with the first relic — the moment's card
-        // (or the ended transition's) says the same words. The fold keeps the
-        // two numbers weighed BETWEEN runs; what the shop sells is read off
-        // the shop itself, and the shelf's mystery line already lives above.
+        // says the same words. The fold keeps the numbers weighed BETWEEN
+        // runs; what the shop sells is read off the shop itself.
         ...(t.burnRelics > 0 && show('relic')
           ? [
               {
                 title: 'RELICS AND THE SHOP',
                 lines: [
-                  'Relics are not points. Points are what a run is worth; relics buy the NEXT run — and both come out of the same pockets, so every ripe pocket asks which game you are playing.',
-                  'SACRIFICE a pocket and it pays relics and nothing else — no tiles to live on, no score.',
-                  'Spend them in the SHOP — behind its own button on the end screen, or from the front door between runs. Relics themselves are yours on every world; what you BUY with them belongs to the world you bought it in.',
-                  'PERKS are not for sale. They are FOUND — hidden somewhere out in the world — and they belong to THAT world, exactly like what you buy. You may wear one at a time.',
+                  'Points are what a run is worth. Relics buy the NEXT one — and both come out of the same pockets.',
+                  'Spend them in THE SHOP: on the end screen, or from the front door between runs.',
+                  'Relics are yours on every world; what you BUY with them stays in the world you bought it in.',
+                  'PERKS are not for sale. They are FOUND, out in the world, and they belong to that world. One is worn at a time.',
                 ],
                 detail: [
-                  // Split, de-jargoned and pluralised (2026-08-21). It was one ~50
-                  // word sentence carrying three ideas, called the roguelite
-                  // layer "the meta", used "Reborn" as a proper noun nothing
-                  // defines — and printed "1 relics per tile", because
-                  // burnRelics is 1.
-                  `A sacrifice pays ${t.burnRelics} relic${t.burnRelics === 1 ? '' : 's'} for every tile in the pocket.`,
+                  `A SACRIFICE pays ${t.burnRelics} relic${t.burnRelics === 1 ? '' : 's'} for every tile in the pocket.`,
                   `Reaching somewhere NEW pays ${t.claimRelics} on its own — the half that costs you nothing.`,
-                  'Ground that has come back (a shrine you woke, or a find you took, returning later as a cache or a site) pays its tiles or its points, but never relics twice.',
+                  'Ground that has come back — a shrine you woke, a find you took — pays its tiles or its points, but never relics twice.',
                   // Says what the number MEANS, not the opposite of it
-                  // (2026-08-21). This read "so hoarding luck is a real
-                  // alternative to spending it" — at 5% it is not, and the
-                  // purse card three sections away already said the true
-                  // thing ("a full purse you die on is mostly gone. Spend
-                  // it."). Two sentences, one number, opposite advice.
+                  // (2026-08-21): at 5%, hoarding is not an alternative.
                   `When a run ends, only ${Math.round(t.luckToRelics * 100)}% of the luck still in your purse comes home — so luck is for spending, not for saving.`,
                 ],
               },
             ]
           : []),
         {
-          title: 'HOW IT ENDS, AND WHAT REMAINS',
+          title: 'HOW A RUN ENDS',
           lines: [
-            'Out of tiles with nothing ripe to POP: broke. Walking to caches is how you avoid it. A frontier that is all wall: walled in — rare, and worth avoiding on the way past.',
+            'Out of tiles with nothing ripe to POP: broke. Walking to caches is how you avoid it.',
+            'A frontier that is all wall: walled in. Rare, and worth avoiding on the way past.',
             ...(t.runLength > 0
               ? [
                   'LEFT reaches zero: the expedition is over. Anything already ripe can still be POPPED.',
                 ]
               : []),
-            // What a world IS, and the ways out of one, live in the MENU tab
-            // — with this world's own numbers beside them (2026-08-20, Marc:
-            // "don't repeat this info in other help tabs"). Three lines that
-            // used to restate it from memory are gone; the pointer is not a
-            // restatement, and it is what makes the tab findable.
+          ],
+        },
+        {
+          title: 'WHAT REMAINS',
+          // What a world IS, and the ways out of one, live in the MENU tab
+          // (2026-08-20, Marc: "don't repeat this info in other help tabs").
+          // The pointer is not a restatement, and it is what makes the tab
+          // findable.
+          lines: [
             ...(this.#detour
               ? [
-                  'Nothing here is remembered: the ground you reveal and the territories you claim last exactly as long as this run does.',
+                  'Nothing. The ground you reveal and the territories you claim last exactly as long as this run.',
                 ]
               : [
-                  'Ground you have revealed stays drawn faint on later runs, and territories you claim greet you already yours.',
+                  'Ground you revealed stays drawn faint on later runs, and territories you claimed greet you already yours.',
                 ]),
-            // THE SURVEY had no manual presence at all (2026-08-21): five
-            // goals render in the MENU tab with nothing saying what they are
-            // or that they pay. Gated on the same ledger the shrine line
-            // uses, so a stranger who has met nothing is not shown a list of
-            // locked things.
             ...(!this.#detour && (show('shrine') || show('territory'))
               ? [
-                  'THE SURVEY is five standing goals for the world itself — reach, ground known, territories held. Each pays relics once, and the MENU tab lists which are met.',
+                  'THE SURVEY is five standing goals for the world itself — reach, ground known, territories held. Each pays relics once.',
                 ]
               : []),
             ...(this.#hooks.crossing !== undefined && show('shrine')
               ? [
-                  'Once every shrine unlock is woken, any further shrine is a crossing: step through to a NEW WORLD, carrying relics for what you leave behind.',
-                  // Camps were a shipped system named nowhere but the shrine
-                  // ledger and a front-door button (2026-08-21).
-                  'A woken CAMP shrine adds a way to begin: later runs can start at your farthest territory instead of at the beginning. The climb restarts from there — reach is measured from wherever you wake.',
+                  'Once every shrine unlock is woken, the next shrine is a crossing: step through to a NEW WORLD, carrying relics for what you leave behind.',
                 ]
               : []),
             this.#detour
-              ? 'The MENU tab, at the top of this panel, says which game this is and holds every way out of it — including the way back to your own world.'
-              : 'The MENU tab, at the top of this panel, holds your world’s own numbers and every way out of a run.',
+              ? 'MENU, at the top of this panel, says which game this is and holds every way out of it.'
+              : 'MENU, at the top of this panel, holds your world’s own numbers, its survey, and every way out of a run.',
           ],
           detail: [
             ...(t.territoryTiles > 0
@@ -2407,6 +2380,13 @@ export class Game {
             ...(startingPerk(t, this.#state.claimed.length) > 0
               ? [
                   `This run started with +${startingPerk(t, this.#state.claimed.length)} tiles from territories held.`,
+                ]
+              : []),
+            // Camps were a shipped system named nowhere but the shrine ledger
+            // and a front-door button (2026-08-21).
+            ...(this.#hooks.crossing !== undefined && show('shrine')
+              ? [
+                  'A woken CAMP shrine adds a way to begin: later runs can start at your farthest territory instead of at the beginning, and reach is measured from wherever you wake.',
                 ]
               : []),
           ],
@@ -2451,14 +2431,16 @@ export class Game {
             systems.length > 0
               ? `In play: ${systems.join(' · ')}.`
               : 'In play: nothing. This is the smallest game there is.',
+          ],
+          detail: [
             // The footer stamp that used to say this at all times moved
             // behind ?ff=debug.overlay (Stage 2, 2026-08-18) — this line is
-            // what keeps "which build is this" answerable without it.
+            // what keeps "which build is this" answerable without it. Behind
+            // the fold since 2026-08-27: it is the first thing a bug report
+            // needs and the last thing a player does.
             this.#hooks.buildSha === undefined
               ? 'Running an unlabelled build.'
               : `Running build ${this.#hooks.buildSha}.`,
-          ],
-          detail: [
             `Start with ${t.startingTiles} tiles · a placement costs ${t.baseCost}` +
               (t.costGrace > 0 ? ` for ${t.costGrace} placements, then` : ',') +
               ` +1 per ${t.costRisesEvery} placed` +

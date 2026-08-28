@@ -569,11 +569,10 @@ function mountSettings(
   // twice in the first two lines reads as a bug.
   const intro = document.createElement('p');
   intro.textContent =
-    'Sticky on this device. The switches sit folded under DEVELOPER, below — ' +
-    'SOUND among them — and the address bar does the same job ' +
-    '(?ff=ui.sound, ?ff=debug.overlay), each note carrying the decision ' +
-    'that set its default. RESTART — in the ? panel’s MENU tab — is how a ' +
-    'changed one actually takes effect; it never touches the run in progress.';
+    'Sticky on this device. The switches — SOUND among them — are folded ' +
+    'under DEVELOPER below, each with the decision that set its default. A ' +
+    'changed switch never touches the run in progress; RESTART, in the ? ' +
+    'panel’s MENU tab, is what makes it count.';
 
   // The privacy fact (2026-08-20, launch polish): it was true since Session
   // 0 and written only in a README no player ever sees. One quiet line,
@@ -581,12 +580,11 @@ function mountSettings(
   const privacy = document.createElement('p');
   privacy.className = 'flag-note';
   privacy.textContent =
-    'Nothing leaves your phone: no account, no analytics, no server — every ' +
-    'run, record and setting lives in this device’s own storage, and ' +
-    'sharing only ever sends what you see in the share sheet. The one ' +
-    'exception is a crash report, and only when you tap SEND REPORT ' +
-    'yourself — it carries the error, the build and your browser’s name, ' +
-    'and nothing that says who you are.';
+    'Nothing leaves your phone: no account, no analytics, no server. Every ' +
+    'run, record and setting lives in this device’s own storage, and sharing ' +
+    'sends only what you see in the share sheet. The one exception is a crash ' +
+    'report, and only if you tap SEND REPORT — it carries the error, the ' +
+    'build and your browser’s name, nothing that says who you are.';
 
   const appearance = buildAppearance(live.theme);
 
@@ -701,6 +699,14 @@ function mountSettings(
   // and this sentence did not follow it: shop LEVELS are a world's own now,
   // so they stay behind with the map. Saying otherwise here was a promise
   // made at the exact moment it was about to be broken.
+  //
+  // It happened AGAIN and was caught on 2026-08-27, by the copy pass rather
+  // than by a test: PERKS became a world's own on 2026-08-26 (`WorldMemory
+  // .perks`, and `dropWorld` leaves the whole world behind), and this button
+  // still promised they travelled — on the one screen where the promise is
+  // read a second before it is tested. Only relics travel. The lesson is the
+  // same one twice: the two-tap label is a LEDGER of what survives, so it has
+  // to be re-read every time the storage split moves.
   // The paid way out is the crossing — a fully-awake world's shrines offer it
   // with a relic dowry; this button is the unpaid anytime version.
   let armed = false;
@@ -714,7 +720,7 @@ function mountSettings(
       armed = true;
       abandon.classList.add('armed');
       abandon.textContent =
-        'TAP AGAIN — the map, territories, shrines and everything you bought here stay behind; your relics and perks travel';
+        'TAP AGAIN — only relics travel. The map, its territories, shrines, shop levels and the perks you found here stay behind.';
       return;
     }
     live.abandon();
@@ -941,7 +947,7 @@ function mountSettings(
   toMenuNote.className = 'flag-note';
   toMenuNote.textContent =
     live.mode.kind === 'world'
-      ? 'Your board is kept — RESUME picks it up exactly where it is.'
+      ? 'Your board is kept — RESUME picks it up where it is.'
       : 'This board is kept too — the door offers it back until you finish it.';
 
   // The door into SETTINGS (2026-08-25). The switchboard used to be printed
@@ -962,6 +968,31 @@ function mountSettings(
   // ledger, the survey or NEW WORLD: none of them are about the game being
   // played, and printing them here is what made the two modes feel like one
   // tangled thing.
+
+  /**
+   * The world's own ledger, folded — the manual's `details.help-more` worn by
+   * the one tab the manual does not build itself, so the two halves of the
+   * `?` panel keep one grammar and one stylesheet rule.
+   *
+   * The tap has to be swallowed for the same reason the manual's folds do it:
+   * this panel closes on any tap, so a summary that let its tap through would
+   * open the fold and close the panel in the same gesture.
+   */
+  const worldDetails = (...parts: HTMLElement[]): HTMLElement => {
+    const fold = document.createElement('details');
+    fold.className = 'help-more';
+    fold.id = 'world-details';
+    const summary = document.createElement('summary');
+    summary.textContent = 'DETAILS';
+    on(summary, 'click', (event) => {
+      event.stopPropagation();
+    });
+    on(fold, 'click', (event) => {
+      event.stopPropagation();
+    });
+    fold.replaceChildren(summary, ...parts);
+    return fold;
+  };
   const menuTitle = document.createElement('p');
   menuTitle.className = 'help-title';
   const menuNote = document.createElement('p');
@@ -970,27 +1001,36 @@ function mountSettings(
   const menuParts: HTMLElement[] = [];
   if (live.mode.kind === 'world') {
     menuTitle.textContent = `YOUR WORLD · ${live.slot} OF 3`;
-    menuNote.textContent =
-      'Your own map, kept between runs. Relics travel to every world; what you buy with them — and every perk you find — stays here.';
+    menuNote.textContent = 'Your own map, kept between runs.';
+    // The EXITS first, the world's own ledger folded under them (2026-08-27,
+    // Marc: "if people want more detail or numbers, they click on it").
+    // MENU took the tab bar's first seat because "how do I get back" is the
+    // question it answers — and then printed eight facts, six unlocks, five
+    // goals and a perk count above the button that answers it. On a phone
+    // the way out of a run was two thumb-scrolls below the tab that exists
+    // to hold it. Everything still here, one tap down, in the manual's own
+    // DETAILS grammar.
     menuParts.push(
       menuTitle,
       menuNote,
-      atlasGrid,
-      ledger,
-      shrineHint,
-      perksLine,
-      ...(surveyStarted ? [surveyHeading, survey] : []),
       toMenu,
       toMenuNote,
       toSettings,
       restart,
+      worldDetails(
+        atlasGrid,
+        ledger,
+        shrineHint,
+        perksLine,
+        ...(surveyStarted ? [surveyHeading, survey] : []),
+      ),
       abandon,
     );
   } else {
     if (live.mode.kind === 'daily') {
       menuTitle.textContent = `THE DAILY · ${live.mode.name}`;
       menuNote.textContent =
-        'One world everybody gets today, played plain — no upgrades, no perk, no shrines. Nothing here touches your own world, and nothing it earns is banked.';
+        'One world everybody gets today, played plain. Nothing here is banked, and your own world is untouched.';
       const badge = document.createElement('p');
       badge.className = 'flag-note';
       badge.textContent = live.mode.badge;
@@ -1107,8 +1147,8 @@ function buildAppearance(current: Theme): HTMLElement {
   note.textContent =
     current.note +
     ' — AUTO follows this phone’s own light and contrast settings; the other ' +
-    'three ignore them. Sticky on this device, and applied on the spot: the ' +
-    'run in progress is saved and comes straight back.';
+    'three ignore them. Applied on the spot: the run is saved and comes ' +
+    'straight back.';
   // "Applied on the spot" became literally true on 2026-08-27 — it used to
   // describe a reload that took a blink and came back to the same board.
 

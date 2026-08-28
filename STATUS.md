@@ -4,7 +4,35 @@ What is DONE and VERIFIED, so future work starts from trust instead of
 re-checking. Updated at checkpoints only. The reasoning lives in `LOG.md`; the
 rules live in `CLAUDE.md`.
 
-Last checkpoint: **2026-08-27, later — the screen comes back, and the three
+Last checkpoint: **2026-08-27, later still — the manual says it in half the
+words, and NUMBERS becomes DETAILS.** Marc: "review the content of menu,
+start, play, hand, after ... be more concise and simple, straight to the
+point, less words. inside NUMBERS, change it for DETAILS ... you can still
+understand most without expanding anything." The rename was the design: half
+of what belongs behind a fold is a rule or an edge case rather than
+arithmetic, and a fold called NUMBERS is one nobody opens for a rule — so
+those things had stayed on the visible lines. Under the new contract the
+visible lines stand alone and everything else folds. **START** is three
+sections of three lines plus a WHICH GAME that names only the mode you are in;
+**PLAY** is PLACE ▸ RIPEN ▸ POP, one heading per thing you do; **HAND** gains
+THE STASH as its own section (gated on `holdSlots`, not on having met a rare —
+a fresh device had no HAND tab while the dashed HOLD card sat on screen);
+**AFTER** splits into HOW A RUN ENDS and WHAT REMAINS. **MENU** needed only
+reordering: it opened onto eight facts, six unlocks and five goals with the
+three ways OUT below all of it — exits first now, the world's ledger behind
+the same DETAILS fold, one screen with nothing scrolled. Visually: the summary
+is a full-width row with a `+`/`−` marker, a hairline sits above every
+section heading, and the manual header dropped the tagline the door had said a
+tap earlier. **One falsehood found by reading: NEW WORLD promised "relics and
+perks travel", and perks became the world's own on 2026-08-26** — the second
+time that label has outlived a storage split, on the one control that cannot
+be undone; both it and the WORLDS panel are fixed and an e2e test now pins the
+armed words. 822 tests, 28 e2e, typecheck/lint/format/build clean,
+screenshotted at 390×844 in torchlit and daylight. **NOT committed, NOT
+deployed, NOT played on a phone** — the deploy is Marc's call and the phone is
+still the gate. The one gate is still Session C.
+
+Previous checkpoint: **2026-08-27, later — the screen comes back, and the three
 owed audits are run.** Marc, from the phone: "we lost too much game space
 (screen with tiles) — one bottom bar of action and nothing more + tiles on
 top." The bottom was five stacked rows taking more height than the board; it

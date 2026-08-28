@@ -728,6 +728,19 @@ button.fame-run[aria-expanded='true'] {
   margin-top: 0;
 }
 
+/* One hairline per section (2026-08-27). The manual is a scan target, not a
+   read-through: four to seven headings a tab, each with two or three lines
+   under it, and nothing but 16px of air telling you where one subject ended
+   and the next began. The rule is the cheapest possible section break — it
+   costs no vertical space a phone notices and it makes the headings findable
+   with a thumb rather than with a re-read. Scoped to the manual's own bodies
+   so SETTINGS, which is rows rather than prose, is untouched. */
+#help-panel .help-panel-body .help-title:not(:first-child) {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--panel-edge, #3a4150);
+}
+
 .flag {
   margin-bottom: 12px;
 }
@@ -2427,15 +2440,28 @@ button.help-tab[data-on='true'] {
   color: var(--accent, #d7b45a);
 }
 
-/* The arithmetic, folded away. Short by default, complete on demand — the
-   manual should be readable in a minute and answerable in ten. */
+/* The rest, folded away. Short by default, complete on demand — the manual
+   should be readable in a minute and answerable in ten.
+
+   DETAILS since 2026-08-27, not NUMBERS: the fold carries rules, modes and
+   edge cases as well as arithmetic now, and it has a second host — the MENU
+   tab's own world ledger (`worldDetails` in session.ts) wears this exact
+   class so the two halves of the panel keep one grammar. */
 #help-panel .help-more {
   margin: -4px 0 14px;
 }
 
+/* A row, not a chip (2026-08-27). It was an inline-block the width of the
+   word, which on a phone is a small target in a column of full-width prose
+   and reads as a label rather than a control; the marker on the right is
+   what says "there is more behind this". The 44px hit area below is still
+   the floor — this just makes the visible box match it. */
 #help-panel .help-more > summary {
-  display: inline-block;
-  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid var(--panel-edge, #3a4150);
   border-radius: 3px;
   color: var(--ink-dim, #c3c9d6);
@@ -2443,6 +2469,20 @@ button.help-tab[data-on='true'] {
   font-size: 0.8125rem;
   letter-spacing: var(--label-tracking, 0.04em);
   cursor: pointer;
+  /* `display: flex` alone does not drop the native disclosure triangle: it
+     takes both spellings, because Safari still wants the pseudo-element and
+     everything else wants the property. */
+  list-style: none;
+}
+
+#help-panel .help-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+#help-panel .help-more > summary::after {
+  content: '+';
+  font-size: 1rem;
+  line-height: 1;
 }
 
 #help-panel .help-more[open] > summary {
@@ -2451,14 +2491,35 @@ button.help-tab[data-on='true'] {
   color: var(--accent, #d7b45a);
 }
 
-/* Folded numbers read as a footnote to the lines above them, not as more
-   manual: indented, quieter, and visibly attached to their section. */
+#help-panel .help-more[open] > summary::after {
+  content: '−';
+}
+
+/* Folded lines read as a footnote to the section above them, not as more
+   manual: indented, quieter, and visibly attached to what they explain. */
 #help-panel .help-more > p {
   margin: 0 0 6px 10px;
   padding-left: 8px;
   border-left: 1px solid var(--panel-edge, #3a4150);
   font-size: 0.92em;
   opacity: 0.85;
+}
+
+/* The MENU tab's fold is one row IN the column of exits, not a footnote
+   tucked under prose: it takes the column's width and its own air, instead of
+   the manual's full bleed and the −4px that would ride up onto RESTART. */
+#help-panel #world-details {
+  width: 100%;
+  max-width: var(--menu-col, 320px);
+  margin: 12px auto 4px;
+}
+
+/* It holds a grid and two ledgers rather than sentences, so the footnote
+   indent is given to them as a group instead of per-paragraph. */
+#help-panel #world-details > :not(summary) {
+  margin-left: 10px;
+  padding-left: 8px;
+  border-left: 1px solid var(--panel-edge, #3a4150);
 }
 
 /* The end screen is a SCREEN now that it carries the shop, so it scrolls in

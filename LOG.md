@@ -6685,3 +6685,76 @@ that no longer exists.
 
 **Judged by looking is Marc's:** the swatches at phone brightness, and whether
 half-of-FIT is the right amount of "a bit". **The one gate is still Session C.**
+
+---
+
+### Session 58 — the manual says it in half the words, and NUMBERS becomes DETAILS (2026-08-27)
+
+**Question:** can the five surfaces a player reads — MENU, START, PLAY, HAND,
+AFTER — be understood without expanding anything, with every number and every
+edge case one tap away instead of in the way?
+
+**Marc:** "review the content of menu, start, play, hand, after. be more
+concise and simple, straight to the point, less words. inside NUMBERS, change
+it for DETAILS and if people want more detail or numbers, they click on it,
+otherwise you can still understand most without expanding anything. Finally,
+revise menus headers and how the game is presented, explained, be thorough no
+cut corners. don't be afraid to change a lot visually and for the content."
+
+**Answer: yes, and the label was the design.** NUMBERS was narrower than the
+job it was doing. Half of what belongs behind a fold is a rule, a mode or an
+edge case rather than arithmetic, and a fold called NUMBERS is a fold nobody
+opens for a rule — so those things stayed on the visible lines and the visible
+lines grew. Renaming it DETAILS changed the CONTRACT: the visible lines have
+to stand alone, and anything a player can play without goes under. Everything
+below follows from applying that one rule to every section.
+
+**What changed, per tab**
+
+- **START** is three sections of three short lines — THE BOARD, YOUR TURN,
+  WHY — plus WHICH GAME, which now says only which of the three you are in
+  and folds the taxonomy of the other two. It was four sections, one of them
+  five long lines naming every mode. A stranger's first screen is not the
+  place to enumerate a taxonomy.
+- **PLAY** splits PLACE AND RIPEN / POP into **PLACE ▸ RIPEN ▸ POP** — one
+  heading per thing you do, in the order you do it. The cache/site "re-arm
+  every run" clause, the destination ramp, the hidden-find tease and the KEEN
+  NOSE range moved into THE WORLD's fold; the lens and the off-screen-score
+  note moved into THE SCREEN's.
+- **HAND** gains **THE STASH** as its own section, gated on `holdSlots`
+  rather than on having met a rare tile. The dashed HOLD card is under the
+  hand from the first frame and its explanation was riding inside RARE
+  TILES — so on a fresh device the HAND tab did not exist at all, while the
+  thing it explains was on screen. LUCK IS A PURSE is **THE LUCK PURSE**.
+- **AFTER** splits into **HOW A RUN ENDS** and **WHAT REMAINS**, and THIS
+  BUILD's build-sha line went under the fold: it is the first thing a bug
+  report needs and the last thing a player does.
+- **MENU** was the worst of them and needed no rewriting, only reordering: it
+  opened onto eight facts, six unlocks, five goals and a perk count, with the
+  three ways OUT of a run below all of it. On a phone the exits were two
+  thumb-scrolls under the tab that exists to hold them. Exits first now, the
+  whole world ledger behind the same DETAILS fold — one grammar across both
+  halves of the panel, and the tab fits one screen with nothing scrolled.
+
+**Visually:** the summary is a full-width row with a `+` ⇄ `−` marker rather
+than a word-width chip (it was a small target in a column of full-width prose,
+and read as a label, not a control); a hairline sits above every section
+heading, because the manual is a scan target and 16px of air was all that
+separated one subject from the next; and the manual's header lost the tagline,
+which the front door had said one tap earlier.
+
+**One falsehood found by reading, not by testing.** The NEW WORLD button's
+armed label promised "your relics and perks travel". Perks became the WORLD's
+own on 2026-08-26 (`WorldMemory.perks`; `dropWorld` leaves the whole world
+behind), so only relics travel — and the same sentence on the WORLDS panel
+said it too, with an e2e test pinning the false half. **This is the second
+time that label has outlived a storage split** (shop levels, 2026-08-20), on
+the one control in the game that cannot be undone, read one second before it
+is obeyed. Both surfaces fixed, and an e2e test now pins the armed words as a
+ledger of what survives.
+
+**Verified:** 822 tests, 28 e2e (+1: MENU's exits, its fold, and the NEW WORLD
+ledger), typecheck / lint / format clean, build clean, screenshotted at
+390×844 in both torchlit and daylight. **Not played on a phone**, which is
+still the gate — and this session changed the first minute a fourth time, so
+`PLAYTEST.md` Session A is owed before Session C, as it already was.
