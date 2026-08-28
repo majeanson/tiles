@@ -1,176 +1,179 @@
-# WORKPLAN — the 2026-08-19 visual pipeline (CLOSED 2026-08-20)
+# WORKPLAN — the 2026-08-27 symbol & glossary pipeline (LIVE)
 
-All four stages are built, verified and recorded — LOG.md carries the full
-accounts and STATUS.md the checkpoint. This file is the RECORD of how the
-pipeline ran, kept for the next pipeline to copy; the live work moved to
-FOLLOWUP.md (the launch-week plan) the day launch week opened. It was a live tracker for the four-stage visual/identity pipeline Marc green-lit on
-2026-08-19 (option sets, this session). The previous pipeline (2026-08-18:
-correctness · UI/UX · new systems) is DONE and fully recorded in `LOG.md`'s
-addenda; its tracker text was retired with it.
+The previous tracker (the 2026-08-19 visual pipeline, CLOSED 2026-08-20) is
+fully recorded in `LOG.md`; this file reuses its process, per its own closing
+note. Marc green-lit this pipeline on 2026-08-27 (option sets, plan approved):
+one symbol language honoured everywhere, and a tappable glossary in the
+manual. The full design is in the approved plan; each stage below carries
+what its agent needs.
 
-Whoever picks this up (any session, any agent): execute stages in order, one
-at a time — same working tree, so no parallel stages. Every stage: gates
-(`pnpm exec vitest run` · `pnpm typecheck` · `pnpm lint` · `pnpm format:check`
-· `pnpm sim` byte-identical — this pipeline is visual, so the balance table
-must not move at all), commit to main in the repo's voice, push, CI green,
-then mark it here and start the next. Every stage writes its question in
-`LOG.md` before building and its account after.
+**Decisions of record (Marc, 2026-08-27, on option sets):**
 
-**Standing constraints, all stages:** engine purity untouched (no DOM, no
-`Math.random`, no `Date`, no async in `src/engine/`) · no balance number
-outside `src/content/` · the greyscale test (`theme.test.ts`, CIE L*) stays
-green — darken something rather than relax the threshold · the reduced-motion
-contract holds (reduced motion gets its own quieter pop, never nothing) ·
-walls stay lifted clear of the fog (pinned) · final visual verdicts are
-Marc's, on the deployed site, on a phone, by looking — a stage "done" here
-means shipped-and-wired, not judged.
+- **Unicode glyphs, extended — no icon library.** Polish via colour and CSS.
+- **Moderate vocabulary**: marks only for cross-screen concepts (RELIC ◉,
+  LUCK ✤, WALL ▦, STONE ▨, fame ❋ so ✦ means FIND only, met ✓ / notYet ◇
+  formalized). Stats stay words.
+- **Glossary is a TS registry only** — no .md files (Marc dropped that
+  explicitly).
+- **Tapping a term in HOW TO PLAY opens a definition card** (event-card
+  look, dialog stack).
 
-## Decisions of record (Marc, 2026-08-19, on option sets)
+Whoever picks this up: execute stages in order, ONE AT A TIME — same working
+tree, no parallel stages. Every stage: question in `LOG.md` before building ·
+gates (`pnpm exec vitest run` · `pnpm typecheck` · `pnpm lint` ·
+`pnpm format:check` · `pnpm sim` byte-identical — this pipeline is
+symbols and prose, the balance table must not move) · commit to main in the
+repo's voice · push · CI green · account in `LOG.md` · mark it DONE here
+with the hash before the next launches.
 
-- **All four visual tracks green-lit**: torchlit art pass · end-screen share
-  pass · torchlit motion pass · identity surfaces.
-- **Art method: BOTH procedural deepening AND baked PNGs** — and free
-  pixel-art/textures may be REUSED where they genuinely fit torchlit.
-  License gate: CC0/public-domain only (e.g. Kenney, OpenGameArt CC0),
-  source and license recorded in `public/assets/README.md` and `LOG.md`.
-- **Share: screen + share image.** The end screen becomes screenshot-worthy
-  AND a canvas-rendered share card goes out as an image via the Web Share
-  API (files), with the existing text+link share as the fallback.
-- **Losing themes: DELETED.** `cold-survey` and `rot-bloom` leave the
-  registry and the bundle with a written goodbye in `LOG.md`. `placeholder`
-  stays — it is the fallback in `theme/index.ts` and the greyscale control.
-- **Identity: full treatment.** Mark redrawn torchlit-flavoured, icon set
-  regenerated, title treatment on the front door and end screen (wire
-  `ui.logo`), and a real social preview replacing the icon-as-og:image.
+**Standing constraints, all stages:** engine purity untouched · no balance
+number outside `src/content/` · contrast/greyscale thresholds never relaxed —
+no new COLOUR role is introduced by this pipeline at all, new marks wear
+existing ink roles · every listener through the signalled `on`/`#on` helpers ·
+`resetShell()` learns any new static markup · final visual verdicts are
+Marc's, on the deployed site, on a phone. Line numbers in stage briefs are
+from 2026-08-27 pre-`aa78814` exploration — **grep for the anchors, do not
+trust the numbers.**
 
-## Stage 1 — Identity & the goodbye (STATUS: DONE, commit `f9845bd`)
+## Stage 1 — CONCEPT_MARK, and every glyph literal routed through a registry (STATUS: TODO)
 
-**Question:** does ASHWAKE read as a game — not a variable name — on every
-surface that says its own name (tab, home screen, front door, end screen,
-a link unfurling in a chat)?
+**Question:** when every glyph the game speaks comes from one of four
+registries, does any surface change its meaning — and is ❋ (fame) instantly
+distinguishable from ✦ (find) at phone sizes?
 
-1. **The mark, redrawn torchlit.** The current inline SVG mark becomes an
-   ember/torch-flavoured mark that survives 16px (favicon) to 512px
-   (og/install). Keep it geometric enough to bake — `scripts/icons.ts`
-   already generates the PNG set; extend it rather than hand-exporting.
-   Regenerate: `icon.svg`, `icon-maskable.svg`, the 180/192/512 PNGs,
-   maskable variants. Manifest `theme_color`/`background_color` checked
-   against torchlit's tokens.
-2. **Title treatment.** Front door NAME and the end screen header get a
-   drawn treatment (type + mark), and the `ui.logo` slot (876×450) is
-   WIRED: if a PNG lands at `public/assets/torchlit/ui.logo.png` it
-   supersedes the drawn treatment, same contract as every other slot.
-   `assets.ts`'s `wired` column and `/gallery`'s NO MECHANIC label must
-   stay honest.
-3. **A real social preview.** A baked 1200×630 og:image (mark, name,
-   tagline, torchlit ground) as a static file; `index.html`'s
-   `og:image`/twitter meta updated. Generated by script, not hand-made,
-   so it can be regenerated when the mark moves.
-4. **The goodbye.** `cold-survey.ts` and `rot-bloom.ts` deleted, registry
-   down to `placeholder` + `torchlit`, `?theme=` fallback behaviour tested
-   (a shared link naming a deleted theme must load torchlit, not throw),
-   written goodbye in `LOG.md` in the repo's voice, gallery and picker
-   reflect the two-theme registry.
+1. `src/theme/tokens.ts`: add the fourth registry beside the other three,
+   with a docstring recording that ❋ retires ✦-as-highlight (its sixth
+   meaning) and that met/notYet formalize the ✓-not-◈ ruling:
+   `CONCEPT_MARK = { relic:'◉', luck:'✤', wall:'▦', stone:'▨', fame:'❋',
+   met:'✓', notYet:'◇' }`. Fallbacks if Marc's phone shows tofu or
+   lookalikes: relic→▣, luck→✥, fame→✻, stone→▤.
+2. `src/theme/tokens.test.ts`: the one-symbol-language union test gains
+   `Object.values(CONCEPT_MARK)` — no duplicate glyph across all four
+   registries.
+3. Route every hardcoded glyph literal through a registry:
+   - `src/ui/view.ts` (does not import the registries today): the
+     `describeHexOf` sentences ('✚ CACHE…', '★ SITE…', '◈ SHRINE…',
+     '✦ …', '❖ TERRITORY…') and the bounty/pocket lines (~336, 359, 415,
+     1374, 1406, 1415-1416 pre-shift).
+   - `src/ui/game.ts`: the claim notes (~1588-1681) including the cache
+     claim's ASCII `+` lead → `LANDMARK_GLYPH.cache`; `'★ POP'` bounty
+     button (~3343/3355); `'✦ found'` (~3903, stays ✦ — it IS a find,
+     now registry-sourced); `'✓ goal met'` (~3917) → `CONCEPT_MARK.met`.
+   - `src/shell/session.ts`: unlock rows ◈/◇ → `LANDMARK_GLYPH.shrine` /
+     `CONCEPT_MARK.notYet` (~565/575); ledger ✓/◇ → met/notYet (~617-620);
+     fame/highlight rows ✦ → `CONCEPT_MARK.fame` (~1886, 2011, 2020).
+     Highlights are typed data with the glyph applied at paint time — no
+     persisted data changes.
+   - `e2e/menu.spec.ts` (~409): `✦ NEW BEST` → `❋ NEW BEST`. Grep
+     `game.test.ts` for glyph expectations (`+  CACHE`, `✦`, `✓`) and
+     update.
 
-## Stage 2 — The end screen earns the screenshot (STATUS: DONE, commit `64b7d97`)
+Visual delta on ship: fame ❋ and the cache card's ✚ lead; nothing else.
+Marc's phone check of the five new characters is the gate for the glyph
+choices.
 
-**Question:** would a stranger post this screen in a chat unprompted — and
-does the share image say "beat my run" without a caption?
+## Stage 2 — Symbols where words stood (STATUS: TODO)
 
-1. **Screen pass.** Hierarchy, type scale and the arc as a visual moment
-   (the sparkline is already the share line's language — give the screen
-   itself the arc drawn properly). Wire `ui.runEnd` (876×330) the same way
-   Stage 1 wires `ui.logo` — it is the most-seen image slot in the game
-   and reads NO MECHANIC today. Keep the payout arithmetic exactly as
-   built (POPS + REACH×bonus + CLAIMS×bonus) — this stage moves paint,
-   never numbers.
-2. **The share card.** A canvas-rendered image (score, arc sparkline,
-   reach, run number, the mark, the seed) shared via Web Share API
-   `files` where `navigator.canShare({ files })` says yes; the existing
-   text+seed-link share is the fallback path, not deleted. Desktop
-   fallback: download/copy. The DAILY's share keeps its own sparkline
-   text line and gains the same card with its date and ladder line.
-3. Reduced-data honesty: the card renders from the same `worldStats` and
-   end-screen fields the screen reads — one source, so the picture cannot
-   contradict the screen.
+Pure additive polish; depends on Stage 1's registry.
 
-## Stage 3 — The torchlit art pass (STATUS: DONE, commit `3e23968`)
+1. End screen: `◉ N relics banked` (+ the RELICS shop-door row), the
+   `BOUNTIES` fact label wears ★. `DESTINATIONS` stays a word — it names a
+   mixed family with no single glyph; leave a comment saying so.
+2. HUD: the LUCK stat wears ✤ via an optional `mark` field on `Stat`;
+   **aria-label stays the plain word** (mark rendered in the span only).
+3. Lesson leads that own a mark lead with it instead of ⬢: the LUCK teach
+   card and the purse lesson lead (`view.ts` purseLesson) → ✤;
+   `RELIC_LESSON` → ◉. ⬢ remains the voice for game-wide lessons.
+4. `describeHexOf` wall/stone sentences lead with ▦/▨; the manual's
+   wall/stone tip rows (if any) get `glyph:` marks.
+5. `game.test.ts`: relics-banked line carries ◉, BOUNTIES carries ★, LUCK
+   aria-label stays `LUCK n`.
 
-**Question:** at arm's length, on a phone, in daylight — do the four
-colours, walls, stone and the pop read at a glance as one torchlit world
-rather than four tinted hexes on black?
+Phone check: HUD row width with the ✤ mark, in portrait.
 
-1. **Procedural deepening first** (it is the floor everything falls back
-   to): richer per-colour surfaces in the baker (`render/`), torchlit's
-   light-pool and fog dim tuned as tokens, EMBER/ASH/MOSS/TIDE texture
-   depth beyond the four line patterns, `terrain.stone` finally reading
-   as SPENT (the aftermath of a pop, not furniture) — it is the most
-   common cell in the back half of a run and has never had a look.
-2. **Baked PNGs into the eight wired slots** via a new `scripts/` baker
-   (Node, offline, deterministic — same spirit as `scripts/icons.ts`):
-   `terrain.green/yellow/red/blue/wall/stone/ghost` at 414×358 flat-top,
-   `fx.pop` at 256×256. Free CC0 textures may seed the baker's material
-   layers where they fit torchlit; provenance recorded per the decision
-   of record. A slot the baker can't make GOOD stays empty on purpose —
-   empty beats bad, the procedural floor is the game.
-3. **Guardrails:** greyscale L* separation test green under the final
-   surfaces · `/gallery` is the workbench and must show LOADED honestly ·
-   DPR cap 2 and the WebGL context-loss path untouched · old saves and
-   `pnpm sim` byte-identical (art is paint, not rules).
+## Stage 3 — The glossary registry, no UI change (STATUS: TODO)
 
-## Stage 4 — The torchlit motion pass (STATUS: DONE, commit `ca3d61b`)
+1. New `src/ui/glossary.ts` (`src/content/` is ESLint-restricted to balance
+   data; `ui/` may import content/engine/theme/meta):
+   - `GlossaryId = TeachId | 'pocket' | 'worth' | 'bounty' | 'stash' |
+     'sizeBonus' | 'stone'` (`TeachId` from `src/meta/progress.ts`).
+   - `GlossaryEntry { id, terms (UPPERCASE, longest first, e.g.
+     ['RELICS','RELIC'], ['LAST GASP']), glyph? (from the four registries
+     only), ink? ('ink-magic'|'ink-unique'), define: (t: Tuning, theme:
+     Theme) => string (2-3 lines, live numbers, like the manual) }`.
+   - ~18 entries: ripe, pop, pocket, worth, cache ✚, site ★, shrine ◈,
+     territory ❖, wall ▦, stone ▨, rare→MAGIC, rareUnique→UNIQUE, luck ✤,
+     relic ◉, bounty ★, stash, lastGasp, sizeBonus.
+2. Move, not copy: `RELIC_LESSON` (game.ts) becomes `relic.define`; the
+   LUCK teach card and `statNote('luck')` share the glossary's core
+   sentence (statNote appends its live clause). Deliberately NOT merged:
+   `describeHexOf` / `statNote` (contextual, priced questions),
+   `colourLesson` / `COLOUR_HELP` (theme-dependent ground names), perk
+   names (mystery rule, progress.ts ~129-131). Stats stay out.
+3. New `src/ui/glossary.test.ts` pins: unique ids · terms uppercase and
+   unique across the registry · every glyph ∈ the four registries' union
+   (the glossary may not invent a symbol) · `define(DEFAULT_TUNING,
+   torchlit)` non-empty, ≤ ~3 sentences · every glossary term occurs in
+   the full-ledger manual text (reuse `game.test.ts`'s `openFullManual`
+   pattern) — no dead definitions nobody can tap.
 
-**Question:** does motion in torchlit's register (light responding, embers
-settling) make pop/claim/arrival feel MORE like one world — or does it read
-as noise on top of the feel pass's one motion language?
+## Stage 4 — Tappable terms and the definition card (STATUS: TODO)
 
-1. The pop as torchlit wants it: the burst reads as flame/ember, the
-   light-pool answers it. The claim and the arrival (already on one
-   motion language from the feel pass) get the same register.
-2. Motion stays THEME DATA where it can (`popLift` already is — extend
-   that vocabulary), render-side where it must; nothing in `engine/`.
-3. Reduced-motion keeps its own quieter pop (the shipped contract), and
-   the feel pass's press-acknowledgement timing is not regressed.
-4. Marc has NOT yet judged the shipped feel pass with thumbs — this stage
-   builds on it, so if his verdict lands before the stage starts, fold it
-   in; if after, the stage's own question absorbs it.
+1. `src/ui/tips.ts`: refactor `rarityInked` around a shared splitter and
+   add `conceptInked(text, open)` — one regex from all glossary terms +
+   MAGIC/UNIQUE, longest-first alternation, `\b` boundaries; each match →
+   `<button type="button" class="term" data-term="{id}"
+   aria-haspopup="dialog">`, MAGIC/UNIQUE also wearing their ink class.
+   `rarityInked` keeps its exact behavior and ALL its callers (it runs
+   inside buttons — must never nest buttons).
+2. `Game#helpSection` uses `conceptInked` for section `lines` and `detail`
+   ONLY — never titles, tabs, tipRows, toasts, event cards. Card
+   definitions render through `rarityInked` (no recursion). No per-term
+   ledger gating: the manual's section gating already hides unmet
+   concepts.
+3. `index.html`: `#term-card` as a sibling of `#help-panel` in `#app` —
+   `#term-card-panel` (role=dialog, aria-modal, tabindex=-1) with
+   `#term-card-glyph`, `#term-card-name`, `#term-card-text`,
+   `#term-card-dismiss` (GOT IT).
+4. `src/style.css`: SHARE the event-card skin by widening selectors
+   (`#event-card, #term-card {…}`), don't duplicate; `#term-card
+   { z-index: 7 }`; update the layer-map comment (~160-176); `.term`
+   inherits currentColor and font, dotted underline, tap-target padding.
+   (`#event-card` itself can't be reused — it lives inside `#game-shell`
+   at z-index 2, under the manual at 5, entangled with `#eventAction`.)
+5. `Game` owns the card: nodes join `Elements` and `session.ts`'s
+   `required()` block; dismiss wired via `#on`; open = fill card,
+   `openDialog({panel, covers: siblingsOf(panel), opener, close})`, focus
+   dismiss; Escape closes only the card (stack top); focus returns to the
+   tapped term. Works from the front door because MORE ▸ HOW TO PLAY
+   routes through `game.openHelp`. `resetShell()` hidden list gains
+   `'term-card'`.
+6. `game.test.ts`: manual lines contain `button.term[data-term]` (e.g.
+   RIPENS in START); tap → card shows registry glyph + non-empty
+   definition, `#help-panel` inert; GOT IT restores manual + focus;
+   Escape order (card, then manual); no `.term` inside `.help-title`/tabs;
+   toast/event-card paths still produce plain spans.
+7. `e2e/menu.spec.ts`: adjust the "closes on BACK, not on the prose" test
+   to click `.help-title`/`#help-name` (never tappable) instead of an
+   arbitrary `p`; new test — BEGIN → `#help` → tap `button.term` → card
+   visible + help inert → GOT IT → focus back on term; Escape closes only
+   the card; same flow via MORE ▸ HOW TO PLAY. House style: `watchErrors`,
+   ids/semantic classes, modality via inert+focus.
 
-**All four stages are now built.** The pipeline's build work ends here — a
-fresh-eyes review of all four stages together (the same species as the
-2026-08-18 pipeline's own closing review) closed it out below.
+Phone check: finger-tap targets on inline terms, card legibility over the
+manual.
 
-## Fresh-eyes review (STATUS: DONE)
+## Held out on purpose (scope flags)
 
-Ran 2026-08-20 as its own pass over `73b4428..80f5145`, per the precedent.
-Full account in `LOG.md`'s addendum of the same date. Three defects found
-and fixed, each gated and with `pnpm sim` re-proven against a clean
-`73b4428` worktree:
-
-- `edcbe24` — the draft cards never consumed Stage 3's terrain PNGs, so
-  the board and the hand split into two arts; `Game#setCardArt` rejoins
-  them off the same manifest fetch, procedural bake kept as the floor.
-- `f8e2337` — every `verify-deploy` HEAD check was unfalsifiable under the
-  worker's SPA fallback (missing file → 200 text/html); the check now
-  reads content-type and also verifies every file the live asset manifest
-  names.
-- `653b48a` — the truth pass: `.end-arc`'s letterboxed box vs. its own
-  "matches the viewBox" comment, `DEFAULT_THEME_ID`'s "every direction is
-  still loaded" docstring, and `STATUS.md`'s "every slot is empty" bullet,
-  all corrected in place.
-
-Every stage's Verified paragraph was re-run rather than believed: test
-counts (573 → 557 across the range, 558 with the review's own pin),
-sim byte-identity, both Playwright specs, the terrain baker's determinism
-(byte-identical PNGs on rerun) and luma ordering, the greyscale threshold,
-the reduced-motion contract, and the pre-pipeline motion literals all
-reproduced. Observations that are records rather than defects — Stage 4's
-overstated commit message, the 212-vs-200 KB count, the luma check's
-four-colour scope, two pre-pipeline `STATUS.md` stalenesses — live in the
-LOG addendum.
+- Tappable terms are manual-only this pass; each further host (event card,
+  tip rows) is a one-line follow-up once the plumbing exists.
+- Ground names (MOSS, EMBER…) are theme-dependent — not glossary terms;
+  `colourLesson` answers them on the board.
+- Perk names stay out (the mystery rule).
+- Glyph rendering on Marc's phone is the one real unknown — Stage 1 ships
+  the characters alone, with fallbacks, before anything builds on them.
 
 ## After the pipeline
 
-Marc's phone pass over all four stages (visual verdicts are his, by
-looking) · the RESET TEACHING first-minute pass · the stranger test ·
-v1.0. The daily/crossing/camps questions from `FOLLOWUP.md` §5 ride along
-on the same phone sessions.
+Marc's phone pass over the four stages (glyph legibility is his verdict, by
+looking) · then back to the pre-tag close: a phone pass and Session C.
